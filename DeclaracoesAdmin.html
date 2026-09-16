@@ -1,0 +1,1422 @@
+<!--
+  TELA: Documentos › Declarações
+  Backend: DeclaracoesCore.gs (cadastro da Diretoria) e DeclaracaoDiretor.gs
+           (emissão, texto, PDF e histórico).
+
+  DUAS TELAS POR ESTADO, não por assunto:
+     Emitir     — a declaração que ainda não existe
+     Emitidas   — a que já foi assinada
+
+  Não há tela de Diretoria: quem pode receber e quem assina vem da composição
+  vigente em Governança, e se corrige lá.
+
+  A ENTREGA (e-mail e WhatsApp) aparece em dois lugares com o mesmo código:
+  no cartão ao pé de Emitir, logo depois de emitir, e no modal aberto pela
+  lista de Emitidas. Daí os escopos em DECL_ESCOPOS — a declaração cuja
+  entrega está aberta é uma só, guardada em DECL_ESTADO.entrega, e as duas
+  telas apenas apontam para caixas diferentes.
+
+  ⚠️ REGRA Nº 0 — nenhum scriptlet do Apps Script aparece aqui dentro de
+  comentário, nem em forma citada. O include desta tela está no index.html.
+
+  Design System: tokens e componentes de OficiosStyles.html (--navy, --blue,
+  .of-modulo-header, .of-card, .btn-navy, .of-modal). Nada de paleta nova.
+-->
+
+<div class="declWrap">
+
+  <!-- SEM CABEÇALHO DE MÓDULO AQUI — corrigido em 15/09/2026.
+       A SPA já mostra "Documentos" no topo e "Declarações" marcado no menu
+       lateral; repetir um cabeçalho navy com o mesmo nome e o mesmo selo
+       SindEducação-ES empilhava dois títulos e empurrava o formulário para
+       baixo da dobra. O Ofício usa .of-modulo-header só nas SUBTELAS
+       (Histórico, Monitoramento), não na entrada do módulo. -->
+
+  <div class="declTitulo">
+    <h3>📜 Declarações</h3>
+    <small>de diretor à disposição da entidade — art. 543 da CLT</small>
+  </div>
+
+  <div class="declTabs">
+    <button type="button" class="declTab declTab-ativa" data-decl-aba="emitir"    onclick="declAba('emitir')">✍️ Emitir</button>
+    <button type="button" class="declTab"               data-decl-aba="emitidas"  onclick="declAba('emitidas')">📚 Emitidas</button>
+  </div>
+
+  <!-- ══════════════ EMITIR ══════════════ -->
+  <section id="declPainelEmitir" class="declPainel">
+
+    <div id="declAvisoSetup" class="declAviso" style="display:none;"></div>
+
+    <div class="of-card declCard">
+      <div class="of-card-head">
+        <div class="of-card-head-l">
+          <div class="of-card-ico">📝</div>
+          <div>
+            <div class="of-card-title">Dados da liberação</div>
+            <div class="of-card-sub">Só o dia e o período variam — o texto jurídico é fixo</div>
+          </div>
+        </div>
+        <button type="button" class="declBtnMini" onclick="declConferirConfig()" title="Pasta do Drive, quem assina e quantos dirigentes estão habilitados">🔧 Conferir configuração</button>
+      </div>
+      <div class="of-card-body">
+
+        <div class="declGrid">
+          <div class="declCampo">
+            <label for="declDiretor">Diretor</label>
+            <select id="declDiretor" onchange="declCarregarVinculos()"></select>
+            <small id="declDiretorOrigem" class="declOrigem">composição e mandato vigentes em Governança</small>
+          </div>
+
+          <div class="declCampo">
+            <label for="declEscolaCampo">Escola empregadora</label>
+            <!-- UM CAMPO SÓ, com autocomplete — 15/09/2026.
+                 Antes era um select com os vínculos mais uma opção "buscar
+                 outra escola" que revelava uma caixa de busca. Duas etapas
+                 para uma tarefa, e as 679 escolas do cadastro escondidas
+                 atrás de uma escolha que ninguém adivinha. -->
+            <div class="declAuto">
+              <input type="text" id="declEscolaCampo" autocomplete="off"
+                     placeholder="🔎 nome, fantasia, CNPJ ou cidade"
+                     oninput="declEscolaDigitou()" onfocus="declEscolaAbrir()"
+                     onkeydown="declEscolaTecla(event)" disabled>
+              <button type="button" id="declEscolaLimpar" class="declAutoLimpar" onclick="declEscolaLimpar()" style="display:none;" title="Trocar de escola">✕</button>
+              <div id="declEscolaLista" class="declAutoLista" style="display:none;"></div>
+            </div>
+            <small class="declOrigem" id="declEscolaOrigem">vínculo em Associados · identidade em Escolas</small>
+          </div>
+
+          <div class="declCampo">
+            <label for="declDataLiberacao">Data da liberação</label>
+            <input type="date" id="declDataLiberacao" onchange="declPrevia()">
+          </div>
+
+          <div class="declCampo">
+            <label for="declDataEmissao">Data de emissão</label>
+            <input type="date" id="declDataEmissao" onchange="declPrevia()">
+            <small class="declOrigem">preenchida pelo sistema · editável</small>
+          </div>
+        </div>
+
+        <div class="declCampo declCampoLargo">
+          <label>Período</label>
+          <div id="declPeriodos" class="declRadios"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="of-card declCard">
+      <div class="of-card-head">
+        <div class="of-card-head-l">
+          <div class="of-card-ico">👁️</div>
+          <div>
+            <div class="of-card-title">Prévia do texto</div>
+            <div class="of-card-sub">É exatamente o que vai sair no PDF</div>
+          </div>
+        </div>
+      </div>
+      <div class="of-card-body">
+        <div id="declPrevia" class="declPrevia">Selecione o diretor e a data para ver a prévia.</div>
+        <div id="declPreviaAviso" class="declPreviaAviso" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="of-action-bar">
+      <div class="of-action-bar-info">
+        <!-- O VERBO DA AÇÃO É "GERAR" — corrigido em 15/09/2026.
+             A barra dizia "Emitir declaração" e logo abaixo "antes de gerar o
+             documento", e o botão em ação mostrava "Emitindo…". Três palavras
+             para o mesmo clique. "Emitida" continua sendo o estado do
+             REGISTRO — é o que a aba Emitidas lista e o que a planilha grava. -->
+        <div class="of-action-bar-title">🚀 Gerar declaração</div>
+        <div class="of-action-bar-sub">Revise os dados antes de gerar o documento</div>
+      </div>
+      <div class="of-action-bar-btns">
+        <button type="button" class="btn btn-on-dark" onclick="declLimpar()">Limpar</button>
+        <button type="button" class="btn btn-on-dark" id="declBtnVer" onclick="declVerDocumento()">👁 Pré-visualizar</button>
+        <button type="button" class="btn btn-gold" id="declBtnEmitir" onclick="declEmitir(false)">✅ Gerar declaração</button>
+      </div>
+    </div>
+
+    <div id="declAcoesDocumento" class="declAcoes declAcoesEsq" style="display:none;">
+      <a id="declLinkPdf" class="btn btn-outline" href="#" target="_blank" rel="noopener">📥 Baixar PDF</a>
+      <button type="button" class="btn btn-outline" onclick="declImprimirDocumento()">🖨 Imprimir</button>
+    </div>
+
+  </section>
+
+  <!-- ══════════════ EMITIDAS ══════════════ -->
+  <section id="declPainelEmitidas" class="declPainel" style="display:none;">
+    <div class="of-card declCard">
+      <div class="of-card-body">
+        <div class="declFiltros">
+          <input type="text" id="declBusca" placeholder="🔎 diretor, número ou data" oninput="declHistoricoDebounce()">
+          <input type="date" id="declFiltroDe"  onchange="declHistorico()" title="Liberação a partir de">
+          <input type="date" id="declFiltroAte" onchange="declHistorico()" title="Liberação até">
+          <button type="button" class="btn-outline btn-sm" onclick="declLimparFiltros()">Limpar filtros</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Só aparece com algo marcado: barra de ação vazia é ruído. -->
+    <div id="declBarraSelecao" class="declBarraSelecao" style="display:none;">
+      <div><strong id="declSelContagem">0</strong> selecionada(s)</div>
+      <div class="declBarraBtns">
+        <button type="button" class="btn-outline btn-sm" onclick="declSelecionarTodas(false)">Limpar seleção</button>
+        <button type="button" class="btn-red btn-sm" onclick="declAbrirExclusao()">🗑 Excluir selecionadas</button>
+      </div>
+    </div>
+
+    <div class="of-card declCard">
+      <div class="of-card-body declTabelaWrap">
+        <table class="declTabela">
+          <thead>
+            <tr>
+              <th style="width:34px;"><input type="checkbox" id="declSelTodas" onchange="declSelecionarTodas(this.checked)" title="Marcar/desmarcar a página"></th>
+              <th>Nº</th><th>Diretor</th><th>Escola</th><th>Liberação</th><th>Período</th>
+              <th>Emitida</th><th>Entrega</th><th>Por</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="declHistoricoCorpo">
+            <tr><td colspan="10" class="declVazio">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Modal — confirmação da exclusão.
+
+     Lista o que vai sair, com o que já foi entregue em destaque. O usuário
+     decidiu em 15/09/2026 que declaração enviada PODE ser excluída — mas
+     sabendo que foi enviada, não por engano. -->
+<div class="of-modal-overlay" id="declModalExcluir">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">🗑 Excluir declarações</div>
+        <div class="of-modal-head-sub">vai para a Lixeira — dá para restaurar</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalExcluir')">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div id="declExcluirLista" class="declExcluirLista"></div>
+      <div id="declExcluirAvisoEnviadas" class="declAviso" style="display:none;margin-top:12px;"></div>
+      <div class="declOrigem" style="margin-top:10px;">
+        O PDF continua no Drive — documento assinado que já saiu não se apaga por aqui.
+      </div>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declFechar('declModalExcluir')">✕ Cancelar</button>
+      <button type="button" class="btn-red" id="declBtnExcluirConfirmar" onclick="declExcluirConfirmado()">🗑 Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal — o documento como ele vai sair.
+
+     O conteúdo vem do MESMO montador que gera o PDF, dentro de um iframe:
+     assim o CSS do documento não vaza para a tela nem o da tela entra no
+     documento. -->
+<div class="of-modal-overlay" id="declModalDocumento">
+  <div class="of-modal" style="max-width:860px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">👁 Pré-visualização</div>
+        <div class="of-modal-head-sub">é exatamente o que vai sair no PDF — nada foi gravado</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalDocumento')">✕</button>
+    </div>
+    <div class="of-modal-body" style="padding:0;">
+      <iframe id="declDocumentoFrame" title="Pré-visualização da declaração" style="width:100%;height:62vh;border:0;background:#fff;"></iframe>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declImprimirPrevia()">🖨 Imprimir</button>
+      <button type="button" class="btn-navy" onclick="declFechar('declModalDocumento');declEmitir(false)">✅ Gerar declaração</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal — diagnóstico da configuração.
+
+     Existe porque o diagnóstico do servidor termina com sublinhado, e o
+     editor do Apps Script esconde função assim: para rodar era preciso colar
+     um invólucro à mão, que o deploy seguinte apagava. -->
+<div class="of-modal-overlay" id="declModalConfig">
+  <div class="of-modal" style="max-width:520px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">🔧 Configuração das Declarações</div>
+        <div class="of-modal-head-sub">só leitura — nada é alterado por aqui</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalConfig')">✕</button>
+    </div>
+    <div class="of-modal-body" id="declConfigCorpo"></div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-navy" onclick="declFechar('declModalConfig')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal — entrega de uma declaração já emitida -->
+<div class="of-modal-overlay" id="declModalEntrega">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
+      <div class="declEntregaHead">
+        <div class="declEntregaIco">📨</div>
+        <div>
+          <div class="of-modal-head-title">Confirmar entrega da declaração</div>
+          <div class="of-modal-head-sub" id="declEntregaModalResumo"></div>
+        </div>
+      </div>
+      <div class="declEntregaSelo">Envio oficial</div>
+      <button type="button" class="of-modal-close" onclick="declFecharEntrega()">✕</button>
+    </div>
+
+    <div class="declEntregaAbas">
+      <button type="button" id="declAbaDados" class="declEntregaAba declEntregaAba-ativa" onclick="declEntregaAba('dados')">📋 Dados do envio</button>
+      <button type="button" id="declAbaPreview" class="declEntregaAba" onclick="declEntregaAba('preview')">👁 Preview do e-mail</button>
+    </div>
+
+    <div class="of-modal-body" id="declEntregaPainelDados">
+      <div class="declEntregaGrid">
+        <div><span>Nº da declaração</span><strong id="declEntregaNumero">—</strong></div>
+        <div><span>Diretor</span><strong id="declEntregaDiretor">—</strong></div>
+        <div class="declEntregaLargo"><span>Escola empregadora</span><strong id="declEntregaEscola">—</strong></div>
+      </div>
+      <div class="declEntregaRotulo">E-mails de destino</div>
+      <div id="declEntregaModalContatos" class="declContatos"></div>
+
+      <div class="declIncluir">
+        <input type="text" id="declIncluirEmail" placeholder="incluir outro e-mail…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();declIncluirContato();}">
+        <button type="button" class="btn-outline btn-sm" id="declBtnIncluir" onclick="declIncluirContato()">+ Incluir</button>
+      </div>
+      <div class="declOrigem" style="margin-top:6px;">
+        conferidos no dia da emissão · e-mail incluído fica <b>registrado na declaração</b>, com quem incluiu
+      </div>
+      <!-- UMA CAIXA SÓ — 15/09/2026, "para que isso?".
+           Eram três, empilhadas: o aviso de homologação, "Remetente: conta
+           oficial do SISGEP" e "o status é atualizado sozinho". As duas
+           últimas não informam nada que mude a decisão de quem está com o
+           dedo no botão — remetente oficial é o único que existe, e o status
+           atualizar sozinho é o esperado. Ruído empurra para baixo o que
+           importa: a lista de para quem vai. -->
+      <div id="declEntregaAvisoHml" class="declEntregaNota declEntregaNotaAviso" style="display:none;"></div>
+    </div>
+
+    <div class="of-modal-body" id="declEntregaPainelPreview" style="display:none;padding:0;">
+      <div id="declEntregaPreview" class="declEntregaPreviewBox"></div>
+      <div class="declEntregaPreviewNota">É o e-mail que o servidor vai enviar — mesmo assunto e mesmo corpo, montados pela função do envio.</div>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declFecharEntrega()">✕ Cancelar</button>
+      <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('modal')">📱 Preparar WhatsApp</button>
+      <button type="button" class="btn-outline" id="declBtnConfirmarZapModal" onclick="declConfirmarWhatsapp('modal')" style="display:none;">Marcar WhatsApp como enviado</button>
+      <button type="button" class="btn-navy" id="declBtnEmailModal" onclick="declEnviarEmail('modal')">📨 Enviar agora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal — confirmação de segunda via -->
+<div class="of-modal-overlay" id="declModalDuplicata">
+  <div class="of-modal" style="max-width:520px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">Já existe declaração para esse dia</div>
+        <div class="of-modal-head-sub">Confirme só se for mesmo uma segunda via</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalDuplicata')">✕</button>
+    </div>
+    <div class="of-modal-body" id="declDuplicataTexto"></div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declFechar('declModalDuplicata')">Cancelar</button>
+      <button type="button" class="btn-navy" onclick="declFechar('declModalDuplicata');declEmitir(true)">Emitir outra via</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* MESMA LARGURA DO RESTO DO SISTEMA. `.of-wrap` (OficiosStyles.html:61) é o
+   contêiner canônico: 1480px, centralizado, com 48px embaixo para a barra de
+   ações fixa não cobrir o último card. Os 980px daqui faziam a tela usar um
+   terço da área disponível num monitor comum, com os quatro campos
+   espremidos e o resto em branco. */
+.declWrap { width: 100%; max-width: 1480px; margin: 0 auto; padding: 20px 24px 48px;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+.declTitulo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.declTitulo h3 { margin: 0; font-size: 17px; font-weight: 900; color: var(--navy, #001f4d); }
+.declTitulo small { font-size: 12px; color: var(--g500, #64748b); font-weight: 600; }
+.declTabs { display: flex; gap: 8px; margin: 10px 0 16px; flex-wrap: wrap; }
+.declTab {
+  border: 1.5px solid var(--g200, #e2e8f0); background: #fff; color: var(--g700, #334155);
+  border-radius: 10px; padding: 9px 16px; font-size: 12.5px; font-weight: 800; cursor: pointer;
+  font-family: inherit;
+}
+.declTab-ativa { background: var(--navy, #001f4d); border-color: var(--navy, #001f4d); color: #fff; }
+.declCard { margin-bottom: 16px; }
+.declGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.declCampo { display: flex; flex-direction: column; gap: 6px; }
+/* O Período fica FORA da grade, logo abaixo dela. Sem esta margem ele cola
+   no texto de origem do campo Diretor, que quebra em duas linhas — foi o que
+   o usuário viu na tela em 15/09/2026. */
+.declCampoLargo { grid-column: 1 / -1; margin-top: 20px; }
+.declGrid + .declCampoLargo { margin-top: 22px; }
+.declCampo label { font-size: 11.5px; font-weight: 800; color: var(--g700, #334155); }
+.declCampo input, .declCampo select {
+  height: 42px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px; padding: 0 12px;
+  font-size: 13px; font-family: inherit; color: var(--g900, #0f172a); background: #fff;
+}
+.declCampo input:focus, .declCampo select:focus { outline: none; border-color: var(--blue, #1565C0); }
+.declOrigem { font-size: 10.5px; color: var(--g500, #64748b); }
+.declRadios { display: flex; flex-wrap: wrap; gap: 8px; }
+.declRadios label {
+  display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid var(--g200, #e2e8f0);
+  border-radius: 10px; padding: 9px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  color: var(--g700, #334155); background: #fff;
+}
+.declRadios label.declRadioAtivo { border-color: var(--blue, #1565C0); color: var(--blue, #1565C0); background: var(--blue-lt, #eff6ff); }
+.declPrevia {
+  background: var(--g50, #f8fafc); border: 1.5px dashed var(--g200, #e2e8f0); border-radius: 12px;
+  padding: 18px 20px; font-size: 13px; line-height: 1.7; color: var(--g900, #0f172a); text-align: justify;
+}
+.declPreviaAviso { margin-top: 10px; font-size: 12px; font-weight: 700; color: #d97706; }
+.declAviso {
+  background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 12px; padding: 14px 16px;
+  font-size: 12.5px; color: #92400e; margin-bottom: 16px; font-weight: 600;
+}
+.declAcoes { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 8px; }
+.declAcoesEsq { justify-content: flex-start; }
+.declCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.declMini { background: #fff; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 14px; padding: 14px 16px; }
+.declMini small { display: block; font-size: 11px; color: var(--g500, #64748b); font-weight: 700; }
+.declMini strong { display: block; font-size: 22px; color: var(--navy, #001f4d); margin-top: 4px; }
+.declMiniAlerta strong { color: #d97706; }
+.declMiniLargo strong { font-size: 14px; line-height: 1.4; margin-top: 8px; }
+.declTabelaWrap { overflow-x: auto; }
+.declTabela { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 620px; }
+.declTabela th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--g500, #64748b); padding: 10px 12px; border-bottom: 1.5px solid var(--g200, #e2e8f0);
+}
+.declTabela td { padding: 12px; border-bottom: 1px solid var(--g100, #f1f5f9); color: var(--g900, #0f172a); }
+.declTabela tr:last-child td { border-bottom: none; }
+.declVazio { text-align: center; color: var(--g500, #64748b); padding: 34px 12px !important; }
+.declPill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; }
+.declPillOk { background: #ecfdf5; color: #0f8a5f; }
+.declPillOff { background: var(--g100, #f1f5f9); color: var(--g500, #64748b); }
+.declPillAlerta { background: #fffbeb; color: #d97706; }
+.declLink { color: var(--blue, #1565C0); font-weight: 800; text-decoration: none; font-size: 12px; }
+.declBtnMini {
+  border: 1.5px solid var(--g200, #e2e8f0); background: #fff; border-radius: 8px; padding: 6px 10px;
+  font-size: 11.5px; font-weight: 800; cursor: pointer; color: var(--g700, #334155); font-family: inherit;
+  margin-right: 6px;
+}
+.declBtnMini:hover { border-color: var(--blue, #1565C0); color: var(--blue, #1565C0); }
+.declFiltros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.declFiltros input {
+  height: 40px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px; padding: 0 12px;
+  font-size: 12.5px; font-family: inherit; flex: 1; min-width: 150px;
+}
+.declCheck { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; font-size: 12.5px; color: var(--g700, #334155); cursor: pointer; }
+.declCheck input { margin-top: 2px; }
+.declCheck small { color: var(--g500, #64748b); font-weight: 600; }
+.declModalRodape {
+  display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px;
+  border-top: 1.5px solid var(--g100, #f1f5f9);
+}
+.declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
+.declImportLinha small { color: var(--g500, #64748b); }
+.declBarraSelecao { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; background:var(--navy,#001f4d); color:#fff; border-radius:12px;
+  padding:12px 18px; margin-bottom:12px; font-size:13px; font-weight:700; }
+.declBarraSelecao strong { font-size:16px; }
+.declBarraBtns { display:flex; gap:8px; flex-wrap:wrap; }
+.declExcluirLista { max-height:240px; overflow-y:auto; }
+.declExcluirItem { display:flex; justify-content:space-between; gap:10px; align-items:center;
+  padding:9px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:12.5px; }
+.declExcluirItem small { display:block; color:var(--g500,#64748b); margin-top:2px; }
+.declExcluirEnviada { color:#dc2626; font-weight:800; font-size:11px; white-space:nowrap; }
+.declMailCard { font-family:'Segoe UI',Arial,sans-serif; max-width:560px; margin:0 auto; border-radius:8px;
+  overflow:hidden; box-shadow:0 4px 16px rgba(0,20,60,.1); background:#fff; }
+.declMailTopo { background:linear-gradient(135deg,#001228,var(--navy,#001f4d),#003b82); padding:18px 22px; }
+.declMailMarca { font-size:17px; font-weight:900; color:#fff; }
+.declMailSub { font-size:10.5px; color:rgba(255,255,255,.6); margin-top:4px; }
+.declMailSelo { display:inline-flex; background:rgba(255,255,255,.12); color:var(--gold,#C9A84C); font-size:10px;
+  font-weight:800; padding:4px 12px; border-radius:999px; margin-top:12px; }
+.declMailCorpo { padding:20px 22px; font-size:13px; color:#1a2233; line-height:1.7; }
+.declMailCorpo p { margin:0 0 12px; }
+.declMailRodape { background:linear-gradient(135deg,#001228,var(--navy,#001f4d)); padding:14px 22px;
+  font-size:10.5px; color:rgba(255,255,255,.7); }
+.declIncluir { display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--g200,#e2e8f0); }
+.declIncluir input { flex:1; height:38px; border:1.5px solid var(--g200,#e2e8f0); border-radius:10px;
+  padding:0 12px; font-size:12.5px; font-family:inherit; }
+.declIncluir input:focus { outline:none; border-color:var(--blue,#1565C0); }
+.declEntregaHead { display:flex; align-items:center; gap:14px; flex:1; }
+.declEntregaIco { width:50px; height:50px; border-radius:14px; background:rgba(255,255,255,.12);
+  border:1.5px solid rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center;
+  font-size:24px; flex-shrink:0; }
+.declEntregaSelo { background:rgba(201,168,76,.18); border:1.5px solid rgba(201,168,76,.4);
+  color:var(--gold2,#f0c843); font-size:10px; font-weight:800; padding:5px 13px; border-radius:999px;
+  text-transform:uppercase; letter-spacing:.12em; flex-shrink:0; }
+.declEntregaAbas { display:flex; border-bottom:1px solid var(--g100,#f1f5f9); background:#fafcff; }
+.declEntregaAba { flex:1; padding:12px; font-size:13px; font-weight:700; border:none; background:transparent;
+  cursor:pointer; color:var(--g400,#94a3b8); border-bottom:2px solid transparent; font-family:inherit; }
+.declEntregaAba-ativa { color:var(--navy2,#002f6c); border-bottom-color:var(--navy2,#002f6c); }
+.declEntregaNota { display:flex; gap:9px; align-items:flex-start; padding:12px 14px; margin-top:10px;
+  font-size:12px; font-weight:600; border-radius:10px; }
+.declEntregaNotaOk { background:#ecfdf5; border:1.5px solid #6ee7b7; border-left:3px solid #0f8a5f; color:#065f46; }
+.declEntregaNotaAviso { background:#fffbeb; border:1.5px solid #fcd34d; border-left:3px solid #d97706; color:#92400e; }
+.declEntregaPreviewBox { background:#f0f4f9; padding:14px; min-height:280px; max-height:420px; overflow-y:auto; }
+.declEntregaPreviewNota { padding:10px 16px; background:#fafcff; border-top:1px solid var(--g100,#f1f5f9);
+  font-size:11px; color:var(--g500,#64748b); text-align:center; }
+.declEntregaGrid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--g100,#f1f5f9);
+  border:1.5px solid var(--g200,#e2e8f0); border-radius:14px; overflow:hidden; margin-bottom:16px; }
+.declEntregaGrid > div { background:#fff; padding:13px 15px; }
+.declEntregaLargo { grid-column:1/-1; }
+.declEntregaGrid span { display:block; font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.09em; color:var(--g500,#64748b); margin-bottom:6px; }
+.declEntregaGrid strong { display:block; font-size:13px; font-weight:800; color:var(--g900,#0f172a); line-height:1.4; }
+.declEntregaRotulo { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--g500,#64748b); margin-bottom:4px; }
+.declConfigLinha { display: flex; gap: 10px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
+.declConfigLinha:last-child { border-bottom: none; }
+.declConfigLinha b { display: block; color: var(--g900, #0f172a); }
+.declConfigLinha small { display: block; color: var(--g500, #64748b); margin-top: 2px; word-break: break-all; }
+.declAuto { position: relative; }
+.declAuto input {
+  width: 100%; height: 42px; border: 1.5px solid var(--g200, #e2e8f0); border-radius: 10px;
+  padding: 0 34px 0 12px; font-size: 13px; font-family: inherit; color: var(--g900, #0f172a); background: #fff;
+}
+.declAuto input:focus { outline: none; border-color: var(--blue, #1565C0); }
+.declAuto input:disabled { background: var(--g50, #f8fafc); color: var(--g500, #64748b); }
+.declAutoLimpar {
+  position: absolute; right: 8px; top: 9px; width: 24px; height: 24px; border-radius: 6px;
+  border: none; background: var(--g100, #f1f5f9); color: var(--g500, #64748b); cursor: pointer;
+  font-size: 12px; font-weight: 800; line-height: 1;
+}
+.declAutoLista {
+  position: absolute; z-index: 30; left: 0; right: 0; top: 46px; background: #fff;
+  border: 1.5px solid var(--g200, #e2e8f0); border-radius: 12px; box-shadow: 0 16px 34px rgba(15,23,42,.14);
+  max-height: 260px; overflow-y: auto;
+}
+.declAutoGrupo {
+  padding: 8px 12px 4px; font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--g500, #64748b); background: var(--g50, #f8fafc);
+}
+.declAutoItem {
+  display: block; width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--g100, #f1f5f9);
+  background: #fff; padding: 9px 12px; cursor: pointer; font-size: 12.5px; font-family: inherit;
+  color: var(--g900, #0f172a);
+}
+.declAutoItem:last-child { border-bottom: none; }
+.declAutoItem:hover, .declAutoItem.declAutoAtivo { background: var(--blue-lt, #eff6ff); }
+.declAutoItem small { display: block; color: var(--g500, #64748b); margin-top: 2px; }
+.declAutoVazio { padding: 14px 12px; font-size: 12px; color: var(--g500, #64748b); text-align: center; }
+.declOrigemManual { color: #d97706; font-weight: 700; }
+.declContato { display:flex; gap:9px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:12px; }
+/* COR EXPLÍCITA NO E-MAIL — 15/09/2026. O <b> não declarava cor e herdava a
+   de fora do modal: o endereço saía quase branco no branco, e a tela mostrava
+   só as origens. Num modal que existe para a pessoa CONFERIR para quem vai o
+   documento, o destinatário invisível é o defeito mais caro possível. */
+.declContato b { display:block; font-size:13px; font-weight:800; color:var(--g900,#0f172a); word-break:break-all; }
+.declContato small { display:block; color:var(--g500,#64748b); margin-top:2px; }
+.declContato input { margin-top:3px; flex-shrink:0; }
+@media (max-width: 640px) {
+  .declWrap { padding: 16px; }
+  .declAcoes { flex-direction: column; }
+  .declAcoes button { width: 100%; }
+}
+</style>
+
+<script>
+/* ────────────────────────────────────────────────────────────────
+   Tudo prefixado com `decl` — no Apps Script todos os blocos de
+   script da SPA viram um escopo global só, e nome curto colide.
+   ──────────────────────────────────────────────────────────────── */
+
+var DECL_ESTADO = { diretores: [], vinculos: [], escola: null, periodo: "", carregou: false, timerBusca: null, timerPrevia: null, timerEscola: null, seqPrevia: 0, entrega: null };
+
+/* A ENTREGA VIVE NUM LUGAR SÓ: o modal.
+ *
+ * Havia dois — um cartão ao pé da tela de Emitir e este modal, com o mesmo
+ * conteúdo e o mesmo código atrás. O usuário pediu em 15/09/2026 que depois
+ * de emitir abrisse "um modal igual ao envio do ofício", e isso resolveu de
+ * quebra a duplicação que eu mesmo tinha criado horas antes: duas telas para
+ * a mesma tarefa envelhecem separadas. */
+var DECL_ESCOPOS = {
+  modal: { resumo: "declEntregaModalResumo", contatos: "declEntregaModalContatos", btnEmail: "declBtnEmailModal", btnZap: "declBtnConfirmarZapModal" }
+};
+
+function declToken() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
+
+function declEsc(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function declMsg(texto, tipo) {
+  if (typeof window.toast === "function") return window.toast(texto, tipo || "info", 5000);
+  console.log("[Declarações] " + texto);
+}
+
+function declFechar(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.remove("aberto");
+}
+function declAbrir(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.add("aberto");
+}
+
+/* ─── navegação entre as três telas ─── */
+function declAba(aba) {
+  var mapa = { emitir: "declPainelEmitir", emitidas: "declPainelEmitidas" };
+  Object.keys(mapa).forEach(function (k) {
+    var p = document.getElementById(mapa[k]);
+    if (p) p.style.display = (k === aba) ? "block" : "none";
+  });
+  var tabs = document.querySelectorAll("[data-decl-aba]");
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].classList.toggle("declTab-ativa", tabs[i].getAttribute("data-decl-aba") === aba);
+  }
+  if (aba === "emitidas") declHistorico();
+}
+
+/* ─── carga inicial ─── */
+function declInit() {
+  if (DECL_ESTADO.carregou) return;
+  DECL_ESTADO.carregou = true;
+  declCarregarEmissao();
+}
+
+function declCarregarEmissao() {
+  /* A primeira carga leva alguns segundos, e a tela ficava idêntica a uma
+     tela quebrada: select vazio, nenhum período, nenhuma mensagem. Dizer
+     "Carregando" custa uma linha e evita o susto. */
+  var sel = document.getElementById("declDiretor");
+  sel.innerHTML = '<option value="">Carregando dirigentes…</option>';
+  sel.disabled = true;
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      var aviso = document.getElementById("declAvisoSetup");
+      if (!r || !r.ok) {
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">— não carregou —</option>';
+        aviso.style.display = "block";
+        aviso.textContent = (r && r.mensagem) || "Não consegui carregar a tela.";
+        return;
+      }
+
+      DECL_ESTADO.diretores = r.diretores || [];
+
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">— selecione —</option>' +
+        DECL_ESTADO.diretores.map(function (d) {
+          return '<option value="' + declEsc(d.id) + '">' + declEsc(d.nome) + ' — ' + declEsc(d.cargo) + '</option>';
+        }).join("");
+
+      var pers = document.getElementById("declPeriodos");
+      pers.innerHTML = (r.periodos || []).map(function (p) {
+        return '<label data-decl-periodo="' + declEsc(p.valor) + '" onclick="declEscolherPeriodo(\'' + declEsc(p.valor) + '\')">' +
+               '<input type="radio" name="declPeriodo" value="' + declEsc(p.valor) + '">' +
+               '<span>' + declEsc(p.rotulo) + '</span></label>';
+      }).join("");
+      declEscolherPeriodo("INTEGRAL");
+
+      var hojeIso = new Date().toISOString().slice(0, 10);
+      document.getElementById("declDataEmissao").value = hojeIso;
+
+      /* Avisos de configuração que impedem emitir — ditos ANTES de a pessoa
+         preencher tudo, não depois de clicar em Emitir. */
+      var problemas = [];
+      if (!r.signatario) problemas.push("Não foi encontrado Presidente vigente em Governança.");
+      if (!DECL_ESTADO.diretores.length) problemas.push("Não há dirigente com mandato vigente em Governança.");
+      aviso.style.display = problemas.length ? "block" : "none";
+      aviso.innerHTML = problemas.map(declEsc).join("<br>");
+    })
+    .withFailureHandler(function (e) {
+      sel.disabled = false;
+      sel.innerHTML = '<option value="">— erro ao carregar —</option>';
+      declMsg("Erro ao carregar: " + e, "erro");
+    })
+    .declDadosEmissao(declToken());
+}
+
+function declEscolherPeriodo(valor) {
+  DECL_ESTADO.periodo = valor || "";
+  var labels = document.querySelectorAll("[data-decl-periodo]");
+  for (var i = 0; i < labels.length; i++) {
+    var meu = labels[i].getAttribute("data-decl-periodo") === DECL_ESTADO.periodo;
+    labels[i].classList.toggle("declRadioAtivo", meu);
+    var radio = labels[i].querySelector("input");
+    if (radio) radio.checked = meu;
+  }
+  declPrevia();
+}
+
+/**
+ * Carrega as escolas do dirigente.
+ *
+ * `escolaPreferida` só é passada pelo Reemitir: a lista chega depois, de
+ * forma assíncrona, e é aqui dentro — não lá — que dá para reaplicar a
+ * escola da emissão anterior.
+ */
+function declCarregarVinculos(escolaPreferida) {
+  var diretorId = document.getElementById("declDiretor").value;
+  var campo = document.getElementById("declEscolaCampo");
+  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null;
+  campo.value = ""; campo.disabled = true; campo.placeholder = "Carregando vínculos…";
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaLista").style.display = "none";
+
+  if (!diretorId) {
+    campo.placeholder = "🔎 selecione o diretor primeiro";
+    declPrevia();
+    return;
+  }
+
+  google.script.run.withSuccessHandler(function (r) {
+    campo.disabled = false;
+    campo.placeholder = "🔎 nome, fantasia, CNPJ ou cidade";
+    if (!r || !r.ok) {
+      declMsg((r && r.mensagem) || "Não foi possível localizar o vínculo.", "alerta");
+      return;
+    }
+    DECL_ESTADO.vinculos = r.vinculos || [];
+
+    /* O Reemitir manda a escola da declaração anterior; vínculo único é
+       preenchido sozinho. Nos dois casos dá para trocar no ✕. */
+    var repetida = escolaPreferida &&
+      DECL_ESTADO.vinculos.filter(function (v) { return v.escolaId === escolaPreferida; })[0];
+    if (repetida) {
+      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
+      declEscolaEscolher(DECL_ESTADO.vinculos.indexOf(repetida));
+    } else if (DECL_ESTADO.vinculos.length === 1) {
+      DECL_ESTADO.achadas = DECL_ESTADO.vinculos;
+      declEscolaEscolher(0);
+    } else if (!DECL_ESTADO.vinculos.length) {
+      declMsg("Este dirigente não tem vínculo em Associados. Digite o nome da escola para buscar no cadastro.", "alerta");
+    } else if (escolaPreferida) {
+      declMsg("A escola da declaração anterior não está mais entre os vínculos deste dirigente. Escolha a escola.", "alerta");
+    }
+  }).withFailureHandler(function (e) {
+    campo.disabled = false;
+    campo.placeholder = "🔎 nome, fantasia, CNPJ ou cidade";
+    declMsg("Erro: " + e, "erro");
+  }).declContextoDiretor(diretorId, declToken());
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * ESCOLA EMPREGADORA — UM CAMPO SÓ, COM AUTOCOMPLETE
+ *
+ * Pedido do usuário em 15/09/2026: "aqui deveria buscar todas as escolas e
+ * pelo autocomplete". Antes era um select com os vínculos do dirigente mais
+ * uma opção "buscar outra escola" que revelava uma segunda caixa — duas
+ * etapas para uma tarefa, e as 679 escolas do cadastro escondidas atrás de
+ * uma escolha que ninguém adivinha.
+ *
+ * Agora: ao focar, aparecem os VÍNCULOS (o que o sistema já sabe, REGRA
+ * Nº 0.6); ao digitar, busca no cadastro inteiro. A origem continua à vista,
+ * porque escolher fora do vínculo é uma decisão que fica registrada.
+ * ════════════════════════════════════════════════════════════════════ */
+
+function declEscolaAbrir() {
+  if (DECL_ESTADO.escola) return;            /* já escolhida: não reabre sozinho */
+  var termo = String(document.getElementById("declEscolaCampo").value || "").trim();
+  if (termo.length >= 2) return declEscolaDigitou();
+  declEscolaPintar(DECL_ESTADO.vinculos || [], [], "");
+}
+
+function declEscolaDigitou() {
+  DECL_ESTADO.escola = null;
+  declPrevia();
+  clearTimeout(DECL_ESTADO.timerEscola);
+  DECL_ESTADO.timerEscola = setTimeout(declEscolaBuscar, 320);
+}
+
+function declEscolaBuscar() {
+  var termo = String(document.getElementById("declEscolaCampo").value || "").trim();
+  var vinculos = (DECL_ESTADO.vinculos || []).filter(function (v) {
+    return declEscolaCasa(v, termo);
+  });
+
+  if (termo.length < 2) return declEscolaPintar(vinculos, [], "");
+
+  declEscolaPintar(vinculos, null, termo);   /* null = "procurando" */
+  google.script.run
+    .withSuccessHandler(function (r) {
+      /* Se a pessoa continuou digitando, esta resposta já é velha. */
+      var atual = String(document.getElementById("declEscolaCampo").value || "").trim();
+      if (atual !== termo) return;
+      var achadas = (r && r.ok ? r.escolas : []) || [];
+      var idsVinculo = vinculos.map(function (v) { return v.escolaId; });
+      declEscolaPintar(vinculos, achadas.filter(function (e) {
+        return idsVinculo.indexOf(e.escolaId) < 0;
+      }), termo);
+    })
+    .withFailureHandler(function () { declEscolaPintar(vinculos, [], termo); })
+    .declBuscarEscolas(termo, document.getElementById("declDiretor").value, declToken());
+}
+
+function declEscolaCasa(v, termo) {
+  if (!termo) return true;
+  var alvo = ((v.nome || "") + " " + (v.fantasia || "") + " " + (v.documento || "")).toLowerCase();
+  return alvo.indexOf(termo.toLowerCase()) >= 0;
+}
+
+/** Monta a lista. `achadas === null` quer dizer que a busca está em voo. */
+function declEscolaPintar(vinculos, achadas, termo) {
+  var lista = document.getElementById("declEscolaLista");
+  DECL_ESTADO.achadas = (vinculos || []).concat(achadas || []);
+
+  var html = "";
+  if (vinculos && vinculos.length) {
+    html += '<div class="declAutoGrupo">Vínculo em Associados</div>' +
+            vinculos.map(function (v, i) { return declEscolaItem(v, i); }).join("");
+  }
+  if (achadas === null) {
+    html += '<div class="declAutoGrupo">Todas as escolas</div><div class="declAutoVazio">Procurando…</div>';
+  } else if (achadas && achadas.length) {
+    html += '<div class="declAutoGrupo">Todas as escolas</div>' +
+            achadas.map(function (e, i) { return declEscolaItem(e, (vinculos || []).length + i); }).join("");
+  } else if (termo && termo.length >= 2 && !(vinculos || []).length) {
+    html += '<div class="declAutoVazio">Nenhuma escola encontrada com “' + declEsc(termo) + '”.</div>';
+  } else if (!termo && !(vinculos || []).length) {
+    html += '<div class="declAutoVazio">Este dirigente não tem vínculo em Associados. Digite para buscar no cadastro.</div>';
+  }
+
+  lista.innerHTML = html;
+  lista.style.display = html ? "block" : "none";
+  DECL_ESTADO.escolaAtiva = -1;
+}
+
+function declEscolaItem(e, indice) {
+  var detalhe = [e.nome, e.documento].filter(Boolean).join(" · ");
+  return '<button type="button" class="declAutoItem" data-decl-esc="' + indice + '" onclick="declEscolaEscolher(' + indice + ')">' +
+           '<b>' + declEsc(e.fantasia || e.nome) + '</b>' +
+           (detalhe ? '<small>' + declEsc(detalhe) + '</small>' : '') +
+         '</button>';
+}
+
+/* Setas e Enter — quem digita nome de escola não quer tirar a mão do teclado. */
+function declEscolaTecla(ev) {
+  var itens = document.querySelectorAll("#declEscolaLista .declAutoItem");
+  if (!itens.length) return;
+  if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    var passo = ev.key === "ArrowDown" ? 1 : -1;
+    DECL_ESTADO.escolaAtiva = Math.max(0, Math.min(itens.length - 1, (DECL_ESTADO.escolaAtiva || 0) + passo));
+    for (var i = 0; i < itens.length; i++) itens[i].classList.toggle("declAutoAtivo", i === DECL_ESTADO.escolaAtiva);
+    itens[DECL_ESTADO.escolaAtiva].scrollIntoView({ block: "nearest" });
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    var alvo = itens[DECL_ESTADO.escolaAtiva >= 0 ? DECL_ESTADO.escolaAtiva : 0];
+    if (alvo) declEscolaEscolher(Number(alvo.getAttribute("data-decl-esc")));
+  } else if (ev.key === "Escape") {
+    document.getElementById("declEscolaLista").style.display = "none";
+  }
+}
+
+function declEscolaEscolher(indice) {
+  var e = (DECL_ESTADO.achadas || [])[indice];
+  if (!e) return;
+  DECL_ESTADO.escola = e;
+  if (!(DECL_ESTADO.vinculos || []).some(function (v) { return v.escolaId === e.escolaId; })) {
+    DECL_ESTADO.vinculos.push(e);
+  }
+  document.getElementById("declEscolaCampo").value = e.fantasia || e.nome;
+  document.getElementById("declEscolaLista").style.display = "none";
+  document.getElementById("declEscolaLimpar").style.display = "block";
+  document.getElementById("declEscolaOrigem").innerHTML =
+    (e.vinculoOrigem && e.vinculoOrigem !== "Associados")
+      ? '<span class="declOrigemManual">escolhida manualmente — não veio do vínculo em Associados</span>'
+      : "vínculo em Associados · identidade em Escolas";
+  declPrevia();
+}
+
+function declEscolaLimpar() {
+  DECL_ESTADO.escola = null;
+  var campo = document.getElementById("declEscolaCampo");
+  campo.value = "";
+  campo.disabled = false;
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
+  declEscolaPintar(DECL_ESTADO.vinculos || [], [], "");
+  campo.focus();
+  declPrevia();
+}
+
+/* O pedido que vai ao servidor. A escola sai do ESTADO, não de um campo de
+   texto: o que a pessoa digitou é busca, o que ela escolheu é escolha. */
+function declDados(confirmado) {
+  return {
+    diretorId: document.getElementById("declDiretor").value,
+    dataLiberacao: document.getElementById("declDataLiberacao").value,
+    dataEmissao: document.getElementById("declDataEmissao").value,
+    periodo: DECL_ESTADO.periodo,
+    escolaId: (DECL_ESTADO.escola || {}).escolaId || "",
+    confirmado: confirmado === true
+  };
+}
+
+/* ─── prévia ─── */
+function declPrevia() {
+  clearTimeout(DECL_ESTADO.timerPrevia);
+  DECL_ESTADO.timerPrevia = setTimeout(declPreviaAgora, 250);
+}
+
+/**
+ * DESCARTE DE RESPOSTA VELHA.
+ *
+ * As chamadas são assíncronas e voltam fora de ordem. Trocar a escola dispara
+ * uma prévia nova, mas a anterior — feita quando ainda não havia escola —
+ * pode voltar DEPOIS e sobrescrever o texto certo pela recusa do servidor.
+ *
+ * Foi o que apareceu na tela em 15/09/2026: escola escolhida, prévia dizendo
+ * "Selecione a escola empregadora do dirigente". Sumia ao próximo toque, e é
+ * justamente por sumir sozinho que enganava. Num campo que promete ser
+ * "exatamente o que vai sair no PDF", mostrar coisa errada não é detalhe.
+ *
+ * Cada chamada leva um número; só a última manda no que aparece.
+ */
+function declPreviaAgora() {
+  var d = declDados(false);
+  var meu = ++DECL_ESTADO.seqPrevia;
+  var caixa = document.getElementById("declPrevia");
+  var aviso = document.getElementById("declPreviaAviso");
+
+  /* Pedido que não vai dar certo não sai daqui — era o pisca-pisca que você
+     fotografou: o servidor respondia "Selecione a escola" e, segundos
+     depois, o texto certo chegava por cima. Com o autocomplete, escolaId só
+     existe depois de escolher de verdade. */
+  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
+    caixa.textContent = "Selecione o diretor, a escola empregadora e a data para ver a prévia.";
+    aviso.style.display = "none";
+    return;
+  }
+
+  /* Enquanto o servidor responde, a caixa diz que está montando — em vez de
+     manter o texto anterior, que parece o resultado novo. */
+  caixa.textContent = "Montando a prévia…";
+  aviso.style.display = "none";
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (meu !== DECL_ESTADO.seqPrevia) return;   /* chegou tarde: já há pedido mais novo */
+      if (!r || !r.ok) {
+        caixa.textContent = (r && r.mensagem) || "Não consegui montar a prévia.";
+        aviso.style.display = "none";
+        return;
+      }
+      caixa.innerHTML = declEsc(r.texto) +
+        '<br><br>' + declEsc(r.cidadeData) +
+        '<br><br><b>' + declEsc(r.signatario.nome) + '</b><br>' +
+        declEsc(r.signatario.cargo) + ' – SindEducação-ES';
+
+      /* Duplicata e avisos (data passada, ano da numeração) aparecem juntos:
+         são todos "confira antes de emitir", e nenhum deles impede emitir. */
+      var linhas = (r.avisos || []).slice();
+      if (r.duplicatas && r.duplicatas.length) {
+        linhas.unshift("Já existe declaração para este diretor nesta data: nº " + r.duplicatas.join(", ") + ".");
+      }
+      aviso.style.display = linhas.length ? "block" : "none";
+      aviso.innerHTML = linhas.map(function (l) { return "⚠ " + declEsc(l); }).join("<br>");
+    })
+    .withFailureHandler(function (e) {
+      if (meu !== DECL_ESTADO.seqPrevia) return;
+      caixa.textContent = "Erro: " + e;
+    })
+    .declPreviaDeclaracaoDiretor(d, declToken());
+}
+
+/* ─── emissão ─── */
+function declEmitir(confirmado) {
+  var btn = document.getElementById("declBtnEmitir");
+  btn.disabled = true;
+  btn.textContent = "Gerando…";
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      btn.textContent = "Gerar declaração";
+
+      if (r && r.precisaConfirmar) {
+        document.getElementById("declDuplicataTexto").textContent = r.mensagem;
+        declAbrir("declModalDuplicata");
+        return;
+      }
+      if (!r || !r.ok) { declMsg((r && r.mensagem) || "Não consegui emitir.", "erro"); return; }
+
+      declMsg("Declaração " + r.numero + " emitida.", "sucesso");
+      if (r.url) {
+        document.getElementById("declLinkPdf").setAttribute("href", r.url);
+        document.getElementById("declAcoesDocumento").style.display = "flex";
+        window.open(r.url, "_blank");
+      }
+      /* O modal abre sozinho, como no envio do ofício: emitiu, a próxima
+         coisa a fazer é entregar, e a tela leva a pessoa até lá. */
+      declRenderEntrega_("modal", r);
+      declAbrir("declModalEntrega");
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false;
+      btn.textContent = "Gerar declaração";
+      declMsg("Erro ao emitir: " + e, "erro");
+    })
+    .declEmitirDeclaracaoDiretor(declDados(confirmado), declToken());
+}
+
+/**
+ * Desenha a entrega no escopo pedido e passa a ser ELA a entrega aberta.
+ *
+ * `r` tem o mesmo formato vindo das duas origens — do retorno de
+ * `declEmitirDeclaracaoDiretor` e de `declEntregaDeclaracao` — de propósito,
+ * para não existirem dois desenhos da mesma coisa se afastando com o tempo.
+ */
+function declRenderEntrega_(escopo, r) {
+  var alvo = DECL_ESCOPOS[escopo];
+  if (!alvo) return;
+
+  DECL_ESTADO.entrega = r;
+
+  var escola = r.escola || DECL_ESTADO.escola || {};
+  var contatos = escola.contatos || [];
+
+  document.getElementById(alvo.resumo).textContent = "Revise antes de enviar à escola";
+  document.getElementById("declEntregaNumero").textContent = r.numero || "—";
+  document.getElementById("declEntregaDiretor").textContent =
+    r.diretorNome || (DECL_ESTADO.diretores.filter(function (d) { return d.id === document.getElementById("declDiretor").value; })[0] || {}).nome || "—";
+  document.getElementById("declEntregaEscola").textContent = escola.nome || escola.fantasia || "—";
+
+  /* Em homologação o e-mail não vai para a escola. Dizer isso ANTES do
+     clique, não depois — é a diferença entre um teste e um susto. */
+  /* O aviso só aparece onde ele muda alguma coisa: em homologação, o e-mail
+     não vai para a escola. Em produção, mostrar isso seria mentir. */
+  var hml = document.getElementById("declEntregaAvisoHml");
+  var emHml = /homologa/i.test(String(r.emailCorpo || "")) || /TESTE_HML/.test(String(r.emailStatus || ""));
+  hml.style.display = emHml ? "flex" : "none";
+  hml.innerHTML = '<span>⚠️</span><div>Você está em <b>homologação</b>: a mensagem vai para a Secretaria, não para a escola.</div>';
+
+  document.getElementById(alvo.contatos).innerHTML = contatos.length ? contatos.map(function (c, i) {
+    return '<label class="declContato"><input type="checkbox" data-decl-email="' + i + '"' + (c.marcado ? ' checked' : '') + '><span><b>' + declEsc(c.email) + '</b><small>' + declEsc((c.origens || []).join(" · ")) + (c.falhas ? ' · ' + c.falhas + ' falha(s)' : '') + '</small></span></label>';
+  }).join("") : '<div class="declAviso">Nenhum e-mail válido encontrado nesta declaração. Atualize o cadastro da escola e emita novamente.</div>';
+
+  document.getElementById(alvo.btnEmail).disabled = !contatos.length;
+
+  /* O "marcar como enviado" reaparece para quem preparou o WhatsApp ontem e
+     só hoje voltou para confirmar. */
+  var zap = document.getElementById(alvo.btnZap);
+  if (zap) zap.style.display = (r.whatsappStatus === "PREPARADO") ? "inline-flex" : "none";
+
+  /* O PREVIEW É O E-MAIL DE VERDADE. O assunto e o corpo vêm do servidor,
+     das mesmas funções que o envio usa — a tela não redige uma segunda
+     versão da mensagem. */
+  var prev = document.getElementById("declEntregaPreview");
+  if (prev) {
+    prev.innerHTML =
+      '<div class="declMailCard">' +
+        '<div class="declMailTopo">' +
+          '<div class="declMailMarca">SINDEDUCAÇÃO-ES</div>' +
+          '<div class="declMailSub">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div>' +
+          '<div class="declMailSelo">' + declEsc(r.emailAssunto || "") + '</div>' +
+        '</div>' +
+        '<div class="declMailCorpo">' + (r.emailCorpo || "") + '</div>' +
+        '<div class="declMailRodape">📱 (27) 99735-8900 · ✉️ secretaria@sindeducacao.com · 📞 (27) 3222-2706</div>' +
+      '</div>';
+  }
+  declEntregaAba("dados");
+}
+
+/* ─── abas do modal de entrega ─── */
+function declEntregaAba(aba) {
+  var dados = aba === "dados";
+  document.getElementById("declEntregaPainelDados").style.display = dados ? "block" : "none";
+  document.getElementById("declEntregaPainelPreview").style.display = dados ? "none" : "block";
+  document.getElementById("declAbaDados").classList.toggle("declEntregaAba-ativa", dados);
+  document.getElementById("declAbaPreview").classList.toggle("declEntregaAba-ativa", !dados);
+}
+
+/* ─── incluir um destinatário que o cadastro não tinha ─── */
+function declIncluirContato() {
+  if (!DECL_ESTADO.entrega) return;
+  var campo = document.getElementById("declIncluirEmail");
+  var email = String(campo.value || "").trim();
+  if (!email) return declMsg("Digite o e-mail que quer incluir.", "alerta");
+
+  var btn = document.getElementById("declBtnIncluir");
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não consegui incluir.", "alerta");
+      campo.value = "";
+      /* A lista volta do servidor: o que está na tela passa a ser exatamente
+         o que a linha da declaração guarda, e é isso que o envio aceita. */
+      DECL_ESTADO.entrega.escola.contatos = r.contatos || [];
+      declRenderEntrega_("modal", DECL_ESTADO.entrega);
+      declMsg(r.mensagem, "sucesso");
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declIncluirContato(DECL_ESTADO.entrega.numero, email, declToken());
+}
+
+/* ─── entrega reaberta pela lista de Emitidas ─── */
+function declAbrirEntrega(numero) {
+  document.getElementById("declEntregaModalResumo").textContent = "Carregando…";
+  document.getElementById("declEntregaModalContatos").innerHTML = "";
+  declAbrir("declModalEntrega");
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.ok) {
+        declFecharEntrega();
+        return declMsg((r && r.mensagem) || "Não consegui abrir a entrega.", "erro");
+      }
+      declRenderEntrega_("modal", r);
+    })
+    .withFailureHandler(function (e) { declFecharEntrega(); declMsg("Erro: " + e, "erro"); })
+    .declEntregaDeclaracao(numero, declToken());
+}
+
+function declFecharEntrega() {
+  declFechar("declModalEntrega");
+  DECL_ESTADO.entrega = null;
+}
+
+function declEmailsEscolhidos(escopo) {
+  var alvo = DECL_ESCOPOS[escopo], lista = [];
+  var contatos = ((DECL_ESTADO.entrega || {}).escola || {}).contatos || [];
+  var caixas = document.querySelectorAll("#" + alvo.contatos + " [data-decl-email]");
+  for (var i = 0; i < caixas.length; i++) {
+    if (!caixas[i].checked) continue;
+    var c = contatos[Number(caixas[i].getAttribute("data-decl-email"))];
+    if (c) lista.push(c.email);
+  }
+  return lista;
+}
+
+function declEnviarEmail(escopo) {
+  if (!DECL_ESTADO.entrega) return;
+  var emails = declEmailsEscolhidos(escopo);
+  if (!emails.length) return declMsg("Escolha ao menos um e-mail.", "alerta");
+
+  var btn = document.getElementById(DECL_ESCOPOS[escopo].btnEmail);
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      declMsg(r.mensagem, r.ok ? "sucesso" : "erro");
+      if (!r.ok) return;
+      if (escopo === "modal") declFecharEntrega();
+      /* A lista mostra o status da entrega — sem isto ela continuaria
+         dizendo "Aguardando" para uma declaração que acabou de sair. */
+      if (document.getElementById("declPainelEmitidas").style.display !== "none") declHistorico();
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declEnviarEmail(DECL_ESTADO.entrega.numero, emails, declToken());
+}
+
+function declPrepararWhatsapp(escopo) {
+  if (!DECL_ESTADO.entrega) return;
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não foi possível preparar.", "erro");
+    window.open(r.url, "_blank");
+    var zap = document.getElementById(DECL_ESCOPOS[escopo].btnZap);
+    if (zap) zap.style.display = "inline-flex";
+  }).withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
+    .declPrepararWhatsapp(DECL_ESTADO.entrega.numero, declToken());
+}
+
+function declConfirmarWhatsapp(escopo) {
+  if (!DECL_ESTADO.entrega) return;
+  var numero = DECL_ESTADO.entrega.numero;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      declMsg(r.mensagem, r.ok ? "sucesso" : "erro");
+      if (!r.ok) return;
+      var zap = document.getElementById(DECL_ESCOPOS[escopo].btnZap);
+      if (zap) zap.style.display = "none";
+      if (escopo === "modal") declFecharEntrega();
+      if (document.getElementById("declPainelEmitidas").style.display !== "none") declHistorico();
+    })
+    .withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
+    .declConfirmarWhatsapp(numero, declToken());
+}
+
+function declLimpar() {
+  document.getElementById("declDiretor").value = "";
+  var campoEsc = document.getElementById("declEscolaCampo");
+  campoEsc.value = ""; campoEsc.disabled = true;
+  campoEsc.placeholder = "🔎 selecione o diretor primeiro";
+  document.getElementById("declEscolaLimpar").style.display = "none";
+  document.getElementById("declEscolaLista").style.display = "none";
+  document.getElementById("declEscolaOrigem").textContent = "vínculo em Associados · identidade em Escolas";
+  document.getElementById("declAcoesDocumento").style.display = "none";
+  document.getElementById("declLinkPdf").setAttribute("href", "#");
+  DECL_ESTADO.vinculos = []; DECL_ESTADO.escola = null; DECL_ESTADO.entrega = null;
+  DECL_ESTADO.seqPrevia++;
+  document.getElementById("declDataLiberacao").value = "";
+  document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
+  declEscolherPeriodo("INTEGRAL");
+}
+
+/* ─── pré-visualização do documento, como em Ofícios ─── */
+function declVerDocumento() {
+  var d = declDados(false);
+  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
+    return declMsg("Selecione o diretor, a escola e a data da liberação antes de pré-visualizar.", "alerta");
+  }
+  var btn = document.getElementById("declBtnVer");
+  btn.disabled = true;
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não consegui montar o documento.", "erro");
+      /* srcdoc por JavaScript, não por atributo no HTML: o documento tem aspas
+         e quebras de linha, e escapar isso à mão é como se perde caractere. */
+      document.getElementById("declDocumentoFrame").srcdoc = r.html;
+      declAbrir("declModalDocumento");
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declPreviaDocumento(d, declToken());
+}
+
+function declImprimirPrevia() {
+  var frame = document.getElementById("declDocumentoFrame");
+  try {
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+  } catch (e) {
+    declMsg("Não consegui abrir a impressão daqui. Emita e imprima pelo PDF.", "alerta");
+  }
+}
+
+function declImprimirDocumento() {
+  var url = document.getElementById("declLinkPdf").getAttribute("href");
+  if (!url || url === "#") return declMsg("Emita a declaração primeiro.", "alerta");
+  window.open(url, "_blank");
+}
+
+/* ─── conferência da configuração ─── */
+function declConferirConfig() {
+  var corpo = document.getElementById("declConfigCorpo");
+  corpo.innerHTML = '<div class="declOrigem">Conferindo…</div>';
+  declAbrir("declModalConfig");
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.ok) {
+        corpo.innerHTML = '<div class="declAviso">' + declEsc((r && r.mensagem) || "Não consegui conferir.") + '</div>';
+        return;
+      }
+      function linha(rotulo, item) {
+        return '<div class="declConfigLinha"><span>' + (item.ok ? "✅" : "❌") + '</span>' +
+               '<span><b>' + declEsc(rotulo) + ': ' + declEsc(item.texto) + '</b>' +
+               '<small>' + declEsc(item.detalhe || "") + '</small></span></div>';
+      }
+      corpo.innerHTML =
+        (r.pronto ? '' : '<div class="declAviso">Falta configuração para emitir. Veja abaixo o que está com ❌.</div>') +
+        /* O remetente entra na lista mas NÃO entra no `pronto`: sem alias o
+           e-mail ainda sai, pela conta executora e com replyTo da Secretaria.
+           É um aviso, não uma trava — travar a emissão por causa disso seria
+           parar o trabalho por um detalhe de cabeçalho. */
+        linha("Pasta do Drive", r.pasta) +
+        linha("Quem assina", r.signatario) +
+        linha("Dirigentes", r.dirigentes) +
+        (r.remetente ? linha("Remetente do e-mail", r.remetente) : '');
+    })
+    .withFailureHandler(function (e) {
+      corpo.innerHTML = '<div class="declAviso">Erro: ' + declEsc(e) + '</div>';
+    })
+    .declConferirConfiguracao(declToken());
+}
+
+/* ─── histórico ─── */
+function declHistoricoDebounce() {
+  clearTimeout(DECL_ESTADO.timerBusca);
+  DECL_ESTADO.timerBusca = setTimeout(declHistorico, 350);
+}
+
+function declLimparFiltros() {
+  document.getElementById("declBusca").value = "";
+  document.getElementById("declFiltroDe").value = "";
+  document.getElementById("declFiltroAte").value = "";
+  declHistorico();
+}
+
+function declHistorico() {
+  var corpo = document.getElementById("declHistoricoCorpo");
+  corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Carregando…</td></tr>';
+
+  var filtros = {
+    busca: document.getElementById("declBusca").value,
+    de: document.getElementById("declFiltroDe").value,
+    ate: document.getElementById("declFiltroAte").value
+  };
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.ok) {
+        corpo.innerHTML = '<tr><td colspan="10" class="declVazio">' + declEsc((r && r.mensagem) || "Erro ao listar.") + '</td></tr>';
+        return;
+      }
+      if (!r.itens.length) {
+        corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Nenhuma declaração emitida ainda.</td></tr>';
+        return;
+      }
+      corpo.innerHTML = r.itens.map(function (d) {
+        var link = d.pdfUrl
+          ? '<a class="declLink" href="' + declEsc(d.pdfUrl) + '" target="_blank">⬇ PDF</a>'
+          : '<span class="declPill declPillAlerta">sem PDF</span>';
+        var entregue = d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO";
+        return '<tr>' +
+          '<td><input type="checkbox" class="declSelLinha" data-decl-num="' + declEsc(d.numero) + '"' +
+              ' data-decl-nome="' + declEsc(d.diretorNome) + '"' +
+              ' data-decl-enviada="' + (entregue ? "1" : "") + '" onchange="declAtualizarSelecao()"></td>' +
+          '<td><b>' + declEsc(d.numero) + '</b></td>' +
+          '<td>' + declEsc(d.diretorNome) + '</td>' +
+          '<td>' + declEsc(d.escolaNome || "—") + '</td>' +
+          '<td>' + declEsc(d.dataLiberacao) + '</td>' +
+          '<td>' + declEsc(d.periodo ? d.periodoRotulo : "—") + '</td>' +
+          '<td>' + declEsc(d.dataEmissao) + '</td>' +
+          '<td><span class="declPill ' + (d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO" ? 'declPillOk' : 'declPillAlerta') + '">' + declEsc(d.emailStatus || "Aguardando") + '</span><br><small>' + declEsc(d.whatsappStatus || "WhatsApp não preparado") + '</small></td>' +
+          '<td>' + declEsc(d.emitidoPor) + '</td>' +
+          '<td style="white-space:nowrap;">' + link +
+            ' <button type="button" class="declBtnMini" title="' + (entregue ? 'Reenviar para a escola' : 'Enviar para a escola') + '" onclick="declAbrirEntrega(\'' + declEsc(d.numero) + '\')">📨 ' + (entregue ? 'Reenviar' : 'Entregar') + '</button>' +
+            ' <button type="button" class="declBtnMini" onclick="declReemitir(\'' + declEsc(d.diretorId) + '\',\'' + declEsc(d.periodo) + '\',\'' + declEsc(d.escolaId) + '\')">🔁 Reemitir</button>' +
+          '</td>' +
+        '</tr>';
+      }).join("");
+      declAtualizarSelecao();
+    })
+    .withFailureHandler(function (e) {
+      corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
+    })
+    .declHistoricoDeclaracoes(filtros, declToken());
+}
+
+/* ─── seleção e exclusão ─── */
+function declLinhasSelecionadas() {
+  return Array.prototype.slice.call(document.querySelectorAll(".declSelLinha"))
+    .filter(function (c) { return c.checked; });
+}
+
+function declAtualizarSelecao() {
+  var marcadas = declLinhasSelecionadas();
+  var barra = document.getElementById("declBarraSelecao");
+  if (barra) barra.style.display = marcadas.length ? "flex" : "none";
+  var cont = document.getElementById("declSelContagem");
+  if (cont) cont.textContent = marcadas.length;
+
+  /* O "marcar tudo" reflete o estado real da página, em vez de ficar marcado
+     depois que alguém desmarcou uma linha. */
+  var todas = document.querySelectorAll(".declSelLinha");
+  var topo = document.getElementById("declSelTodas");
+  if (topo) topo.checked = todas.length > 0 && marcadas.length === todas.length;
+}
+
+function declSelecionarTodas(marcar) {
+  var caixas = document.querySelectorAll(".declSelLinha");
+  for (var i = 0; i < caixas.length; i++) caixas[i].checked = !!marcar;
+  var topo = document.getElementById("declSelTodas");
+  if (topo) topo.checked = !!marcar;
+  declAtualizarSelecao();
+}
+
+function declAbrirExclusao() {
+  var marcadas = declLinhasSelecionadas();
+  if (!marcadas.length) return declMsg("Selecione ao menos uma declaração.", "alerta");
+
+  var enviadas = marcadas.filter(function (c) { return c.getAttribute("data-decl-enviada") === "1"; });
+  document.getElementById("declExcluirLista").innerHTML = marcadas.map(function (c) {
+    var enviada = c.getAttribute("data-decl-enviada") === "1";
+    return '<div class="declExcluirItem"><span><b>' + declEsc(c.getAttribute("data-decl-num")) + '</b>' +
+           '<small>' + declEsc(c.getAttribute("data-decl-nome")) + '</small></span>' +
+           (enviada ? '<span class="declExcluirEnviada">já entregue à escola</span>' : '') + '</div>';
+  }).join("");
+
+  var aviso = document.getElementById("declExcluirAvisoEnviadas");
+  if (enviadas.length) {
+    aviso.style.display = "block";
+    aviso.textContent = enviadas.length === 1
+      ? "Uma delas já foi entregue à escola. Excluir aqui não desfaz o envio — só tira da lista."
+      : enviadas.length + " delas já foram entregues à escola. Excluir aqui não desfaz os envios — só tira da lista.";
+  } else {
+    aviso.style.display = "none";
+  }
+  declAbrir("declModalExcluir");
+}
+
+function declExcluirConfirmado() {
+  var numeros = declLinhasSelecionadas().map(function (c) { return c.getAttribute("data-decl-num"); });
+  if (!numeros.length) return;
+  var btn = document.getElementById("declBtnExcluirConfirmar");
+  btn.disabled = true;
+  btn.textContent = "Excluindo…";
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      btn.textContent = "🗑 Excluir";
+      declFechar("declModalExcluir");
+      declMsg((r && r.mensagem) || "Não consegui excluir.", (r && r.ok) ? "sucesso" : "erro");
+      if (r && r.ok) { declSelecionarTodas(false); declHistorico(); }
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false;
+      btn.textContent = "🗑 Excluir";
+      declMsg("Erro ao excluir: " + e, "erro");
+    })
+    .declExcluirDeclaracoes(numeros, declToken());
+}
+
+/**
+ * Repete tudo menos a data — que é justamente o que muda.
+ *
+ * `declCarregarVinculos` PRECISA ser chamada à mão: atribuir `.value` por
+ * código não dispara o onchange do select, e sem ela a escola ficava
+ * desabilitada em "— selecione o diretor —". O botão prometia poupar a
+ * seleção e obrigava a refazê-la inteira. Corrigido em 15/09/2026.
+ */
+function declReemitir(diretorId, periodo, escolaId) {
+  declAba("emitir");
+
+  var sel = document.getElementById("declDiretor");
+  sel.value = diretorId;
+  /* Dirigente de gestão encerrada não está mais na lista, e o select fica em
+     branco em silêncio. Melhor dizer o motivo do que deixar a pessoa
+     tentando entender por que a tela não preencheu. */
+  if (sel.value !== diretorId) {
+    declMsg("Este dirigente não está na composição vigente em Governança — não é possível repetir a declaração dele.", "alerta");
+    return;
+  }
+
+  document.getElementById("declDataLiberacao").value = "";
+  document.getElementById("declDataEmissao").value = new Date().toISOString().slice(0, 10);
+  declEscolherPeriodo(periodo || "");
+  declCarregarVinculos(escolaId || "");
+  declMsg("Dados repetidos. Informe a nova data da liberação.", "info");
+}
+
+window.declInit = declInit;
+window.declAba = declAba;
+window.declAbrirEntrega = declAbrirEntrega;
+window.declEscolaAbrir = declEscolaAbrir;
+window.declEscolaDigitou = declEscolaDigitou;
+window.declEscolaTecla = declEscolaTecla;
+window.declEscolaEscolher = declEscolaEscolher;
+window.declEscolaLimpar = declEscolaLimpar;
+window.declConferirConfig = declConferirConfig;
+window.declEntregaAba = declEntregaAba;
+window.declIncluirContato = declIncluirContato;
+window.declSelecionarTodas = declSelecionarTodas;
+window.declAtualizarSelecao = declAtualizarSelecao;
+window.declAbrirExclusao = declAbrirExclusao;
+window.declVerDocumento = declVerDocumento;
+</script>

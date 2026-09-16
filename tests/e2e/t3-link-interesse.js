@@ -59,7 +59,7 @@ b.passo("3. A rota gerada é a mesma que o Code.gs atende?");
 // Se alguém renomear a rota em Code.gs, o link vira link quebrado no WhatsApp
 // do associado. Este teste amarra os dois lados.
 const fs = require("fs");
-const code = fs.readFileSync("/home/user/Sisgpe/Code.gs", "utf8");
+const code = fs.readFileSync(require("path").resolve(__dirname, "..", "..", "Code.gs"), "utf8");
 ["chinapark", "voucher", "oftalmo"].forEach(chave => {
   const rota = g.BENEF_LINKS[chave].rota.replace("?portal=", "");
   b.ok(code.indexOf('p.portal === "' + rota + '"') > 0,
@@ -87,4 +87,3 @@ b.ok(semSessao && semSessao.ok === false, "token inválido é negado", semSessao
 b.naoTestavel("Abertura real do WhatsApp e recebimento da mensagem", "depende do navegador e do aparelho");
 
 b.resumo();
-process.exit(0);

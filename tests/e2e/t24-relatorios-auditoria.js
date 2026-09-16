@@ -203,4 +203,3 @@ b.naoTestavel("A leitura do relatório de Conformidade em produção",
   "podem estar resolvidas no projeto real");
 
 b.resumo();
-process.exit(0);

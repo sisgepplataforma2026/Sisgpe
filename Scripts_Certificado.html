@@ -951,6 +951,24 @@
   </div>
 </div>
 
+<!-- FECHA #secCertificadoAdmin, aberto lá em cima.
+
+     Ele ficou 30+ commits SEM FECHAR, e o estrago não aparecia aqui: como o
+     include() cola todos os arquivos num HTML só, e o Certificado entra em
+     index.html ANTES de Aprovacaocadastro, FichasSindicaisAdmin e
+     Carteirinhaadmin, esses tres modulos ficavam DENTRO desta secao — que
+     e escondida quando o Certificado nao esta ativo e tem fundo navy.
+
+     Sintoma relatado pelo usuario em 19/08/2026: "o modulo de
+     sindicalizacao esta todo azul, nao abre nada". Nao era erro de
+     JavaScript nem de backend: era uma tag faltando.
+
+     Fecha AQUI, no fim do arquivo, e nao logo apos a lista, de proposito:
+     assim os cinco overlays de modal continuam exatamente onde ja estavam,
+     dentro da secao. Fechar antes deles mudaria o que herda estilo e
+     visibilidade — correcao de tag nao pode virar mudanca de layout. -->
+</div>
+
 <script>
 (function(){
 'use strict';

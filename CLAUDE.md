@@ -4,7 +4,25 @@ Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem i
 
 **Prompt mestre de arquitetura, auditoria e testes: `docs/PROMPT-MESTRE.md`.** É documento normativo, definido pelo usuário e mandado seguir à risca — ler antes de auditar, analisar ou reorganizar qualquer módulo. Em conflito, as regras de segurança abaixo prevalecem sobre ele — ver a nota de estado de operação logo abaixo.
 
-**Acesso que eu tenho:** só o repositório GitHub. Não tenho o projeto Apps Script, a planilha de produção nem o Drive de trabalho. O conector do Google Drive lê metadado (dá para listar o projeto `SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse MIME type não é suportado. Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
+**Acesso que eu tenho:** o repositório GitHub **e o deploy por GitHub Actions**
+(`deploy-homologacao.yml` e `deploy-producao.yml`). Publicar é comigo — não
+mandar arquivo para o usuário colar à mão. Não tenho o editor do Apps Script
+nem o Drive de trabalho.
+
+O conector do Google Drive lê metadado (dá para listar o projeto
+`SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse
+MIME type não é suportado.
+
+**E NÃO SERVE PARA LER A PLANILHA DE PRODUÇÃO — testado em 11/09/2026.** A
+`SISGEP - ATIVA` (id `1QPpsx19...040E`) tem 2,6 MB. O `read_file_content`
+devolve ~1,76 milhão de caracteres e **corta em silêncio, sem dizer onde**: no
+teste vieram as abas de Associados e Escolas, e **não vieram** nem
+`FILA_ENVIO_OFICIOS` nem `LOG_SISTEMA` — os nomes das abas sequer aparecem no
+texto. Eu quase concluí "cinco ofícios nunca foram reenviados" a partir de
+meia planilha. **Para esta planilha, pedir ao usuário um Ctrl+F na aba certa é
+mais rápido e infinitamente mais confiável do que baixar.**
+
+Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
 
 ## ⚠️ ESTADO REAL DE OPERAÇÃO (confirmado pelo usuário em 2026-08-06)
 

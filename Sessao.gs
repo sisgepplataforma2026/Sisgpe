@@ -420,3 +420,133 @@ function exigirSessaoDocumentos_(tokenSessao, exigirAdministrador) {
 
   return sessao;
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIMPEZA DAS SESSÕES EXPIRADAS
+   Acrescentado em 31/08/2026.
+
+   O QUE ORIGINOU
+
+   A tela de Propriedades do script parou de mostrar tudo — passou de 50 e o
+   Apps Script trunca a lista. Olhando o que havia lá, a maioria esmagadora
+   eram sessões: 46 delas, todas do mesmo usuário, criadas entre 18 e 31/08.
+   Treze dias, ~3,5 sessões por dia.
+
+   POR QUE ELAS FICAM
+
+   Cada login grava SESSAO_SISGEP_<uuid> nas propriedades. A limpeza existe,
+   mas só dispara quando alguém APRESENTA aquele token específico já vencido
+   — getSessaoUsuario apaga na hora de validar. Quem entra, fecha o navegador
+   e nunca mais volta com aquele token deixa a propriedade para sempre. A
+   sessão dura 6 horas; a propriedade, indefinidamente.
+
+   POR QUE ISSO É PROBLEMA, e não só bagunça
+
+   O armazenamento de propriedades tem teto de 500 KB. Cada sessão ocupa ~261
+   bytes, o que dá cerca de 1.900 sessões. No ritmo de UMA pessoa testando,
+   isso é pouco mais de um ano; com a equipe usando, bem menos.
+
+   E o que quebra quando o teto chega é o LOGIN — porque é ali que a sessão é
+   gravada. O erro não vai dizer "excesso de sessões velhas": vai dizer que
+   não conseguiu gravar, e ninguém liga uma coisa à outra.
+
+   O CUIDADO QUE IMPORTA
+
+   Só apaga o que JÁ VENCEU. Sessão viva não se toca — apagar uma derruba a
+   pessoa do sistema no meio do trabalho, e isso seria trocar um problema
+   lento por um imediato.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Varre as propriedades do script e remove as sessões já expiradas.
+ * Seguro de rodar a qualquer momento: sessão viva não é tocada.
+ *
+ * @param {boolean} simular  true = só conta, não apaga. Bom para conferir antes.
+ */
+function limparSessoesExpiradas_(simular) {
+  var props = PropertiesService.getScriptProperties();
+  var todas = props.getProperties();
+  var agora = new Date().getTime();
+  var prefixo = SESSAO_CONFIG.CHAVE_CACHE_SESSAO;
+
+  var vivas = 0, expiradas = 0, corrompidas = 0, apagadas = 0, outras = 0;
+  var maisAntiga = null;
+
+  Object.keys(todas).forEach(function (chave) {
+    if (chave.indexOf(prefixo) !== 0) { outras++; return; }
+
+    var expira = 0, criado = 0;
+    try {
+      var s = JSON.parse(todas[chave]);
+      expira = Number(s.expiraEm || 0);
+      criado = Number(s.criadoEm || 0);
+    } catch (e) {
+      /* JSON quebrado não serve para autenticar ninguém: nunca vai virar
+         sessão válida, e ocupa espaço igual. Vai junto. */
+      corrompidas++;
+      if (!simular) { props.deleteProperty(chave); apagadas++; }
+      return;
+    }
+
+    if (expira && expira > agora) {
+      vivas++;
+      return;   /* SESSÃO VIVA — não se toca. Apagar derruba a pessoa. */
+    }
+
+    expiradas++;
+    if (criado && (!maisAntiga || criado < maisAntiga)) maisAntiga = criado;
+    if (!simular) {
+      props.deleteProperty(chave);
+      try { CacheService.getScriptCache().remove(chave); } catch (eC) {}
+      apagadas++;
+    }
+  });
+
+  var linhas = [];
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  LIMPEZA DE SESSÕES " + (simular ? "— SIMULAÇÃO (nada foi apagado)" : ""));
+  linhas.push("═══════════════════════════════════════════════════════════");
+  linhas.push("  Sessões vivas, preservadas : " + vivas);
+  linhas.push("  Expiradas encontradas      : " + expiradas);
+  linhas.push("  Corrompidas (JSON inválido): " + corrompidas);
+  linhas.push("  Apagadas nesta execução    : " + apagadas);
+  linhas.push("  Outras propriedades        : " + outras + "  (intocadas)");
+  if (maisAntiga) {
+    linhas.push("  Expirada mais antiga       : " +
+      Utilities.formatDate(new Date(maisAntiga), "America/Sao_Paulo", "dd/MM/yyyy"));
+  }
+  linhas.push("═══════════════════════════════════════════════════════════");
+
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return { ok: true, vivas: vivas, expiradas: expiradas, corrompidas: corrompidas,
+           apagadas: apagadas, outras: outras, relatorio: texto };
+}
+
+/** Ponto de entrada do gatilho — sem parâmetro, porque trigger não passa nenhum. */
+function limparSessoesExpiradasDiario() {
+  return limparSessoesExpiradas_(false);
+}
+
+/**
+ * Instala o gatilho diário. Mesmo padrão dos outros do projeto: apaga o
+ * anterior antes de criar, para não acumular gatilho duplicado a cada
+ * reinstalação — que é como se acaba com quatro execuções do mesmo trabalho.
+ */
+function instalarTriggerLimpezaSessoes() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "limparSessoesExpiradasDiario") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("limparSessoesExpiradasDiario").timeBased().everyDays(1).atHour(3).create();
+  Logger.log("✅ Gatilho instalado — limpeza diária às 3h.");
+  return { ok: true, mensagem: "Gatilho de limpeza de sessões instalado (diário, 3h)." };
+}
+
+function removerTriggerLimpezaSessoes() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "limparSessoesExpiradasDiario") ScriptApp.deleteTrigger(t);
+  });
+  Logger.log("✅ Gatilho removido.");
+  return { ok: true };
+}

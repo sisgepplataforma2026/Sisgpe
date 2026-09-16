@@ -1,0 +1,477 @@
+<!-- ========================================================================
+     SOFIA · AGENTE DE ESCOLAS — Integração visual v0.1
+
+     Este arquivo é anexado ao CadastroEscolas.html pelo include() de Code.gs.
+     Motivo: manter a integração do piloto isolada e facilmente reversível,
+     sem reescrever a tela principal de Escolas.
+
+     Regras:
+     - somente leitura;
+     - chama exclusivamente analisarEscolaComSofia(EscolaID, tokenSessao);
+     - nunca envia CNPJ ou nome como substituto de EscolaID;
+     - se a linha não puder ser ligada de forma inequívoca ao EscolaID, recusa;
+     - não altera os fluxos antigos de Ofício IA e Resposta de E-mail IA.
+======================================================================== -->
+<style>
+#ceSofiaEscolaStatus {
+  margin:0 0 14px;
+  padding:10px 12px;
+  border:1px solid var(--ce-g200,#e2e8f0);
+  border-radius:10px;
+  background:var(--ce-g50,#f8fafc);
+  color:var(--ce-g600,#475569);
+  font-size:11.5px;
+  line-height:1.45;
+}
+#ceSofiaEscolaStatus.ce-sofia-selecionada {
+  border-color:#bfdbfe;
+  background:#eff6ff;
+  color:#1e40af;
+}
+.ce-sofia-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:12px 0;
+}
+.ce-sofia-kpi {
+  padding:10px 12px;
+  border:1px solid var(--ce-g200,#e2e8f0);
+  border-radius:10px;
+  background:#fff;
+}
+.ce-sofia-kpi-lbl {
+  font-size:9px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--ce-g400,#94a3b8);
+}
+.ce-sofia-kpi-val {
+  margin-top:4px;
+  font-size:13px;
+  font-weight:800;
+  color:var(--ce-g900,#0f172a);
+  overflow-wrap:anywhere;
+}
+.ce-sofia-sec {
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid var(--ce-g100,#f1f5f9);
+}
+.ce-sofia-sec h4 {
+  margin:0 0 8px;
+  color:var(--ce-navy2,#002f6c);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.ce-sofia-list {
+  margin:0;
+  padding-left:18px;
+  color:var(--ce-g700,#334155);
+  font-size:12.5px;
+  line-height:1.65;
+}
+.ce-sofia-list li + li { margin-top:4px; }
+.ce-sofia-chip {
+  display:inline-flex;
+  align-items:center;
+  padding:3px 9px;
+  border-radius:999px;
+  font-size:9.5px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+.ce-sofia-chip-ok { background:#d1fae5;color:#065f46; }
+.ce-sofia-chip-warn { background:#fef3c7;color:#92400e; }
+.ce-sofia-chip-err { background:#fee2e2;color:#991b1b; }
+.ce-sofia-chip-info { background:#dbeafe;color:#1e40af; }
+.ce-sofia-fonte {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:7px 0;
+  border-bottom:1px dashed var(--ce-g200,#e2e8f0);
+  font-size:11.5px;
+}
+.ce-sofia-fonte:last-child { border-bottom:none; }
+@media(max-width:700px) {
+  .ce-sofia-grid { grid-template-columns:1fr; }
+}
+</style>
+
+<script>
+(function(){
+  "use strict";
+
+  var UI = window.SISGEP_SOFIA_ESCOLAS_UI || {};
+  window.SISGEP_SOFIA_ESCOLAS_UI = UI;
+
+  UI.versao = "0.1.0";
+  UI.mapa = {};
+  UI.listaCarregada = false;
+  UI.observer = null;
+  UI.inicializado = false;
+  UI.idAtual = "";
+  UI.nomeAtual = "";
+
+  function g(id){ return document.getElementById(id); }
+  function texto(v){ return String(v == null ? "" : v).trim(); }
+  function digits(v){ return texto(v).replace(/\D/g,""); }
+  function norm(v){
+    var s=texto(v).toLowerCase();
+    try { s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); } catch(e) {}
+    return s.replace(/\s+/g," ").trim();
+  }
+  function esc(v){
+    return texto(v)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+  function val(obj,chaves){
+    obj=obj||{};
+    for(var i=0;i<chaves.length;i++){
+      var v=obj[chaves[i]];
+      if(v!==undefined&&v!==null&&texto(v)!=="") return texto(v);
+    }
+    return "";
+  }
+  function idValido(v){ return /^ESC-\d+$/i.test(texto(v)); }
+
+  function chaveCampos(nome,doc,email,cidade,uf){
+    return [norm(nome),digits(doc),norm(email),norm(cidade),texto(uf).toUpperCase()].join("||");
+  }
+
+  function chaveItem(item){
+    return chaveCampos(
+      val(item,["NomeEscola","escola","Escola","razaoSocial","Escola (Razão Social)"]),
+      val(item,["CNPJ","cnpj"]),
+      val(item,["Email","email","E-mail (principal)"]),
+      val(item,["Municipio","municipio","Cidade","cidade"]),
+      val(item,["UF","uf"])
+    );
+  }
+
+  function dadosLinha(row){
+    var nomeEl=row.querySelector("td:nth-child(2) strong");
+    var localEl=row.querySelector("td:nth-child(2) span");
+    var cnpjEl=row.querySelector("td:nth-child(3)");
+    var emailEl=row.querySelector('td:nth-child(4) a[href^="mailto:"]');
+
+    var nome=nomeEl?texto(nomeEl.textContent):"";
+    var doc=cnpjEl?texto(cnpjEl.textContent):"";
+    var email=emailEl?texto(emailEl.textContent):"";
+    var local=localEl?texto(localEl.textContent):"";
+    var cidade=local, uf="";
+    var m=local.match(/^(.*)\s+\/\s+([A-Za-z]{2})$/);
+    if(m){ cidade=texto(m[1]); uf=texto(m[2]).toUpperCase(); }
+
+    return { nome:nome, doc:doc, email:email, cidade:cidade, uf:uf };
+  }
+
+  function construirMapa(lista){
+    UI.mapa={};
+    (Array.isArray(lista)?lista:[]).forEach(function(item){
+      var id=val(item,["EscolaID","escolaId"]);
+      if(!idValido(id)) return;
+      id=id.toUpperCase();
+      var chave=chaveItem(item);
+      if(!UI.mapa[chave]) UI.mapa[chave]=[];
+      UI.mapa[chave].push({ id:id, item:item });
+    });
+    UI.listaCarregada=true;
+    marcarLinhas();
+  }
+
+  function resolverLinha(row){
+    if(!row) return null;
+    var d=dadosLinha(row);
+    var candidatos=UI.mapa[chaveCampos(d.nome,d.doc,d.email,d.cidade,d.uf)]||[];
+    if(candidatos.length!==1) return null;
+    return candidatos[0];
+  }
+
+  function marcarLinhas(){
+    if(!UI.listaCarregada) return;
+    var tbody=g("ceTabelaBody");
+    if(!tbody) return;
+    var rows=tbody.querySelectorAll("tr[data-idx]");
+    for(var i=0;i<rows.length;i++){
+      var r=resolverLinha(rows[i]);
+      if(r&&idValido(r.id)){
+        rows[i].dataset.sofiaEscolaId=r.id;
+        rows[i].dataset.sofiaEscolaNome=dadosLinha(rows[i]).nome;
+      }else{
+        delete rows[i].dataset.sofiaEscolaId;
+        delete rows[i].dataset.sofiaEscolaNome;
+      }
+    }
+  }
+
+  function status(textoStatus,selecionada){
+    var el=g("ceSofiaEscolaStatus");
+    if(!el) return;
+    el.className=selecionada?"ce-sofia-selecionada":"";
+    el.innerHTML=textoStatus;
+  }
+
+  function selecionar(id,nome){
+    if(!idValido(id)){
+      UI.idAtual="";
+      UI.nomeAtual="";
+      window.SISGEP_SOFIA_ESCOLA_ID_ATUAL="";
+      status("Selecione uma escola pela <strong>Base de Escolas</strong> antes de usar a SOFIA.",false);
+      return;
+    }
+    UI.idAtual=texto(id).toUpperCase();
+    UI.nomeAtual=texto(nome);
+    window.SISGEP_SOFIA_ESCOLA_ID_ATUAL=UI.idAtual;
+    status("✨ Escola selecionada para a SOFIA: <strong>"+esc(UI.nomeAtual||UI.idAtual)+"</strong> · "+esc(UI.idAtual)+" · modo somente leitura",true);
+  }
+
+  function capturarSelecao(e){
+    var alvo=e.target;
+    if(!alvo||!alvo.closest) return;
+    if(alvo.closest(".ce-btn-mail")||alvo.closest(".ce-btn-whats")||alvo.closest(".ce-row-check")) return;
+    var row=alvo.closest("#ceTabelaBody tr[data-idx]");
+    if(!row) return;
+    var id=row.dataset.sofiaEscolaId||"";
+    var nome=row.dataset.sofiaEscolaNome||"";
+    if(idValido(id)) selecionar(id,nome);
+    else selecionar("","");
+  }
+
+  function instalarSelecao(){
+    var tbody=g("ceTabelaBody");
+    if(!tbody) return;
+    if(!tbody.dataset.sofiaBound){
+      tbody.dataset.sofiaBound="1";
+      tbody.addEventListener("click",capturarSelecao,true);
+    }
+    if(!UI.observer){
+      UI.observer=new MutationObserver(function(){ marcarLinhas(); });
+      UI.observer.observe(tbody,{childList:true,subtree:true});
+    }
+
+    var novo=g("btnCeNovaEscola");
+    if(novo&&!novo.dataset.sofiaBound){
+      novo.dataset.sofiaBound="1";
+      novo.addEventListener("click",function(){ selecionar("",""); },true);
+    }
+    var limpar=g("btnCeLimparForm");
+    if(limpar&&!limpar.dataset.sofiaBound){
+      limpar.dataset.sofiaBound="1";
+      limpar.addEventListener("click",function(){ selecionar("",""); },true);
+    }
+  }
+
+  function instalarPonteAbrirPorChave(){
+    if(typeof window.ceAbrirEscolaPorChave!=="function"||window.ceAbrirEscolaPorChave._sofiaWrapped) return;
+    var original=window.ceAbrirEscolaPorChave;
+    var wrapper=function(chave,tentativa){
+      var r=original.apply(this,arguments);
+      if(idValido(chave)){
+        var id=texto(chave).toUpperCase();
+        setTimeout(function(){
+          var nome=g("ceNomeEscola")?texto(g("ceNomeEscola").value):"";
+          selecionar(id,nome);
+        },250);
+      }
+      return r;
+    };
+    wrapper._sofiaWrapped=true;
+    window.ceAbrirEscolaPorChave=wrapper;
+  }
+
+  function inserirStatus(){
+    var resultado=g("ceIaResultado");
+    if(!resultado||g("ceSofiaEscolaStatus")) return;
+    var el=document.createElement("div");
+    el.id="ceSofiaEscolaStatus";
+    resultado.parentNode.insertBefore(el,resultado);
+    selecionar("","");
+  }
+
+  function instalarBotao(){
+    var sec=g("ceSecIA");
+    if(!sec) return false;
+    var btn=g("btnCeAnalisarSofia");
+    if(!btn){
+      var candidatos=sec.querySelectorAll("button");
+      for(var i=0;i<candidatos.length;i++){
+        var oc=texto(candidatos[i].getAttribute("onclick"));
+        if(oc.indexOf("ceExecutarAnaliseIA")>=0){ btn=candidatos[i]; break; }
+      }
+    }
+    if(!btn) return false;
+
+    btn.id="btnCeAnalisarSofia";
+    btn.removeAttribute("onclick");
+    btn.innerHTML="✨ Analisar com SOFIA";
+    btn.title="Análise do Agente de Escolas por EscolaID · somente leitura";
+    if(!btn.dataset.sofiaBound){
+      btn.dataset.sofiaBound="1";
+      btn.addEventListener("click",analisar);
+    }
+    return true;
+  }
+
+  function prioridadeClasse(nivel){
+    nivel=texto(nivel).toUpperCase();
+    if(nivel==="ALTA"||nivel==="CRITICA"||nivel==="CRÍTICA") return "ce-sofia-chip-err";
+    if(nivel==="MEDIA"||nivel==="MÉDIA") return "ce-sofia-chip-warn";
+    return "ce-sofia-chip-ok";
+  }
+
+  function fonteClasse(statusFonte){
+    var s=texto(statusFonte).toUpperCase();
+    if(s==="OK") return "ce-sofia-chip-ok";
+    if(s==="ERRO") return "ce-sofia-chip-err";
+    return "ce-sofia-chip-info";
+  }
+
+  function listaHtml(itens,fn){
+    if(!Array.isArray(itens)||!itens.length) return '<div style="color:#64748b;font-size:12px;">Nenhum item.</div>';
+    return '<ul class="ce-sofia-list">'+itens.map(function(x){ return "<li>"+fn(x)+"</li>"; }).join("")+"</ul>";
+  }
+
+  function renderAnalise(r){
+    var box=g("ceIaResultado");
+    if(!box) return;
+    if(!r||r.ok!==true){
+      var msg=(r&&(r.mensagem||r.erro))||"Não foi possível concluir a análise.";
+      box.innerHTML='<div style="color:#991b1b;font-weight:700;">⚠ '+esc(msg)+'</div>';
+      return;
+    }
+
+    var resumo=r.resumo||{};
+    var prioridade=texto(resumo.prioridade||((r.prioridades||[])[0]||{}).nivel||"—");
+    var fontes=r.fontes||{};
+    var nomesFontes=Object.keys(fontes);
+
+    var html=''
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">'
+      +'<div><div style="font-size:15px;font-weight:900;color:#001f4d;">✨ SOFIA · Agente de Escolas</div>'
+      +'<div style="font-size:10.5px;color:#64748b;margin-top:3px;">Versão '+esc(r.versao||"0.1.0")+' · '+esc(r.modo||"READ_ONLY")+' · '+esc(r.escolaId||"")+'</div></div>'
+      +'<span class="ce-sofia-chip '+prioridadeClasse(prioridade)+'">PRIORIDADE '+esc(prioridade||"—")+'</span>'
+      +'</div>';
+
+    if(r.identidade&&r.identidade.fundida===true){
+      html+='<div style="margin-top:10px;padding:9px 11px;border-radius:9px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11.5px;font-weight:700;">↪ Este EscolaID foi fundido. A análise usou a identidade atual '+esc(r.identidade.idAtual||r.escolaId)+'.</div>';
+    }
+
+    html+='<div class="ce-sofia-grid">'
+      +'<div class="ce-sofia-kpi"><div class="ce-sofia-kpi-lbl">Escola</div><div class="ce-sofia-kpi-val">'+esc(resumo.escola||"—")+'</div></div>'
+      +'<div class="ce-sofia-kpi"><div class="ce-sofia-kpi-lbl">Situação</div><div class="ce-sofia-kpi-val">'+esc(resumo.situacao||"—")+'</div></div>'
+      +'<div class="ce-sofia-kpi"><div class="ce-sofia-kpi-lbl">Pendências</div><div class="ce-sofia-kpi-val">'+esc(resumo.totalPendencias==null?"—":resumo.totalPendencias)+'</div></div>'
+      +'</div>';
+
+    if(resumo.mensagem){
+      html+='<div style="padding:11px 12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;font-size:12.5px;line-height:1.6;color:#334155;">'+esc(resumo.mensagem)+'</div>';
+    }
+
+    html+='<div class="ce-sofia-sec"><h4>Achados</h4>'
+      +listaHtml(r.achados,function(a){ return '<strong>'+esc((a&&a.titulo)||"Achado")+'</strong>'+(a&&a.descricao?' — '+esc(a.descricao):''); })
+      +'</div>';
+
+    html+='<div class="ce-sofia-sec"><h4>Próximas ações recomendadas</h4>'
+      +listaHtml(r.recomendacoes,function(x){ return esc(x); })
+      +'</div>';
+
+    if(Array.isArray(r.dadosAusentes)&&r.dadosAusentes.length){
+      html+='<div class="ce-sofia-sec"><h4>Dados ausentes</h4>'
+        +listaHtml(r.dadosAusentes,function(x){ return esc(x); })
+        +'</div>';
+    }
+
+    html+='<div class="ce-sofia-sec"><h4>Fontes consultadas</h4>';
+    if(!nomesFontes.length){
+      html+='<div style="color:#64748b;font-size:12px;">Nenhuma fonte informada.</div>';
+    }else{
+      nomesFontes.forEach(function(nomeFonte){
+        var f=fontes[nomeFonte]||{};
+        html+='<div class="ce-sofia-fonte"><span>'+esc(nomeFonte)+'</span><span class="ce-sofia-chip '+fonteClasse(f.status)+'">'+esc(f.status||"—")+'</span></div>';
+      });
+    }
+    html+='</div>';
+
+    if(Array.isArray(r.evidencias)&&r.evidencias.length){
+      html+='<div class="ce-sofia-sec"><details><summary style="cursor:pointer;font-size:11px;font-weight:800;color:#475569;">Ver evidências ('+r.evidencias.length+')</summary>'
+        +'<div style="margin-top:8px;">'
+        +listaHtml(r.evidencias,function(ev){
+          ev=ev||{};
+          var valor=ev.valor!==undefined?ev.valor:(ev.status||"");
+          return esc((ev.fonte||"Fonte")+' · '+(ev.campo||"dado")+(valor?' = '+valor:''));
+        })
+        +'</div></details></div>';
+    }
+
+    box.innerHTML=html;
+  }
+
+  function analisar(){
+    var id=texto(window.SISGEP_SOFIA_ESCOLA_ID_ATUAL||UI.idAtual).toUpperCase();
+    var box=g("ceIaResultado");
+    if(!box) return;
+    if(!idValido(id)){
+      box.innerHTML='<div style="color:#92400e;font-weight:700;">⚠ Não consegui identificar o EscolaID da escola selecionada.<br><span style="font-weight:500;">Volte à Base de Escolas, abra a escola desejada e tente novamente. A SOFIA não usa nome ou CNPJ como substituto de identidade.</span></div>';
+      return;
+    }
+    if(typeof google==="undefined"||!google.script||!google.script.run){
+      box.innerHTML='<div style="color:#991b1b;font-weight:700;">Conexão com o SISGEP indisponível.</div>';
+      return;
+    }
+
+    var btn=g("btnCeAnalisarSofia");
+    if(btn){ btn.disabled=true; btn._sofiaTexto=btn.innerHTML; btn.innerHTML="⏳ Analisando..."; }
+    box.innerHTML='<div style="padding:10px;color:#1565C0;font-weight:700;">✨ SOFIA está analisando '+esc(id)+' em modo somente leitura...</div>';
+
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btn){ btn.disabled=false; btn.innerHTML=btn._sofiaTexto||"✨ Analisar com SOFIA"; }
+        renderAnalise(r);
+      })
+      .withFailureHandler(function(err){
+        if(btn){ btn.disabled=false; btn.innerHTML=btn._sofiaTexto||"✨ Analisar com SOFIA"; }
+        var msg=(err&&err.message)||err||"Erro desconhecido";
+        box.innerHTML='<div style="color:#991b1b;font-weight:700;">Erro ao consultar a SOFIA:<br><br>'+esc(msg)+'</div>';
+      })
+      .analisarEscolaComSofia(id,SISGEP_TOKEN_SESSAO);
+  }
+
+  UI.analisar=analisar;
+  UI.selecionar=selecionar;
+  UI.marcarLinhas=marcarLinhas;
+
+  function carregarMapa(){
+    if(typeof google==="undefined"||!google.script||!google.script.run) return;
+    google.script.run
+      .withSuccessHandler(function(lista){ construirMapa(lista); })
+      .withFailureHandler(function(){
+        UI.listaCarregada=false;
+        status("⚠ Não foi possível preparar a identidade das escolas para a SOFIA.",false);
+      })
+      .listarEscolasParaModulo(SISGEP_TOKEN_SESSAO);
+  }
+
+  function init(){
+    if(UI.inicializado) return;
+    var sec=g("ceSecIA");
+    if(!sec){ setTimeout(init,200); return; }
+    UI.inicializado=true;
+    instalarBotao();
+    inserirStatus();
+    instalarSelecao();
+    instalarPonteAbrirPorChave();
+    carregarMapa();
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init);
+  else setTimeout(init,0);
+})();
+</script>

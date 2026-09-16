@@ -1,0 +1,1639 @@
+// ============================================================================
+// ARQUIVO: DeclaracaoDiretor.gs
+// MÓDULO: Documentos › Declarações — Declaração de Diretor (art. 543 da CLT)
+// ============================================================================
+//
+// O QUE É
+//
+// A declaração que o sindicato entrega à escola empregadora informando que um
+// diretor estará à disposição da entidade em determinado dia, com fundamento
+// no art. 543 da CLT. O modelo em papel que originou este arquivo é o
+// "DECLARAÇÃO 03.09.2026", conferido linha a linha em 15/09/2026.
+//
+// 🚨 MODELO FIXO COM VARIÁVEIS — NÃO É EDITOR DE TEXTO. Decisão do usuário.
+//
+// Só quatro coisas variam: o diretor, o dia da liberação, o período e a data
+// de emissão. Todo o resto — inclusive a citação literal do art. 543 e a
+// redação dada pelo Decreto-lei nº 229/1967 — é texto fixo, e é fixo de
+// propósito: é o trecho jurídico do documento. Um editor livre aqui
+// significaria alguém alterar sem querer a citação da lei num documento
+// assinado pelo presidente.
+//
+// SEM O CARGO DE CADA UM — decisão do usuário em 15/09/2026
+//
+// O texto dizia a função exata da pessoa ("conselheiro fiscal desta Entidade
+// Sindical"). Passa a dizer só "diretor desta Entidade Sindical", como no
+// modelo em papel. O que a declaração precisa afirmar é que existe mandato
+// sindical — o art. 543 não distingue cargo —, e o cargo exato envelhece:
+// numa remodelação de diretoria, o papel assinado passa a divergir da
+// composição. O cargo continua gravado na coluna CARGO, para o histórico, e
+// continua aparecendo na tela ao lado do nome.
+//
+// SEM HORÁRIO — decisão do usuário em 15/09/2026
+//
+// A primeira versão do desenho tinha horário inicial e final. Foram retirados
+// a pedido dele, com razão concreta: declarar intervalo restringe a atuação
+// sindical sem necessidade. A declaração diz o DIA, e no máximo o período.
+//
+// O TEXTO QUE SAI, nas três formas possíveis:
+//
+//   sem período   ...no dia 18 de setembro de 2026, estará à disposição...
+//   integral      ...no dia 18 de setembro de 2026, em período integral, ...
+//   turno         ...no dia 18 de setembro de 2026, no período vespertino, ...
+//
+// DUPLICATA AVISA, NÃO BLOQUEIA
+//
+// Emitir duas declarações para o mesmo diretor no mesmo dia é quase sempre
+// engano — mas não sempre: a via se perde, a escola pede outra. Então o
+// sistema avisa e pede confirmação, em vez de recusar. Recusar obrigaria a
+// pessoa a resolver por fora, que é pior.
+//
+// O TEXTO EMITIDO FICA GRAVADO na coluna TEXTO, não só o PDF. Se um dia a
+// redação mudar, a declaração de hoje continua reimprimível exatamente como
+// foi assinada. Guardar só os campos e remontar depois produziria um
+// documento diferente do que a escola recebeu.
+//
+// PASTA DO DRIVE — precisa ser configurada uma vez por ambiente.
+// Ver `declPastaDestino_` logo abaixo e RECURSOS_AMBIENTE.DECLARACOES.
+// ============================================================================
+
+var ABA_DECLARACOES_DIRETOR = "DECLARACOES_DIRETOR";
+
+var DECL_COLUNAS_EMISSAO = [
+  "NUMERO", "DIRETOR_ID", "DIRETOR_NOME", "CARGO",
+  "DATA_LIBERACAO", "PERIODO", "DATA_EMISSAO",
+  "SIGNATARIO", "TEXTO", "PDF_ID", "PDF_URL",
+  "EMITIDO_POR", "EMITIDO_EM", "GESTAO", "ORGAO", "CONDICAO",
+  "ESCOLA_ID", "ESCOLA_NOME", "ESCOLA_DOCUMENTO", "VINCULO_ORIGEM", "CONTATOS_ORIGEM",
+  "EMAILS_USADOS", "EMAIL_STATUS", "EMAIL_ENVIADO_EM", "EMAIL_ENVIADO_POR",
+  "WHATSAPP_STATUS", "WHATSAPP_EM", "WHATSAPP_POR"
+];
+
+/**
+ * Rótulos e trechos de texto por período.
+ *
+ * INTEGRAL NÃO ACRESCENTA TEXTO — decisão do usuário em 15/09/2026, com as
+ * palavras dele: "Integral significa que estará a serviço do SindEducação-ES".
+ * Dia inteiro à disposição da entidade é o caso sem qualificação nenhuma, e é
+ * exatamente a frase do modelo em papel. Escrever "em período integral" era
+ * dizer duas vezes a mesma coisa.
+ *
+ * Por isso o INTEGRAL é o padrão da tela, e a chave vazia saiu da lista: as
+ * duas produziam texto idêntico, e oferecer duas opções que geram o mesmo
+ * documento é convidar a pessoa a escolher achando que muda alguma coisa. A
+ * chave vazia continua ACEITA para reimprimir declaração antiga gravada com
+ * ela — só não aparece mais para escolher.
+ */
+var DECL_PERIODOS = {
+  "INTEGRAL":   { rotulo: "Integral",     trecho: "" },
+  "MATUTINO":   { rotulo: "Matutino",     trecho: ", no período matutino" },
+  "VESPERTINO": { rotulo: "Vespertino",   trecho: ", no período vespertino" },
+  "NOTURNO":    { rotulo: "Noturno",      trecho: ", no período noturno" },
+  "":           { rotulo: "Integral",     trecho: "", legado: true }
+};
+
+/* Citação literal do art. 543, conferida contra o modelo em papel. */
+var DECL_ART_543 =
+  "Art. 543 – O empregado eleito para o cargo de administração sindical ou " +
+  "representação profissional, inclusive junto a órgão de deliberação coletiva, " +
+  "não poderá ser impedido do exercício de suas funções, nem transferido para " +
+  "lugar ou mister que lhe dificulte ou torne impossível o desempenho das suas " +
+  "atribuições sindicais. (Redação dada pelo Decreto-lei nº 229, 28.2.1967)";
+
+var DECL_CIDADE = "Vitória";
+
+/* O NOME DA ENTIDADE SE ESCREVE "SindEducação-ES" — conferido em 15/09/2026
+ * contra o projeto inteiro: 385 ocorrências com hífen contra 18 com barra, e
+ * a assinatura dos Recibos (Recibo.gs) já usa o hífen.
+ *
+ * O modelo em papel traz "SindEducação/ES" no corpo e "SindEducação" seco na
+ * assinatura; copiei os dois de lá e os dois estavam fora do padrão da casa.
+ * Fica escrito para não voltar atrás na próxima vez que alguém comparar o
+ * documento com o Word. */
+
+/* =========================================
+ * PLANILHA
+ * ========================================= */
+
+function declGarantirEmissoes_() {
+  var ss = declPlanilha_();
+  var sh = ss.getSheetByName(ABA_DECLARACOES_DIRETOR);
+  if (!sh) sh = ss.insertSheet(ABA_DECLARACOES_DIRETOR);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(DECL_COLUNAS_EMISSAO);
+    sh.getRange(1, 1, 1, DECL_COLUNAS_EMISSAO.length)
+      .setFontWeight("bold").setBackground("#002f6c").setFontColor("#ffffff");
+    sh.setFrozenRows(1);
+  }
+  var mapa = declCabecalho_(sh);
+  DECL_COLUNAS_EMISSAO.forEach(function (nome) {
+    if (!mapa[nome]) {
+      var col = sh.getLastColumn() + 1;
+      sh.getRange(1, col).setValue(nome);
+      mapa[nome] = col;
+    }
+  });
+  return sh;
+}
+
+function declEmissoes_interno_() {
+  var sh = declGarantirEmissoes_();
+  if (sh.getLastRow() < 2) return [];
+
+  var mapa = declCabecalho_(sh);
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+
+  function col(l, nome) { return mapa[nome] ? l[mapa[nome] - 1] : ""; }
+
+  return dados.map(function (l) {
+    var periodo = declTexto_(col(l, "PERIODO")).toUpperCase();
+    return {
+      numero:        declTexto_(col(l, "NUMERO")),
+      diretorId:     declTexto_(col(l, "DIRETOR_ID")),
+      diretorNome:   declTexto_(col(l, "DIRETOR_NOME")),
+      cargo:         declTexto_(col(l, "CARGO")),
+      dataLiberacao: declDataBR_(col(l, "DATA_LIBERACAO")),
+      periodo:       periodo,
+      periodoRotulo: (DECL_PERIODOS[periodo] || DECL_PERIODOS[""]).rotulo,
+      dataEmissao:   declDataBR_(col(l, "DATA_EMISSAO")),
+      signatario:    declTexto_(col(l, "SIGNATARIO")),
+      texto:         declTexto_(col(l, "TEXTO")),
+      pdfId:         declTexto_(col(l, "PDF_ID")),
+      pdfUrl:        declTexto_(col(l, "PDF_URL")),
+      emitidoPor:    declTexto_(col(l, "EMITIDO_POR")),
+      emitidoEm:     declDataBR_(col(l, "EMITIDO_EM")),
+      gestao:        declTexto_(col(l, "GESTAO")),
+      escolaId:      declTexto_(col(l, "ESCOLA_ID")),
+      escolaNome:    declTexto_(col(l, "ESCOLA_NOME")),
+      vinculoOrigem: declTexto_(col(l, "VINCULO_ORIGEM")),
+      emailsUsados:  declTexto_(col(l, "EMAILS_USADOS")),
+      emailStatus:   declTexto_(col(l, "EMAIL_STATUS")),
+      whatsappStatus: declTexto_(col(l, "WHATSAPP_STATUS"))
+    };
+  }).filter(function (d) { return !!d.numero; });
+}
+
+/**
+ * Próximo número do ano, no formato 001/2026.
+ *
+ * Deriva das linhas já gravadas, não de um contador guardado à parte: linha
+ * gravada é a única fonte que não dessincroniza. Só é chamada de dentro do
+ * lock de `declEmitirDeclaracaoDiretor`.
+ */
+function declProximoNumero_(ano) {
+  ano = Number(ano || new Date().getFullYear());
+  var maior = 0;
+  declEmissoes_interno_().forEach(function (e) {
+    var m = String(e.numero).match(/^(\d+)\/(\d{4})$/);
+    if (m && Number(m[2]) === ano) maior = Math.max(maior, Number(m[1]));
+  });
+  var proximo = maior + 1;
+  return ("00" + proximo).slice(-3) + "/" + ano;
+}
+
+/* =========================================
+ * PASTA DO DRIVE
+ * ========================================= */
+
+/**
+ * Pasta onde o PDF é gravado, já com a subpasta do ano.
+ *
+ * O ID sai de `getRecursoId_("DECLARACOES")` (AmbienteRecursos.gs), que é o
+ * único mecanismo do sistema que separa produção de homologação. A tabela
+ * nasce SEM id justamente para não haver chance de a homologação gravar no
+ * acervo real — quem instala configura a Script Property uma vez por
+ * ambiente, e a mensagem abaixo diz exatamente qual é.
+ */
+function declPastaDestino_() {
+  var idRaiz;
+  try {
+    idRaiz = getRecursoId_("DECLARACOES");
+  } catch (e) {
+    throw new Error(
+      "A pasta das declarações ainda não foi configurada neste ambiente. " +
+      "Crie a pasta no Drive e informe o ID na Script Property " +
+      "SISGEP_PASTA_DECLARACOES (Apps Script › Configurações do projeto › " +
+      "Propriedades do script). Detalhe técnico: " + e.message
+    );
+  }
+
+  var pastaRaiz = DriveApp.getFolderById(idRaiz);
+  var ano = String(new Date().getFullYear());
+  var achadas = pastaRaiz.getFoldersByName(ano);
+  return achadas.hasNext() ? achadas.next() : pastaRaiz.createFolder(ano);
+}
+
+/* =========================================
+ * MONTAGEM DO TEXTO
+ * ========================================= */
+
+function declPeriodoValido_(p) {
+  var chave = declTexto_(p).toUpperCase();
+  return Object.prototype.hasOwnProperty.call(DECL_PERIODOS, chave) ? chave : null;
+}
+
+/**
+ * O primeiro parágrafo da declaração — a única parte que varia.
+ *
+ * @param {{nome:string, dataLiberacao:*, periodo:string}} p
+ * @return {string}
+ */
+function declMontarTexto_(p) {
+  p = p || {};
+  var nome = declTexto_(p.nome).toUpperCase();
+  var periodo = declPeriodoValido_(p.periodo);
+  var trecho = DECL_PERIODOS[periodo === null ? "INTEGRAL" : periodo].trecho;
+  var dia = declDataExtenso_(p.dataLiberacao);
+
+  /* PARÁGRAFO ÚNICO, como no modelo em papel: a liberação e o requerimento
+     do art. 543 ficam na mesma mancha de texto, não em dois blocos. */
+  return "Declaramos para os devidos fins e efeitos legais a que se destina que " +
+    nome + ", " + declTratamento_(p.cargo) + " desta Entidade Sindical, no dia " +
+    dia + trecho + ", estará a serviço do SindEducação-ES. Nos termos do Artigo 543, " +
+    "da CLT, requeremos a liberação do empregado para o pleno exercício de seu " +
+    "mandato sindical, conforme lhe assegura a lei:";
+}
+
+/**
+ * "diretor" ou "diretora", conforme o cargo na composição.
+ *
+ * O modelo em papel conferido em 15/09/2026 traz "diretora desta Entidade
+ * Sindical" para a Marcilene, e o cargo dela em Governança é "Secretária de
+ * Organização…". É daí que sai o gênero: a composição já escreve
+ * Secretário/Secretária, Conselheiro/Conselheira.
+ *
+ * Cargo sem marca de gênero (Presidente, Suplente) cai no masculino, que é o
+ * que o documento em papel já fazia. Errar o gênero de alguém num documento
+ * assinado é desrespeito, não detalhe de estilo — se aparecer um caso que a
+ * regra não pega, o certo é marcar no cadastro, não adivinhar aqui.
+ */
+function declTratamento_(cargo) {
+  var primeira = declTexto_(cargo).split(/[\s,]+/)[0] || "";
+  return /^(secretária|diretora|conselheira|delegada|tesoureira|presidenta|vice-presidenta)$/i.test(primeira)
+    ? "diretora" : "diretor";
+}
+
+/* =========================================
+ * VALIDAÇÃO COMPARTILHADA (prévia e emissão)
+ * ========================================= */
+
+/**
+ * @param {Object} dados        o pedido vindo da tela
+ * @param {Object} [opcoes]     { semContatos: true } para o caminho da prévia
+ *
+ * MODO LEVE — nasceu em 15/09/2026, com o usuário dizendo pela terceira vez
+ * que a tela estava lenta. A prévia chamava esta validação inteira, e ela
+ * monta os CONTATOS de cada escola do dirigente: lê a base de Associados, o
+ * cadastro de Escolas, a aba Controle e o histórico de entrega de cada
+ * e-mail — tudo para exibir um parágrafo de texto que não usa nada disso.
+ *
+ * A emissão continua no caminho completo, porque ali os contatos vão para a
+ * coluna CONTATOS_ORIGEM e são a trava de destinatário do envio.
+ */
+function declValidarPedido_(dados, opcoes) {
+  dados = dados || {};
+  opcoes = opcoes || {};
+
+  var diretor = declDiretorPorId_(dados.diretorId);
+  if (!diretor) return { ok: false, mensagem: "Selecione o diretor." };
+  if (!diretor.ativo) return { ok: false, mensagem: "Este diretor está inativo no cadastro da Diretoria." };
+  if (!diretor.mandatoVigente) {
+    return {
+      ok: false,
+      mensagem: "O mandato de " + diretor.nome + " não está vigente (" +
+                (diretor.mandatoInicio || "sem início") + " a " +
+                (diretor.mandatoFim || "sem fim") + "). Corrija o cadastro antes de emitir."
+    };
+  }
+
+  var dataLib = declSoData_(dados.dataLiberacao);
+  if (!dataLib) return { ok: false, mensagem: "Informe a data da liberação." };
+
+  /* O MANDATO SE CONFERE CONTRA O DIA DA LIBERAÇÃO, NÃO CONTRA HOJE.
+   *
+   * A checagem acima (`mandatoVigente`) pergunta se a gestão está de pé
+   * agora — e é dela que sai a lista de quem pode receber. Não é a mesma
+   * pergunta: uma liberação marcada para depois do término do mandato
+   * passava sem aviso, e a declaração afirmaria que a pessoa estará à
+   * disposição da entidade num dia em que já não é dirigente.
+   *
+   * É exatamente o erro que o módulo nasceu para impedir, e ele sobrevivia
+   * porque as duas datas nunca eram comparadas entre si. Corrigido em
+   * 15/09/2026. */
+  var mandatoInicio = declSoData_(diretor.mandatoInicio);
+  var mandatoFim    = declSoData_(diretor.mandatoFim);
+  if (mandatoInicio && dataLib < mandatoInicio) {
+    return {
+      ok: false,
+      mensagem: "A liberação está marcada para " + declDataBR_(dataLib) + ", antes da posse de " +
+                diretor.nome + " em " + diretor.mandatoInicio + "."
+    };
+  }
+  if (mandatoFim && dataLib > mandatoFim) {
+    return {
+      ok: false,
+      mensagem: "A liberação está marcada para " + declDataBR_(dataLib) + ", depois do término do mandato de " +
+                diretor.nome + " em " + diretor.mandatoFim + ". A declaração afirmaria algo que não será verdade naquele dia."
+    };
+  }
+
+  var periodo = declPeriodoValido_(dados.periodo);
+  if (periodo === null) return { ok: false, mensagem: "Período inválido." };
+
+  var dataEmi = declSoData_(dados.dataEmissao) || declHoje_();
+
+  var contexto = declContextoDiretor_interno_(diretor, opcoes);
+  var escolaId = declTexto_(dados.escolaId);
+  var escola = contexto.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
+
+  /* ESCOLHA MANUAL — a saída para quem o vínculo não acha.
+   *
+   * O vínculo liga Governança a Associados por nome normalizado idêntico.
+   * Basta um nome abreviado, um sobrenome faltando ou um nome social para
+   * o dirigente ficar SEM NENHUMA escola — e, até 15/09/2026, sem nenhuma
+   * forma de emitir. No Word sempre deu para fazer; o sistema não podia ser
+   * o que passou a impedir.
+   *
+   * A escola escolhida à mão vale, e fica gravada dizendo que foi escolhida
+   * à mão (coluna VINCULO_ORIGEM). É a REGRA Nº 0.6 nos dois sentidos: o
+   * sistema sugere o que sabe, e não esconde o que não sabia. */
+  if (!escola && escolaId) escola = declEscolaDoCadastro_(escolaId, diretor, opcoes);
+  if (!escola) return { ok: false, mensagem: "Selecione a escola empregadora do dirigente." };
+
+  var signatario = declSignatario_();
+  if (!signatario) {
+    return {
+      ok: false,
+      mensagem: "Não há Presidente com mandato vigente na composição de Governança — e declaração sem assinatura não vale nada. Corrija a composição em Governança antes de emitir."
+    };
+  }
+
+  return {
+    ok: true,
+    diretor: diretor,
+    signatario: signatario,
+    dataLiberacao: dataLib,
+    dataEmissao: dataEmi,
+    periodo: periodo,
+    contexto: contexto,
+    escola: escola,
+    texto: declMontarTexto_({
+      nome: diretor.nome,
+      cargo: diretor.cargo,
+      dataLiberacao: dataLib,
+      periodo: periodo
+    })
+  };
+}
+
+/**
+ * O que merece um alerta sem impedir a emissão.
+ *
+ * DATA PASSADA AVISA, NÃO BLOQUEIA — decisão do usuário em 15/09/2026, pelo
+ * mesmo motivo da duplicata: regularizar uma liberação que já aconteceu e
+ * ninguém documentou é caso real. Recusar obrigaria a resolver por fora do
+ * sistema, que é pior do que um documento com data antiga e registro.
+ *
+ * O que ele evita é o outro caso, muito mais comum: o engano de digitação
+ * que passaria despercebido.
+ */
+function declAvisos_(v) {
+  var avisos = [];
+  if (v.dataLiberacao < declHoje_()) {
+    avisos.push("A data da liberação (" + declDataBR_(v.dataLiberacao) + ") já passou. " +
+                "Confira se não foi engano de digitação — se for regularização, pode emitir.");
+  }
+  if (v.dataEmissao.getFullYear() !== new Date().getFullYear()) {
+    avisos.push("A data de emissão é de " + v.dataEmissao.getFullYear() +
+                ", então o número sairá na sequência daquele ano.");
+  }
+  return avisos;
+}
+
+/** Declarações já emitidas para o mesmo diretor no mesmo dia. */
+function declDuplicatas_(diretorId, dataLiberacao) {
+  var alvo = declDataBR_(dataLiberacao);
+  return declEmissoes_interno_().filter(function (e) {
+    return e.diretorId === declTexto_(diretorId) && e.dataLiberacao === alvo;
+  });
+}
+
+/* =========================================
+ * ENDPOINTS
+ * ========================================= */
+
+/** Dados de abertura da tela: quem pode receber declaração e quem assina. */
+function declDadosEmissao(tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var signatario = declSignatario_();
+    return {
+      ok: true,
+      /* EM ORDEM ALFABÉTICA — pedido do usuário em 15/09/2026, com a tela no
+         ar. A ordem de Governança é hierárquica (órgão, condição, ordem), que
+         é a certa para ler a composição e a errada para achar uma pessoa numa
+         lista de 26 nomes. Quem abre esta tela já sabe o nome de quem vai
+         liberar; o cargo continua ao lado para desempatar homônimo. */
+      diretores: declDiretoresHabilitados_().map(function (d) {
+        return { id: d.id, nome: d.nome, cargo: d.cargo, mandatoFim: d.mandatoFim };
+      }).sort(function (a, b) { return String(a.nome).localeCompare(String(b.nome), "pt-BR"); }),
+      periodos: Object.keys(DECL_PERIODOS)
+        .filter(function (k) { return !DECL_PERIODOS[k].legado; })
+        .map(function (k) { return { valor: k, rotulo: DECL_PERIODOS[k].rotulo }; }),
+      signatario: signatario ? { nome: signatario.nomeExibicao || signatario.nome, cargo: signatario.cargo } : null,
+      gestao: (typeof GOV_MANDATO !== "undefined") ? GOV_MANDATO.gestao : "",
+      hoje: declDataBR_(declHoje_())
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao carregar a tela: " + e.message, diretores: [] };
+  }
+}
+
+/** Prévia do texto. Não grava nada e não gera PDF. */
+function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var v = declValidarPedido_(dados, { semContatos: true });
+    if (!v.ok) return v;
+
+    var dup = declDuplicatas_(v.diretor.id, v.dataLiberacao);
+    return {
+      ok: true,
+      texto: v.texto,
+      avisos: declAvisos_(v),
+      cidadeData: DECL_CIDADE + ", " + declDataExtenso_(v.dataEmissao) + ".",
+      signatario: { nome: v.signatario.nomeExibicao || v.signatario.nome, cargo: v.signatario.cargo },
+      escola: v.escola,
+      duplicatas: dup.map(function (d) { return d.numero; })
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao montar a prévia: " + e.message };
+  }
+}
+
+/**
+ * O documento montado, sem gravar nada e sem gerar PDF.
+ *
+ * Mesma função que produz o PDF (`declHtmlDeclaracao_`), para a prévia não
+ * poder divergir do que sai assinado — prévia montada por outro caminho é
+ * prévia que mente. O número sai como "PRÉVIA" porque número só se consome
+ * na emissão, dentro do lock.
+ */
+function declPreviaDocumento(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var v = declValidarPedido_(dados, { semContatos: true });
+    if (!v.ok) return v;
+    return {
+      ok: true,
+      html: declHtmlDeclaracao_({
+        numero: "PRÉVIA",
+        texto: v.texto,
+        dataEmissao: v.dataEmissao,
+        signatario: v.signatario,
+        diretor: v.diretor
+      })
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao montar o documento: " + e.message };
+  }
+}
+
+/**
+ * Emite: gera o PDF, grava a linha e registra na trilha de auditoria.
+ *
+ * ORDEM PROPOSITAL — PDF primeiro, linha depois. Se o Drive falhar, nada é
+ * gravado e nenhum número é consumido (o número deriva das linhas). O
+ * contrário produziria declaração registrada sem documento, que é pior de
+ * descobrir do que um erro na hora.
+ */
+function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(20000)) {
+      return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
+    }
+
+    var v = declValidarPedido_(dados);
+    if (!v.ok) return v;
+
+    var dup = declDuplicatas_(v.diretor.id, v.dataLiberacao);
+    if (dup.length && (dados || {}).confirmado !== true) {
+      return {
+        ok: false,
+        precisaConfirmar: true,
+        duplicatas: dup.map(function (d) { return d.numero; }),
+        mensagem: "Já existe declaração para " + v.diretor.nome + " no dia " +
+                  declDataBR_(v.dataLiberacao) + " (nº " +
+                  dup.map(function (d) { return d.numero; }).join(", ") +
+                  "). Confirme para emitir outra via."
+      };
+    }
+
+    /* O NÚMERO SEGUE A DATA DE EMISSÃO, não o relógio.
+     *
+     * A data de emissão é editável — é ela que sai escrita no documento. Com
+     * o número vindo do ano corrente, emitir com data de 2025 produzia
+     * "00X/2026" num papel datado de 2025. Quem for conferir daqui a dois
+     * anos vai olhar a data, não o dia em que alguém digitou. Decisão do
+     * usuário em 15/09/2026. */
+    var numero = declProximoNumero_(v.dataEmissao.getFullYear());
+
+    var pdf = declGerarPdf_({
+      numero: numero,
+      texto: v.texto,
+      dataLiberacao: v.dataLiberacao,
+      dataEmissao: v.dataEmissao,
+      signatario: v.signatario,
+      diretor: v.diretor
+    });
+
+    var sh = declGarantirEmissoes_();
+    var mapa = declCabecalho_(sh);
+    var linha = sh.getLastRow() + 1;
+    var quem = declQuem_(sessao);
+
+    var valores = {
+      NUMERO: numero,
+      DIRETOR_ID: v.diretor.id,
+      DIRETOR_NOME: v.diretor.nome,
+      CARGO: v.diretor.cargo,
+      DATA_LIBERACAO: v.dataLiberacao,
+      PERIODO: v.periodo,
+      DATA_EMISSAO: v.dataEmissao,
+      SIGNATARIO: v.signatario.nome,
+      TEXTO: v.texto,
+      PDF_ID: pdf.id,
+      PDF_URL: pdf.url,
+      EMITIDO_POR: quem,
+      EMITIDO_EM: new Date(),
+      GESTAO: v.diretor.gestao || "",
+      ORGAO: v.diretor.orgao || "",
+      CONDICAO: v.diretor.condicao || "",
+      ESCOLA_ID: v.escola.escolaId,
+      ESCOLA_NOME: v.escola.nome,
+      ESCOLA_DOCUMENTO: v.escola.documento || "",
+      VINCULO_ORIGEM: v.escola.vinculoOrigem || "",
+      CONTATOS_ORIGEM: JSON.stringify(v.escola.contatos || []),
+      EMAIL_STATUS: "AGUARDANDO_CONFERENCIA",
+      WHATSAPP_STATUS: "NAO_PREPARADO"
+    };
+    Object.keys(valores).forEach(function (k) {
+      if (mapa[k]) sh.getRange(linha, mapa[k]).setValue(valores[k]);
+    });
+
+    declAuditar_({
+      sessao: sessao,
+      registroId: numero,
+      acao: "DECLARACAO_DIRETOR_EMITIDA",
+      documento: pdf.url,
+      valorNovo: v.diretor.nome + " · " + declDataBR_(v.dataLiberacao) +
+                 " · " + (DECL_PERIODOS[v.periodo] || DECL_PERIODOS[""]).rotulo
+    });
+
+    return {
+      ok: true,
+      numero: numero,
+      url: pdf.url,
+      texto: v.texto,
+      escola: v.escola,
+      emailStatus: "AGUARDANDO_CONFERENCIA",
+      mensagem: "Declaração " + numero + " emitida."
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao emitir: " + e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (eRel) {}
+  }
+}
+
+/* =========================================
+ * VÍNCULO, ESCOLA E ENTREGA
+ * ========================================= */
+
+/* ════════════════════════════════════════════════════════════════════════
+ * MEMÓRIA DE EXECUÇÃO — por que estas três variáveis existem
+ *
+ * O usuário relatou em 15/09/2026, com a tela no ar: "está demorando buscar
+ * os empregadores". Estava, e dava para medir por leitura:
+ *
+ *   `declContatosEscola_` lia a aba Controle INTEIRA — todas as linhas, todas
+ *   as colunas — UMA VEZ PARA CADA ESCOLA candidata. Um dirigente com três
+ *   vínculos custava três varreduras completas da maior aba do sistema. E
+ *   `ofDest_historico_` era consultado de novo a cada e-mail repetido.
+ *
+ * O escopo global do Apps Script morre no fim de cada execução, então isto
+ * NÃO é cache entre chamadas — é memória de UMA chamada. Não há o que
+ * invalidar e não há risco de servir dado velho: a próxima execução começa
+ * com tudo vazio de novo.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+var DECL_MEMO_CONTROLE = null;   /* índice escola normalizada -> e-mails      */
+var DECL_MEMO_ESCOLAS  = null;   /* cadastro de Escolas já lido                */
+var DECL_MEMO_HISTORICO = {};    /* e-mail -> falhas/confirmações dos Ofícios   */
+var DECL_MEMO_ASSOCIADOS = null; /* a base inteira, lida uma vez                */
+var DECL_MEMO_CELULAR = {};      /* dirigente -> celular achado em Associados   */
+
+/**
+ * A base de Associados, lida uma vez por execução.
+ *
+ * São ~8.000 linhas. Sem isto, `declBuscarEscolas` lia a base INTEIRA uma vez
+ * por escola encontrada — até 12 varreduras numa busca só, porque o telefone
+ * do dirigente era procurado dentro do laço das escolas. Foi a segunda vez
+ * que o usuário relatou lentidão na busca, em 15/09/2026, e o culpado era
+ * este.
+ */
+function declAssociados_() {
+  if (DECL_MEMO_ASSOCIADOS) return DECL_MEMO_ASSOCIADOS;
+  DECL_MEMO_ASSOCIADOS = (typeof assoc_todos_ === "function") ? (assoc_todos_() || []) : [];
+  return DECL_MEMO_ASSOCIADOS;
+}
+
+/** O cadastro de Escolas, lido uma vez por execução. */
+function declEscolas_() {
+  if (DECL_MEMO_ESCOLAS) return DECL_MEMO_ESCOLAS;
+  DECL_MEMO_ESCOLAS = (typeof listarEscolasCadastro_interno_ === "function")
+    ? (listarEscolasCadastro_interno_() || []) : [];
+  return DECL_MEMO_ESCOLAS;
+}
+
+/**
+ * A aba Controle virada do avesso: de "linhas" para "escola → e-mails".
+ *
+ * Uma varredura só, na primeira escola que precisar. Da segunda em diante é
+ * consulta em objeto.
+ */
+function declControleIndex_() {
+  if (DECL_MEMO_CONTROLE) return DECL_MEMO_CONTROLE;
+  DECL_MEMO_CONTROLE = {};
+  try {
+    var sh = declPlanilha_().getSheetByName(
+      (typeof PLANILHA_REGISTRO !== "undefined" && PLANILHA_REGISTRO) || "Controle");
+    if (!sh || sh.getLastRow() < 2) return DECL_MEMO_CONTROLE;
+
+    var hm = declCabecalho_(sh);
+    var cEscola = hm.ESCOLA || hm["ESCOLA (RAZÃO SOCIAL)"] || hm.UNIDADE;
+    var cEmails = hm.EMAILS_TODOS || hm["E-MAILS (TODOS)"] || hm.EMAIL || hm["E-MAIL"];
+    if (!cEscola || !cEmails) return DECL_MEMO_CONTROLE;
+
+    sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues().forEach(function (l) {
+      var chave = declNormalizar_(l[cEscola - 1]);
+      if (!chave) return;
+      if (!DECL_MEMO_CONTROLE[chave]) DECL_MEMO_CONTROLE[chave] = [];
+      DECL_MEMO_CONTROLE[chave].push(l[cEmails - 1]);
+    });
+  } catch (e) {
+    Logger.log("Declaração: leitura da Controle indisponível — " + e.message);
+  }
+  return DECL_MEMO_CONTROLE;
+}
+
+/** Histórico de entrega do e-mail, perguntado uma vez por execução. */
+function declHistoricoEmail_(email) {
+  if (Object.prototype.hasOwnProperty.call(DECL_MEMO_HISTORICO, email)) return DECL_MEMO_HISTORICO[email];
+  var h = { falhas: 0, confirmacoes: 0 };
+  try {
+    if (typeof ofDest_historico_ === "function") {
+      var r = ofDest_historico_(email) || {};
+      h = { falhas: r.falhas || 0, confirmacoes: r.confirmacoes || 0 };
+    }
+  } catch (e) {}
+  DECL_MEMO_HISTORICO[email] = h;
+  return h;
+}
+
+function declNormalizar_(v) {
+  return String(v || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function declContextoDiretor_interno_(diretor, opcoes) {
+  opcoes = opcoes || {};
+  if (typeof assoc_todos_ !== "function") throw new Error("A base de Associados não está disponível.");
+  var chave = declNormalizar_(diretor && diretor.nome);
+  var associados = declAssociados_().filter(function (a) { return declNormalizar_(a.nome) === chave; });
+  var escolas = declEscolas_();
+  var porId = {};
+
+  associados.forEach(function (a) {
+    var esc = declNormalizar_(a.escola);
+    if (!esc) return;
+    var candidatas = escolas.filter(function (e) {
+      return [e.NomeEscola, e.Fantasia, e.escola, e.CodigoInterno]
+        .some(function (n) { return declNormalizar_(n) === esc; });
+    });
+    candidatas.forEach(function (e) {
+      var id = declTexto_(e.escolaId || e.EscolaID || e.linha);
+      if (!id || porId[id]) return;
+      porId[id] = {
+        escolaId: id,
+        nome: declTexto_(e.NomeEscola || e.escola),
+        fantasia: declTexto_(e.Fantasia),
+        documento: declTexto_(e.CNPJ || e.cnpj),
+        vinculoOrigem: "Associados",
+        telefoneDiretor: declTexto_(a.celular),
+        contatos: opcoes.semContatos ? [] : declContatosEscola_(e)
+      };
+    });
+  });
+
+  return { diretorId: diretor.id, associadosEncontrados: associados.length, vinculos: Object.keys(porId).map(function (k) { return porId[k]; }) };
+}
+
+/**
+ * O celular do dirigente, achado em Associados pelo nome.
+ *
+ * Fora de `declContextoDiretor_interno_` de propósito: o telefone é da
+ * PESSOA, não do vínculo com a escola. Preso ao vínculo, o WhatsApp deixava
+ * de funcionar justamente para quem precisou escolher a escola à mão.
+ */
+function declCelularDoDiretor_(diretor) {
+  var chave = declNormalizar_(diretor && diretor.nome);
+  if (!chave) return "";
+  /* Procurado uma vez por dirigente, não uma vez por escola da busca. */
+  if (Object.prototype.hasOwnProperty.call(DECL_MEMO_CELULAR, chave)) return DECL_MEMO_CELULAR[chave];
+  var fone = "";
+  try {
+    var achados = declAssociados_().filter(function (a) {
+      return declNormalizar_(a.nome) === chave && String(a.celular || "").replace(/\D/g, "").length >= 10;
+    });
+    fone = achados.length ? declTexto_(achados[0].celular) : "";
+  } catch (e) {
+    Logger.log("DeclaracaoDiretor: celular do dirigente indisponível — " + e.message);
+  }
+  DECL_MEMO_CELULAR[chave] = fone;
+  return fone;
+}
+
+/** Uma escola do cadastro no mesmo formato de um vínculo, marcada como manual. */
+function declEscolaDoCadastro_(escolaId, diretor, opcoes) {
+  escolaId = declTexto_(escolaId);
+  var achadas = declEscolas_().filter(function (e) {
+    return declTexto_(e.escolaId || e.EscolaID || e.linha) === escolaId;
+  });
+  if (!achadas.length) return null;
+  return declEscolaComoVinculo_(achadas[0], diretor, "Escolhida manualmente", opcoes);
+}
+
+function declEscolaComoVinculo_(e, diretor, origem, opcoes) {
+  opcoes = opcoes || {};
+  return {
+    escolaId: declTexto_(e.escolaId || e.EscolaID || e.linha),
+    nome: declTexto_(e.NomeEscola || e.escola),
+    fantasia: declTexto_(e.Fantasia || e.fantasia),
+    documento: declTexto_(e.CNPJ || e.cnpj),
+    vinculoOrigem: origem,
+    telefoneDiretor: opcoes.semContatos ? "" : declCelularDoDiretor_(diretor),
+    contatos: opcoes.semContatos ? [] : declContatosEscola_(e)
+  };
+}
+
+/**
+ * Busca no cadastro de Escolas, para quando o vínculo não achou nada.
+ *
+ * Reaproveita `buscarEscolasPorTermo_interno_` (BuscaEscola.gs), que já
+ * pontua nome, fantasia, CNPJ, cidade e e-mail — reimplementar busca de
+ * escola aqui seria uma segunda regra de pesquisa se afastando da primeira.
+ */
+function declBuscarEscolas(termo, diretorId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    if (typeof buscarEscolasPorTermo_interno_ !== "function") {
+      return { ok: false, escolas: [], mensagem: "A busca de escolas não está disponível neste projeto." };
+    }
+    termo = declTexto_(termo);
+    if (termo.length < 2) return { ok: true, escolas: [] };
+
+    var diretor = declDiretorPorId_(diretorId);
+    /* SEM CONTATOS NA BUSCA. Uma lista de 12 resultados custava 12 leituras
+       da aba Controle e do histórico de cada e-mail — para uma lista em que a
+       pessoa só vai escolher UMA. Os contatos entram na emissão, que é onde
+       eles viram a trava de destinatário. */
+    var achadas = (buscarEscolasPorTermo_interno_(termo) || []).slice(0, 12).map(function (e) {
+      return declEscolaComoVinculo_(e, diretor, "Escolhida manualmente", { semContatos: true });
+    }).filter(function (v) { return !!v.escolaId; });
+
+    return { ok: true, escolas: achadas };
+  } catch (e) {
+    return { ok: false, escolas: [], mensagem: "Erro na busca: " + e.message };
+  }
+}
+
+function declContatosEscola_(escola) {
+  var mapa = {};
+  function juntar(valor, origem) {
+    String(valor || "").split(/[;,\n]/).forEach(function (email) {
+      email = String(email || "").trim().toLowerCase();
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+      if (!mapa[email]) mapa[email] = { email: email, origens: [], falhas: 0, confirmacoes: 0 };
+      if (mapa[email].origens.indexOf(origem) < 0) mapa[email].origens.push(origem);
+      var h = declHistoricoEmail_(email);
+      mapa[email].falhas = h.falhas;
+      mapa[email].confirmacoes = h.confirmacoes;
+    });
+  }
+  juntar(escola.Email || escola.email, "Escolas · principal");
+  juntar(escola.EmailsTodos, "Escolas · todos");
+  /* A Controle pode conter endereços usados depois da última atualização do
+     cadastro. O índice já está pronto — ver DECL_MEMO_CONTROLE. */
+  var indice = declControleIndex_();
+  [escola.NomeEscola, escola.escola, escola.Fantasia, escola.CodigoInterno]
+    .map(declNormalizar_).filter(Boolean)
+    .forEach(function (alvo) {
+      (indice[alvo] || []).forEach(function (emails) { juntar(emails, "Controle · histórico"); });
+    });
+  /* Falhas e confirmações vêm da mesma memória usada pelos Ofícios; assim o
+     conhecimento operacional não é duplicado. */
+  return Object.keys(mapa).map(function (k) {
+    var c = mapa[k]; c.marcado = c.falhas === 0; return c;
+  });
+}
+
+function declContextoDiretor(diretorId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  var diretor = declDiretorPorId_(diretorId);
+  if (!diretor || diretor.fonte !== "GOVERNANCA") return { ok: false, mensagem: "Dirigente vigente não encontrado em Governança." };
+  var r = declContextoDiretor_interno_(diretor); r.ok = true; return r;
+}
+
+function declAcharEmissao_(numero) {
+  var sh = declGarantirEmissoes_(), hm = declCabecalho_(sh);
+  if (sh.getLastRow() < 2) return null;
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  for (var i = 0; i < dados.length; i++) if (declTexto_(dados[i][hm.NUMERO - 1]) === declTexto_(numero)) return { sh: sh, hm: hm, linha: i + 2, valores: dados[i] };
+  return null;
+}
+
+/**
+ * Reabre a entrega de uma declaração já emitida — só lê, não envia nada.
+ *
+ * OS CONTATOS SAEM DA LINHA, não de uma nova varredura de Associados e
+ * Escolas. É a conferência congelada no dia da emissão, que é exatamente o
+ * conjunto que `declEnviarEmail` aceita logo abaixo. Reconsultar o cadastro
+ * aqui traria endereços que ninguém conferiu para dentro de um documento
+ * assinado — e ainda faria a trava de destinatário divergir da tela.
+ *
+ * Existe porque, até 15/09/2026, a entrega só aparecia logo depois de emitir:
+ * fechar a tela deixava a declaração parada em AGUARDANDO_CONFERENCIA sem
+ * nenhum caminho de volta.
+ */
+function declEntregaDeclaracao(numero, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var achado = declAcharEmissao_(numero);
+    if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+
+    function campo(nome) {
+      return achado.hm[nome] ? declTexto_(achado.valores[achado.hm[nome] - 1]) : "";
+    }
+
+    var contatos = [];
+    try {
+      contatos = JSON.parse(campo("CONTATOS_ORIGEM") || "[]") || [];
+    } catch (eJson) {
+      contatos = [];
+    }
+
+    return {
+      ok: true,
+      numero: campo("NUMERO"),
+      diretorNome: campo("DIRETOR_NOME"),
+      escola: {
+        escolaId: campo("ESCOLA_ID"),
+        nome: campo("ESCOLA_NOME"),
+        documento: campo("ESCOLA_DOCUMENTO"),
+        vinculoOrigem: campo("VINCULO_ORIGEM"),
+        contatos: contatos
+      },
+      pdfUrl: campo("PDF_URL"),
+      /* O assunto e o corpo saem das mesmas funções do envio — a aba de
+         preview mostra o e-mail de verdade, não uma segunda redação dele. */
+      emailAssunto: declAssuntoEmail_(campo("NUMERO"), campo("DIRETOR_NOME")),
+      emailCorpo: declCorpoEmail_({
+        numero:        campo("NUMERO"),
+        nome:          campo("DIRETOR_NOME"),
+        escola:        campo("ESCOLA_NOME"),
+        dataLiberacao: declDataBR_(achado.valores[achado.hm.DATA_LIBERACAO - 1]),
+        periodoRotulo: (DECL_PERIODOS[campo("PERIODO")] || DECL_PERIODOS[""]).rotulo,
+        ambiente:      String((typeof getAmbienteAtual === "function" ? getAmbienteAtual() : "producao") || "").toLowerCase(),
+        destinoReal:   campo("EMAILS_USADOS") || "(os que você marcar)"
+      }),
+      emailStatus: campo("EMAIL_STATUS"),
+      emailsUsados: campo("EMAILS_USADOS"),
+      whatsappStatus: campo("WHATSAPP_STATUS")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao abrir a entrega: " + e.message };
+  }
+}
+
+function declAssuntoEmail_(numero, nome) {
+  return "Declaração " + numero + " — " + nome;
+}
+
+/**
+ * O corpo do e-mail. UMA função, usada pela prévia e pelo envio.
+ *
+ * O modal de envio do ofício monta a prévia no cliente, a partir de um texto
+ * escrito de novo no JavaScript. Funciona, mas cria duas versões da mesma
+ * mensagem, que envelhecem separadas — prévia que mente é pior do que prévia
+ * nenhuma. Aqui a tela exibe exatamente a string que o Gmail vai receber.
+ */
+function declCorpoEmail_(p) {
+  p = p || {};
+  var ambiente = String(p.ambiente || "").toLowerCase();
+  var numero   = declEscapar_(p.numero || "");
+  var nome     = declEscapar_(p.nome || "");
+  var escola   = declEscapar_(p.escola || "");
+  var data     = declEscapar_(p.dataLiberacao || "");
+  var periodo  = declEscapar_(p.periodoRotulo || "Integral");
+  var saudacao = (typeof saudacaoHoraBR_ === "function") ? saudacaoHoraBR_() : "Olá";
+
+  function linhaQuadro(rotulo, valor) {
+    if (!valor) return "";
+    return "<tr>" +
+      "<td style='padding:7px 14px 7px 0;font-size:11px;font-weight:800;color:#64748b;" +
+      "text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;vertical-align:top;'>" +
+      rotulo + "</td>" +
+      "<td style='padding:7px 0;font-size:13.5px;font-weight:700;color:#0f172a;'>" + valor + "</td>" +
+      "</tr>";
+  }
+
+  var html =
+    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
+
+    /* Cabeçalho institucional — mesmo do ofício, com o número à direita. */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);padding:22px 28px 20px;border-radius:8px 8px 0 0;'>" +
+    "<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:20px;'>" +
+    "<div style='border-left:4px solid #C9A84C;padding-left:16px;'>" +
+    "<div style='font-size:21px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
+    "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;'>Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+    "<div style='font-size:10.5px;font-weight:800;color:#C9A84C;margin-top:6px;'>CNPJ: 31.815.780/0001-51</div></div>" +
+    "<div style='text-align:right;'><div style='font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;'>Declaração Nº</div>" +
+    "<div style='font-size:26px;font-weight:900;color:#C9A84C;'>" + numero + "</div></div></div>" +
+    "<div style='height:1px;background:rgba(201,168,76,.25);margin:16px 0 14px;'></div>" +
+    "<div style='display:inline-flex;align-items:center;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.35);color:#C9A84C;font-size:11px;font-weight:800;padding:5px 14px;border-radius:999px;text-transform:uppercase;'>Liberação Sindical</div>" +
+    "</div>" +
+
+    "<div style='background:#fff;padding:28px 28px 24px;border:1px solid #e2e8f0;border-top:none;'>" +
+    "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + "! Tudo bem?</p>" +
+    "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+    "<p style='margin:0 0 14px 0;'>Encaminhamos, em anexo, a <strong>Declaração nº " + numero +
+    "</strong> de liberação sindical do(a) dirigente <strong>" + nome + "</strong>.</p>" +
+    "</div>" +
+
+    /* O QUADRO DE CONFERÊNCIA. Repete o que está no PDF de propósito: quem
+       recebe é o RH da escola, que lê no celular e precisa da data e do
+       período na mão para se organizar sem abrir anexo. */
+    "<table style='width:100%;border-collapse:collapse;margin:4px 0 18px;padding:0;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #001f4d;border-radius:8px;'>" +
+    "<tbody style='display:table;width:100%;padding:6px 16px;'>" +
+    linhaQuadro("Dirigente", nome) +
+    linhaQuadro("Liberação", data) +
+    linhaQuadro("Período", periodo) +
+    linhaQuadro("Instituição", escola) +
+    "</tbody></table>" +
+
+    "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+    "<p style='margin:0;'>Nos termos do <strong>Artigo 543 da CLT</strong>, requeremos a liberação do(a) empregado(a) " +
+    "para o pleno exercício de seu mandato sindical, conforme lhe assegura a lei.</p></div>" +
+
+    "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;font-size:13px;font-weight:700;color:#1e3a8a;'>" +
+    "⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div>" +
+
+    /* Rodapé e assinatura: o padrão do ofício, por decisão sua em 16/09/2026
+       — "a assinatura é a Marcelha e deve continuar igual ao ofício". */
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
+    "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:18px;'></div>" +
+    "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
+    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>Administrativo &amp; Secretaria — SindEducação-ES</div>" +
+    "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
+    "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+    "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
+    "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
+    "</div>" +
+    "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>Documento gerado pelo SISGEP · SindEducação-ES</div>" +
+    "</div></div>";
+
+  if (ambiente === "homologacao") {
+    html = "<p style='font-family:Segoe UI,Arial,sans-serif;'><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " +
+           declEscapar_(p.destinoReal || "") + "</p>" + html;
+  }
+  return html;
+}
+
+/**
+ * Inclui um destinatário na conferência desta declaração.
+ *
+ * POR QUE PRECISA EXISTIR. `declEnviarEmail` recusa endereço fora de
+ * CONTATOS_ORIGEM — é a trava contra alguém injetar destinatário pela tela.
+ * Mas a secretaria precisa poder mandar para um endereço que o cadastro não
+ * tem: o RH mudou, a escola deu outro contato na hora. Sem esta porta, a
+ * trava viraria um "não" burro e a pessoa resolveria por fora do sistema,
+ * que é o que nenhuma trava deve provocar.
+ *
+ * A diferença entre incluir e injetar é o REGISTRO: o endereço entra na
+ * linha com origem "Incluído no envio" e vai para a trilha de auditoria, com
+ * o nome de quem incluiu. Depois disso ele é um destinatário conferido como
+ * qualquer outro.
+ */
+function declIncluirContato(numero, email, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var achado = declAcharEmissao_(numero);
+    if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+
+    email = declTexto_(email).toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return { ok: false, mensagem: "E-mail inválido." };
+    }
+
+    var contatos = [];
+    try { contatos = JSON.parse(declTexto_(achado.valores[achado.hm.CONTATOS_ORIGEM - 1]) || "[]") || []; }
+    catch (eJson) { contatos = []; }
+
+    if (contatos.some(function (c) { return String(c.email || "").toLowerCase() === email; })) {
+      return { ok: false, mensagem: "Esse e-mail já está na lista.", contatos: contatos };
+    }
+
+    var h = declHistoricoEmail_(email);
+    contatos.push({
+      email: email,
+      origens: ["Incluído no envio"],
+      falhas: h.falhas,
+      confirmacoes: h.confirmacoes,
+      marcado: true
+    });
+
+    achado.sh.getRange(achado.linha, achado.hm.CONTATOS_ORIGEM).setValue(JSON.stringify(contatos));
+    declAuditar_({
+      sessao: sessao, registroId: numero,
+      acao: "DECLARACAO_DESTINATARIO_INCLUIDO",
+      documento: email, valorNovo: declQuem_(sessao)
+    });
+
+    return { ok: true, contatos: contatos, mensagem: "E-mail incluído na conferência desta declaração." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao incluir: " + e.message };
+  }
+}
+
+function declEnviarEmail(numero, emails, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  var achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var validacao = validarListaEmails_(Array.isArray(emails) ? emails.join(";") : emails);
+  if (!validacao.ok || !validacao.emails.length) return { ok: false, mensagem: "Selecione ao menos um e-mail válido." };
+  var permitidos = [];
+  try {
+    permitidos = JSON.parse(declTexto_(achado.valores[achado.hm.CONTATOS_ORIGEM - 1]) || "[]")
+      .map(function (c) { return String(c.email || "").trim().toLowerCase(); });
+  } catch (eContatos) {}
+  var foraDaConferencia = validacao.emails.filter(function (e) { return permitidos.indexOf(String(e).toLowerCase()) < 0; });
+  if (foraDaConferencia.length) return { ok: false, mensagem: "Destinatário não pertence à conferência desta declaração." };
+
+  var ambiente = String(getAmbienteAtual() || "producao").toLowerCase();
+  var destinoReal = validacao.todos;
+  var destinoEnvio = ambiente === "homologacao" ? OFICIOS_HML_EMAIL_PADRAO_TESTE : destinoReal;
+  var pdfId = declTexto_(achado.valores[achado.hm.PDF_ID - 1]);
+  var nome = declTexto_(achado.valores[achado.hm.DIRETOR_NOME - 1]);
+  var escola = declTexto_(achado.valores[achado.hm.ESCOLA_NOME - 1]);
+  var assunto = declAssuntoEmail_(numero, nome);
+  var html = declCorpoEmail_({
+    numero:        numero,
+    nome:          nome,
+    escola:        escola,
+    dataLiberacao: declDataBR_(achado.valores[achado.hm.DATA_LIBERACAO - 1]),
+    periodoRotulo: (DECL_PERIODOS[declTexto_(achado.valores[achado.hm.PERIODO - 1])] || DECL_PERIODOS[""]).rotulo,
+    ambiente:      ambiente,
+    destinoReal:   destinoReal
+  });
+  try {
+    var op = montarOpcoesEmailSISGEP_(declQuem_(sessao), html, [DriveApp.getFileById(pdfId).getBlob()], assunto, destinoEnvio);
+    /* GmailApp, e não MailApp: o MailApp IGNORA o `from` em silêncio, e por
+       isso a declaração saía da conta executora mesmo com o alias da
+       Secretaria configurado. Ver enviarComoRascunhoSISGEP_. */
+    enviarComoRascunhoSISGEP_(op, "Segue, em anexo, a declaração " + numero + ".");
+    achado.sh.getRange(achado.linha, achado.hm.EMAILS_USADOS).setValue(destinoReal);
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue(ambiente === "homologacao" ? "TESTE_HML_ENVIADO" : "ENVIADO");
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_ENVIADO_EM).setValue(new Date());
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_ENVIADO_POR).setValue(declQuem_(sessao));
+    declAuditar_({ sessao: sessao, registroId: numero, acao: "DECLARACAO_EMAIL_ENVIADO", documento: escola, valorNovo: ambiente === "homologacao" ? "TESTE_HML" : "ENVIADO" });
+    return { ok: true, mensagem: ambiente === "homologacao" ? "Teste enviado à Secretaria. A escola real não recebeu." : "Declaração enviada à escola.", destinoReal: destinoReal, destinoUtilizado: destinoEnvio };
+  } catch (e) {
+    achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue("ERRO");
+    return { ok: false, mensagem: "Falha no envio: " + e.message };
+  }
+}
+
+function declPrepararWhatsapp(numero, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var diretor = declDiretorPorId_(declTexto_(achado.valores[achado.hm.DIRETOR_ID - 1]));
+  /* O telefone é da pessoa, não do vínculo — ver declCelularDoDiretor_. */
+  var fone = String(declCelularDoDiretor_(diretor) || "").replace(/\D/g, "");
+  if (fone.length < 10) return { ok: false, mensagem: "O diretor não possui celular válido em Associados." };
+  if (fone.length <= 11) fone = "55" + fone;
+  var urlPdf = declTexto_(achado.valores[achado.hm.PDF_URL - 1]);
+  var msg = "Olá! A declaração " + numero + " foi emitida para ciência. PDF: " + urlPdf;
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_STATUS).setValue("PREPARADO");
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_EM).setValue(new Date());
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_POR).setValue(declQuem_(sessao));
+  return { ok: true, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(msg), mensagem: msg };
+}
+
+function declConfirmarWhatsapp(numero, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
+  if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+  var atual = declTexto_(achado.valores[achado.hm.WHATSAPP_STATUS - 1]);
+  if (atual !== "PREPARADO") return { ok: false, mensagem: "Prepare a mensagem antes de confirmar o envio." };
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_STATUS).setValue("ENVIADO_CONFIRMADO");
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_EM).setValue(new Date());
+  achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_POR).setValue(declQuem_(sessao));
+  declAuditar_({ sessao: sessao, registroId: numero, acao: "DECLARACAO_WHATSAPP_CONFIRMADO" });
+  return { ok: true, mensagem: "Ciência por WhatsApp registrada." };
+}
+
+/**
+ * Manda declarações para a lixeira. Reversível.
+ *
+ * O QUE ORIGINOU (15/09/2026): "estou fazendo de teste, às vezes erramos e
+ * precisamos excluir". Emissão de teste e emissão errada precisam sair da
+ * lista sem virar pedido de suporte para alguém mexer na planilha à mão.
+ *
+ * TRÊS DECISÕES DO USUÁRIO, tomadas com as alternativas à vista:
+ *
+ *   • O PDF FICA NO DRIVE. Documento assinado que já saiu existe no mundo;
+ *     apagar o arquivo não desfaz isso, só destrói a prova. O registro na
+ *     lixeira guarda o link, então dá para reencontrar.
+ *   • DECLARAÇÃO JÁ ENVIADA PODE SAIR, com aviso destacado na tela. Mesmo
+ *     princípio da duplicata: avisar em vez de proibir, porque recusar
+ *     empurra a pessoa a resolver por fora do sistema.
+ *   • SÓ ADMINISTRADOR. Emitir e entregar seguem com o módulo Documentos;
+ *     excluir é a única ação da tela que remove histórico.
+ *
+ * Usa `lixeiraMoverVarias_` (Lixeira.gs), que é o padrão da casa: move para a
+ * aba de lixeira com metadado de quem e quando, permite restaurar, e tem teto
+ * de lote que RECUSA em vez de cortar pela metade — excluir 50 de 300 e
+ * avisar "50 excluídas" deixaria quem pediu achando que as 300 saíram.
+ */
+function declExcluirDeclaracoes(numeros, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", true);
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) {
+      return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
+    }
+
+    numeros = (Array.isArray(numeros) ? numeros : [numeros])
+      .map(declTexto_).filter(Boolean);
+    if (!numeros.length) return { ok: false, mensagem: "Nenhuma declaração selecionada." };
+
+    var sh = declGarantirEmissoes_();
+    var hm = declCabecalho_(sh);
+    if (sh.getLastRow() < 2) return { ok: false, mensagem: "Não há declarações para excluir." };
+
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    var linhas = [], achados = [], naoAchados = [];
+
+    numeros.forEach(function (numero) {
+      var achou = false;
+      for (var i = 0; i < dados.length; i++) {
+        if (declTexto_(dados[i][hm.NUMERO - 1]) !== numero) continue;
+        linhas.push(i + 2);
+        achados.push({
+          numero: numero,
+          diretor: declTexto_(dados[i][hm.DIRETOR_NOME - 1]),
+          emailStatus: declTexto_(dados[i][hm.EMAIL_STATUS - 1])
+        });
+        achou = true;
+        break;
+      }
+      if (!achou) naoAchados.push(numero);
+    });
+
+    if (!linhas.length) {
+      return { ok: false, mensagem: "Nenhuma das declarações informadas foi encontrada." };
+    }
+
+    if (typeof lixeiraMoverVarias_ !== "function") {
+      return { ok: false, mensagem: "O módulo de Lixeira não está disponível neste projeto." };
+    }
+
+    var r = lixeiraMoverVarias_(sh, linhas, { sessao: sessao, origem: "Declarações" });
+    if (!r.ok) return { ok: false, mensagem: r.mensagem };
+
+    achados.forEach(function (a) {
+      declAuditar_({
+        sessao: sessao, registroId: a.numero,
+        acao: "DECLARACAO_EXCLUIDA",
+        documento: a.diretor,
+        valorNovo: "entrega estava em " + (a.emailStatus || "—") + " · reversível pela Lixeira"
+      });
+    });
+
+    return {
+      ok: true,
+      excluidas: r.movidas,
+      naoAchados: naoAchados,
+      mensagem: r.movidas + " declaração(ões) excluída(s). Dá para restaurar pela Lixeira." +
+                (naoAchados.length ? " Não encontrada(s): " + naoAchados.join(", ") + "." : "")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao excluir: " + e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (eRel) {}
+  }
+}
+
+function declHistoricoDeclaracoes(filtros, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    filtros = filtros || {};
+    var busca = declTexto_(filtros.busca).toUpperCase();
+    var de    = declSoData_(filtros.de);
+    var ate   = declSoData_(filtros.ate);
+
+    var itens = declEmissoes_interno_().filter(function (e) {
+      if (busca) {
+        var alvo = (e.diretorNome + " " + e.numero + " " + e.dataLiberacao).toUpperCase();
+        if (alvo.indexOf(busca) < 0) return false;
+      }
+      if (de || ate) {
+        var d = declSoData_(e.dataLiberacao);
+        if (!d) return false;
+        if (de && d < de) return false;
+        if (ate && d > ate) return false;
+      }
+      return true;
+    });
+
+    itens.reverse(); // mais recente primeiro
+    return { ok: true, itens: itens, total: itens.length };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao listar: " + e.message, itens: [] };
+  }
+}
+
+/* =========================================
+ * PDF
+ * ========================================= */
+
+/**
+ * Gera o PDF e devolve { id, url }.
+ *
+ * Isolada de propósito: é a única parte do fluxo que depende de Drive e do
+ * conversor de HTML, que o emulador de teste não reproduz. Separada assim, o
+ * teste cobre número, texto, duplicata, registro e auditoria de verdade, e o
+ * PDF em si fica honestamente marcado como "não testado" até alguém emitir
+ * uma declaração no ar.
+ */
+function declGerarPdf_(p) {
+  p = p || {};
+  var html = declHtmlDeclaracao_(p);
+  var nome = declNomeArquivo_(p);
+
+  var blob = HtmlService.createHtmlOutput(html)
+    .getBlob()
+    .getAs("application/pdf")
+    .setName(nome + ".pdf");
+
+  var pasta = declPastaDestino_();
+  var arquivo = pasta.createFile(blob);
+
+  try {
+    if (typeof arquivoAplicarPolitica_ === "function") {
+      arquivoAplicarPolitica_(arquivo, "Declaração de Diretor " + p.numero);
+    }
+  } catch (e) {
+    Logger.log("DeclaracaoDiretor: política de compartilhamento falhou — " + e.message);
+  }
+
+  return { id: arquivo.getId(), url: arquivo.getUrl() };
+}
+
+/**
+ * O NOME DO ARQUIVO NO DRIVE: nominal, com data, e achável.
+ *
+ * Pedido do usuário em 15/09/2026: "declaração tem que ser salva nominal e
+ * com data". O nome antigo era "Declaracao_001-2026_Wanderson" — só o
+ * primeiro nome e sem a data da liberação, o que obriga a abrir o arquivo
+ * para saber de quem é e de quando.
+ *
+ * O formato segue a convenção dos Ofícios (montarNomeArquivoOficio_,
+ * HelperOficios.gs): tipo, número, de quem, e a data. A data é a DA
+ * LIBERAÇÃO, não a da emissão — é o dia que o documento afirma, e é por ele
+ * que alguém procura. O modelo em papel que originou isto se chama
+ * "DECLARAÇÃO 17.09.2026", com a data da liberação.
+ *
+ *   Declaração 001-2026 - MARCILENE DA SILVA MAGESKE - 17.09.2026.pdf
+ *
+ * Caracteres que o Drive e o Windows recusam em nome de arquivo saem; o
+ * nome é limitado para não estourar em dirigente de nome longo.
+ */
+function declNomeArquivo_(p) {
+  p = p || {};
+
+  function limpar(v) {
+    return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
+  }
+
+  var quem = limpar(p.diretor && p.diretor.nome);
+  if (quem.length > 70) quem = quem.slice(0, 70).trim();
+
+  var d = declParaData_(p.dataLiberacao) || declParaData_(p.dataEmissao);
+  var data = d
+    ? ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + d.getFullYear()
+    : "";
+
+  var partes = ["Declaração " + String(p.numero || "").replace("/", "-")];
+  if (quem) partes.push(quem);
+  if (data) partes.push(data);
+  return partes.join(" - ");
+}
+
+/**
+ * O documento em si. Espelha o modelo em papel: título centralizado, corpo
+ * justificado, citação do art. 543 recuada e menor, fecho, cidade/data e
+ * assinatura.
+ */
+/**
+ * Logo e assinatura em base64, prontas para entrar no HTML.
+ *
+ * 🚨 O LOGO DO `carregarImagensRecibo_` É UM PDF. Medido em 15/09/2026 pelo
+ * metadado do Drive: o arquivo `1F1yUL…` é `Logo.pdf`, application/pdf, 80 KB.
+ * Aquela função devolve o blob com o contentType real, e quem monta o HTML
+ * escreve `<img src="data:application/pdf;base64,…">` — que NÃO renderiza em
+ * navegador nenhum nem no conversor do Google.
+ *
+ * O efeito é o pior tipo: o documento sai assinado, sem logo, e sem uma linha
+ * de erro em lugar nenhum. Ninguém olha o log de um PDF que "saiu".
+ *
+ * Por isso aqui: só entra como imagem o que TEM mime de imagem. O logo bom é
+ * o PNG que os Vouchers já usam (LOGO_VOUCHER_FILE_ID) — mesma arte, uma
+ * fonte só. Se nenhum servir, o cabeçalho cai no texto, que é feio mas
+ * honesto.
+ *
+ * Falha aqui nunca derruba a emissão: declaração sem logo ainda vale;
+ * emissão que explode porque o Drive piscou, não.
+ */
+function declImagens_() {
+  var out = { logoBase64: "", logoMime: "", assBase64: "", assMime: "" };
+
+  try {
+    if (typeof carregarImagensRecibo_ === "function") {
+      var imgs = carregarImagensRecibo_() || {};
+      out.assBase64 = imgs.assBase64 || "";
+      out.assMime = imgs.assMime || "image/jpeg";
+      if (/^image\//.test(String(imgs.logoMime || ""))) {
+        out.logoBase64 = imgs.logoBase64 || "";
+        out.logoMime = imgs.logoMime;
+      }
+    }
+  } catch (e) {
+    Logger.log("DeclaracaoDiretor: imagens institucionais indisponíveis — " + e.message);
+  }
+
+  /* A busca da arte de reserva NÃO fica aqui: mora em
+   * `carregarImagensRecibo_`, para haver uma fonte só para todos os
+   * documentos. Este guarda de mime continua como cinto e suspensório — se
+   * aquela função mudar, a declaração não volta a montar <img> quebrado. */
+
+  return out;
+}
+
+function declHtmlDeclaracao_(p) {
+  p = p || {};
+  var sig = p.signatario || {};
+  var imgs = declImagens_();
+
+  /* O PAPEL TIMBRADO É O MESMO DOS VOUCHERS — cabeçalho, rodapé e marca
+   * d'água saem de VoucherMarcaDagua.gs, já em data: e já provados em PDF
+   * emitido. Redesenhar aqui produziria uma segunda versão do papel do
+   * sindicato, que é justamente o que não pode existir.
+   *
+   * Se alguma peça faltar, o documento sai sem ela — declaração sem arte
+   * ainda vale; emissão que explode porque o Drive piscou, não. */
+  function peca(fn) {
+    try { return (typeof fn === "function") ? fn() : ""; }
+    catch (e) { Logger.log("DeclaracaoDiretor: peça do papel indisponível — " + e.message); return ""; }
+  }
+  var cabecalho = peca(typeof cabecalhoVoucher_ !== "undefined" ? cabecalhoVoucher_ : null);
+  var rodape    = peca(typeof rodapeVoucher_    !== "undefined" ? rodapeVoucher_    : null);
+  var marca     = peca(typeof marcaDaguaVoucher_ !== "undefined" ? marcaDaguaVoucher_ : null);
+
+  /* Sem a arte do cabeçalho, entra a logo sozinha; sem ela, o nome escrito. */
+  var topo = cabecalho
+    ? '<img class="cab" src="' + cabecalho + '">'
+    : (imgs.logoBase64
+        ? '<div class="cab-txt"><img src="data:' + imgs.logoMime + ';base64,' + imgs.logoBase64 + '" style="max-height:80px;"></div>'
+        : '<div class="cab-txt">SindEducação-ES</div>');
+
+  var assinaturaImg = imgs.assBase64
+    ? '<img class="ass-img" src="data:' + imgs.assMime + ';base64,' + imgs.assBase64 + '">'
+    : '<div style="height:46px;"></div>';
+
+  /* O NOME SAI EM NEGRITO, como no modelo. O texto gravado continua sendo
+     texto puro — a ênfase é da apresentação, não do conteúdo. */
+  var corpo = declEscapar_(p.texto);
+  var nomeAlvo = declEscapar_(declTexto_(p.diretor && p.diretor.nome).toUpperCase());
+  if (nomeAlvo && corpo.indexOf(nomeAlvo) >= 0) {
+    corpo = corpo.replace(nomeAlvo, "<b>" + nomeAlvo + "</b>");
+  }
+
+  return '' +
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+    '@page { size: A4; margin: 0; }' +
+    'body { margin:0; font-family: Arial, Helvetica, sans-serif; color:#111; }' +
+    '.folha { position:relative; width:100%; min-height:292mm; }' +
+    /* O TIMBRADO NÃO SANGRA. No papel real o cabeçalho e o rodapé têm
+       margem branca em volta — medida no modelo de 17/09/2026: a arte ocupa
+       cerca de 87% da largura, centralizada. Sangrar até a borda é o que
+       denuncia documento feito às pressas. */
+    'img.cab { width:87%; display:block; margin:5mm auto 0; }' +
+    '.cab-txt { text-align:center; padding:14mm 0 4mm; font-size:16pt; font-weight:bold; color:#001f4d; }' +
+    /* A marca d'água fica na metade de baixo, à direita, ATRÁS do texto e
+       acima do rodapé — no modelo ela acompanha a citação e a assinatura.
+       Mais baixa que isto e o rodapé a corta. */
+    '.dagua { position:absolute; right:-2mm; bottom:62mm; width:136mm; opacity:.9; z-index:0; }' +
+    '.corpo { position:relative; z-index:1; padding:0 17mm; font-size:11.5pt; line-height:1.6; }' +
+    '.titulo { text-align:center; font-weight:bold; font-size:15pt; text-decoration:underline; margin:18mm 0 14mm; }' +
+    '.par { text-align:justify; }' +
+    '.citacao { text-align:justify; font-size:10pt; line-height:1.5; margin:10mm 0 10mm 26mm; }' +
+    '.fecho { margin-top:12mm; }' +
+    '.local { text-align:right; margin-top:6mm; }' +
+    '.assin { margin-top:14mm; }' +
+    '.ass-img { height:58px; width:auto; display:block; margin-left:6mm; }' +
+    '.assin .nome { font-weight:bold; margin-top:1mm; margin-left:6mm; }' +
+    '.assin .cargo { font-weight:bold; margin-top:3mm; margin-left:6mm; }' +
+    '.rodape { position:absolute; left:0; right:0; bottom:6mm; text-align:center; }' +
+    '.rodape img { width:87%; display:block; margin:0 auto; }' +
+    '</style></head><body>' +
+    '<div class="folha">' +
+      topo +
+      (marca ? '<img class="dagua" src="' + marca + '">' : '') +
+      '<div class="corpo">' +
+        '<div class="titulo">DECLARAÇÃO</div>' +
+        '<div class="par">' + corpo + '</div>' +
+        '<div class="citacao">' + declEscapar_(DECL_ART_543) + '</div>' +
+        '<div class="fecho">Por ser verdade firmamos a presente.</div>' +
+        '<div class="local">' + DECL_CIDADE + ', ' + declDataExtenso_(p.dataEmissao) + '.</div>' +
+        '<div class="assin">' + assinaturaImg +
+          '<div class="nome">' + declEscapar_(sig.nomeExibicao || sig.nome || "") + '</div>' +
+          '<div class="cargo">' + declEscapar_(sig.cargo || "Presidente") + ' &ndash; <em>SindEducação-ES</em></div>' +
+        '</div>' +
+      '</div>' +
+      (rodape ? '<div class="rodape"><img src="' + rodape + '"></div>' : '') +
+    '</div>' +
+    '</body></html>';
+}
+
+function declEscapar_(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/* =========================================
+ * AUDITORIA
+ *
+ * Nunca derruba a emissão. Documento assinado que não chega à escola porque
+ * a trilha de auditoria estava fora do ar seria o defeito pior.
+ * ========================================= */
+
+function declAuditar_(dados) {
+  try {
+    if (typeof auditar_ !== "function") return;
+    auditar_({
+      sessao: dados.sessao,
+      registroId: dados.registroId,
+      modulo: "Documentos",
+      submodulo: "Declarações",
+      acao: dados.acao,
+      documento: dados.documento || "",
+      valorNovo: dados.valorNovo || "",
+      origem: "PORTAL_ADMIN"
+    });
+  } catch (e) {
+    Logger.log("DeclaracaoDiretor: auditoria falhou — " + e.message);
+  }
+}
+
+/* =========================================
+ * DIAGNÓSTICO — roda no editor do Apps Script, só lê.
+ * ========================================= */
+
+/**
+ * O estado da configuração, em dados — uma fonte só para a tela e o editor.
+ *
+ * Nasceu em 15/09/2026, quando o usuário foi rodar `declDiagnosticoPasta_()`
+ * no editor e ela não estava no seletor de funções: o Apps Script esconde
+ * toda função terminada em `_`. Ele precisou colar um invólucro à mão, que o
+ * deploy seguinte apagou. Diagnóstico que só roda com remendo não é
+ * diagnóstico — por isso agora ele tem porta pela tela.
+ */
+function declDiagnostico_interno_() {
+  var r = { pastaOk: false, pastaId: "", pastaNome: "", pastaErro: "", signatario: null, habilitados: 0 };
+  try {
+    r.pastaId = getRecursoId_("DECLARACOES");
+    r.pastaNome = DriveApp.getFolderById(r.pastaId).getName();
+    r.pastaOk = true;
+  } catch (e) {
+    r.pastaErro = e.message;
+  }
+  try {
+    var s = declSignatario_();
+    if (s) r.signatario = { nome: s.nome, cargo: s.cargo };
+    r.habilitados = declDiretoresHabilitados_().length;
+  } catch (eGov) {
+    r.governancaErro = eGov.message;
+  }
+  return r;
+}
+
+/** Mesmo diagnóstico, pela tela. Só lê. */
+function declConferirConfiguracao(tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var d = declDiagnostico_interno_();
+    return {
+      ok: true,
+      pronto: d.pastaOk && !!d.signatario && d.habilitados > 0,
+      pasta: d.pastaOk
+        ? { ok: true, texto: d.pastaNome, detalhe: d.pastaId }
+        : { ok: false, texto: "Pasta não configurada neste ambiente",
+            detalhe: "Configure a Script Property SISGEP_PASTA_DECLARACOES com o ID da pasta do Drive. " + d.pastaErro },
+      signatario: d.signatario
+        ? { ok: true, texto: d.signatario.nome, detalhe: d.signatario.cargo + " — de Governança" }
+        : { ok: false, texto: "Nenhum Presidente vigente",
+            detalhe: "Corrija a composição em Governança: sem signatário a declaração não vale." },
+      dirigentes: { ok: d.habilitados > 0, texto: d.habilitados + " dirigente(s) habilitado(s)",
+                    detalhe: "mandato vigente na composição de Governança" },
+      remetente: declConferirRemetente_()
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao conferir: " + e.message };
+  }
+}
+
+/**
+ * DE QUE CONTA O E-MAIL SAI — 16/09/2026.
+ *
+ * POR QUE PRECISOU EXISTIR. O e-mail da declaração saiu de
+ * `financeirosindeducacao@gmail.com` mesmo com `secretaria@sindeducacao.com`
+ * já configurada como alias no Gmail. A causa era o `MailApp` ignorando o
+ * `from` (ver enviarComoRascunhoSISGEP_), mas eu levei uma rodada inteira
+ * para separar isso de "o alias não existe" — porque não havia como
+ * PERGUNTAR ao ambiente, só deduzir.
+ *
+ * Agora o ambiente responde. Quem apertar "Conferir configuração" vê a conta
+ * executora, se a Secretaria está entre os aliases, e de qual endereço o
+ * próximo envio vai sair de fato. Sem isso, a próxima divergência volta a
+ * custar uma emissão de teste e um print.
+ */
+function declConferirRemetente_() {
+  var alvo = (typeof OFICIOS_EMAIL_INSTITUCIONAL === "string")
+    ? OFICIOS_EMAIL_INSTITUCIONAL : "secretaria@sindeducacao.com";
+  var executora = "", aliases = [];
+
+  try { executora = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) {}
+  try {
+    aliases = GmailApp.getAliases().map(function (x) { return String(x || "").trim().toLowerCase(); });
+  } catch (e2) {
+    /* Sem escopo de Gmail a lista vem vazia; isso não é "não tem alias". */
+    return { ok: false, texto: "Não foi possível consultar os aliases",
+             detalhe: "Autorize o escopo do Gmail no projeto e confira de novo. Conta executora: " + (executora || "desconhecida") };
+  }
+
+  var podeUsar = executora === alvo || aliases.indexOf(alvo) !== -1;
+  if (podeUsar) {
+    return { ok: true, texto: "Sai de " + alvo,
+             detalhe: executora === alvo
+               ? "é a própria conta que executa o script"
+               : "alias verificado na conta " + executora };
+  }
+  return { ok: false, texto: "Vai sair de " + (executora || "conta executora"),
+           detalhe: alvo + " não é alias desta conta. Adicione em Gmail → Configurações → Contas → " +
+                    "\"Enviar e-mail como\", e confirme o e-mail de verificação. Enquanto isso, o " +
+                    "destinatário responde para a Secretaria pelo replyTo." };
+}
+
+/** A mesma coisa no editor do Apps Script, para quem estiver com ele aberto. */
+function declDiagnosticoPasta_() {
+  var d = declDiagnostico_interno_();
+  var linhas = [];
+  if (d.pastaOk) {
+    linhas.push("ID resolvido: " + d.pastaId);
+    linhas.push("Pasta: " + d.pastaNome + " ✅ acessível");
+  } else {
+    linhas.push("❌ " + d.pastaErro);
+    linhas.push("Configure a Script Property SISGEP_PASTA_DECLARACOES com o ID da pasta do Drive.");
+  }
+  linhas.push("Signatário: " + (d.signatario ? d.signatario.nome + " (" + d.signatario.cargo + ")" : "❌ ninguém marcado"));
+  linhas.push("Diretores habilitados: " + d.habilitados);
+  var texto = linhas.join("\n");
+  Logger.log(texto);
+  return texto;
+}

@@ -204,4 +204,3 @@ b.naoTestavel("PDF da ficha e da carteirinha", "template do Google Docs");
 b.naoTestavel("Entrega do código OTP por SMS", "depende de gateway externo");
 
 b.resumo();
-process.exit(0);
