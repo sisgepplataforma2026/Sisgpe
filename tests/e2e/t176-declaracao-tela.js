@@ -284,8 +284,15 @@ function clicar(el, oque) {
   b.ok($("declModalConfig").classList.contains("aberto"), "o modal de configuração abriu");
   const linhas = $("declConfigCorpo").querySelectorAll(".declConfigLinha");
   b.ok(linhas.length === 4, "diz pasta, quem assina, dirigentes e remetente", linhas.length + " linha(s)");
-  b.ok(/SISGEP_PASTA_DECLARACOES/.test($("declConfigCorpo").textContent),
-    "e nomeia a propriedade que falta, em vez de só dizer que falhou");
+  /* Antes esta asserção exigia o nome da Script Property NA TELA — ou seja,
+     exigia que a pasta estivesse FALTANDO. Era o defeito virado expectativa.
+     Agora a tabela traz as duas pastas e o esperado é o modal dizer que está
+     configurada. Ver a nota equivalente no t175. */
+  b.ok(/Pasta do Drive/.test($("declConfigCorpo").textContent),
+    "o modal diz qual é a pasta do Drive");
+  b.ok(!/❌/.test($("declConfigCorpo").textContent),
+    "e nada aparece com ❌ — o ambiente está configurado",
+    $("declConfigCorpo").textContent.replace(/\s+/g, " ").trim().slice(0, 90));
   /* A linha de remetente entrou em 16/09/2026, depois de a declaração sair da
      conta errada e eu levar uma rodada para separar "o alias não existe" de
      "o MailApp ignora o from". Sem poder PERGUNTAR ao ambiente, a única saída

@@ -108,9 +108,34 @@ const conf = g.declConferirConfiguracao(TOKEN);
 b.ok(conf.ok, "o endpoint responde");
 b.ok(conf.signatario.ok && /LEONIL/.test(conf.signatario.texto), "diz quem assina", conf.signatario.texto);
 b.ok(conf.dirigentes.ok && /\d+ dirigente/.test(conf.dirigentes.texto), "e quantos estão habilitados", conf.dirigentes.texto);
-b.ok(conf.pasta.ok === false && /SISGEP_PASTA_DECLARACOES/.test(conf.pasta.detalhe),
-  "e aponta a pasta que falta, dizendo a propriedade exata");
-b.ok(conf.pronto === false, "com pasta faltando, não se declara pronto");
+/* ESTA ASSERÇÃO ESTAVA INVERTIDA — 16/09/2026.
+
+   Ela exigia `conf.pasta.ok === false`: o teste documentava a pasta NÃO
+   configurada como o estado esperado. Passou verde a semana inteira enquanto
+   a produção não conseguia emitir por falta exatamente dessa pasta. Teste que
+   consagra o defeito é pior do que teste nenhum — ele dá cobertura ao erro.
+
+   Agora a tabela traz as duas pastas (AmbienteRecursos.gs) e o esperado é o
+   contrário: configurado. O caso "faltando" continua coberto logo abaixo,
+   esvaziando a tabela de propósito. */
+b.ok(conf.pasta.ok === true, "a pasta das declarações está configurada", conf.pasta.texto);
+b.ok(conf.pronto === true, "e com signatário e dirigentes, a tela se declara pronta");
+
+/* Esvazia OS DOIS: o emulador sobe como `producao`, e zerar só a homologação
+   deixava a asserção lendo a pasta de produção e passando pelo motivo errado. */
+const pastaGuardada = {
+  producao: g.RECURSOS_AMBIENTE.DECLARACOES.producao,
+  homologacao: g.RECURSOS_AMBIENTE.DECLARACOES.homologacao
+};
+g.RECURSOS_AMBIENTE.DECLARACOES.producao = "";
+g.RECURSOS_AMBIENTE.DECLARACOES.homologacao = "";
+const confSemPasta = g.declConferirConfiguracao(TOKEN);
+b.ok(confSemPasta.pasta.ok === false && /SISGEP_PASTA_DECLARACOES/.test(confSemPasta.pasta.detalhe),
+  "sem pasta, aponta a propriedade exata em vez de só dizer que falhou",
+  confSemPasta.pasta.detalhe.slice(0, 70));
+b.ok(confSemPasta.pronto === false, "e aí sim não se declara pronto");
+g.RECURSOS_AMBIENTE.DECLARACOES.producao = pastaGuardada.producao;
+g.RECURSOS_AMBIENTE.DECLARACOES.homologacao = pastaGuardada.homologacao;
 
 b.fluxo("DECLARAÇÕES · O mandato se confere contra o DIA DA LIBERAÇÃO");
 /* A checagem antiga perguntava se a gestão está de pé HOJE — outra pergunta.
