@@ -394,12 +394,12 @@
           <input type="text" id="nomeBeneficiario" placeholder="Nome completo do beneficiário">
         </div>
 
-        <div class="field required">
+        <div class="field required" id="boxDataNascBeneficiario">
           <label for="dataNascimentoBeneficiario">Data de nascimento do beneficiário</label>
           <input type="date" id="dataNascimentoBeneficiario">
         </div>
 
-        <div class="field">
+        <div class="field" id="boxTitularAssociado">
           <label for="nomeTitularAssociado">Nome do titular associado</label>
           <input type="text" id="nomeTitularAssociado" placeholder="Nome do titular">
         </div>
@@ -893,6 +893,31 @@ function ajustarCamposVoucher() {
   boxEnteado.classList.toggle('hidden', !ehEnteado);
   boxParentesco.classList.toggle('hidden', ehTitular);
 
+  /* PARA O TITULAR, OS CAMPOS DE DEPENDENTE SOMEM — 16/09/2026.
+
+     "Se a solicitação for para ele mesmo não precisa ter campo de
+     dependentes" — você, e estava certo por um motivo mais forte do que
+     poluição visual: a data de nascimento do BENEFICIÁRIO é obrigatória e
+     ficava visível, então quem pedia para si mesmo tinha de digitar a própria
+     data de nascimento DUAS VEZES. Os outros dois (nome do beneficiário e
+     nome do titular) ficavam preenchidos com o próprio nome e travados —
+     campo cinza que repete o que a pessoa acabou de escrever é trabalho
+     inventado.
+
+     ESCONDER NÃO É DEIXAR VAZIO. O servidor exige os três
+     (validarPayloadPortalVoucher_), e sumir sem preencher trocaria um campo
+     chato por uma recusa no envio. Por isso eles continuam sendo preenchidos
+     aqui — só deixam de ser mostrados. */
+  var boxNomeBenef   = document.getElementById('boxNomeBeneficiario');
+  var boxDataBenef   = document.getElementById('boxDataNascBeneficiario');
+  var boxTitularAss  = document.getElementById('boxTitularAssociado');
+  var dataBenef      = document.getElementById('dataNascimentoBeneficiario');
+  var dataSolicita   = document.getElementById('dataNascimento');
+
+  if (boxNomeBenef)  boxNomeBenef.classList.toggle('hidden', ehTitular);
+  if (boxDataBenef)  boxDataBenef.classList.toggle('hidden', ehTitular);
+  if (boxTitularAss) boxTitularAss.classList.toggle('hidden', ehTitular);
+
   if (ehTitular) {
     if (nomeBenef) {
       nomeBenef.value = nome.value.trim();
@@ -902,6 +927,14 @@ function ajustarCamposVoucher() {
     if (titular) {
       titular.value = nome.value.trim();
       titular.readOnly = true;
+    }
+
+    /* A data do beneficiário passa a ser a do solicitante — é a mesma pessoa.
+       Só sobrescreve quando há origem: sem isto, um campo vazio apagaria uma
+       data que a pessoa já tinha digitado antes de trocar o tipo. */
+    if (dataBenef && dataSolicita && dataSolicita.value) {
+      dataBenef.value = dataSolicita.value;
+      dataBenef.classList.remove('invalid');
     }
 
     if (parentesco) {
