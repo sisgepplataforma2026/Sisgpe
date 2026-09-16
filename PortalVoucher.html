@@ -414,7 +414,14 @@
           <label for="cargoFuncao">Cargo / Função</label>
           <input type="text" id="cargoFuncao" placeholder="Ex.: Professor">
         </div>
-        <div class="field">
+        <div class="field hidden">
+          <!-- SITUAÇÃO DO VÍNCULO SAIU DA TELA — 16/09/2026, "pode tirar".
+               O campo continua no HTML, OCULTO, de propósito: sete pontos do
+               arquivo leem `getElementById('situacaoVinculo').value`, e
+               removê-lo faria todos estourarem. Oculto ele devolve "", que é
+               o que `valorSeguroVoucher_` já trata — e o cadastro que JÁ tem
+               a informação não a perde, porque continua sendo carregado aqui
+               e regravado igual. -->
           <label for="situacaoVinculo">Situação do vínculo</label>
           <input type="text" id="situacaoVinculo" placeholder="Ex.: ATIVO">
         </div>
@@ -945,7 +952,13 @@ function ajustarCamposVoucher() {
     'POS_GRADUACAO'
   ];
 
-  boxOrdem.classList.toggle('hidden', modalidadesFilho.indexOf(modalidade) === -1);
+  /* ORDEM DO FILHO NÃO SE APLICA AO TITULAR — 16/09/2026.
+     "Se for para ele mesmo (titular) não precisa da ordem do filho" — o
+     usuário. A condição olhava só a MODALIDADE, então quem pedia para si
+     mesmo numa pós-graduação via um "Ordem do filho: Selecione..." sem filho
+     nenhum na história. Campo que não se aplica é pergunta sem resposta. */
+  boxOrdem.classList.toggle('hidden',
+    modalidadesFilho.indexOf(modalidade) === -1 || tipoBeneficiario.toUpperCase() === 'TITULAR');
 
   var tipo = String(tipoBeneficiario || '').toUpperCase();
   var ehTitular = tipo === 'TITULAR';
@@ -1012,6 +1025,14 @@ function ajustarCamposVoucher() {
     if (titular) {
       titular.value = nome.value.trim();
       titular.readOnly = false;
+    }
+
+    /* O PARENTESCO FICAVA PRESO EM "TITULAR" — 16/09/2026, visto no print do
+       usuário: tipo de beneficiário "Filho(a)" com parentesco "Titular". O
+       ramo do titular grava 'TITULAR' no campo, e nada o desfazia ao trocar
+       para dependente. O valor errado ia junto na solicitação. */
+    if (parentesco && String(parentesco.value || '').toUpperCase() === 'TITULAR') {
+      parentesco.value = '';
     }
   }
 }

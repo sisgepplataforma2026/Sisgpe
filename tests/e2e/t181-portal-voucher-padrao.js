@@ -105,6 +105,24 @@ b.ok(/\['cpf', 'dataNascimento'\]\.forEach[\s\S]{0,160}classList\.remove\('inval
 b.ok(/document\.addEventListener\('input'/.test(portal) && /document\.addEventListener\('change'/.test(portal),
   "os dois são delegados no document — campo novo já nasce coberto");
 
+b.passo("Campos que não se aplicam não aparecem");
+/* "Se for para ele mesmo (titular) não precisa da ordem do filho" e
+   "situação do vínculo pode tirar" — você, 16/09/2026. */
+b.ok(/tipoBeneficiario\.toUpperCase\(\) === 'TITULAR'\)/.test(
+       portal.replace(/\s+/g, " ").match(/boxOrdem\.classList\.toggle[^;]+;/)[0].replace(/\s+/g," ")),
+  "a ordem do filho some quando o beneficiário é o próprio titular");
+b.ok(/<div class="field hidden">[\s\S]{0,700}id="situacaoVinculo"/.test(portal),
+  "a situação do vínculo saiu da tela");
+b.ok(/getElementById\('situacaoVinculo'\)/.test(portal),
+  "mas o campo continua existindo — sete pontos do arquivo o leem, e removê-lo estouraria todos");
+
+b.passo("O parentesco não fica preso em TITULAR");
+/* Visto no seu print: tipo de beneficiário "Filho(a)" com parentesco
+   "Titular". O ramo do titular gravava 'TITULAR' no campo e nada desfazia ao
+   trocar para dependente — o valor errado ia junto na solicitação. */
+b.ok(/String\(parentesco\.value \|\| ''\)\.toUpperCase\(\) === 'TITULAR'\)[\s\S]{0,60}parentesco\.value = '';/.test(portal),
+  "ao sair de titular, o parentesco é limpo em vez de ficar com o valor velho");
+
 b.naoTestavel("A aparência final no navegador",
   "nenhum teste daqui aplica folha de estilo; só a tela publicada responde");
 b.resumo();
