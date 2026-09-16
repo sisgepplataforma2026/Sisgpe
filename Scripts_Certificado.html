@@ -336,6 +336,13 @@
         <div class="cert-msub">CPF não localizado na base</div>
       </div>
 
+      <div class="cert-mcard" id="certMcardRegra" onclick="certFiltrarPorStatus('BLOQUEADA_POR_REGRA')">
+        <div class="cert-mac mac-amber"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Fora da regra</span><div class="cert-mico mico-amber">⚖️</div></div>
+        <div class="cert-mval" id="certStatRegra">—</div>
+        <div class="cert-msub">Idade, ordem ou modalidade</div>
+      </div>
+
       <div class="cert-mcard" id="certMcardEmitido" onclick="certFiltrarPorStatus('EMITIDO')">
         <div class="cert-mac mac-violet"></div>
         <div class="cert-mcard-top"><span class="cert-mlbl">Emitidas</span><div class="cert-mico mico-violet">📄</div></div>
@@ -451,6 +458,17 @@
                 <select class="cert-filtro-col" id="certFiltroStatus">
                   <option value="">todos</option>
                   <option value="AGUARDANDO_VALIDACAO_CADASTRAL">Validação cadastral</option>
+                  <!-- NENHUM ESTADO PODE FICAR INVISÍVEL — 16/09/2026.
+                       `BLOQUEADA_POR_REGRA` e `AGUARDANDO_ATENDIMENTO_PRESENCIAL`
+                       existem no backend desde sempre e não apareciam em filtro
+                       nem em card: a solicitação era gravada e ninguém a via.
+                       É a mesma lacuna da validação cadastral, consertada hoje
+                       mais cedo — e ela some pela mesma razão que aquela: o
+                       sistema não recusa em silêncio, ele manda para uma fila,
+                       e fila que ninguém enxerga é recusa em silêncio com
+                       passos a mais. -->
+                  <option value="BLOQUEADA_POR_REGRA">Fora da regra</option>
+                  <option value="AGUARDANDO_ATENDIMENTO_PRESENCIAL">Atendimento presencial</option>
                   <option value="PENDENTE">Pendente</option>
                   <option value="ANALISE">Em Análise</option>
                   <option value="APROVADO">Aprovado</option>
@@ -1147,7 +1165,7 @@ function cert_resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!=
 
 // ── Métricas
 function cert_atualizarMetricas(){
-  var t=0,p=0,a=0,ap=0,em=0,vc=0;
+  var t=0,p=0,a=0,ap=0,em=0,vc=0,fr=0;
   _lista.forEach(function(s){
     t++;
     var st=String(s.status||'').toUpperCase();
@@ -1156,6 +1174,7 @@ function cert_atualizarMetricas(){
     if(st==='APROVADO') ap++;
     if(st==='EMITIDO')  em++;
     if(st==='AGUARDANDO_VALIDACAO_CADASTRAL') vc++;
+    if(st==='BLOQUEADA_POR_REGRA') fr++;
   });
   if(g('certStatTotal'))   g('certStatTotal').textContent   = t;
   if(g('certStatPendente'))g('certStatPendente').textContent = p;
@@ -1163,6 +1182,7 @@ function cert_atualizarMetricas(){
   if(g('certStatAprovado'))g('certStatAprovado').textContent = ap;
   if(g('certStatEmitido')) g('certStatEmitido').textContent  = em;
   if(g('certStatCadastro'))g('certStatCadastro').textContent = vc;
+  if(g('certStatRegra'))   g('certStatRegra').textContent    = fr;
 }
 
 // ── Filtros

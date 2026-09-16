@@ -295,6 +295,142 @@ function salvarCadastroESolicitacaoVoucher(payload) {
   }
 }
 
+/* O teto de dependentes por envio. Regra do usuário em 16/09/2026: "ele pode
+   ter até três dependentes", para os ensinos Infantil ao Médio, na escola em
+   que o associado trabalha. */
+var VOUCHER_MAX_DEPENDENTES_ = 3;
+
+/**
+ * ATÉ TRÊS DEPENDENTES NUM ENVIO SÓ.
+ *
+ * Pedido do usuário em 16/09/2026: "se for dependente, poderia ter um botão
+ * para adicionar até três dependentes", "para os ensinos Infantil até o
+ * Médio", "se for na mesma escola, por associado", e "se for dependente tem
+ * que ter os documentos de cada dependente".
+ *
+ * UMA SOLICITAÇÃO POR DEPENDENTE, e esta é a decisão de arquitetura.
+ * O percentual, a aprovação, o indeferimento e o certificado são todos POR
+ * BENEFICIÁRIO — a convenção dá 100% ao 1º e ao 2º filho e 60% ao 3º, e o
+ * certificado sai no nome de quem estuda. Numa linha só, aprovar o 1º filho e
+ * indeferir o 2º exigiria inventar sub-status, e o certificado não teria como
+ * sair por pessoa.
+ *
+ * Com três linhas, NADA do que já funciona muda: painel, fila, cálculo,
+ * emissão e certificado seguem iguais. Esta função é um laço em volta do
+ * caminho que já existe, não um segundo caminho.
+ *
+ * CADA SOLICITAÇÃO CARREGA AS DUAS PROVAS: o comprovante de vínculo do
+ * ASSOCIADO (é o emprego dele que dá o direito) e o documento daquele
+ * DEPENDENTE. O contracheque acaba gravado uma vez por dependente, e isso é
+ * de propósito — cada solicitação é aprovada sozinha, e aprovar sem ter a
+ * prova anexada seria aprovar às cegas.
+ *
+* O RECUSADO NÃO SOME — decisão do usuário em 16/09/2026: "ele deve ter uma
+ * informação e a Marcelha verifica e responde pelo SISGEP". Um dependente
+ * fora da regra (idade acima de 24, ordem já usada) é GRAVADO com status
+ * BLOQUEADA_POR_REGRA, e vai para a fila de quem analisa. Não é recusa muda:
+ * a pessoa é avisada na hora, no portal, e ainda assim fica o registro para a
+ * Secretaria responder.
+ *
+ * É a mesma postura do resto do módulo: o não associado também não é barrado,
+ * vai para a fila do presencial. Bloquear em silêncio faz o sindicato perder
+ * o registro de que a pessoa procurou.
+ */
+function salvarSolicitacoesDependentesVoucher(payload) {
+  try {
+    if (!payload) throw new Error("Dados da solicitação não informados.");
+
+    var dependentes = Array.isArray(payload.dependentes) ? payload.dependentes : [];
+    if (!dependentes.length) throw new Error("Informe ao menos um dependente.");
+    if (dependentes.length > VOUCHER_MAX_DEPENDENTES_) {
+      throw new Error("São permitidos até " + VOUCHER_MAX_DEPENDENTES_ +
+                      " dependentes por solicitação. Você informou " + dependentes.length + ".");
+    }
+
+    /* ORDEM REPETIDA NO MESMO ENVIO é erro de digitação, e barra ANTES de
+       gravar qualquer coisa: dois "1º filho" produziriam dois certificados de
+       100% para a mesma posição, e o segundo não teria como ser desfeito sem
+       cancelar o voucher já emitido. */
+    var ordens = {};
+    for (var i = 0; i < dependentes.length; i++) {
+      var o = String((dependentes[i] || {}).ordemFilho || "").trim();
+      if (o && ordens[o]) {
+        throw new Error("Dois dependentes foram informados como " + o +
+                        "º filho. Cada ordem só pode aparecer uma vez.");
+      }
+      if (o) ordens[o] = true;
+    }
+
+    var resultados = [];
+    var gravadas = 0;
+
+    dependentes.forEach(function (dep, indice) {
+      dep = dep || {};
+      var rotulo = valorSeguroVoucher_(dep.nomeBeneficiario) || ("Dependente " + (indice + 1));
+
+      /* Monta o payload de UMA solicitação a partir dos dados do associado
+         mais os daquele dependente. A escola NÃO vem do dependente: a regra
+         vale na escola onde o associado trabalha, que o cadastro já tem. */
+      var umaVez = {};
+      Object.keys(payload).forEach(function (k) {
+        if (k !== "dependentes" && k !== "docPessoal") umaVez[k] = payload[k];
+      });
+      umaVez.tipoBeneficiario          = dep.tipoBeneficiario || "FILHO";
+      umaVez.parentesco                = dep.parentesco || dep.tipoBeneficiario || "FILHO";
+      umaVez.nomeBeneficiario          = dep.nomeBeneficiario;
+      umaVez.dataNascimentoBeneficiario = dep.dataNascimentoBeneficiario;
+      umaVez.ordemFilho                = dep.ordemFilho;
+      umaVez.modalidade                = dep.modalidade;
+      umaVez.curso                     = dep.curso;
+      umaVez.areaCurso                 = dep.areaCurso || "";
+      umaVez.enteadoDeclaradoIR        = dep.enteadoDeclaradoIR || "";
+      /* O documento pessoal de cada solicitação é o DO DEPENDENTE; o
+         contracheque do associado vai em todas, herdado do payload. */
+      umaVez.docPessoal                = dep.docPessoal || null;
+
+      var r;
+      try {
+        r = salvarCadastroESolicitacaoVoucher(umaVez);
+      } catch (eDep) {
+        r = { ok: false, mensagem: eDep.message };
+      }
+
+      if (r && r.ok) gravadas++;
+
+      resultados.push({
+        nome: rotulo,
+        ordemFilho: String(dep.ordemFilho || ""),
+        ok: !!(r && r.ok),
+        mensagem: (r && r.mensagem) || "",
+        protocolo: (r && r.protocolo && r.protocolo.numeroProtocolo) || "",
+        percentual: (r && r.percentual) || "",
+        apto: !!(r && r.apto),
+        status: (r && r.status) || ""
+      });
+    });
+
+    return {
+      ok: gravadas > 0,
+      gravadas: gravadas,
+      total: dependentes.length,
+      resultados: resultados,
+      protocolos: resultados.filter(function (x) { return x.ok; })
+                            .map(function (x) { return x.protocolo; }),
+      mensagem: gravadas === dependentes.length
+        ? (gravadas === 1 ? "Solicitação registrada com sucesso!"
+                          : gravadas + " solicitações registradas com sucesso!")
+        : (gravadas === 0
+            ? "Nenhuma solicitação pôde ser registrada. Veja o motivo de cada dependente."
+            : gravadas + " de " + dependentes.length +
+              " solicitações registradas. Veja o motivo das demais.")
+    };
+
+  } catch (e) {
+    Logger.log("salvarSolicitacoesDependentesVoucher erro: " + e.message);
+    return { ok: false, gravadas: 0, resultados: [], mensagem: e.message };
+  }
+}
+
 function validarPayloadPortalVoucher_(payload) {
   if (!payload) throw new Error("Dados da solicitação não informados.");
   if (!normalizarCPF_(payload.cpf)) throw new Error("CPF inválido.");

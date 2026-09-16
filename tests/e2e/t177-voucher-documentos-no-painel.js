@@ -274,6 +274,100 @@ b.ok(/<option value="AGUARDANDO_VALIDACAO_CADASTRAL">/.test(painelHtml2),
 b.ok(/id="certBtnConfirmarCadastro"/.test(painelHtml2),
   "e existe o botão que resolve o estado");
 
+b.fluxo("BOLSAS · Até três dependentes num envio só");
+/* "Ele pode ter até três dependentes", "para os ensinos Infantil até o Médio",
+   "se for na mesma escola, por associado", "tem que ter os documentos de cada
+   dependente" — você, 16/09/2026. */
+const DOC_DEP = Buffer.from("%PDF-1.4 rg do dependente").toString("base64");
+function dependente(nome, ordem, nasc) {
+  return {
+    nomeBeneficiario: nome, dataNascimentoBeneficiario: nasc,
+    tipoBeneficiario: "FILHO", parentesco: "FILHO", ordemFilho: String(ordem),
+    modalidade: "ENSINO_FUNDAMENTAL", curso: (5 + ordem) + " ANO",
+    docPessoal: { nome: nome + ".pdf", tipo: "application/pdf", tamanho: 25, base64: DOC_DEP }
+  };
+}
+const basePai = Object.assign({}, PAYLOAD, { periodoReferencia: "2029/1" });
+delete basePai.modalidade; delete basePai.curso; delete basePai.docPessoal;
+
+const antesDeps = ss.getSheetByName("Voucher_Solicitacoes").getLastRow();
+const tres = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+  dependentes: [dependente("ANA", 1, "2016-03-02"),
+                dependente("BRUNO", 2, "2014-07-19"),
+                dependente("CLARA", 3, "2012-11-30")]
+}));
+b.ok(tres.ok && tres.gravadas === 3, "os três são gravados", tres.mensagem);
+b.ok(tres.protocolos.length === 3 && new Set(tres.protocolos).size === 3,
+  "cada um com protocolo PRÓPRIO — o certificado sai por pessoa",
+  tres.protocolos.join(", "));
+
+/* O PERCENTUAL DA CONVENÇÃO, por ordem: 1º e 2º a 100%, 3º a 60%. */
+const porNome = {};
+tres.resultados.forEach(r => { porNome[r.nome] = r; });
+b.ok(porNome["ANA"].percentual === "100", "1º filho a 100%", porNome["ANA"].percentual);
+b.ok(porNome["BRUNO"].percentual === "100", "2º filho a 100%", porNome["BRUNO"].percentual);
+b.ok(porNome["CLARA"].percentual === "60", "3º filho a 60%", porNome["CLARA"].percentual);
+
+b.ok(ss.getSheetByName("Voucher_Solicitacoes").getLastRow() === antesDeps + 3,
+  "viraram TRÊS linhas, não uma com colunas repetidas");
+
+/* CADA SOLICITAÇÃO CARREGA AS DUAS PROVAS: o vínculo do associado e o
+   documento daquele dependente. Aprovar sem a prova anexada é aprovar às
+   cegas — e cada uma é aprovada sozinha. */
+const listaDeps = g.listarSolicitacoesCertBolsa(TOKEN)
+  .filter(x => tres.protocolos.indexOf(x.protocolo) > -1);
+b.ok(listaDeps.length === 3, "as três aparecem no painel", listaDeps.length + "");
+b.ok(listaDeps.every(x => String(x.linkContracheque || "").length > 0),
+  "todas com o comprovante de vínculo do associado");
+b.ok(listaDeps.every(x => String(x.linkDocPessoal || "").length > 0),
+  "e cada uma com o documento do SEU dependente");
+b.ok(new Set(listaDeps.map(x => x.linkDocPessoal)).size === 3,
+  "documentos DIFERENTES entre si — o mesmo link nas três seria o bug mais fácil de não notar");
+
+b.passo("O teto de três, e a ordem repetida");
+const quatro = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+  periodoReferencia: "2029/2",
+  dependentes: [dependente("A", 1, "2016-01-01"), dependente("B", 2, "2015-01-01"),
+                dependente("C", 3, "2014-01-01"), dependente("D", 1, "2013-01-01")]
+}));
+b.ok(!quatro.ok && /até 3/i.test(quatro.mensagem), "quatro dependentes é recusado", quatro.mensagem);
+
+const repetida = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+  periodoReferencia: "2029/2",
+  dependentes: [dependente("A", 1, "2016-01-01"), dependente("B", 1, "2015-01-01")]
+}));
+b.ok(!repetida.ok && /ordem/i.test(repetida.mensagem),
+  "duas vezes o mesmo 1º filho é recusado ANTES de gravar qualquer coisa", repetida.mensagem);
+
+b.passo("Quem está fora da regra é REGISTRADO, não recusado em silêncio");
+/* "Ele deve ter uma informação e a Marcelha verifica e responde pelo SISGEP"
+   — você. Bloquear em silêncio faz o sindicato perder o registro de que a
+   pessoa procurou. */
+const comVelho = g.salvarSolicitacoesDependentesVoucher(Object.assign({}, basePai, {
+  periodoReferencia: "2030/1",
+  dependentes: [dependente("JOVEM", 1, "2016-05-05"),
+                dependente("VELHO", 2, "1980-05-05")]
+}));
+b.ok(comVelho.gravadas === 2,
+  "o dependente fora da idade TAMBÉM é gravado — vai para a fila de análise",
+  comVelho.mensagem);
+const oVelho = g.listarSolicitacoesCertBolsa(TOKEN)
+  .filter(x => x.protocolo === comVelho.resultados.filter(r => r.nome === "VELHO")[0].protocolo)[0];
+b.ok(oVelho && oVelho.status === "BLOQUEADA_POR_REGRA",
+  "com status que diz o porquê", oVelho && oVelho.status);
+b.ok(comVelho.resultados.filter(r => r.nome === "VELHO")[0].apto === false,
+  "e o portal recebe `apto: false` para avisar a pessoa na hora");
+
+/* E A TELA PRECISA MOSTRAR ESSA FILA, senão o registro é tão invisível
+   quanto a recusa muda que ele veio substituir. */
+const painelHtml3 = fsP.readFileSync(require("path").join(__dirname, "..", "..", "Scripts_Certificado.html"), "utf8");
+b.ok(/<option value="BLOQUEADA_POR_REGRA">/.test(painelHtml3),
+  "o filtro do painel oferece 'Fora da regra'");
+b.ok(/<option value="AGUARDANDO_ATENDIMENTO_PRESENCIAL">/.test(painelHtml3),
+  "e o atendimento presencial, que também era invisível");
+b.ok(/id="certStatRegra"/.test(painelHtml3) && /if\(st==='BLOQUEADA_POR_REGRA'\) fr\+\+;/.test(painelHtml3),
+  "com card próprio e contagem de verdade");
+
 b.naoTestavel("Os botões no navegador e o arquivo abrindo do Drive",
   "jsdom não renderiza o modal do painel; o Drive é dublê no emulador");
 b.resumo();
