@@ -193,6 +193,41 @@ secoes.forEach(function (el) { if (el.style.display !== "none") visiveis2++; });
 b.igual(visiveis2, secoes.length - 1,
   "e as outras seis voltam a aparecer — só a escondida fica escondida");
 
+/* ── 4. NENHUM CAMPO PESSOAL GUARDA HISTÓRICO NO NAVEGADOR ──────────────── */
+/* Achado por você em 16/09/2026: o campo CPF do portal PÚBLICO abria uma
+   lista com quatro CPFs de outras pessoas. É o histórico de formulário do
+   navegador — que num computador compartilhado entrega CPF, nome, telefone e
+   endereço de quem preencheu antes para o associado seguinte. */
+b.passo("4. O campo não oferece o que a pessoa anterior digitou");
+
+const PESSOAIS = ["cpf", "dataNascimento", "nome", "telefone", "email", "cep",
+                  "endereco", "cargoFuncao", "nomeBeneficiario",
+                  "dataNascimentoBeneficiario", "nomeTitularAssociado",
+                  "curso", "escolaAtual"];
+PESSOAIS.forEach(function (id) {
+  const el = campo(id);
+  b.ok(!!el, "o campo " + id + " existe na tela");
+  if (el) {
+    b.igual(String(el.getAttribute("autocomplete") || "").toLowerCase(), "off",
+      id + " não guarda histórico no navegador");
+  }
+});
+
+/* A VARREDURA QUE IMPEDE O PRÓXIMO CAMPO DE NASCER SEM A TRAVA. Listar os
+   treze acima protege os treze; esta olha TODO campo de digitação da página,
+   inclusive o que alguém acrescentar amanhã. Arquivo e botão ficam de fora —
+   não guardam texto. */
+const digitaveis = Array.prototype.slice.call(
+  doc.querySelectorAll('input[type="text"], input[type="email"], input[type="date"], input[type="tel"], input[type="number"], textarea'));
+b.ok(digitaveis.length >= 13, "a varredura alcançou os campos da página",
+  digitaveis.length + " campos");
+const semTrava = digitaveis.filter(function (el) {
+  return String(el.getAttribute("autocomplete") || "").toLowerCase() !== "off";
+}).map(function (el) { return el.id || el.name || "(sem id)"; });
+b.igual(semTrava.length, 0,
+  "nenhum campo de digitação do portal ficou sem autocomplete=off",
+  semTrava.join(", ") || "todos protegidos");
+
 b.naoTestavel("como isso APARECE no navegador",
   "jsdom não desenha nem aplica CSS — roteiro manual: abrir o link público, " +
   "salvar uma solicitação e conferir que só o card verde fica na tela");
