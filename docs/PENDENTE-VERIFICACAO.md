@@ -5655,13 +5655,34 @@ Publicado: `a68b61d`, run #147, 16/09 00:53.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 1 | 🔴 PDF sai com timbrado, marca d'água e assinatura | no PDF |
-| 2 | 🔴 texto bate com o modelo DECLARAÇÃO 17.09.2026 | no PDF |
-| 3 | 🔴 "diretora" para cargo feminino, "diretor" para o resto | no PDF |
-| 4 | 🔴 `SindEducação-ES` no corpo e na assinatura | no PDF |
-| 5 | 🔴 Integral não escreve "em período integral" | no PDF |
-| 6 | 🔴 arquivo `Declaração 00X-2026 - NOME - DD.MM.AAAA.pdf` | no Drive |
-| 7 | 🔴 caiu na subpasta do ano | no Drive |
+| 1 | ✅ PDF sai com timbrado, marca d'água e assinatura | **fechado 16/09/2026** |
+| 2 | ✅ texto bate com o modelo DECLARAÇÃO 17.09.2026 | **fechado 16/09/2026** |
+| 3 | 🔴 "diretora" para cargo feminino, "diretor" para o resto | **continua aberto** |
+| 4 | ✅ `SindEducação-ES` no corpo e na assinatura | **fechado 16/09/2026** |
+| 5 | ✅ Integral não escreve "em período integral" | **fechado 16/09/2026** |
+| 6 | ✅ arquivo `Declaração 00X-2026 - NOME - DD.MM.AAAA.pdf` | **fechado 16/09/2026** |
+| 7 | ✅ caiu na subpasta do ano | **fechado 16/09/2026** |
+
+**Como fecharam.** O usuário emitiu duas declarações em produção e disse:
+"sai timbrado, tudo certo". Os itens 6 e 7 eu confirmei olhando o Drive — os
+arquivos estavam em `SISGEP - Declaracoes - PRODUCAO/2026`, com os nomes
+`Declaração 001-2026 - WANDERSON NASCIMENTO CASTELO - 16.09.2026.pdf` e o
+002 equivalente. A subpasta `2026` foi criada pelo próprio sistema na
+primeira emissão.
+
+**O ITEM 3 NÃO FECHOU, e não vou marcá-lo por tabela.** "Tudo certo" cobre o
+que ele viu, e ele emitiu com o PRÓPRIO NOME — cargo masculino. A regra do
+feminino (`declTratamento_`: secretária, diretora, conselheira, delegada,
+tesoureira, presidenta, vice-presidenta → "diretora") só se prova emitindo
+para uma dirigente mulher. O teste t175 cobre a função; o documento assinado,
+não.
+
+**Os dois PDFs de teste foram apagados a pedido do usuário** ("assim sem
+problemas apagar"), em 16/09/2026, e estão na lixeira do Drive. A numeração
+voltou a 001/2026 sozinha: `declProximoNumero_` deriva do maior número das
+LINHAS existentes, e a exclusão remove a linha de verdade (`Lixeira.gs:170`
+faz `deleteRow` depois de copiar para a aba de lixeira). Não existe contador
+guardado para zerar.
 
 ### O que a tela responde
 
@@ -5725,7 +5746,7 @@ no ar; a suíte prova o código, não o Google.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 27 | 🔴 emissão funciona em produção — a pasta do Drive agora vem do código | na tela |
+| 27 | ✅ emissão funciona em produção — **fechado 16/09/2026**, duas emitidas | na tela |
 | 28 | 🔴 escolher o diretor traz a escola da última declaração, preenchida | na tela |
 | 29 | 🔴 o rótulo diz "repetida da declaração X, de DD/MM — confira" | na tela |
 | 30 | 🔴 o ✕ desfaz a sugestão e deixa buscar outra | na tela |
