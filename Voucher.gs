@@ -1513,6 +1513,15 @@ function listarSolicitacoesVoucher() {
 
         tipoBeneficiario: String(val(l, "TIPO_BENEFICIARIO", "BENEFICIARIO", "TIPO BENEFICIÁRIO") || ""),
         nomeBeneficiario: String(val(l, "NOME_BENEFICIARIO", "NOME DO BENEFICIARIO", "NOME_BENEF") || ""),
+        /* A IDADE VIAJA ATÉ O PAINEL — 16/09/2026.
+         *
+         * Era medida na entrada, gravada na planilha, e parava ali: a tela de
+         * análise não tinha o número. Quem conferia via o status
+         * BLOQUEADA_POR_REGRA e precisava abrir a observação para descobrir
+         * que o motivo era idade. O pedido do usuário é o contrário — "o
+         * sistema automaticamente tem que informar: dependente fora da
+         * idade". Informar exige o dado do lado de cá. */
+        idade: String(val(l, "IDADE_BENEFICIARIO", "IDADE") || ""),
 
         nivel: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),
         modalidade: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),

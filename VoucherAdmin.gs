@@ -872,3 +872,210 @@ function voucherRelatorioDuplicidades(tokenSessao) {
     return { ok: false, mensagem: "Erro ao montar o relatório: " + e.message };
   }
 }
+
+/* ================= COMUNICADO DE "FORA DA REGRA" =================
+ *
+ * PEDIDO DO USUÁRIO, 16/09/2026, sobre o dependente acima de 24 anos:
+ *
+ *   "Ele pode preencher o cadastro, tudo normalmente. Quando vai chegar para
+ *    a Marcela fazer validação, o sistema automaticamente tem que informar
+ *    [...] Dependente fora da idade. E ela só vai enviar um comunicado, vai
+ *    ter um botão em ações lá, ela vai enviar um comunicado já padrão, uma
+ *    mensagem padrão, em que infelizmente não é possível devido à idade dele."
+ *
+ * E, perguntado se o texto sai fechado: "Pode editar".
+ *
+ * POR QUE NÃO É O INDEFERIMENTO COMUM. O indeferimento pede que alguém
+ * DIGITE a justificativa — e a justificativa aqui é sempre a mesma frase,
+ * sobre um fato que o sistema já conferiu sozinho. Redigitar todo semestre o
+ * que o sistema já sabe é defeito de desenho, não trabalho (REGRA Nº 0.6).
+ * Então o texto nasce pronto, com o motivo medido do cadastro, e ela edita se
+ * o caso pedir.
+ */
+
+/**
+ * O que travou a solicitação, medido do registro — não do que alguém digitou.
+ *
+ * Devolve `null` quando a solicitação NÃO está fora da regra. É isso que
+ * decide se o botão aparece na tela: botão que existe sempre e só funciona às
+ * vezes ensina a pessoa a clicar e receber recusa.
+ */
+function voucherMotivoForaDaRegra_(reg) {
+  if (!reg) return null;
+
+  var status = String(valorSeguroVoucher_(reg.STATUS_SOLICITACAO) || "").toUpperCase();
+  if (status !== "BLOQUEADA_POR_REGRA") return null;
+
+  var tipo  = String(valorSeguroVoucher_(reg.TIPO_BENEFICIARIO) || "").toUpperCase();
+  var idade = String(valorSeguroVoucher_(reg.IDADE_BENEFICIARIO) || "").trim();
+  var obs   = String(valorSeguroVoucher_(reg.OBSERVACOES) || "").trim();
+
+  /* IDADE primeiro, porque é o caso que o usuário descreveu e o único em que
+   * o sistema tem um número para mostrar. "até 24" inclui os 24 — ver o
+   * cabeçalho da regra em Voucher.gs. */
+  if (idade !== "" && !isNaN(Number(idade)) && Number(idade) > 24 &&
+      tipo !== "TITULAR" && tipo !== "") {
+    return {
+      tipo: "IDADE",
+      rotulo: "Beneficiário com " + idade + " anos — o limite da convenção é 24.",
+      origem: "conferido no cadastro, no campo IDADE_BENEFICIÁRIO",
+      idade: idade
+    };
+  }
+
+  /* TETO POR ASSOCIADO. Gravado com esse prefixo em VoucherSolicitacao.gs. */
+  if (obs.indexOf("LIMITE POR ASSOCIADO") > -1) {
+    return {
+      tipo: "LIMITE",
+      rotulo: "O associado já está no teto de três bolsas no período.",
+      origem: "contado pelo sistema entre as bolsas ativas do associado",
+      idade: idade
+    };
+  }
+
+  /* Qualquer outro bloqueio de regra: mostra o que a regra registrou, sem
+   * inventar motivo. Texto vazio aqui seria pior que texto genérico. */
+  return {
+    tipo: "OUTRA",
+    rotulo: obs || "A solicitação não atende a uma regra da convenção.",
+    origem: "registrado pela conferência automática na entrada",
+    idade: idade
+  };
+}
+
+/**
+ * O texto padrão, já preenchido — para a tela mostrar e ela editar.
+ *
+ * Devolve TEXTO CORRIDO, não HTML: é o que vai dentro de um <textarea>. A
+ * casca visual do e-mail entra só no envio, em enviarComunicadoRegraVoucher.
+ */
+function voucherTextoComunicadoRegra_(reg, protocolo, motivo) {
+  var nome  = valorSeguroVoucher_(reg.NOME_SOLICITANTE) || "associado(a)";
+  var benef = valorSeguroVoucher_(reg.NOME_BENEFICIARIO) || "";
+
+  var explicacao;
+  if (motivo && motivo.tipo === "IDADE") {
+    explicacao = "A convenção coletiva prevê o benefício para dependentes de até 24 anos. " +
+      (benef ? "Como " + benef + " já ultrapassou essa idade" : "Como o beneficiário já ultrapassou essa idade") +
+      ", infelizmente não é possível conceder a bolsa neste caso.";
+  } else if (motivo && motivo.tipo === "LIMITE") {
+    explicacao = "A convenção coletiva prevê até três bolsas por associado no mesmo período, " +
+      "e esse limite já está ocupado. Infelizmente não é possível conceder mais uma bolsa agora.";
+  } else {
+    explicacao = "Após a conferência, infelizmente não foi possível conceder a bolsa neste caso. " +
+      ((motivo && motivo.rotulo) ? "Motivo: " + motivo.rotulo : "");
+  }
+
+  return "" +
+    "Olá, " + nome + ",\n\n" +
+    "Recebemos sua solicitação de bolsa de estudo" +
+    (benef ? " para " + benef : "") + " e agradecemos a confiança.\n\n" +
+    explicacao + "\n\n" +
+    "Isso não impede novas solicitações: se houver outro dependente que atenda aos " +
+    "critérios, ou se algum dado tiver sido informado por engano, basta refazer o " +
+    "pedido pelo portal — ou falar com a Secretaria, que ajudamos a conferir.\n\n" +
+    "Protocolo: " + protocolo + "\n\n" +
+    "Qualquer dúvida, é só responder a este e-mail.\n\n" +
+    "Atenciosamente,\n" +
+    "Secretaria — SindEducação-ES";
+}
+
+/**
+ * A tela pede o rascunho ANTES de mostrar o modal — o texto chega pronto.
+ */
+function previewComunicadoRegraVoucher(protocolo, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    var item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    var motivo = voucherMotivoForaDaRegra_(item.registro);
+    if (!motivo) {
+      return { ok: false, mensagem: "Esta solicitação não está bloqueada por regra." };
+    }
+
+    return {
+      ok: true,
+      protocolo: protocolo,
+      email: valorSeguroVoucher_(item.registro.EMAIL) || "",
+      nome: valorSeguroVoucher_(item.registro.NOME_SOLICITANTE) || "",
+      beneficiario: valorSeguroVoucher_(item.registro.NOME_BENEFICIARIO) || "",
+      motivo: motivo,
+      assunto: "Sobre sua solicitação de bolsa — " + protocolo,
+      texto: voucherTextoComunicadoRegra_(item.registro, protocolo, motivo)
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao montar o comunicado: " + e.message };
+  }
+}
+
+/**
+ * Envia o comunicado — com o texto que ELA aprovou, não com o meu.
+ *
+ * `indeferir` chega marcado da tela, e com a origem à vista: comunicar que
+ * "infelizmente não é possível" e deixar a solicitação na fila faria a fila
+ * crescer com caso já resolvido. Mas quem decide é quem está atendendo, então
+ * é caixa desmarcável, não efeito colateral silencioso (REGRA Nº 0.6).
+ */
+function enviarComunicadoRegraVoucher(protocolo, texto, indeferir, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    var item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    var corpo = String(texto || "").trim();
+    if (!corpo) return { ok: false, mensagem: "O comunicado está vazio — escreva a mensagem antes de enviar." };
+
+    var email = valorSeguroVoucher_(item.registro.EMAIL);
+    if (!email) {
+      return { ok: false, mensagem: "Esta solicitação não tem e-mail cadastrado — o comunicado precisa ser dado por telefone." };
+    }
+
+    var motivo  = voucherMotivoForaDaRegra_(item.registro);
+    var usuario = obterUsuarioAtualVoucher_();
+
+    /* O TEXTO VEM DO <textarea>, ENTÃO É ESCAPADO E SÓ DEPOIS QUEBRADO EM
+     * PARÁGRAFOS. Na ordem inversa, um "<" digitado por engano viraria tag e
+     * quebraria o e-mail — ou pior, o que ela digitasse viraria HTML. */
+    var corpoHtml = corpo.split(/\n{2,}/).map(function (par) {
+      return "<p>" + escHtmlVoucher_(par).replace(/\n/g, "<br>") + "</p>";
+    }).join("");
+
+    voucherEnviarEmail_(email, "Sobre sua solicitação de bolsa — " + protocolo,
+      voucherEmailHtml_("Sobre sua solicitação de bolsa", corpoHtml));
+
+    var resumoMotivo = (motivo && motivo.rotulo) || "fora da regra";
+
+    registrarHistoricoVoucher_(
+      item.registro.ID_SOLICITACAO,
+      item.registro.CPF_SOLICITANTE,
+      "COMUNICADO_REGRA_ENVIADO",
+      usuario,
+      "Comunicado enviado para " + email + " — " + resumoMotivo,
+      protocolo
+    );
+
+    if (indeferir === true || String(indeferir) === "true") {
+      var justificativa = "Comunicado enviado ao associado. " + resumoMotivo;
+      atualizarStatusSolicitacao_(item, "INDEFERIDO", justificativa);
+      atualizarStatusProtocolo_(protocolo, "INDEFERIDO", usuario, justificativa);
+      registrarHistoricoVoucher_(
+        item.registro.ID_SOLICITACAO,
+        item.registro.CPF_SOLICITANTE,
+        "SOLICITACAO_INDEFERIDA",
+        usuario,
+        justificativa,
+        protocolo
+      );
+      /* NÃO dispara enviarEmailIndeferimentoVoucher_: o associado acabou de
+       * receber o comunicado, e dois e-mails sobre a mesma recusa, com textos
+       * diferentes, é o tipo de coisa que gera ligação para o sindicato. */
+      return { ok: true, mensagem: "Comunicado enviado e solicitação indeferida." };
+    }
+
+    return { ok: true, mensagem: "Comunicado enviado para " + email + "." };
+
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao enviar o comunicado: " + e.message };
+  }
+}

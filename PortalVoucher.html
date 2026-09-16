@@ -413,20 +413,31 @@
           <label for="endereco">Endereço</label>
           <input type="text" id="endereco" placeholder="Rua, número, bairro, cidade">
         </div>
-      <div class="field required">
-  <label for="escolaAtual">Escola atual</label>
-  <select id="escolaAtual">
-    <option value="">Selecione...</option>
-  </select>
-</div>
+      <!-- ESCOLA: DIGITA E BUSCA; NÃO ACHOU, O QUE FOI DIGITADO VALE.
+           Pedido do usuário em 16/09/2026: "Ele deve buscar a escola e se
+           não encontrar deve digitar o nome da escola".
 
-<div class="field hidden" id="boxOutraEscola">
-  <label for="outraEscola">Nome da escola</label>
-  <input
-    type="text"
-    id="outraEscola"
-    placeholder="Digite o nome completo da escola">
-</div>
+           Antes eram DOIS campos: uma lista com as 679 escolas cadastradas
+           mais uma opção "🏫 Outra escola não listada" que, ao ser escolhida,
+           revelava um segundo campo de texto. Rolar 679 linhas não é buscar,
+           e quem não achava a escola tinha de descobrir sozinho que a saída
+           era a última opção da lista.
+
+           Agora é um campo só: digita, a lista filtra junto (datalist nativo,
+           sem biblioteca), e o que ficar escrito é o nome da escola — esteja
+           ela cadastrada ou não. O backend já sabe lidar com escola fora do
+           cadastro: grava ESCOLA_NAO_CADASTRADA e a análise confere. -->
+      <div class="field required">
+        <label for="escolaAtual">Escola atual</label>
+        <input
+          type="text"
+          id="escolaAtual"
+          list="listaEscolas"
+          autocomplete="off"
+          placeholder="Digite para buscar — ou escreva o nome da escola">
+        <datalist id="listaEscolas"></datalist>
+        <span class="field-help">Não encontrou na lista? Escreva o nome completo da escola.</span>
+      </div>
         <div class="field">
           <label for="cargoFuncao">Cargo / Função</label>
           <input type="text" id="cargoFuncao" placeholder="Ex.: Professor">
@@ -596,6 +607,7 @@
       <div class="protocolo-acoes">
         <button class="btn btn-secondary" onclick="copiarProtocolo()"><span>📋 Copiar</span></button>
         <button class="btn btn-secondary" onclick="imprimirProtocolo()"><span>🖨️ Imprimir</span></button>
+        <button class="btn btn-secondary" onclick="portalNovaSolicitacao()"><span>➕ Fazer nova solicitação</span></button>
       </div>
       <div class="protocolo-countdown" id="protocoloCountdown" style="display:none;"></div>
     </div>
@@ -698,14 +710,6 @@ function atualizarProgresso() {
 
     var valor = String(el.value || '').trim();
 
-    if (id === 'escolaAtual' && valor === '__OUTRA_ESCOLA__') {
-      var outra = document.getElementById('outraEscola');
-      if (outra && String(outra.value || '').trim()) {
-        preenchidos++;
-      }
-      return;
-    }
-
     if (valor) {
       preenchidos++;
     }
@@ -736,10 +740,7 @@ function atualizarProgresso() {
             email: document.getElementById('email').value,
             cep: document.getElementById('cep').value,
             endereco: document.getElementById('endereco').value,
-   escolaAtual:
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
-    ? document.getElementById('outraEscola').value.trim()
-    : document.getElementById('escolaAtual').value,
+            escolaAtual: document.getElementById('escolaAtual').value.trim(),
             cargoFuncao: document.getElementById('cargoFuncao').value,
             situacaoVinculo: document.getElementById('situacaoVinculo').value,
             situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
@@ -789,19 +790,6 @@ function atualizarProgresso() {
 
       });
 
-      // Escola personalizada
-      if (
-        dados.escolaAtual &&
-        !Array.from(document.getElementById('escolaAtual').options)
-          .some(op => op.value === dados.escolaAtual)
-      ) {
-
-        document.getElementById('escolaAtual').value = '__OUTRA_ESCOLA__';
-        document.getElementById('outraEscola').value = dados.escolaAtual;
-        document.getElementById('boxOutraEscola').classList.remove('hidden');
-
-      }
-
       ajustarCamposVoucher();
       validarIdadeModalidade();
       atualizarProgresso();
@@ -842,6 +830,39 @@ function atualizarProgresso() {
 
     function imprimirProtocolo() { window.print(); }
 
+    /* SÓ O RECIBO FICA NA TELA — 16/09/2026.
+     *
+     * O usuário mandou a tela de sucesso como estava: o card verde
+     * "Solicitação registrada" aparecia EMBAIXO do formulário inteiro, com
+     * todos os campos ainda preenchidos e o botão "Salvar solicitação" ainda
+     * ali, clicável. "Essa parte deve somente aparecer sem os cards
+     * anteriores".
+     *
+     * Não é só estética. Formulário preenchido com botão de salvar ativo,
+     * logo abaixo de um protocolo já emitido, é convite para a pessoa clicar
+     * de novo achando que não salvou — e mandar a mesma solicitação duas
+     * vezes. Some tudo, fica o recibo.
+     *
+     * Esconde por CLASSE, não por id: as seções do formulário não têm id, e
+     * inventar cinco ids só para escondê-los criaria cinco coisas novas para
+     * alguém esquecer de atualizar quando a próxima seção nascer. */
+    function portalSoRecibo(ligado) {
+      var alvos = document.querySelectorAll('.secao, .acoes');
+      for (var i = 0; i < alvos.length; i++) {
+        alvos[i].style.display = ligado ? 'none' : '';
+      }
+    }
+
+    /* A VOLTA. Sem isto, a única saída da tela de recibo seria recarregar a
+     * página — e quem tem três dependentes faz três pedidos seguidos. */
+    function portalNovaSolicitacao() {
+      var box = document.getElementById('protocoloBox');
+      if (box) box.classList.remove('visible');
+      portalSoRecibo(false);
+      if (typeof limparFormulario === 'function') limparFormulario();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function validarIdadeModalidade() {
       var dataNascStr = document.getElementById('dataNascimentoBeneficiario').value;
       var modalidade = document.getElementById('modalidade').value;
@@ -862,8 +883,31 @@ function atualizarProgresso() {
         'POS_GRADUACAO':{'min':21,'max':50,'nome':'Pós-Graduação'}
       };
 
-      // Regra especial: filho em Graduação/Pós — máximo 24 anos para iniciar
       var tipoBenef = document.getElementById('tipoBeneficiario') ? String(document.getElementById('tipoBeneficiario').value||'').toUpperCase() : '';
+
+      /* TITULAR NÃO TEM REGRA DE IDADE. NENHUMA.
+       *
+       * Achado pelo usuário em 16/09/2026, testando com o próprio cadastro:
+       * associado de 45 anos pedindo Pós-Graduação levava
+       * "⚠️ Idade incompatível! Para Graduação, a idade deve estar entre 17 e
+       * 35 anos" — e o formulário travava. Ele foi direto ao ponto: "Para
+       * titular não tem regra de idade".
+       *
+       * A tabela de faixas abaixo existe para PEGAR ERRO DE DIGITAÇÃO em
+       * dependente (criança de 2 anos matriculada no Ensino Médio é dedo
+       * errado, não caso raro). Para o associado, ela não tem base nenhuma:
+       * a convenção limita idade só para filho e enteado, e o limite é 24.
+       * Ver calcularRegraVoucherConvencao_ em Voucher.gs — o backend nunca
+       * barrou o titular por idade; quem barrava era esta tela.
+       *
+       * Por isso a saída é aqui em cima, antes de qualquer faixa: o titular
+       * não passa nem pela regra dos 24 nem pela tabela por modalidade. */
+      if (tipoBenef === 'TITULAR') {
+        document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
+        return true;
+      }
+
+      // Regra especial: filho em Graduação/Pós — máximo 24 anos para iniciar
       var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
       if(isFilho && (modalidade === 'GRADUACAO' || modalidade === 'POS_GRADUACAO')){
         if(idade > 24){
@@ -898,78 +942,29 @@ function atualizarProgresso() {
       });
     }
 function preencherEscolas() {
-  var el = document.getElementById('escolaAtual');
+  var lista = document.getElementById('listaEscolas');
+  if (!lista) return;
 
-  el.innerHTML = '<option value="">Selecione...</option>';
+  lista.innerHTML = '';
 
+  /* A CIDADE VAI NO `label`, NUNCA NO `value`.
+     No datalist, o `value` é o que entra no campo quando a pessoa escolhe —
+     se a cidade fosse junto, a escola chegaria ao backend como
+     "UVV — Vila Velha" e nunca casaria com o cadastro. O `label` aparece na
+     sugestão e serve para distinguir duas escolas de mesmo nome. */
   (INIT.escolas || []).forEach(function(item) {
     var op = document.createElement('option');
     op.value = item.escola;
-    op.textContent = item.escola + (item.cidade ? ' — ' + item.cidade : '');
-    el.appendChild(op);
+    if (item.cidade) op.label = item.escola + ' — ' + item.cidade;
+    lista.appendChild(op);
   });
-
-  // Opção especial
-  var outra = document.createElement('option');
-  outra.value = '__OUTRA_ESCOLA__';
-  outra.textContent = '🏫 Outra escola não listada';
-  el.appendChild(outra);
 }
 function preencherEscolaAtual(valorEscola) {
-
-  var escola = String(valorEscola || '').trim();
-
-  var select = document.getElementById('escolaAtual');
-  var outra = document.getElementById('outraEscola');
-  var boxOutra = document.getElementById('boxOutraEscola');
-
-  if (!select) return;
-
-  if (!escola) {
-
-    select.value = '';
-
-    if (outra) {
-      outra.value = '';
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.add('hidden');
-    }
-
-    return;
-  }
-
-  var existeNaLista = Array.from(select.options).some(function(op) {
-    return String(op.value || '').trim() === escola;
-  });
-
-  if (existeNaLista) {
-
-    select.value = escola;
-
-    if (outra) {
-      outra.value = '';
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.add('hidden');
-    }
-
-  } else {
-
-    select.value = '__OUTRA_ESCOLA__';
-
-    if (outra) {
-      outra.value = escola;
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.remove('hidden');
-    }
-
-  }
-
+  /* Um campo só, então não há mais o que decidir: o que veio do cadastro é o
+     que aparece escrito. Antes esta função precisava descobrir se a escola
+     estava ou não na lista para escolher ENTRE DOIS CAMPOS. */
+  var el = document.getElementById('escolaAtual');
+  if (el) el.value = String(valorEscola || '').trim();
 }
 function ajustarCamposVoucher() {
   var modalidade = document.getElementById('modalidade').value;
@@ -1248,15 +1243,7 @@ aplicarCadastroLocalizado(c);
       if (!validarCPF(cpfVal)) { showMsg('❌ CPF inválido!', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
       if (!document.getElementById('dataNascimento').value) { showMsg('❌ Informe a data de nascimento.', 'erro'); document.getElementById('dataNascimento').classList.add('invalid'); return; }
       if (!document.getElementById('nome').value.trim()) { showMsg('❌ Informe o nome completo.', 'erro'); document.getElementById('nome').classList.add('invalid'); return; }
-      if (!document.getElementById('escolaAtual').value) { showMsg('❌ Selecione a escola.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
-      if (
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__' &&
-  !document.getElementById('outraEscola').value.trim()
-) {
-  showMsg('❌ Informe o nome da escola.', 'erro');
-  document.getElementById('outraEscola').classList.add('invalid');
-  return;
-}
+      if (!document.getElementById('escolaAtual').value.trim()) { showMsg('❌ Informe a escola — busque na lista ou escreva o nome.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
       if (!document.getElementById('situacaoSindicalDeclarada').value) { showMsg('❌ Informe a situação sindical.', 'erro'); document.getElementById('situacaoSindicalDeclarada').classList.add('invalid'); return; }
       if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
       if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
@@ -1284,10 +1271,7 @@ aplicarCadastroLocalizado(c);
             email: document.getElementById('email').value.trim(),
             cep: document.getElementById('cep').value.trim(),
             endereco: document.getElementById('endereco').value.trim(),
-escolaAtual:
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
-    ? document.getElementById('outraEscola').value.trim()
-    : document.getElementById('escolaAtual').value,
+            escolaAtual: document.getElementById('escolaAtual').value.trim(),
             cargoFuncao: document.getElementById('cargoFuncao').value.trim(),
             situacaoVinculo: document.getElementById('situacaoVinculo').value.trim(),
             situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
@@ -1393,7 +1377,8 @@ escolaAtual:
               );
 
               protBox.classList.add('visible');
-              protBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              portalSoRecibo(true);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
               removeSafeLocalStorageItem('voucher_rascunho');
 
               // Não some automaticamente — usuário decide quando limpar
@@ -1437,8 +1422,7 @@ function limparFormulario(confirmar) {
     'dataNascimentoBeneficiario',
     'nomeTitularAssociado',
     'curso',
-    'periodoReferencia',
-    'outraEscola'
+    'periodoReferencia'
   ];
 
   ids.forEach(function(id) {
@@ -1453,7 +1437,6 @@ function limparFormulario(confirmar) {
   });
 
   [
-    'escolaAtual',
     'situacaoSindicalDeclarada',
     'tipoBeneficiario',
     'parentesco',
@@ -1477,21 +1460,6 @@ function limparFormulario(confirmar) {
 
   if (campoSindical) {
     campoSindical.disabled = false;
-  }
-
-  // Oculta campo de escola personalizada
-  var boxOutra = document.getElementById('boxOutraEscola');
-
-  if (boxOutra) {
-    boxOutra.classList.add('hidden');
-  }
-
-  // Limpa escola personalizada
-  var outraEscola = document.getElementById('outraEscola');
-
-  if (outraEscola) {
-    outraEscola.value = '';
-    outraEscola.classList.remove('invalid');
   }
 
   // Uploads
@@ -1588,7 +1556,6 @@ function limparFormulario(confirmar) {
   'cep',
   'endereco',
   'escolaAtual',
-  'outraEscola',
   'cargoFuncao',
   'situacaoVinculo',
   'situacaoSindicalDeclarada',
@@ -1621,22 +1588,10 @@ camposAutoSave.forEach(function(id) {
   });
 });
 
-document.getElementById('escolaAtual').addEventListener('change', function() {
-  var boxOutra = document.getElementById('boxOutraEscola');
-  var outra = document.getElementById('outraEscola');
-
-  if (this.value === '__OUTRA_ESCOLA__') {
-    if (boxOutra) boxOutra.classList.remove('hidden');
-    if (outra) outra.focus();
-  } else {
-    if (boxOutra) boxOutra.classList.add('hidden');
-
-    if (outra) {
-      outra.value = '';
-      outra.classList.remove('invalid');
-    }
-  }
-
+/* Digitar no campo conta para a barra de progresso e para o rascunho — antes
+   isto dependia do evento `change` do select, que só disparava ao escolher. */
+document.getElementById('escolaAtual').addEventListener('input', function() {
+  this.classList.remove('invalid');
   autoSave();
   atualizarProgresso();
 });
