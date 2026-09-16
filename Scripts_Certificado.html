@@ -53,12 +53,12 @@
 
 #secCertificadoAdmin .cert-content { padding: 0 32px 48px; }
 
-#secCertificadoAdmin .cert-msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
-#secCertificadoAdmin .cert-msg:empty { display: none; }
-#secCertificadoAdmin .cert-msg.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
-#secCertificadoAdmin .cert-msg.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 12px 16px; }
-#secCertificadoAdmin .cert-msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 12px 16px; }
-#secCertificadoAdmin .cert-msg.info { background: #eff6ff;         border: 1px solid #93c5fd; color: #1d4ed8;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-cert_msg { border-radius: 12px; font-size: 13.5px; font-weight: 600; margin-bottom: 16px; line-height: 1.5; }
+#secCertificadoAdmin .cert-cert_msg:empty { display: none; }
+#secCertificadoAdmin .cert-cert_msg.ok   { background: var(--green-lt); border: 1px solid #6ee7b7; color: #065f46; padding: 12px 16px; }
+#secCertificadoAdmin .cert-cert_msg.erro { background: var(--red-lt);   border: 1px solid #fca5a5; color: #9f1239;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-cert_msg.warn { background: var(--amber-lt); border: 1px solid #fcd34d; color: #92400e;  padding: 12px 16px; }
+#secCertificadoAdmin .cert-cert_msg.info { background: #eff6ff;         border: 1px solid #93c5fd; color: #1d4ed8;  padding: 12px 16px; }
 
 #secCertificadoAdmin .cert-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.055); box-shadow: 0 2px 12px rgba(0,20,60,.06); overflow: hidden; margin-bottom: 16px; }
 #secCertificadoAdmin .cert-card-head { padding: 16px 20px 13px; border-bottom: 1px solid var(--g100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -349,7 +349,7 @@
   </div>
 
   <div class="cert-content">
-    <div class="cert-msg" id="certMsgBox"></div>
+    <div class="cert-cert_msg" id="certMsgBox"></div>
 
     <div class="cert-card">
       <div class="cert-card-head">
@@ -1013,7 +1013,7 @@ var _solAtual    = null;
 
 function g(id){ return document.getElementById(id); }
 function certToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
-function escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cert_escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
 /* A DATA VINHA CRUA — e foi ela que empurrou a coluna "Ações" para fora.
@@ -1036,7 +1036,7 @@ function certData(v){
        + ' ' + dd(d.getHours())+':'+dd(d.getMinutes());
 }
 
-function msg(texto, tipo){
+function cert_msg(texto, tipo){
   /* O FEEDBACK IA PARAR ATRÁS DO MODAL.
    *
    * `#certMsgBox` fica na área da lista. Com um modal aberto por cima, a
@@ -1055,16 +1055,16 @@ function msg(texto, tipo){
     toast(limpo, tipo==='erro'?'erro':tipo==='warn'?'alerta':tipo==='ok'?'ok':'info', 7000);
   }
   var box = g('certMsgBox'); if(!box) return;
-  box.className = 'cert-msg ' + (tipo||'info');
+  box.className = 'cert-cert_msg ' + (tipo||'info');
   box.innerHTML = texto||'';
   if(texto) box.scrollIntoView({behavior:'smooth',block:'nearest'});
-  if(tipo==='ok') setTimeout(function(){ box.innerHTML=''; box.className='cert-msg'; }, 14000);
+  if(tipo==='ok') setTimeout(function(){ box.innerHTML=''; box.className='cert-cert_msg'; }, 14000);
 }
 function setBtnLoad(btn,texto){ if(!btn) return; btn.disabled=true; btn._orig=btn.innerHTML; btn.innerHTML='⏳ '+(texto||'Aguarde...'); }
-function resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!==undefined) btn.innerHTML=btn._orig; }
+function cert_resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!==undefined) btn.innerHTML=btn._orig; }
 
 // ── Métricas
-function atualizarMetricas(){
+function cert_atualizarMetricas(){
   var t=0,p=0,a=0,ap=0,em=0;
   _lista.forEach(function(s){
     t++;
@@ -1123,11 +1123,11 @@ function montarFiltroPeriodo(){
   });
   var chaves = Object.keys(vistos).sort().reverse();
   sel.innerHTML = '<option value="">todos</option>'
-    + chaves.map(function(p){ return '<option value="'+escHtml(p)+'">'+escHtml(p)+'</option>'; }).join('');
+    + chaves.map(function(p){ return '<option value="'+cert_escHtml(p)+'">'+cert_escHtml(p)+'</option>'; }).join('');
   if(atual && chaves.indexOf(atual) > -1) sel.value = atual;
 }
 
-function aplicarFiltros(){
+function cert_aplicarFiltros(){
   var busca  = normTxt(filtroVal('certBusca'));
   var status = filtroVal('certFiltroStatus');
   var mod    = filtroVal('certFiltroModalidade');
@@ -1168,7 +1168,7 @@ function aplicarFiltros(){
   var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate);
   if(g('certLimparFiltros')) g('certLimparFiltros').style.display = algum ? '' : 'none';
 
-  _paginaAtual=1; renderTabela();
+  _paginaAtual=1; cert_renderTabela();
 }
 
 /* ── SELEÇÃO E EXCLUSÃO ────────────────────────────────────────────────────
@@ -1210,7 +1210,7 @@ function limparSelecao(){
 
 function confirmarExclusao(){
   var protos = selecionadosLista();
-  if(!protos.length){ msg('Nenhuma solicitação selecionada.','warn'); return; }
+  if(!protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
 
   var itens = _lista.filter(function(s){ return protos.indexOf(s.protocolo) > -1; });
   var emitidas = itens.filter(function(s){ return String(s.status||'').toUpperCase()==='EMITIDO'; });
@@ -1218,8 +1218,8 @@ function confirmarExclusao(){
   var html = '<div style="font-size:12.5px;color:#334155;line-height:1.6;">'
     + itens.map(function(s){
         return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'
-          + '<strong>'+escHtml(s.protocolo)+'</strong> · '+escHtml(s.nome||'—')
-          + ' · '+escHtml(s.status||'—')+'</div>';
+          + '<strong>'+cert_escHtml(s.protocolo)+'</strong> · '+cert_escHtml(s.nome||'—')
+          + ' · '+cert_escHtml(s.status||'—')+'</div>';
       }).join('')
     + '</div>';
 
@@ -1250,25 +1250,25 @@ function executarExclusao(){
   setBtnLoad(btn,'Excluindo...');
   google.script.run
     .withSuccessHandler(function(r){
-      resetBtn(btn);
-      if(!r||!r.ok){ msg((r&&r.mensagem)||'Erro ao excluir.','erro'); return; }
+      cert_resetBtn(btn);
+      if(!r||!r.ok){ cert_msg((r&&r.mensagem)||'Erro ao excluir.','erro'); return; }
       fecharExclusao();
       limparSelecao();
-      msg('🗑 '+r.mensagem+' Dá para restaurar pela lixeira.','ok');
-      carregarLista();
+      cert_msg('🗑 '+r.mensagem+' Dá para restaurar pela lixeira.','ok');
+      cert_carregarLista();
     })
-    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
     .voucherExcluirSolicitacoes(protos,
       g('certExcluirMotivo') ? g('certExcluirMotivo').value : '', certToken());
 }
 
-function limparFiltros(){
+function cert_limparFiltros(){
   ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
    'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
    'certFiltroModalidade','certFiltroPeriodo'].forEach(function(id){
     if(g(id)){ g(id).value=''; g(id).classList.remove('ativo'); }
   });
-  aplicarFiltros();
+  cert_aplicarFiltros();
 }
 
 window.certFiltrarPorStatus = function(status){
@@ -1278,7 +1278,7 @@ window.certFiltrarPorStatus = function(status){
   var mapa={'':'certMcardTodos','PENDENTE':'certMcardPendente','ANALISE':'certMcardAnalise','APROVADO':'certMcardAprovado','EMITIDO':'certMcardEmitido'};
   if(mapa[status]&&g(mapa[status])) g(mapa[status]).classList.add('ativo');
   var sel=g('certFiltroStatus'); if(sel) sel.value=status;
-  aplicarFiltros();
+  cert_aplicarFiltros();
 };
 
 // ── Badge
@@ -1286,11 +1286,11 @@ function badgeStatus(s){
   var cls={'PENDENTE':'badge-pendente','ANALISE':'badge-analise','APROVADO':'badge-aprovado','INDEFERIDO':'badge-indeferido','EMITIDO':'badge-emitido'};
   var ico={'PENDENTE':'⏳','ANALISE':'🔍','APROVADO':'✅','INDEFERIDO':'❌','EMITIDO':'📄'};
   var st=String(s||'').toUpperCase();
-  return '<span class="cert-badge '+(cls[st]||'badge-pendente')+'">'+(ico[st]||'•')+' '+escHtml(s||'—')+'</span>';
+  return '<span class="cert-badge '+(cls[st]||'badge-pendente')+'">'+(ico[st]||'•')+' '+cert_escHtml(s||'—')+'</span>';
 }
 
 // ── Tabela
-function renderTabela(){
+function cert_renderTabela(){
   var tbody=g('certTbody'), sub=g('certTabelaSub');
   if(!tbody) return;
   if(!_filtrada.length){
@@ -1314,9 +1314,9 @@ function renderTabela(){
          Decisão do usuário em 13/08/2026. A coluna de ações já carrega três
          botões e é a mais apertada da tabela; uma caixa ali seria clicada por
          engano no lugar do botão vizinho — e o vizinho emite documento. */
-      +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
-      +'<td><strong style="font-size:12px;color:#002f6c;">'+escHtml(s.protocolo||'—')+'</strong></td>'
-      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+escHtml(s.nome||'—')
+      +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
+      +'<td><strong style="font-size:12px;color:#002f6c;">'+cert_escHtml(s.protocolo||'—')+'</strong></td>'
+      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+cert_escHtml(s.nome||'—')
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
            antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
            omissão — dizer isso de uma bolsa já renovada seria inventar. */
@@ -1332,10 +1332,10 @@ function renderTabela(){
         +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
             ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">presencial</span>':'')
         +'</div>'
-        +'<div style="font-size:11px;color:#94a3b8;">'+escHtml(s.cpf||'')+'</div></td>'
-      +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.escola||'—')+'</td>'
-      +'<td style="font-size:11.5px;">'+escHtml(s.nivel||s.modalidade||'—')+'</td>'
-      +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+escHtml(s.curso||'—')+'</td>'
+        +'<div style="font-size:11px;color:#94a3b8;">'+cert_escHtml(s.cpf||'')+'</div></td>'
+      +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.escola||'—')+'</td>'
+      +'<td style="font-size:11.5px;">'+cert_escHtml(s.nivel||s.modalidade||'—')+'</td>'
+      +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.curso||'—')+'</td>'
       /* PERÍODO VAZIO NÃO É TRAÇO, É AVISO — pedido do usuário em 13/08/2026:
          "deveria avisar quando não estiver".
          Duas linhas da produção estão assim, gravadas antes de o período
@@ -1344,13 +1344,13 @@ function renderTabela(){
          é a de alerta do design system, não o dourado institucional. */
       +'<td style="font-size:11.5px;">'
         + ((s.periodoReferencia||s.periodo)
-            ? escHtml(s.periodoReferencia||s.periodo)
+            ? cert_escHtml(s.periodoReferencia||s.periodo)
             : '<span title="Sem período não dá para emitir: ele sai impresso no '
               + 'certificado e é o que impede o mesmo voucher sair duas vezes." '
               + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
       +'</td>'
       +'<td>'+badgeStatus(s.status)+'</td>'
-      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+escHtml(certData(s.data))+'</td>'
+      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+cert_escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
         /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
          O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
@@ -1358,11 +1358,11 @@ function renderTabela(){
          valor em branco e podia não achar nada — e aí o clique não fazia
          absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
          é o pior defeito possível, porque não deixa nem por onde começar. */
-      +'<button type="button" class="cert-btn-abrir-modal" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
-        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+escHtml(s.id)+'" data-prot="'+escHtml(s.protocolo||'')+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
+      +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
         /* Enviar só aparece em EMITIDO: antes de existir documento não há o
            que mandar, e um botão que sempre recusa é pior que botão nenhum. */
-        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
+        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -1379,7 +1379,7 @@ function renderTabela(){
     if(id)   achada = _lista.find(function(x){ return String(x.id||'') === id; });
     if(!achada && prot) achada = _lista.find(function(x){ return String(x.protocolo||'') === prot; });
     if(!achada){
-      msg('Não consegui identificar esta solicitação na lista'
+      cert_msg('Não consegui identificar esta solicitação na lista'
           + (prot?' ('+prot+')':'') + '. Clique em Atualizar e tente de novo.','erro');
     }
     return achada;
@@ -1387,7 +1387,7 @@ function renderTabela(){
   tbody.querySelectorAll('.cert-btn-abrir-modal').forEach(function(btn){
     btn.addEventListener('click',function(){
       var s=linhaDoBotao(this);
-      if(s) abrirModal(s);
+      if(s) cert_abrirModal(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
@@ -1416,10 +1416,10 @@ function renderTabela(){
       envAbrir(this.getAttribute('data-prot'));
     });
   });
-  renderPaginacao(total,totalPag);
+  cert_renderPaginacao(total,totalPag);
 }
 
-function renderPaginacao(total,totalPag){
+function cert_renderPaginacao(total,totalPag){
   var wrap=g('certPagWrap'),info=g('certPagInfo'),btns=g('certPagBtns');
   if(!wrap) return;
   if(totalPag<=1){wrap.style.display='none';return;}
@@ -1436,11 +1436,11 @@ function renderPaginacao(total,totalPag){
 window.certIrPag=function(pg){
   var tp=Math.ceil(_filtrada.length/_porPagina);
   if(pg<1||pg>tp) return;
-  _paginaAtual=pg; renderTabela();
+  _paginaAtual=pg; cert_renderTabela();
 };
 
 // ── Modal
-function abrirModal(s){
+function cert_abrirModal(s){
   _solAtual=s;
   var st=String(s.status||'').toUpperCase();
   if(g('certModalTitulo')) g('certModalTitulo').textContent='Solicitação de Bolsa';
@@ -1468,7 +1468,7 @@ function abrirModal(s){
      pergunta que se faz ao abrir o registro ("já teve antes?"). Só aparece
      quando o dado existe — ver o comentário na listagem. */
   if(g('cmi-curso') && s.tipoSolicitacao==='RENOVACAO'){
-    g('cmi-curso').innerHTML = escHtml(s.curso||'—') + '<span class="cert-tag-renov">renovação</span>';
+    g('cmi-curso').innerHTML = cert_escHtml(s.curso||'—') + '<span class="cert-tag-renov">renovação</span>';
   }
   if(g('certModalObs')) g('certModalObs').value=s.observacao||'';
   if(g('certModalRg'))  g('certModalRg').value=s.rg||'';
@@ -1477,8 +1477,8 @@ function abrirModal(s){
   var docsEl=g('cmi-docs');
   if(docsEl){
     var dh='';
-    if(s.linkContracheque) dh+='<a href="'+escHtml(s.linkContracheque)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">📄 Contracheque</a>';
-    if(s.linkDocPessoal)   dh+='<a href="'+escHtml(s.linkDocPessoal)+'"  target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">🪪 Doc. Pessoal</a>';
+    if(s.linkContracheque) dh+='<a href="'+cert_escHtml(s.linkContracheque)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">📄 Contracheque</a>';
+    if(s.linkDocPessoal)   dh+='<a href="'+cert_escHtml(s.linkDocPessoal)+'"  target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">🪪 Doc. Pessoal</a>';
     if(!dh) dh='<span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>';
     docsEl.innerHTML=dh;
   }
@@ -1505,7 +1505,7 @@ function abrirModal(s){
   if(overlay){overlay.style.display='flex';overlay.classList.add('ativo');}
 }
 
-function fecharModal(){
+function cert_fecharModal(){
   var overlay=g('certModalOverlay');
   if(overlay){overlay.style.display='none';overlay.classList.remove('ativo');}
   _solAtual=null;
@@ -1513,16 +1513,16 @@ function fecharModal(){
 
 // ── Ações
 function acao(funcaoGas,labelBtn,labelMsg){
-  if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
+  if(!_solAtual){cert_msg('Nenhuma solicitação selecionada.','warn');return;}
   var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
   var btn=g(labelBtn);
   setBtnLoad(btn,'Salvando...');
   google.script.run
     .withSuccessHandler(function(resp){
-      resetBtn(btn);
-      if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro.','erro');return;}
-      msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
-      carregarLista();
+      cert_resetBtn(btn);
+      if(!resp||!resp.ok){cert_msg((resp&&resp.mensagem)||'Erro.','erro');return;}
+      cert_msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
+      cert_carregarLista();
 
       /* APROVAR E EMITIR VÊM COLADOS.
        *
@@ -1541,13 +1541,13 @@ function acao(funcaoGas,labelBtn,labelMsg){
         var prot = _solAtual.protocolo;
         setTimeout(function(){
           var atualizada = _lista.find(function(x){ return x.protocolo === prot; });
-          if(atualizada) abrirModal(atualizada);
+          if(atualizada) cert_abrirModal(atualizada);
         }, 400);
       } else {
-        fecharModal();
+        cert_fecharModal();
       }
     })
-    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
     [funcaoGas](_solAtual.protocolo, obs, certToken());
 }
 
@@ -1571,11 +1571,11 @@ function envFechar(){
   _envAtual=null;
 }
 
-/* Exposto no window logo na definição, e não dentro do init: quem chama de
+/* Exposto no window logo na definição, e não dentro do cert_init: quem chama de
    fora — a lista, e o teste de tela — precisa dele assim que os scripts
-   rodam, sem depender de o init já ter acontecido. */
+   rodam, sem depender de o cert_init já ter acontecido. */
 function envAbrir(protocolo){
-  if(!protocolo){msg('Sem protocolo para enviar.','warn');return;}
+  if(!protocolo){cert_msg('Sem protocolo para enviar.','warn');return;}
   var o=g('certEnvioOverlay');
   if(o){o.style.display='flex';o.classList.add('ativo');}
 
@@ -1605,7 +1605,7 @@ function envAbrir(protocolo){
            O backend sempre manda um motivo; quando não vier nenhum, o que
            aconteceu foi resposta vazia do servidor, e é isso que se diz,
            com o protocolo junto para dar por onde começar. */
-        msg((r&&r.mensagem) ||
+        cert_msg((r&&r.mensagem) ||
             ('O servidor não respondeu nada ao preparar o envio de '+protocolo+
              '. Recarregue a tela (F5) e tente de novo; se repetir, é erro de '+
              'execução do Apps Script.'),'erro');
@@ -1616,7 +1616,7 @@ function envAbrir(protocolo){
     })
     .withFailureHandler(function(err){
       if(meu !== _envSeq) return;
-      msg('Erro ao preparar o envio: '+((err&&err.message)||''),'erro');
+      cert_msg('Erro ao preparar o envio: '+((err&&err.message)||''),'erro');
       envFechar();
     })
     .voucherPrepararEnvio(protocolo, certToken());
@@ -1645,7 +1645,7 @@ function envPintar(r){
          + 'pode estar desatualizado — confira antes de enviar';
   }else{
     dica = 'Nenhum e-mail cadastrado para '
-         + escHtml(r.instituicao || 'a instituição') + '. Digite, ou desmarque a cópia.';
+         + cert_escHtml(r.instituicao || 'a instituição') + '. Digite, ou desmarque a cópia.';
   }
   g('certEnvOrigemDica').innerHTML = dica;
 
@@ -1694,9 +1694,9 @@ function envPintarHistorico(envios){
     var destino = String(e.destino||'');
     if(!ehEmail && destino.indexOf('@') < 0) destino = '';
     return '<div class="cert-env-hist-linha">'
-         + '<span class="cert-env-hist-quando">'+escHtml(envQuando(e.quando))+'</span>'
-         + '<span>'+escHtml(rotulo)+(destino?' '+escHtml(destino):'')+'</span>'
-         + '<span class="cert-env-hist-quando" style="margin-left:auto;">'+escHtml(e.quem||'')+'</span>'
+         + '<span class="cert-env-hist-quando">'+cert_escHtml(envQuando(e.quando))+'</span>'
+         + '<span>'+cert_escHtml(rotulo)+(destino?' '+cert_escHtml(destino):'')+'</span>'
+         + '<span class="cert-env-hist-quando" style="margin-left:auto;">'+cert_escHtml(e.quem||'')+'</span>'
          + '</div>';
   }).join('');
 }
@@ -1720,14 +1720,14 @@ function envSincronizarCopia(){
 }
 
 function envEnviarEmail(){
-  if(!_envAtual){msg('Nada preparado para enviar.','warn');return;}
+  if(!_envAtual){cert_msg('Nada preparado para enviar.','warn');return;}
   var para = String(g('certEnvPara').value||'').trim();
-  if(!para){msg('Informe o e-mail do associado.','warn');g('certEnvPara').focus();return;}
+  if(!para){cert_msg('Informe o e-mail do associado.','warn');g('certEnvPara').focus();return;}
 
   var enviarInst = g('certEnvCopiaAtiva').checked;
   var copia = enviarInst ? String(g('certEnvCopia').value||'').trim() : '';
   if(enviarInst && copia && copia.indexOf('@') < 1){
-    msg('O e-mail da instituição não parece válido.','warn');g('certEnvCopia').focus();return;
+    cert_msg('O e-mail da instituição não parece válido.','warn');g('certEnvCopia').focus();return;
   }
 
   var btn=g('certEnvBtnEmail');
@@ -1736,16 +1736,16 @@ function envEnviarEmail(){
 
   google.script.run
     .withSuccessHandler(function(r){
-      resetBtn(btn);
-      if(!r||!r.ok){msg((r&&r.mensagem)||'Erro ao enviar.','erro');return;}
-      msg('✅ '+(r.mensagem||'E-mail enviado.'),'ok');
+      cert_resetBtn(btn);
+      if(!r||!r.ok){cert_msg((r&&r.mensagem)||'Erro ao enviar.','erro');return;}
+      cert_msg('✅ '+(r.mensagem||'E-mail enviado.'),'ok');
       /* Recarrega o preparo em vez de acrescentar a linha na mão: o
          histórico passa a vir do rastro gravado, que é a fonte, e não de
          uma cópia montada no navegador que pode divergir dela. */
       envAbrir(protocolo);
-      carregarLista();
+      cert_carregarLista();
     })
-    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
     .voucherEnviarPorEmail(protocolo, {
       para: para,
       enviarInstituicao: enviarInst,
@@ -1755,7 +1755,7 @@ function envEnviarEmail(){
 }
 
 function envAbrirZap(){
-  if(!_envAtual || !_envAtual.whatsappUrl){msg('Sem telefone válido para WhatsApp.','warn');return;}
+  if(!_envAtual || !_envAtual.whatsappUrl){cert_msg('Sem telefone válido para WhatsApp.','warn');return;}
   var protocolo=_envAtual.protocolo;
 
   /* A aba abre PRIMEIRO, no clique. Abrir dentro do withSuccessHandler faria
@@ -1994,8 +1994,8 @@ function nvFamiliaDesenhar(lista){
               ].filter(Boolean).join(' · ');
     return '<div class="cert-nv-renov-item"><label>'
          +   '<input type="checkbox" class="js-renov" data-i="' + i + '" checked>'
-         +   '<span class="quem">' + escHtml(d.nome) + '</span>'
-         +   '<span class="det">' + escHtml(quem + (det ? ' · ' + det : '')) + '</span>'
+         +   '<span class="quem">' + cert_escHtml(d.nome) + '</span>'
+         +   '<span class="det">' + cert_escHtml(quem + (det ? ' · ' + det : '')) + '</span>'
          + '</label></div>';
   }).join('');
 
@@ -2013,11 +2013,11 @@ function nvFamiliaRenovar(){
     .map(function(c){ return _nvFamilia[Number(c.getAttribute('data-i'))]; })
     .filter(Boolean);
 
-  if(!marcados.length){ msg('Marque ao menos um beneficiário para renovar.','warn'); return; }
+  if(!marcados.length){ cert_msg('Marque ao menos um beneficiário para renovar.','warn'); return; }
 
   var dependentes = marcados.filter(function(d){ return !d.ehTitular; }).length;
   if(dependentes > NV_MAX_DEPENDENTES){
-    msg('São ' + dependentes + ' dependentes marcados, e o máximo é ' +
+    cert_msg('São ' + dependentes + ' dependentes marcados, e o máximo é ' +
         NV_MAX_DEPENDENTES + '.','warn');
     return;
   }
@@ -2057,7 +2057,7 @@ function nvFamiliaRenovar(){
   nvSalvarHabilitar();
 
   g('certNvRenov').style.display = 'none';
-  msg('Preenchi ' + marcados.length + ' beneficiário' +
+  cert_msg('Preenchi ' + marcados.length + ' beneficiário' +
       (marcados.length > 1 ? 's' : '') + ' — confira e salve.','ok');
 }
 
@@ -2099,7 +2099,7 @@ function nvBenefAdicionar(dados){
   var lista = g('certNvBenefLista');
   if(!lista) return null;
   if(nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES){
-    msg('São no máximo ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido.','warn');
+    cert_msg('São no máximo ' + NV_MAX_DEPENDENTES + ' dependentes no mesmo pedido.','warn');
     return null;
   }
   dados = dados || {};
@@ -2246,7 +2246,7 @@ function corrPeriodoSincronizar(s){
 function corrPeriodoGravar(){
   var ano = g('certCorrAno') ? String(g('certCorrAno').value || '') : '';
   var sem = g('certCorrSem') ? String(g('certCorrSem').value || '') : '';
-  if(!ano){ msg('Escolha o ano do período.','warn'); return; }
+  if(!ano){ cert_msg('Escolha o ano do período.','warn'); return; }
   /* Sem semestre vale: bolsa anual e "2026", e o servidor entende os dois. */
   var periodo = sem ? (ano + '/' + sem) : ano;
 
@@ -2254,22 +2254,22 @@ function corrPeriodoGravar(){
   setBtnLoad(btn, 'Gravando...');
   google.script.run
     .withSuccessHandler(function(r){
-      resetBtn(btn);
+      cert_resetBtn(btn);
       if(!r || !r.ok){
-        msg((r && r.mensagem) || 'Não consegui gravar o período.','erro');
+        cert_msg((r && r.mensagem) || 'Não consegui gravar o período.','erro');
         return;
       }
-      msg('✅ ' + r.mensagem,'ok');
+      cert_msg('✅ ' + r.mensagem,'ok');
       /* A lista recarrega para o ⚠ sair da linha, e a faixa some do modal —
          o registro deixou de ter o problema que ela existia para resolver. */
       if(g('certCorrPeriodo')) g('certCorrPeriodo').style.display = 'none';
       var cel = g('cmi-periodo');
       if(cel) cel.textContent = r.periodo;
-      carregarLista();
+      cert_carregarLista();
     })
     .withFailureHandler(function(err){
-      resetBtn(btn);
-      msg('Erro ao gravar o período: ' + ((err && err.message) || ''),'erro');
+      cert_resetBtn(btn);
+      cert_msg('Erro ao gravar o período: ' + ((err && err.message) || ''),'erro');
     })
     .voucherCorrigirPeriodo(_corrProtocolo, periodo, certToken());
 }
@@ -2443,7 +2443,7 @@ function nvSugerir(){
       if(caixa){
         caixa.innerHTML = (r.avisos||[]).map(function(a){
           var alerta = r.divergencia && /[úu]ltima bolsa/i.test(a);
-          return '<div class="cert-nv-aviso'+(alerta?' alerta':'')+'">'+escHtml(a)+'</div>';
+          return '<div class="cert-nv-aviso'+(alerta?' alerta':'')+'">'+cert_escHtml(a)+'</div>';
         }).join('');
       }
     })
@@ -2480,9 +2480,9 @@ function nvTravaDesenhar(r){
     caixa.innerHTML =
       '<div class="cert-nv-trava">'
       +'<div class="cert-nv-trava-tit">⛔ Já existe voucher para esta pessoa neste período</div>'
-      +(linha2?'<div class="cert-nv-trava-l"><strong>'+escHtml(linha2)+'</strong></div>':'')
-      +(linha3?'<div class="cert-nv-trava-l">'+escHtml(linha3)+'</div>':'')
-      +'<div class="cert-nv-trava-l" style="margin-top:5px;">'+escHtml(r.mensagem||'')+'</div>'
+      +(linha2?'<div class="cert-nv-trava-l"><strong>'+cert_escHtml(linha2)+'</strong></div>':'')
+      +(linha3?'<div class="cert-nv-trava-l">'+cert_escHtml(linha3)+'</div>':'')
+      +'<div class="cert-nv-trava-l" style="margin-top:5px;">'+cert_escHtml(r.mensagem||'')+'</div>'
       +'<div class="cert-nv-trava-acoes">'
         +(b.protocolo?'<button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvVerAnterior">Abrir a anterior</button>':'')
         /* Reenviar fica AQUI de propósito: quem cai nesta trava quase sempre
@@ -2507,8 +2507,8 @@ function nvTravaDesenhar(r){
     var vb = g('certNvVerAnterior');
     if(vb) vb.addEventListener('click', function(){
       var s = _lista.find(function(x){ return x.protocolo === b.protocolo; });
-      if(s){ nvFechar(); abrirModal(s); }
-      else msg('A anterior é o protocolo '+b.protocolo+'. Procure por ele na lista.','warn');
+      if(s){ nvFechar(); cert_abrirModal(s); }
+      else cert_msg('A anterior é o protocolo '+b.protocolo+'. Procure por ele na lista.','warn');
     });
     var rb = g('certNvReenviar');
     if(rb) rb.addEventListener('click', function(){ nvFechar(); envAbrir(b.protocolo); });
@@ -2532,7 +2532,7 @@ function nvTravaDesenhar(r){
       /* O mesmo mínimo do servidor. Barrar aqui é cortesia; o servidor
          reconfere, porque a tela não é onde a regra mora. */
       if(txt.length < 15){
-        msg('Escreva o motivo da exceção — ao menos 15 caracteres.','warn');
+        cert_msg('Escreva o motivo da exceção — ao menos 15 caracteres.','warn');
         if(g('certNvExcecaoTexto')) g('certNvExcecaoTexto').focus();
         return;
       }
@@ -2541,7 +2541,7 @@ function nvTravaDesenhar(r){
          quando a solicitação for gravada. Enquanto isso, ela é o lembrete de
          que este salvamento é uma exceção, e não uma solicitação comum. */
       nvSalvarHabilitar();
-      msg('Exceção preparada. Agora é só salvar — o motivo vai junto.','ok');
+      cert_msg('Exceção preparada. Agora é só salvar — o motivo vai junto.','ok');
     });
 
   } else if(r && r.incerto){
@@ -2552,20 +2552,20 @@ function nvTravaDesenhar(r){
     var i = r.incerto;
     caixa.innerHTML =
       '<div class="cert-nv-aviso alerta">⚠ <strong>Pode ser a mesma bolsa — não dá para saber.</strong><br>'
-      + escHtml(r.mensagemIncerteza||'')
+      + cert_escHtml(r.mensagemIncerteza||'')
       + (i.protocolo?' <button type="button" class="cert-btn cert-btn-secondary cert-btn-xs" id="certNvVerIncerto">Abrir a anterior</button>':'')
       + '</div>';
     var vi = g('certNvVerIncerto');
     if(vi) vi.addEventListener('click', function(){
       var s = _lista.find(function(x){ return x.protocolo === i.protocolo; });
-      if(s){ nvFechar(); abrirModal(s); }
-      else msg('A anterior é o protocolo '+i.protocolo+'. Procure por ele na lista.','warn');
+      if(s){ nvFechar(); cert_abrirModal(s); }
+      else cert_msg('A anterior é o protocolo '+i.protocolo+'. Procure por ele na lista.','warn');
     });
 
   } else if(r && r.tipo === 'RENOVACAO' && r.ultima){
     caixa.innerHTML = '<div class="cert-nv-renov">↻ <strong>Renovação</strong> — '
-      + escHtml(String(r.vezes||1)) + 'ª bolsa neste curso. Última: '
-      + escHtml([r.ultima.protocolo, r.ultima.periodo,
+      + cert_escHtml(String(r.vezes||1)) + 'ª bolsa neste curso. Última: '
+      + cert_escHtml([r.ultima.protocolo, r.ultima.periodo,
                  (r.ultima.percentual||r.ultima.percentual===0)?r.ultima.percentual+'%':'']
                 .filter(Boolean).join(' · ')) + '.</div>';
   } else {
@@ -2778,7 +2778,7 @@ function nvAplicarEscola(x, origem){
        "sem id na base" é mais honesto que omitir: quem atende precisa saber
        que aquele vínculo não vai casar com nada depois. */
     g('certNvOrgEscola').innerHTML = x.escolaId
-      ? '<span class="cert-nv-org hist">'+escHtml(x.escolaId)+
+      ? '<span class="cert-nv-org hist">'+cert_escHtml(x.escolaId)+
         (origem==='CADASTRO'?' · do cadastro':'')+'</span>'
       : '<span class="cert-nv-org padrao">sem id na base</span>';
   }
@@ -2788,8 +2788,8 @@ function nvMostrarListaEscolas(escolas){
   var lista = g('certNvListaEscola');
   if(!lista) return;
   lista.innerHTML = escolas.map(function(e,i){
-    return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(e.nome||e.fantasia||'—')
-      +'<small>'+escHtml([e.cnpj, e.cidade, e.uf].filter(Boolean).join(' · '))+'</small></div>';
+    return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(e.nome||e.fantasia||'—')
+      +'<small>'+cert_escHtml([e.cnpj, e.cidade, e.uf].filter(Boolean).join(' · '))+'</small></div>';
   }).join('');
   lista.classList.add('ativo');
   lista.querySelectorAll('.cert-nv-item').forEach(function(it){
@@ -2808,8 +2808,8 @@ function nvBuscarAssociado(){
     .withSuccessHandler(function(r){
       if(!r||!r.ok||!r.associados.length){ lista.classList.remove('ativo'); return; }
       lista.innerHTML = r.associados.map(function(a,i){
-        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(a.nome)
-             + '<small>'+escHtml(a.cpfMascarado)+(a.escola?' · '+escHtml(a.escola):'')+'</small></div>';
+        return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(a.nome)
+             + '<small>'+cert_escHtml(a.cpfMascarado)+(a.escola?' · '+cert_escHtml(a.escola):'')+'</small></div>';
       }).join('');
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
@@ -2845,8 +2845,8 @@ function nvBuscarInstituicao(){
     .withSuccessHandler(function(r){
       if(!r||!r.ok||!r.instituicoes.length){ lista.classList.remove('ativo'); return; }
       lista.innerHTML = r.instituicoes.map(function(x,i){
-        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
-             + '<small>'+escHtml(x.cnpj||'sem CNPJ')+' · usada '+x.vezes+'x</small></div>';
+        return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(x.nome)
+             + '<small>'+cert_escHtml(x.cnpj||'sem CNPJ')+' · usada '+x.vezes+'x</small></div>';
       }).join('');
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
@@ -2875,8 +2875,8 @@ function nvBuscarEscola(){
       lista.innerHTML = r.escolas.map(function(x,i){
         var linha2=[x.fantasia && x.fantasia!==x.nome ? x.fantasia : '',
                     x.cnpj, [x.cidade,x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
-        return '<div class="cert-nv-item" data-i="'+i+'">'+escHtml(x.nome)
-             + '<small>'+escHtml(linha2||'sem dados adicionais')+'</small></div>';
+        return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(x.nome)
+             + '<small>'+cert_escHtml(linha2||'sem dados adicionais')+'</small></div>';
       }).join('');
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
@@ -2905,7 +2905,7 @@ function nvExigir(id, condicao, aviso){
     el.style.boxShadow  = condicao ? '' : '0 0 0 4px rgba(220,38,38,.10)';
   }
   if(condicao) return true;
-  msg(aviso, 'warn');
+  cert_msg(aviso, 'warn');
   if(el){
     if(el.scrollIntoView) el.scrollIntoView({ block: 'center' });
     el.focus();
@@ -2958,7 +2958,7 @@ function nvSalvar(aprovar){
    * marcado. A trava do servidor continua valendo para todos: o que muda
    * aqui é só a conveniência de avisar antes. */
   if(_nvBloqueio && !_nvExcecao && !nvBenefCards().length){
-    msg('Já existe voucher para esta pessoa neste período'
+    cert_msg('Já existe voucher para esta pessoa neste período'
         + (_nvBloqueio.protocolo?' — protocolo '+_nvBloqueio.protocolo:'') + '.','erro');
     return;
   }
@@ -2998,23 +2998,23 @@ function nvSalvar(aprovar){
     };
     google.script.run
       .withSuccessHandler(function(r){
-        resetBtn(btn);
-        if(!r){ msg('O servidor não respondeu nada ao salvar o pedido.','erro'); return; }
+        cert_resetBtn(btn);
+        if(!r){ cert_msg('O servidor não respondeu nada ao salvar o pedido.','erro'); return; }
         nvBenefPintarResultado(r.resultados);
-        if(!r.ok){ msg(r.mensagem||'Nenhuma solicitação foi criada.','erro'); return; }
+        if(!r.ok){ cert_msg(r.mensagem||'Nenhuma solicitação foi criada.','erro'); return; }
         if(r.parcial){
           /* NAO FECHA O MODAL quando e parcial: o que foi recusado esta
              marcado no card, e fechar esconderia justamente o que a pessoa
              precisa corrigir. */
-          msg('⚠ '+r.mensagem,'warn');
-          carregarLista();
+          cert_msg('⚠ '+r.mensagem,'warn');
+          cert_carregarLista();
           return;
         }
-        msg('✅ '+r.mensagem,'ok');
+        cert_msg('✅ '+r.mensagem,'ok');
         nvFechar();
-        carregarLista();
+        cert_carregarLista();
       })
-      .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+      .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
       .voucherCriarSolicitacoesEmLote({
         comuns: dados,
         beneficiarios: [primeiro].concat(extras)
@@ -3025,30 +3025,30 @@ function nvSalvar(aprovar){
   setBtnLoad(btn, aprovar?'Aprovando...':'Salvando...');
   google.script.run
     .withSuccessHandler(function(r){
-      resetBtn(btn);
+      cert_resetBtn(btn);
       if(!r||!r.ok){
         /* Recusa por duplicidade não é "erro ao salvar": é a resposta certa,
            e ela traz o protocolo anterior. Desenha a trava para a pessoa ver
            qual é e poder reenviar aquele mesmo. */
         if(r && r.duplicado){
           nvTravaDesenhar({ bloqueado:true, bloqueio:r.bloqueio||{}, mensagem:r.mensagem||'' });
-          msg(r.mensagem||'Já existe voucher para esta pessoa neste período.','erro');
+          cert_msg(r.mensagem||'Já existe voucher para esta pessoa neste período.','erro');
           return;
         }
-        msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return;
+        cert_msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return;
       }
-      msg('✅ '+r.mensagem,'ok');
+      cert_msg('✅ '+r.mensagem,'ok');
       nvFechar();
-      carregarLista();
+      cert_carregarLista();
     })
-    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
     .voucherCriarSolicitacao(dados, certToken());
 }
 
 window.certAbrirNovaSolicitacao = nvAbrir;
 
 function gerarDocumento(tipo){
-  if(!_solAtual){msg('Nenhuma solicitação selecionada.','warn');return;}
+  if(!_solAtual){cert_msg('Nenhuma solicitação selecionada.','warn');return;}
   var btnId=tipo==='CERTIFICADO'?'certBtnGerarCertificado':'certBtnGerarComprovante';
   var btn=g(btnId);
   setBtnLoad(btn,'Gerando...');
@@ -3061,12 +3061,12 @@ function gerarDocumento(tipo){
 
   google.script.run
     .withSuccessHandler(function(resp){
-      resetBtn(btn);
-      if(!resp||!resp.ok){msg((resp&&resp.mensagem)||'Erro ao gerar documento.','erro');return;}
-      msg('✅ '+tipo+' gerado! Código: <strong>'+(resp.codigoValidacao||'—')+'</strong>'
+      cert_resetBtn(btn);
+      if(!resp||!resp.ok){cert_msg((resp&&resp.mensagem)||'Erro ao gerar documento.','erro');return;}
+      cert_msg('✅ '+tipo+' gerado! Código: <strong>'+(resp.codigoValidacao||'—')+'</strong>'
         +(resp.linkPdf?' · <a href="'+resp.linkPdf+'" target="_blank" style="color:#5b21b6;font-weight:700;">📄 Abrir documento</a>':''),
         'ok');
-      carregarLista();
+      cert_carregarLista();
       if(resp.html){
         var janela=window.open('about:blank','_blank');
         if(janela){janela.document.open();janela.document.write(resp.html);janela.document.close();}
@@ -3082,7 +3082,7 @@ function gerarDocumento(tipo){
         setTimeout(function(){ envAbrir(prot); }, 250);
       }
     })
-    .withFailureHandler(function(err){resetBtn(btn);msg('Erro: '+((err&&err.message)||''),'erro');})
+    .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
     .gerarDocumentoCertBolsaCompleto(_solAtual.protocolo, tipo, {
       rg: rg, percentual: percentual, documentos: documentos
     }, certToken());
@@ -3126,7 +3126,7 @@ function certDocMostrarHtml(html){
 window.certDocAbrir = function(sol){
   _docSol = sol || null;
   _docEmitido = null;
-  if(!_docSol){ msg('Não consegui identificar a solicitação.','erro'); return; }
+  if(!_docSol){ cert_msg('Não consegui identificar a solicitação.','erro'); return; }
 
   var ov = g('certDocOverlay');
   if(ov) ov.style.display = 'flex';
@@ -3173,9 +3173,9 @@ function certDocFechar(){
 
 function certDocImprimir(){
   var frame = g('certDocFrame');
-  if(!frame || !frame.srcdoc){ msg('Nada para imprimir ainda.','warn'); return; }
+  if(!frame || !frame.srcdoc){ cert_msg('Nada para imprimir ainda.','warn'); return; }
   try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-  catch(e){ msg('O navegador bloqueou a impressão: ' + (e.message||''),'erro'); }
+  catch(e){ cert_msg('O navegador bloqueou a impressão: ' + (e.message||''),'erro'); }
 }
 
 function certDocGerar(){
@@ -3184,15 +3184,15 @@ function certDocGerar(){
   setBtnLoad(btn,'Gerando...');
   google.script.run
     .withSuccessHandler(function(r){
-      resetBtn(btn);
-      if(!r || !r.ok){ msg((r && r.mensagem) || 'Erro ao gerar o certificado.','erro'); return; }
+      cert_resetBtn(btn);
+      if(!r || !r.ok){ cert_msg((r && r.mensagem) || 'Erro ao gerar o certificado.','erro'); return; }
       _docEmitido = r;
       certDocEstado(true);
       if(r.html) certDocMostrarHtml(r.html);
-      msg('✅ Certificado emitido. Código: <strong>'+(r.codigoValidacao||'—')+'</strong>','ok');
-      carregarLista();
+      cert_msg('✅ Certificado emitido. Código: <strong>'+(r.codigoValidacao||'—')+'</strong>','ok');
+      cert_carregarLista();
     })
-    .withFailureHandler(function(err){ resetBtn(btn); msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
     /* ESTA LINHA MANDAVA 70 FIXO — e foi ela que imprimiu 70% num
        certificado de Medicina, que é 50%. Achado em 17/08/2026, conferindo
        um PDF real.
@@ -3204,21 +3204,21 @@ function certDocGerar(){
 
 function certDocBaixar(){
   var link = _docEmitido && _docEmitido.linkPdf;
-  if(!link){ msg('O PDF só existe depois de gerar.','warn'); return; }
+  if(!link){ cert_msg('O PDF só existe depois de gerar.','warn'); return; }
   window.open(link,'_blank');
 }
 
 function certDocEnviar(){
   if(!_docSol) return;
   if(!_docEmitido && _docSol.status !== 'EMITIDO'){
-    msg('Gere o certificado antes de enviar.','warn'); return;
+    cert_msg('Gere o certificado antes de enviar.','warn'); return;
   }
   certDocFechar();
   envAbrir(_docSol.protocolo);
 }
 
 // ── Carregar
-function carregarLista(){
+function cert_carregarLista(){
   var tbody=g('certTbody');
   if(tbody) tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
@@ -3232,9 +3232,9 @@ function carregarLista(){
       _selecionados = {};
       atualizarBarraSelecao();
       montarFiltroPeriodo();
-      atualizarMetricas(); aplicarFiltros();
+      cert_atualizarMetricas(); cert_aplicarFiltros();
     })
-    .withFailureHandler(function(err){msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
+    .withFailureHandler(function(err){cert_msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
     .listarSolicitacoesCertBolsa(certToken());
 }
 
@@ -3274,8 +3274,8 @@ function certCarregarLinkPublico(){
    permissão mais vezes do que se imagina, e falhar calado deixa a pessoa
    colando o que estava antes na área de transferência. */
 function certCopiar(texto, aviso){
-  if(!texto) return msg('Ainda carregando. Tente em instantes.','warn');
-  var ok = function(){ msg(aviso,'ok'); };
+  if(!texto) return cert_msg('Ainda carregando. Tente em instantes.','warn');
+  var ok = function(){ cert_msg(aviso,'ok'); };
   var reserva = function(){
     var ta = document.createElement('textarea');
     ta.value = texto; ta.style.position='fixed'; ta.style.opacity='0';
@@ -3283,15 +3283,15 @@ function certCopiar(texto, aviso){
     var deu = false;
     try { deu = document.execCommand('copy'); } catch(e) { deu = false; }
     document.body.removeChild(ta);
-    if(deu) ok(); else msg('Não consegui copiar. Selecione o texto e use Ctrl+C.','warn');
+    if(deu) ok(); else cert_msg('Não consegui copiar. Selecione o texto e use Ctrl+C.','warn');
   };
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(texto).then(ok, reserva);
   } else { reserva(); }
 }
 
-function exportarCsv(){
-  if(!_filtrada.length){msg('Nenhum dado para exportar.','warn');return;}
+function cert_exportarCsv(){
+  if(!_filtrada.length){cert_msg('Nenhum dado para exportar.','warn');return;}
   var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data'];
   var rows=[headers].concat(_filtrada.map(function(s){
     return [s.protocolo||'',s.nome||'',s.cpf||'',s.email||'',s.escola||'',
@@ -3303,7 +3303,7 @@ function exportarCsv(){
   var url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url; a.download='bolsas_'+new Date().toISOString().slice(0,10)+'.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  msg('📤 CSV exportado.','ok');
+  cert_msg('📤 CSV exportado.','ok');
 }
 
 /* Fecha ao clicar fora, sem perder formulário por seleção de texto.
@@ -3320,18 +3320,18 @@ function ligarFecharPorClique(overlay, fechar){
 
 // ── Init
 function initInterno(){
-  if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(aplicarFiltros,300);});
+  if(g('certBusca'))           g('certBusca').addEventListener('input',function(){clearTimeout(_buscaTimer);_buscaTimer=setTimeout(cert_aplicarFiltros,300);});
   /* Os filtros de coluna: texto com atraso curto, seletor e data na hora. */
   ['certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola','certFiltroCurso']
     .forEach(function(id){
       if(g(id)) g(id).addEventListener('input', function(){
-        clearTimeout(_buscaTimer); _buscaTimer = setTimeout(aplicarFiltros, 250);
+        clearTimeout(_buscaTimer); _buscaTimer = setTimeout(cert_aplicarFiltros, 250);
       });
     });
   ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte'].forEach(function(id){
-    if(g(id)) g(id).addEventListener('change', aplicarFiltros);
+    if(g(id)) g(id).addEventListener('change', cert_aplicarFiltros);
   });
-  if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', limparFiltros);
+  if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', cert_limparFiltros);
 
   // ── modal do documento: prévia, gerar, imprimir, baixar, enviar
   if(g('certDocFechar'))   g('certDocFechar').addEventListener('click', certDocFechar);
@@ -3359,20 +3359,20 @@ function initInterno(){
   if(g('certExcluirConfirmar'))g('certExcluirConfirmar').addEventListener('click', executarExclusao);
   ligarFecharPorClique(g('certExcluirOverlay'), fecharExclusao);
 
-  if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',aplicarFiltros);
-  if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',aplicarFiltros);
-  if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',carregarLista);
+  if(g('certFiltroStatus'))    g('certFiltroStatus').addEventListener('change',cert_aplicarFiltros);
+  if(g('certFiltroModalidade'))g('certFiltroModalidade').addEventListener('change',cert_aplicarFiltros);
+  if(g('certBtnRecarregar'))   g('certBtnRecarregar').addEventListener('click',cert_carregarLista);
   if(g('certBtnCopiarLink'))   g('certBtnCopiarLink').addEventListener('click',function(){certCopiar(_linkPub.url,'Link copiado.');});
   if(g('certBtnCopiarMsg'))    g('certBtnCopiarMsg').addEventListener('click',function(){certCopiar(_linkPub.texto,'Mensagem copiada, pronta para colar no WhatsApp.');});
   if(g('certBtnAbrirLink'))    g('certBtnAbrirLink').addEventListener('click',function(){
-    if(!_linkPub.url) return msg('O link ainda está carregando.','warn');
+    if(!_linkPub.url) return cert_msg('O link ainda está carregando.','warn');
     window.open(_linkPub.url,'_blank');
   });
   certCarregarLinkPublico();
-  if(g('certBtnExportarCsv'))  g('certBtnExportarCsv').addEventListener('click',exportarCsv);
-  if(g('certModalClose'))      g('certModalClose').addEventListener('click',fecharModal);
-  if(g('certModalCancelar'))   g('certModalCancelar').addEventListener('click',fecharModal);
-  if(g('certModalOverlay'))    g('certModalOverlay').addEventListener('click',function(e){if(e.target===this)fecharModal();});
+  if(g('certBtnExportarCsv'))  g('certBtnExportarCsv').addEventListener('click',cert_exportarCsv);
+  if(g('certModalClose'))      g('certModalClose').addEventListener('click',cert_fecharModal);
+  if(g('certModalCancelar'))   g('certModalCancelar').addEventListener('click',cert_fecharModal);
+  if(g('certModalOverlay'))    g('certModalOverlay').addEventListener('click',function(e){if(e.target===this)cert_fecharModal();});
 
   if(g('certBtnComplementar')) g('certBtnComplementar').addEventListener('click',function(){
     acao('solicitarComplementacaoCertBolsa','certBtnComplementar','Complementação solicitada');
@@ -3381,7 +3381,7 @@ function initInterno(){
   if(g('certBtnIndeferir')) g('certBtnIndeferir').addEventListener('click',function(){
     var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
     if(!obs){
-      msg('Informe a justificativa antes de indeferir.','warn');
+      cert_msg('Informe a justificativa antes de indeferir.','warn');
       return;
     }
     acao('indeferirSolicitacaoCertBolsa','certBtnIndeferir','Solicitação indeferida');
@@ -3552,15 +3552,15 @@ function initInterno(){
      no overlay. Vale para os dois modais, porque o gesto é o mesmo. */
   ligarFecharPorClique(g('certNovaOverlay'), nvFechar);
 
-  carregarLista();
+  cert_carregarLista();
 }
 
-/* A TRAVA DE INICIALIZAÇÃO ÚNICA MORA DENTRO DO init(), não no invólucro.
+/* A TRAVA DE INICIALIZAÇÃO ÚNICA MORA DENTRO DO cert_init(), não no invólucro.
  *
- * Ela estava só aqui, e o arquivo TAMBÉM chama init() sozinho no fim (pelo
+ * Ela estava só aqui, e o arquivo TAMBÉM chama cert_init() sozinho no fim (pelo
  * DOMContentLoaded ou pelo setTimeout logo abaixo). Quem carregasse a tela e
  * depois chamasse initCertificadoAdmin() — que é como o menu abre o módulo —
- * rodava init() DUAS vezes, e cada addEventListener era registrado duas
+ * rodava cert_init() DUAS vezes, e cada addEventListener era registrado duas
  * vezes.
  *
  * O efeito não é visual: é um clique em "Salvar e aprovar" gravando DUAS
@@ -3568,20 +3568,20 @@ function initInterno(){
  * no t37 em 13/08/2026, ao contar as chamadas ao backend — 2 onde devia ser
  * 1. Nenhum teste anterior pegou porque todos liam a ÚLTIMA chamada, e a
  * última estava correta; era a existência da penúltima que era o defeito. */
-function init(){
+function cert_init(){
   if(window._certAdminInit) return;
   window._certAdminInit = true;
   initInterno();
 }
 
-window.initCertificadoAdmin = init;
+window.initCertificadoAdmin = cert_init;
 
 if(document.readyState === 'loading'){
   document.addEventListener('DOMContentLoaded', function(){
-    setTimeout(init,120);
+    setTimeout(cert_init,120);
   });
 }else{
-  setTimeout(init,120);
+  setTimeout(cert_init,120);
 }
 
 })();
