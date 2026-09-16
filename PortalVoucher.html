@@ -7,19 +7,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
+    /* PALETA DO SISGEP — 16/09/2026.
+
+       "O link público está fora do padrão do SISGEP" e "não pode cada módulo
+       ter um padrão diferente" — o usuário.
+
+       Este portal usava família própria: azul-céu, violeta e rosa, num tema
+       escuro. O Design System do projeto é navy/azul/dourado, e o formulário
+       público da Festa (CompassoInscricaoPublica.html) já o segue à risca —
+       é o modelo que o usuário mandou copiar.
+
+       OS TOKENS FORAM TROCADOS, NÃO A ESTRUTURA. O arquivo já centralizava
+       tudo em variáveis, então repaginar é mudar valor — não reescrever 67 KB
+       de formulário que funciona e recebe solicitação real. "Não posso
+       estragar o que funciona."
+
+       O ALTERNADOR DE TEMA CONTINUA, e o escuro também foi alinhado: quem já
+       escolheu escuro guarda a preferência e não é jogado no claro sem
+       pedir. O que muda é o PADRÃO de quem chega pela primeira vez. */
     :root {
-      --navy:     #08101f;
-      --blue-deep:#0b1220;
-      --blue-mid: #0f1b30;
-      --blue-act: #2563eb;
-      --cyan:     #0ea5e9;
-      --accent:   #8b5cf6;
-      --accent-lt:#ec4899;
-      --white:    #f8fafc;
-      --muted:    #94a3b8;
-      --border:   rgba(148,163,184,.13);
-      --surface:  rgba(255,255,255,.04);
-      --surface-h:rgba(255,255,255,.07);
+      --navy:     #f4f7fb;   /* fundo da página, como na Festa */
+      --blue-deep:#ffffff;   /* superfície dos cards */
+      --blue-mid: #e8eef7;
+      --blue-act: #1565C0;   /* interativo do Design System */
+      --cyan:     #002f6c;   /* navy2 — era azul-céu */
+      --accent:   #001f4d;   /* navy — era violeta */
+      --accent-lt:#C9A84C;   /* dourado institucional — era rosa */
+      --white:    #111827;   /* texto sobre fundo claro */
+      --muted:    #6b7385;
+      --border:   #d8e0ea;
+      --surface:  rgba(0,31,77,.03);
+      --surface-h:rgba(0,31,77,.06);
       --err-bg:   #fff0f0;
       --err-bdr:  #fca5a5;
       --err-txt:  #991b1b;
@@ -31,19 +49,39 @@
       --warn-txt: #92400e;
     }
 
+    /* O claro agora É o :root. Este bloco fica porque o alternador grava
+       data-theme="light" no localStorage, e quem já escolheu claro continua
+       com ele — sem isto, o atributo salvo apontaria para regra inexistente. */
     [data-theme="light"] {
-      --navy:     #f8fafc;
+      --navy:     #f4f7fb;
       --blue-deep:#ffffff;
-      --blue-mid: #e2e8f0;
-      --blue-act: #2563eb;
-      --cyan:     #0ea5e9;
-      --accent:   #8b5cf6;
-      --accent-lt:#ec4899;
-      --white:    #1e293b;
-      --muted:    #64748b;
-      --border:   rgba(0,0,0,.1);
-      --surface:  rgba(0,0,0,.02);
-      --surface-h:rgba(0,0,0,.05);
+      --blue-mid: #e8eef7;
+      --blue-act: #1565C0;
+      --cyan:     #002f6c;
+      --accent:   #001f4d;
+      --accent-lt:#C9A84C;
+      --white:    #111827;
+      --muted:    #6b7385;
+      --border:   #d8e0ea;
+      --surface:  rgba(0,31,77,.03);
+      --surface-h:rgba(0,31,77,.06);
+    }
+
+    /* ESCURO ALINHADO À MESMA FAMÍLIA: navy profundo em vez do quase-preto,
+       e os acentos saindo de azul-céu/violeta/rosa para azul e dourado. */
+    [data-theme="dark"] {
+      --navy:     #001228;
+      --blue-deep:#001f4d;
+      --blue-mid: #002f6c;
+      --blue-act: #4f93e0;
+      --cyan:     #7db4ea;
+      --accent:   #C9A84C;
+      --accent-lt:#f0c843;
+      --white:    #f4f7fb;
+      --muted:    #a8b4c6;
+      --border:   rgba(201,168,76,.22);
+      --surface:  rgba(255,255,255,.05);
+      --surface-h:rgba(255,255,255,.09);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -113,7 +151,12 @@
     .msg-box.warn { background:var(--warn-bg); border:1px solid var(--warn-bdr); color:var(--warn-txt); padding:14px 18px; animation:slideDown .25s ease both; }
     .msg-box.info { background:rgba(14,165,233,.08); border:1px solid rgba(14,165,233,.22); color:#7dd3fc; padding:14px 18px; animation:slideDown .25s ease both; }
 
-    .secao { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px 30px; margin-bottom:20px; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06); transition:background .3s,border-color .3s; }
+    /* CARD BRANCO SOBRE FUNDO CLARO, como o da Festa. Com `var(--surface)`
+       (3% de navy) o card ficava quase invisível contra o fundo #f4f7fb — a
+       superfície translúcida fazia sentido no tema escuro anterior. A sombra
+       também baixou: 18% de preto é peso de tema escuro. */
+    .secao { background:var(--blue-deep); border:1.5px solid var(--border); border-radius:16px; padding:28px 30px; margin-bottom:20px; box-shadow:0 2px 10px rgba(16,24,40,.06); transition:background .3s,border-color .3s; }
+    [data-theme="dark"] .secao { box-shadow:0 8px 32px rgba(0,0,0,.28); }
     .secao-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
     .secao-num { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--blue-act),var(--cyan)); font-size:12px; font-weight:700; flex-shrink:0; box-shadow:0 4px 12px rgba(14,165,233,.25); }
     .secao-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:20px; font-weight:700; color:var(--white); }
@@ -126,7 +169,7 @@
     .field.required label::after { content:' *'; color:#f87171; font-weight:700; margin-left:2px; }
 
     .field input, .field select {
-      height:48px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+      height:48px; background:var(--blue-deep); border:1.5px solid var(--border);
       border-radius:11px; padding:0 14px; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px;
       color:var(--white); outline:none; transition:background .2s,border-color .2s,box-shadow .2s; appearance:none;
     }
@@ -135,17 +178,17 @@
     .field select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3bc' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; cursor:pointer; }
     .field select option { background:#0b1220; color:var(--white); }
     [data-theme="light"] .field select option { background:#ffffff; color:#1e293b; }
-    .field input::placeholder { color:rgba(255,255,255,.22); }
+    .field input::placeholder { color:var(--muted); opacity:.7; }
     [data-theme="light"] .field input::placeholder { color:rgba(0,0,0,.3); }
-    .field input:focus, .field select:focus { background:rgba(255,255,255,.09); border-color:rgba(14,165,233,.55); box-shadow:0 0 0 4px rgba(14,165,233,.1); }
+    .field input:focus, .field select:focus { background:var(--blue-deep); border-color:var(--blue-act); box-shadow:0 0 0 4px rgba(21,101,192,.14); }
     [data-theme="light"] .field input:focus, [data-theme="light"] .field select:focus { background:rgba(0,0,0,.05); }
 
     /* ── Upload ── */
     .upload-area {
-      border: 1.5px dashed rgba(255,255,255,.18);
+      border: 1.5px dashed var(--border);
       border-radius: 11px;
       padding: 16px 14px;
-      background: rgba(255,255,255,.03);
+      background: var(--surface);
       cursor: pointer;
       transition: border-color .2s, background .2s;
       text-align: center;
@@ -175,14 +218,28 @@
     .btn-primary { background:linear-gradient(135deg,var(--blue-act),var(--cyan)); color:var(--white); box-shadow:0 10px 28px rgba(14,165,233,.22); }
     .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 16px 36px rgba(14,165,233,.3); }
     .btn-secondary { background:var(--surface-h); border:1px solid var(--border); color:var(--muted); }
-    .btn-secondary:hover:not(:disabled) { background:rgba(255,255,255,.1); color:var(--white); }
+    .btn-secondary:hover:not(:disabled) { background:var(--surface-h); color:var(--white); }
 
-    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:var(--white); border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.45); border-top-color:var(--white); border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
 
-    .protocolo-box { display:none; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.25); border-radius:16px; padding:22px 24px; margin-top:20px; animation:slideDown .3s ease both; }
+    /* A CAIXA DEIXA DE GRITAR O PROTOCOLO — 16/09/2026.
+
+       O usuário tomou essa decisão na Festa em 09/09: "não é protocolo e sim
+       uma mensagem simples de inscrição realizada". O motivo está no
+       cabeçalho do EventosInscricaoPublica.gs — o formulário é usado por
+       gente com pouca prática, e um código em destaque faz a pessoa achar que
+       precisa fazer alguma coisa com ele. E ela não precisa: o protocolo já
+       chega por e-mail, e continua gravado para a equipe.
+
+       COM UMA EXCEÇÃO QUE A REGRA DA FESTA NÃO PREVIA. Para quem NÃO é
+       associado o atendimento é presencial, e a própria mensagem manda
+       guardar o protocolo e levá-lo à sede. Aí ele é acionável, e some seria
+       tirar da pessoa o que ela precisa. O número aparece só nesse caso —
+       ver `protNum.style.display` no envio. */
+    .protocolo-box { display:none; background:#e9f7f1; border:1.5px solid #86efac; border-left:4px solid #0f8a5f; border-radius:14px; padding:20px 22px; margin-top:20px; animation:slideDown .3s ease both; }
     .protocolo-box.visible { display:block; }
-    .protocolo-num { font-family:'Plus Jakarta Sans',sans-serif; font-size:28px; font-weight:700; color:#34d399; letter-spacing:.04em; margin-bottom:6px; }
-    .protocolo-sub { font-size:13px; color:rgba(255,255,255,.55); line-height:1.6; margin-bottom:12px; }
+    .protocolo-num { font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:800; color:#065f46; letter-spacing:.04em; margin-bottom:6px; }
+    .protocolo-sub { font-size:13.5px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
     .protocolo-acoes { display:flex; gap:10px; margin-top:12px; }
     .protocolo-acoes .btn { flex:1; height:42px; font-size:13px; }
     .protocolo-countdown { font-size:12px; font-weight:600; color:#fbbf24; text-align:center; margin-top:12px; padding:8px; background:rgba(251,191,36,.1); border-radius:8px; }
@@ -203,8 +260,8 @@
 
     /* ── Dependentes ── */
     .dep-card {
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.12);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
       border-radius: 14px;
       padding: 18px;
       margin-bottom: 14px;
@@ -508,7 +565,8 @@
     </div>
 
     <div class="protocolo-box" id="protocoloBox">
-      <div style="font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">Protocolo gerado</div>
+      <div id="protocoloRotulo" style="font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Protocolo gerado</div>
+      <div id="protocoloTitulo" style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:6px;">✅ Solicitação registrada</div>
       <div class="protocolo-num" id="protocoloNum">—</div>
       <div class="protocolo-sub" id="protocoloSub"></div>
       <div class="protocolo-acoes">
@@ -536,7 +594,10 @@
     }
 
     function restaurarTema() {
-      var savedTheme = getSafeLocalStorageItem('theme') || 'dark';
+      /* CLARO POR PADRÃO — 16/09/2026. O formulário público da Festa é claro,
+         e é o modelo do projeto. Quem já tinha escolhido escuro mantém: a
+         preferência gravada vem antes do padrão. */
+      var savedTheme = getSafeLocalStorageItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       document.getElementById('themeIcon').textContent = savedTheme === 'light' ? '☀️' : '🌙';
     }
@@ -1207,23 +1268,29 @@ escolaAtual:
               var protNum = document.getElementById('protocoloNum');
               var protSub = document.getElementById('protocoloSub');
 
+              /* Ver a nota em `.protocolo-box`: o número só é mostrado a quem
+                 precisa levá-lo à sede. Quem recebe por e-mail não precisa
+                 decorar nem anotar nada — o protocolo vai na mensagem. */
               protNum.textContent = numProtocolo || '—';
+              protNum.style.display = isSindicalizado ? 'none' : 'block';
+              var protRot = document.getElementById('protocoloRotulo');
+              if (protRot) protRot.style.display = isSindicalizado ? 'none' : 'block';
 
               var subHtml =
                 '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">' +
                   '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
                     '<span style="font-size:16px;">👤</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Solicitante:</span>' +
+                    '<span style="color:var(--muted);">Solicitante:</span>' +
                     '<strong>' + nomeSolicitante + '</strong>' +
                   '</div>' +
                   '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
                     '<span style="font-size:16px;">📚</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Curso:</span>' +
+                    '<span style="color:var(--muted);">Curso:</span>' +
                     '<strong>' + cursoVal + ' — ' + modalidadeVal + '</strong>' +
                   '</div>' +
                   '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
                     '<span style="font-size:16px;">📅</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Período:</span>' +
+                    '<span style="color:var(--muted);">Período:</span>' +
                     '<strong>' + periodoVal + '</strong>' +
                   '</div>' +
                   '<div style="margin-top:6px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.6;' +
@@ -1245,8 +1312,10 @@ escolaAtual:
               protSub.innerHTML = subHtml;
 
               showMsg(
-                '✅ <strong>Solicitação registrada!</strong> Protocolo: <strong style="letter-spacing:.04em;">' + numProtocolo + '</strong>' +
-                (isSindicalizado ? ' — você receberá um e-mail de confirmação.' : ' — compareça à sede em até 15 dias úteis.'),
+                isSindicalizado
+                  ? '✅ <strong>Solicitação registrada!</strong> Você vai receber um e-mail de confirmação com os detalhes.'
+                  : '✅ <strong>Solicitação registrada!</strong> Protocolo: <strong style="letter-spacing:.04em;">' +
+                    numProtocolo + '</strong> — compareça à sede em até 15 dias úteis.',
                 'ok'
               );
 
