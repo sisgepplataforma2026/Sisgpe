@@ -1064,6 +1064,98 @@ function declConfirmarWhatsapp(numero, tokenSessao) {
   return { ok: true, mensagem: "Ciência por WhatsApp registrada." };
 }
 
+/**
+ * Manda declarações para a lixeira. Reversível.
+ *
+ * O QUE ORIGINOU (15/09/2026): "estou fazendo de teste, às vezes erramos e
+ * precisamos excluir". Emissão de teste e emissão errada precisam sair da
+ * lista sem virar pedido de suporte para alguém mexer na planilha à mão.
+ *
+ * TRÊS DECISÕES DO USUÁRIO, tomadas com as alternativas à vista:
+ *
+ *   • O PDF FICA NO DRIVE. Documento assinado que já saiu existe no mundo;
+ *     apagar o arquivo não desfaz isso, só destrói a prova. O registro na
+ *     lixeira guarda o link, então dá para reencontrar.
+ *   • DECLARAÇÃO JÁ ENVIADA PODE SAIR, com aviso destacado na tela. Mesmo
+ *     princípio da duplicata: avisar em vez de proibir, porque recusar
+ *     empurra a pessoa a resolver por fora do sistema.
+ *   • SÓ ADMINISTRADOR. Emitir e entregar seguem com o módulo Documentos;
+ *     excluir é a única ação da tela que remove histórico.
+ *
+ * Usa `lixeiraMoverVarias_` (Lixeira.gs), que é o padrão da casa: move para a
+ * aba de lixeira com metadado de quem e quando, permite restaurar, e tem teto
+ * de lote que RECUSA em vez de cortar pela metade — excluir 50 de 300 e
+ * avisar "50 excluídas" deixaria quem pediu achando que as 300 saíram.
+ */
+function declExcluirDeclaracoes(numeros, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", true);
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(15000)) {
+      return { ok: false, mensagem: "Sistema ocupado, tente novamente em instantes." };
+    }
+
+    numeros = (Array.isArray(numeros) ? numeros : [numeros])
+      .map(declTexto_).filter(Boolean);
+    if (!numeros.length) return { ok: false, mensagem: "Nenhuma declaração selecionada." };
+
+    var sh = declGarantirEmissoes_();
+    var hm = declCabecalho_(sh);
+    if (sh.getLastRow() < 2) return { ok: false, mensagem: "Não há declarações para excluir." };
+
+    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+    var linhas = [], achados = [], naoAchados = [];
+
+    numeros.forEach(function (numero) {
+      var achou = false;
+      for (var i = 0; i < dados.length; i++) {
+        if (declTexto_(dados[i][hm.NUMERO - 1]) !== numero) continue;
+        linhas.push(i + 2);
+        achados.push({
+          numero: numero,
+          diretor: declTexto_(dados[i][hm.DIRETOR_NOME - 1]),
+          emailStatus: declTexto_(dados[i][hm.EMAIL_STATUS - 1])
+        });
+        achou = true;
+        break;
+      }
+      if (!achou) naoAchados.push(numero);
+    });
+
+    if (!linhas.length) {
+      return { ok: false, mensagem: "Nenhuma das declarações informadas foi encontrada." };
+    }
+
+    if (typeof lixeiraMoverVarias_ !== "function") {
+      return { ok: false, mensagem: "O módulo de Lixeira não está disponível neste projeto." };
+    }
+
+    var r = lixeiraMoverVarias_(sh, linhas, { sessao: sessao, origem: "Declarações" });
+    if (!r.ok) return { ok: false, mensagem: r.mensagem };
+
+    achados.forEach(function (a) {
+      declAuditar_({
+        sessao: sessao, registroId: a.numero,
+        acao: "DECLARACAO_EXCLUIDA",
+        documento: a.diretor,
+        valorNovo: "entrega estava em " + (a.emailStatus || "—") + " · reversível pela Lixeira"
+      });
+    });
+
+    return {
+      ok: true,
+      excluidas: r.movidas,
+      naoAchados: naoAchados,
+      mensagem: r.movidas + " declaração(ões) excluída(s). Dá para restaurar pela Lixeira." +
+                (naoAchados.length ? " Não encontrada(s): " + naoAchados.join(", ") + "." : "")
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao excluir: " + e.message };
+  } finally {
+    try { lock.releaseLock(); } catch (eRel) {}
+  }
+}
+
 function declHistoricoDeclaracoes(filtros, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
   try {

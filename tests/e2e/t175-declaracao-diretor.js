@@ -359,6 +359,41 @@ b.ok(g.declIncluirContato(emitida.numero, novoEmail, TOKEN).ok === false, "e o r
 b.bloqueia(() => g.declIncluirContato(emitida.numero, "x@y.br", TOKEN_ESC),
   "usuário sem Documentos não inclui destinatário");
 
+b.fluxo("DECLARAÇÕES · Excluir é reversível, e só administrador faz");
+/* "Estou fazendo de teste, às vezes erramos e precisamos excluir" — usuário,
+   15/09/2026. Emissão errada precisa sair sem virar pedido de suporte para
+   alguém mexer na planilha à mão. */
+const paraExcluir = g.declEmitirDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "MATUTINO",
+  dataLiberacao: amanha.toISOString().slice(0, 10), confirmado: true
+}, TOKEN).numero;
+const antesDeExcluir = g.declHistoricoDeclaracoes({}, TOKEN).total;
+
+b.bloqueia(() => g.declExcluirDeclaracoes([paraExcluir], TOKEN_ESC),
+  "usuário sem Documentos não exclui");
+
+const exc = g.declExcluirDeclaracoes([paraExcluir], TOKEN);
+b.ok(exc.ok && exc.excluidas === 1, "administrador exclui", exc.mensagem);
+b.ok(g.declHistoricoDeclaracoes({}, TOKEN).total === antesDeExcluir - 1, "e a lista encolhe");
+b.ok(!g.declHistoricoDeclaracoes({}, TOKEN).itens.some(i => i.numero === paraExcluir),
+  "a declaração não aparece mais");
+
+/* O PONTO DA DECISÃO: vai para a LIXEIRA, não some. */
+const naLixeira = g.lixeiraListar_(ss.getSheetByName(g.ABA_DECLARACOES_DIRETOR)) || [];
+b.ok(naLixeira.length > 0, "o registro foi para a lixeira, não evaporou", naLixeira.length + " na lixeira");
+
+b.ok(g.declExcluirDeclaracoes([], TOKEN).ok === false, "sem seleção, não faz nada");
+b.ok(g.declExcluirDeclaracoes(["999/2099"], TOKEN).ok === false, "número inexistente é recusado");
+
+/* O TETO DA CASA RECUSA EM VEZ DE CORTAR PELA METADE — excluir 50 de 300 e
+   dizer "50 excluídas" deixaria quem pediu achando que as 300 saíram. Quem
+   garante isso é o lixeiraMoverVarias_, e a exclusão daqui passa por ele:
+   testado direto, sem precisar emitir 51 declarações. */
+const linhasDemais = [];
+for (let i = 2; i < 60; i++) linhasDemais.push(i);
+const recusa = g.lixeiraMoverVarias_(ss.getSheetByName(g.ABA_DECLARACOES_DIRETOR), linhasDemais, {});
+b.ok(recusa.ok === false && recusa.movidas === 0, "lote acima do teto é recusado INTEIRO", recusa.mensagem);
+
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");

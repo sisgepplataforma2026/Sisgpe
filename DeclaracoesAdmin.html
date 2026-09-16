@@ -150,23 +150,61 @@
       </div>
     </div>
 
+    <!-- Só aparece com algo marcado: barra de ação vazia é ruído. -->
+    <div id="declBarraSelecao" class="declBarraSelecao" style="display:none;">
+      <div><strong id="declSelContagem">0</strong> selecionada(s)</div>
+      <div class="declBarraBtns">
+        <button type="button" class="btn-outline btn-sm" onclick="declSelecionarTodas(false)">Limpar seleção</button>
+        <button type="button" class="btn-red btn-sm" onclick="declAbrirExclusao()">🗑 Excluir selecionadas</button>
+      </div>
+    </div>
+
     <div class="of-card declCard">
       <div class="of-card-body declTabelaWrap">
         <table class="declTabela">
           <thead>
             <tr>
+              <th style="width:34px;"><input type="checkbox" id="declSelTodas" onchange="declSelecionarTodas(this.checked)" title="Marcar/desmarcar a página"></th>
               <th>Nº</th><th>Diretor</th><th>Escola</th><th>Liberação</th><th>Período</th>
               <th>Emitida</th><th>Entrega</th><th>Por</th><th></th>
             </tr>
           </thead>
           <tbody id="declHistoricoCorpo">
-            <tr><td colspan="9" class="declVazio">Carregando…</td></tr>
+            <tr><td colspan="10" class="declVazio">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   </section>
 
+</div>
+
+<!-- Modal — confirmação da exclusão.
+
+     Lista o que vai sair, com o que já foi entregue em destaque. O usuário
+     decidiu em 15/09/2026 que declaração enviada PODE ser excluída — mas
+     sabendo que foi enviada, não por engano. -->
+<div class="of-modal-overlay" id="declModalExcluir">
+  <div class="of-modal" style="max-width:560px;">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title">🗑 Excluir declarações</div>
+        <div class="of-modal-head-sub">vai para a Lixeira — dá para restaurar</div>
+      </div>
+      <button type="button" class="of-modal-close" onclick="declFechar('declModalExcluir')">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div id="declExcluirLista" class="declExcluirLista"></div>
+      <div id="declExcluirAvisoEnviadas" class="declAviso" style="display:none;margin-top:12px;"></div>
+      <div class="declOrigem" style="margin-top:10px;">
+        O PDF continua no Drive — documento assinado que já saiu não se apaga por aqui.
+      </div>
+    </div>
+    <div class="declModalRodape">
+      <button type="button" class="btn-outline" onclick="declFechar('declModalExcluir')">✕ Cancelar</button>
+      <button type="button" class="btn-red" id="declBtnExcluirConfirmar" onclick="declExcluirConfirmado()">🗑 Excluir</button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal — o documento como ele vai sair.
@@ -384,6 +422,16 @@
 }
 .declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declImportLinha small { color: var(--g500, #64748b); }
+.declBarraSelecao { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; background:var(--navy,#001f4d); color:#fff; border-radius:12px;
+  padding:12px 18px; margin-bottom:12px; font-size:13px; font-weight:700; }
+.declBarraSelecao strong { font-size:16px; }
+.declBarraBtns { display:flex; gap:8px; flex-wrap:wrap; }
+.declExcluirLista { max-height:240px; overflow-y:auto; }
+.declExcluirItem { display:flex; justify-content:space-between; gap:10px; align-items:center;
+  padding:9px 0; border-bottom:1px solid var(--g100,#f1f5f9); font-size:12.5px; }
+.declExcluirItem small { display:block; color:var(--g500,#64748b); margin-top:2px; }
+.declExcluirEnviada { color:#dc2626; font-weight:800; font-size:11px; white-space:nowrap; }
 .declMailCard { font-family:'Segoe UI',Arial,sans-serif; max-width:560px; margin:0 auto; border-radius:8px;
   overflow:hidden; box-shadow:0 4px 16px rgba(0,20,60,.1); background:#fff; }
 .declMailTopo { background:linear-gradient(135deg,#001228,var(--navy,#001f4d),#003b82); padding:18px 22px; }
@@ -1089,7 +1137,7 @@ function declLimparFiltros() {
 
 function declHistorico() {
   var corpo = document.getElementById("declHistoricoCorpo");
-  corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Carregando…</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Carregando…</td></tr>';
 
   var filtros = {
     busca: document.getElementById("declBusca").value,
@@ -1100,11 +1148,11 @@ function declHistorico() {
   google.script.run
     .withSuccessHandler(function (r) {
       if (!r || !r.ok) {
-        corpo.innerHTML = '<tr><td colspan="9" class="declVazio">' + declEsc((r && r.mensagem) || "Erro ao listar.") + '</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="10" class="declVazio">' + declEsc((r && r.mensagem) || "Erro ao listar.") + '</td></tr>';
         return;
       }
       if (!r.itens.length) {
-        corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Nenhuma declaração emitida ainda.</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Nenhuma declaração emitida ainda.</td></tr>';
         return;
       }
       corpo.innerHTML = r.itens.map(function (d) {
@@ -1113,6 +1161,9 @@ function declHistorico() {
           : '<span class="declPill declPillAlerta">sem PDF</span>';
         var entregue = d.emailStatus === "ENVIADO" || d.emailStatus === "TESTE_HML_ENVIADO";
         return '<tr>' +
+          '<td><input type="checkbox" class="declSelLinha" data-decl-num="' + declEsc(d.numero) + '"' +
+              ' data-decl-nome="' + declEsc(d.diretorNome) + '"' +
+              ' data-decl-enviada="' + (entregue ? "1" : "") + '" onchange="declAtualizarSelecao()"></td>' +
           '<td><b>' + declEsc(d.numero) + '</b></td>' +
           '<td>' + declEsc(d.diretorNome) + '</td>' +
           '<td>' + declEsc(d.escolaNome || "—") + '</td>' +
@@ -1127,11 +1178,87 @@ function declHistorico() {
           '</td>' +
         '</tr>';
       }).join("");
+      declAtualizarSelecao();
     })
     .withFailureHandler(function (e) {
-      corpo.innerHTML = '<tr><td colspan="9" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
+      corpo.innerHTML = '<tr><td colspan="10" class="declVazio">Erro: ' + declEsc(e) + '</td></tr>';
     })
     .declHistoricoDeclaracoes(filtros, declToken());
+}
+
+/* ─── seleção e exclusão ─── */
+function declLinhasSelecionadas() {
+  return Array.prototype.slice.call(document.querySelectorAll(".declSelLinha"))
+    .filter(function (c) { return c.checked; });
+}
+
+function declAtualizarSelecao() {
+  var marcadas = declLinhasSelecionadas();
+  var barra = document.getElementById("declBarraSelecao");
+  if (barra) barra.style.display = marcadas.length ? "flex" : "none";
+  var cont = document.getElementById("declSelContagem");
+  if (cont) cont.textContent = marcadas.length;
+
+  /* O "marcar tudo" reflete o estado real da página, em vez de ficar marcado
+     depois que alguém desmarcou uma linha. */
+  var todas = document.querySelectorAll(".declSelLinha");
+  var topo = document.getElementById("declSelTodas");
+  if (topo) topo.checked = todas.length > 0 && marcadas.length === todas.length;
+}
+
+function declSelecionarTodas(marcar) {
+  var caixas = document.querySelectorAll(".declSelLinha");
+  for (var i = 0; i < caixas.length; i++) caixas[i].checked = !!marcar;
+  var topo = document.getElementById("declSelTodas");
+  if (topo) topo.checked = !!marcar;
+  declAtualizarSelecao();
+}
+
+function declAbrirExclusao() {
+  var marcadas = declLinhasSelecionadas();
+  if (!marcadas.length) return declMsg("Selecione ao menos uma declaração.", "alerta");
+
+  var enviadas = marcadas.filter(function (c) { return c.getAttribute("data-decl-enviada") === "1"; });
+  document.getElementById("declExcluirLista").innerHTML = marcadas.map(function (c) {
+    var enviada = c.getAttribute("data-decl-enviada") === "1";
+    return '<div class="declExcluirItem"><span><b>' + declEsc(c.getAttribute("data-decl-num")) + '</b>' +
+           '<small>' + declEsc(c.getAttribute("data-decl-nome")) + '</small></span>' +
+           (enviada ? '<span class="declExcluirEnviada">já entregue à escola</span>' : '') + '</div>';
+  }).join("");
+
+  var aviso = document.getElementById("declExcluirAvisoEnviadas");
+  if (enviadas.length) {
+    aviso.style.display = "block";
+    aviso.textContent = enviadas.length === 1
+      ? "Uma delas já foi entregue à escola. Excluir aqui não desfaz o envio — só tira da lista."
+      : enviadas.length + " delas já foram entregues à escola. Excluir aqui não desfaz os envios — só tira da lista.";
+  } else {
+    aviso.style.display = "none";
+  }
+  declAbrir("declModalExcluir");
+}
+
+function declExcluirConfirmado() {
+  var numeros = declLinhasSelecionadas().map(function (c) { return c.getAttribute("data-decl-num"); });
+  if (!numeros.length) return;
+  var btn = document.getElementById("declBtnExcluirConfirmar");
+  btn.disabled = true;
+  btn.textContent = "Excluindo…";
+
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      btn.textContent = "🗑 Excluir";
+      declFechar("declModalExcluir");
+      declMsg((r && r.mensagem) || "Não consegui excluir.", (r && r.ok) ? "sucesso" : "erro");
+      if (r && r.ok) { declSelecionarTodas(false); declHistorico(); }
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false;
+      btn.textContent = "🗑 Excluir";
+      declMsg("Erro ao excluir: " + e, "erro");
+    })
+    .declExcluirDeclaracoes(numeros, declToken());
 }
 
 /**
@@ -1169,5 +1296,8 @@ window.declEscolherAchada = declEscolherAchada;
 window.declConferirConfig = declConferirConfig;
 window.declEntregaAba = declEntregaAba;
 window.declIncluirContato = declIncluirContato;
+window.declSelecionarTodas = declSelecionarTodas;
+window.declAtualizarSelecao = declAtualizarSelecao;
+window.declAbrirExclusao = declAbrirExclusao;
 window.declVerDocumento = declVerDocumento;
 </script>
