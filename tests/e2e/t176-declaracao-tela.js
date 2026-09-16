@@ -331,6 +331,52 @@ function clicar(el, oque) {
   b.ok($("declEntregaModalContatos").querySelectorAll("[data-decl-email]").length > 0,
     "e com os e-mails prontos para conferência");
 
+  b.passo("13. Quando a emissão falha, o motivo FICA na tela");
+  /* O DEFEITO QUE ISTO TRAVA — 16/09/2026, produção.
+
+     A emissão falhou porque a pasta do Drive não estava configurada naquele
+     ambiente. O servidor devolveu a mensagem certa, dizendo exatamente qual
+     Script Property faltava. A tela mandou para o toast (some em 5s) e para
+     o console (ninguém abre), e o usuário viu só o botão voltar de
+     "Gerando…" para "Gerar declaração". Duas rodadas se passaram com ele
+     achando que o sistema tinha travado, enquanto o sistema estava
+     respondendo o que fazer.
+
+     Erro que impede o trabalho não pode ser transitório. */
+  declFecharModais();
+  const pdfOriginal = g.declGerarPdf_;
+  g.declGerarPdf_ = () => {
+    throw new Error("A pasta das declarações ainda não foi configurada neste ambiente.");
+  };
+  clicar($("declBtnEmitir"), "emitir com o Drive falhando");
+  await tela.assentar(200);
+  if ($("declModalDuplicata").classList.contains("aberto")) {
+    clicar($("declModalDuplicata").querySelector(".btn-navy"), "confirmar segunda via");
+    await tela.assentar(250);
+  }
+
+  b.ok($("declErroEmissao").style.display !== "none",
+    "a caixa de erro aparece — e não some sozinha");
+  b.ok(/pasta das declarações/i.test($("declErroEmissao").textContent),
+    "com o motivo que o servidor mandou, não um \"erro genérico\"",
+    $("declErroEmissao").textContent.replace(/\s+/g, " ").trim().slice(0, 80));
+  b.ok($("declBtnEmitir").textContent === "Gerar declaração" && !$("declBtnEmitir").disabled,
+    "e o botão volta a funcionar, para a pessoa tentar de novo");
+  b.ok(!$("declModalEntrega").classList.contains("aberto"),
+    "o modal de entrega NÃO abre quando a emissão falhou");
+
+  /* E some quando a próxima tentativa começa: erro velho na tela é pior do
+     que erro nenhum, porque a pessoa conserta o que já estava certo. */
+  g.declGerarPdf_ = pdfOriginal;
+  clicar($("declBtnEmitir"), "emitir de novo, agora funcionando");
+  await tela.assentar(200);
+  if ($("declModalDuplicata").classList.contains("aberto")) {
+    clicar($("declModalDuplicata").querySelector(".btn-navy"), "confirmar segunda via");
+    await tela.assentar(250);
+  }
+  b.ok($("declErroEmissao").style.display === "none",
+    "e o erro some quando a emissão volta a dar certo");
+
   b.naoTestavel("Aparência do modal e envio real de e-mail", "jsdom não aplica CSS; Gmail depende da homologação");
   b.resumo();
 })();

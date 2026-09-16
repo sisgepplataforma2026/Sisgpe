@@ -138,6 +138,20 @@
       </div>
     </div>
 
+    <!-- O ERRO PRECISA FICAR NA TELA — 16/09/2026.
+
+         Em produção a emissão falhou e a pessoa viu o botão voltar de
+         "Gerando…" para "Gerar declaração" SEM MENSAGEM NENHUMA. O erro ia
+         para o toast, que some em 5 segundos, e para o console, que ninguém
+         abre. Resultado: duas rodadas perdidas achando que o sistema travou,
+         quando ele estava dizendo o que faltava configurar.
+
+         Aqui o motivo fica até ser resolvido. -->
+    <div id="declErroEmissao" class="declErroEmissao" style="display:none;">
+      <strong>Não foi possível gerar a declaração.</strong>
+      <span id="declErroEmissaoTexto"></span>
+    </div>
+
     <div id="declAcoesDocumento" class="declAcoes declAcoesEsq" style="display:none;">
       <a id="declLinkPdf" class="btn btn-outline" href="#" target="_blank" rel="noopener">📥 Baixar PDF</a>
       <button type="button" class="btn btn-outline" onclick="declImprimirDocumento()">🖨 Imprimir</button>
@@ -387,6 +401,14 @@
   background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 12px; padding: 14px 16px;
   font-size: 12.5px; color: #92400e; margin-bottom: 16px; font-weight: 600;
 }
+/* Erro de emissão: vermelho, não âmbar. O .declAviso é para o que a pessoa
+   deve saber; isto é para o que impediu o trabalho de acontecer. */
+.declErroEmissao {
+  background: #fef2f2; border: 1.5px solid #fca5a5; border-left: 4px solid #dc2626;
+  border-radius: 12px; padding: 14px 16px; font-size: 12.5px; color: #991b1b;
+  margin-bottom: 16px; font-weight: 600; line-height: 1.6;
+}
+.declErroEmissao strong { display: block; margin-bottom: 4px; font-weight: 800; }
 .declAcoes { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 8px; }
 .declAcoesEsq { justify-content: flex-start; }
 .declCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -935,10 +957,28 @@ function declPreviaAgora() {
 }
 
 /* ─── emissão ─── */
+/* Mostra o motivo da falha e o mantém na tela. `declMsg` continua sendo
+   chamado para quem estiver olhando na hora; a caixa é para quem não estava. */
+function declErroMostrar(texto) {
+  var cx = document.getElementById("declErroEmissao");
+  var tx = document.getElementById("declErroEmissaoTexto");
+  if (!cx || !tx) return;
+  /* O servidor já devolve "Erro ao emitir: ..." (declEmitirDeclaracaoDiretor
+     captura e prefixa). Com o título da caixa dizendo a mesma coisa, o texto
+     saía "Não foi possível gerar a declaração. Erro ao emitir: ...". */
+  tx.textContent = " " + String(texto).replace(/^Erro ao emitir:\s*/i, "");
+  cx.style.display = "block";
+}
+function declErroLimpar() {
+  var cx = document.getElementById("declErroEmissao");
+  if (cx) cx.style.display = "none";
+}
+
 function declEmitir(confirmado) {
   var btn = document.getElementById("declBtnEmitir");
   btn.disabled = true;
   btn.textContent = "Gerando…";
+  declErroLimpar();
 
   google.script.run
     .withSuccessHandler(function (r) {
@@ -950,7 +990,12 @@ function declEmitir(confirmado) {
         declAbrir("declModalDuplicata");
         return;
       }
-      if (!r || !r.ok) { declMsg((r && r.mensagem) || "Não consegui emitir.", "erro"); return; }
+      if (!r || !r.ok) {
+        var motivo = (r && r.mensagem) || "Não consegui emitir.";
+        declMsg(motivo, "erro");
+        declErroMostrar(motivo);
+        return;
+      }
 
       declMsg("Declaração " + r.numero + " emitida.", "sucesso");
       if (r.url) {
@@ -966,7 +1011,10 @@ function declEmitir(confirmado) {
     .withFailureHandler(function (e) {
       btn.disabled = false;
       btn.textContent = "Gerar declaração";
-      declMsg("Erro ao emitir: " + e, "erro");
+      /* `e` pode vir como Error ou como string, dependendo de onde quebrou. */
+      var motivo = (e && e.message) ? e.message : String(e);
+      declMsg("Erro ao emitir: " + motivo, "erro");
+      declErroMostrar(motivo);
     })
     .declEmitirDeclaracaoDiretor(declDados(confirmado), declToken());
 }
