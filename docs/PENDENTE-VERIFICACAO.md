@@ -5769,3 +5769,31 @@ publica o código errado em produção com todas as travas dizendo que está
 certo. Proposta: virar entrada do `workflow_dispatch`, calculando as
 contagens em vez de conferi-las contra número fixo. Aguarda decisão do
 usuário.
+
+### Rodada da noite de 16/09/2026 — publicada em HOMOLOGAÇÃO
+
+Homologação está no commit `e65683a` (run #154, verde). **Produção NÃO recebeu
+esta rodada** — segue no `9af90d3`. Nada abaixo foi executado no ar; a suíte
+(186 arquivos, 6659 asserções) prova o código, não o Google.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 35 | 🔴 pedir Pós-Graduação **para você mesmo** não dá mais "idade incompatível" | portal |
+| 36 | 🔴 digitar parte do nome da escola filtra a lista de 679 | portal |
+| 37 | 🔴 escola que não existe no cadastro é aceita como texto digitado | portal |
+| 38 | 🔴 depois de salvar, **só o card verde** fica na tela — sem o formulário | portal |
+| 39 | 🔴 "Fazer nova solicitação" devolve o formulário limpo | portal |
+| 40 | 🔴 o campo "Ajustar %" aparece ao lado do desconto, em análise | painel |
+| 41 | 🔴 mudar o desconto pede confirmação mostrando o valor calculado | painel |
+| 42 | 🔴 o associado recebe o e-mail de aprovação com o desconto AJUSTADO | caixa dele |
+| 43 | 🔴 solicitação "Fora da regra" mostra o botão 📣 Comunicar fora da regra | painel |
+| 44 | 🔴 o comunicado abre com o motivo medido e o texto já preenchido | painel |
+| 45 | 🔴 editar o texto e enviar: chega o texto EDITADO, não o padrão | caixa dele |
+| 46 | 🔴 todo e-mail de Bolsas sai de **secretaria@sindeducacao.com** | "De:" da mensagem |
+
+**O item 46 é o mais importante desta rodada.** Nove envios do módulo saíam
+por `MailApp`, que ignora o remetente em silêncio — o mesmo defeito da
+Declaração de Diretor. O teste prova que o código usa a porta certa; só uma
+mensagem recebida prova que o alias está verificado na conta executora.
+
+**O item 26 continua aberto** — mandar UM ofício real em produção.
