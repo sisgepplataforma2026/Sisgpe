@@ -1063,27 +1063,21 @@ function enviarVoucherAssociado_(reg, dados) {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
-      subject: "📄 Voucher de Bolsa emitido — " + dados.protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<div style='background:#002f6c;padding:24px;border-radius:12px 12px 0 0;text-align:center;'>" +
-        "<h1 style='color:#C9A84C;margin:0;font-size:22px;'>SindEducação-ES</h1>" +
-        "</div>" +
-        "<div style='background:#fff;padding:28px;border:1px solid #e2e8f0;border-top:none;'>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+      subject: "Voucher de Bolsa emitido — " + dados.protocolo + " · SindEducação-ES",
+      htmlBody: voucherEmailHtml_("Voucher de Bolsa emitido",
+        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
         "<p>Seu voucher de bolsa foi emitido com sucesso.</p>" +
-        "<div style='background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:16px;margin:20px 0;text-align:center;'>" +
-        "<p style='font-size:11px;color:#64748b;margin-bottom:4px;'>Código de Validação</p>" +
-        "<p style='font-size:20px;font-weight:900;color:#5b21b6;letter-spacing:.08em;'>" + escHtmlVoucher_(dados.codigo) + "</p>" +
+        "<div style='margin:18px 0;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #C9A84C;border-radius:8px;text-align:center;'>" +
+        "<div style='font-size:11px;color:#64748b;letter-spacing:.08em;text-transform:uppercase;'>Código de validação</div>" +
+        "<div style='font-size:22px;font-weight:900;color:#001f4d;letter-spacing:.1em;margin-top:6px;'>" + escHtmlVoucher_(dados.codigo) + "</div>" +
         "</div>" +
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(dados.protocolo) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(dados.percentual) + "%</p>" +
-        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#002f6c;font-weight:700;'>📄 Acessar voucher</a></p>" +
-        "<p style='font-size:12px;color:#64748b;'>Apresente este documento à instituição de ensino.</p>" +
-        "</div>" +
-        "</div>"
+        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#1565C0;font-weight:700;'>Acessar o voucher em PDF</a></p>" +
+        "<p style='font-size:12.5px;color:#64748b;'>Apresente este documento à instituição de ensino.</p>" +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch (e) {
@@ -1107,16 +1101,11 @@ function enviarVoucherEscola_(reg, dados) {
       return;
     }
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: emailEscola,
       cc: "secretaria@sindeducacao.com",
       subject: "Ofício e Voucher de Bolsa — " + dados.protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;'>" +
-        "<div style='background:#002f6c;padding:22px;border-radius:12px 12px 0 0;'>" +
-        "<h2 style='color:#C9A84C;margin:0;font-size:19px;'>Encaminhamento de Voucher de Bolsa</h2>" +
-        "</div>" +
-        "<div style='background:#fff;padding:24px;border:1px solid #e2e8f0;border-top:none;'>" +
+      htmlBody: voucherEmailHtml_("Encaminhamento de Voucher de Bolsa",
         "<p>Prezados(as),</p>" +
         "<p>Encaminhamos voucher de bolsa de estudo emitido pelo SindEducação-ES.</p>" +
         "<p><strong>Associado(a):</strong> " + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</p>" +
@@ -1124,11 +1113,9 @@ function enviarVoucherEscola_(reg, dados) {
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(dados.percentual) + "%</p>" +
         "<p><strong>Código de validação:</strong> " + escHtmlVoucher_(dados.codigo) + "</p>" +
-        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#002f6c;font-weight:700;'>📄 Acessar voucher</a></p>" +
-        (dados.linkOficio ? "<p><a href='" + escHtmlVoucher_(dados.linkOficio) + "' style='color:#002f6c;font-weight:700;'>📨 Acessar ofício</a></p>" : "") +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>" +
-        "</div>"
+        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#1565C0;font-weight:700;'>Acessar o voucher</a></p>" +
+        (dados.linkOficio ? "<p><a href='" + escHtmlVoucher_(dados.linkOficio) + "' style='color:#1565C0;font-weight:700;'>Acessar o ofício</a></p>" : "") +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
     registrarHistoricoVoucher_(

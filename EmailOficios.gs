@@ -196,6 +196,10 @@ function enviarComoRascunhoSISGEP_(opcoes, corpoTexto) {
     replyTo:     opcoes.replyTo
   };
   if (opcoes.from) opcoesGmail.from = opcoes.from;
+  /* O ofício não usa cópia (ver a nota "Sem BCC" em montarOpcoesEmailSISGEP_),
+     mas o envio do voucher usa — e sem isto a cópia sumia em silêncio. */
+  if (opcoes.cc)  opcoesGmail.cc  = opcoes.cc;
+  if (opcoes.bcc) opcoesGmail.bcc = opcoes.bcc;
 
   var rascunho = GmailApp.createDraft(
     opcoes.to, opcoes.subject, corpoTexto || "Segue documento em anexo.", opcoesGmail);

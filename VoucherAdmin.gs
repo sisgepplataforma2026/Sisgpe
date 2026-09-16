@@ -377,7 +377,7 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Complementação de documentos — " + protocolo + " · SindEducação-ES",
       htmlBody:
@@ -401,7 +401,7 @@ function enviarEmailNaoAssociadoVoucher_(reg, protocolo) {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Atendimento presencial necessário — " + protocolo + " · SindEducação-ES",
       htmlBody:
@@ -446,7 +446,7 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
      * a última frase, que passa a dizer a verdade do canal dela. */
     const presencial = voucherEhNaoAssociado_(reg.SITUACAO_SINDICAL);
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Bolsa aprovada — " + protocolo + " · SindEducação-ES",
       htmlBody:
@@ -473,24 +473,89 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
   }
 }
 
+/**
+ * A CASCA DE E-MAIL DO MÓDULO, no padrão do SISGEP — 16/09/2026.
+ *
+ * O indeferimento saía em Arial cru, sem o bloco navy com que TODO documento
+ * do sistema abre — o ofício, a declaração, o certificado. "Não pode cada
+ * módulo ter um padrão diferente", e e-mail também é documento.
+ *
+ * @param {string} titulo    o que aparece na faixa
+ * @param {string} corpoHtml o conteúdo, já escapado por quem chama
+ */
+function voucherEmailHtml_(titulo, corpoHtml) {
+  return "" +
+    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:640px;color:#0f172a;'>" +
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);padding:22px 26px;border-radius:8px 8px 0 0;'>" +
+    "<div style='border-left:4px solid #C9A84C;padding-left:14px;'>" +
+    "<div style='font-size:19px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
+    "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;'>Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+    "</div>" +
+    "<div style='height:1px;background:rgba(201,168,76,.25);margin:14px 0 12px;'></div>" +
+    "<div style='font-size:15px;font-weight:800;color:#C9A84C;'>" + escHtmlVoucher_(titulo) + "</div>" +
+    "</div>" +
+    "<div style='background:#fff;padding:26px;border:1px solid #e2e8f0;border-top:none;line-height:1.7;font-size:14px;'>" +
+    corpoHtml +
+    "</div>" +
+    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:20px 26px;text-align:center;'>" +
+    "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:14px;'></div>" +
+    "<div style='font-size:12px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
+    "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+    "Enseada do Suá - Vitória/ES<br>" +
+    "(27) 3222-2706 &bull; secretaria@sindeducacao.com" +
+    "</div></div></div>";
+}
+
+/**
+ * Envia pelo caminho que RESPEITA O REMETENTE.
+ *
+ * O `MailApp.sendEmail` IGNORA a opção `from`, em silêncio — foi o defeito que
+ * fez a Declaração de Diretor sair da conta executora mesmo com o alias da
+ * Secretaria configurado (ver enviarComoRascunhoSISGEP_ em EmailOficios.gs).
+ * Todo e-mail deste módulo usava MailApp, então todos saíam da conta errada.
+ * Aqui passam pela mesma porta do ofício e da declaração.
+ */
+function voucherEnviarEmail_(para, assunto, corpoHtml) {
+  return voucherEnviarMsg_({ to: para, subject: assunto, htmlBody: corpoHtml });
+}
+
+/**
+ * Substituto direto do antigo MailApp.sendEmail(msg) neste módulo.
+ *
+ * Aceita a MESMA forma de objeto — to, subject, htmlBody, cc, attachments —
+ * para a troca ser mecânica nos sete pontos que usavam MailApp. O que muda é
+ * por onde sai: `GmailApp.createDraft().send()`, que respeita o `from` da
+ * Secretaria quando ele é alias verificado da conta executora.
+ */
+function voucherEnviarMsg_(msg) {
+  msg = msg || {};
+  var opcoes = montarOpcoesEmailSISGEP_(
+    "", msg.htmlBody || "", msg.attachments || [], msg.subject || "", msg.to || "");
+  if (msg.cc) opcoes.cc = msg.cc;
+  return enviarComoRascunhoSISGEP_(opcoes, msg.body || "Mensagem do SindEducação-ES.");
+}
+
 function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
   try {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
-      to: email,
-      subject: "Solicitação indeferida — " + protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#991b1b;'>Solicitação indeferida</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
-        "<p>Sua solicitação foi indeferida após análise administrativa.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
-        "<p><strong>Justificativa:</strong> " + escHtmlVoucher_(obs) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
-    });
+    voucherEnviarEmail_(
+      email,
+      "Sobre sua solicitação de bolsa — " + protocolo,
+      "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+      "<p>Recebemos sua solicitação de bolsa de estudo e agradecemos a confiança.</p>" +
+      "<p>Após a conferência, <strong>não foi possível conceder o benefício neste caso</strong>. " +
+      "O motivo registrado pela Secretaria foi:</p>" +
+      "<div style='margin:14px 0;padding:12px 16px;background:#f8fafc;border-left:4px solid #001f4d;border-radius:8px;'>" +
+      escHtmlVoucher_(obs) + "</div>" +
+      "<p><strong>Isso não impede novas solicitações.</strong> Se algum dado tiver sido " +
+      "informado por engano, ou se houver outro beneficiário que atenda aos critérios, " +
+      "basta refazer o pedido pelo portal — ou falar com a Secretaria, que ajudamos a conferir.</p>" +
+      "<p style='font-size:12.5px;color:#64748b;'>Protocolo: <strong>" + escHtmlVoucher_(protocolo) + "</strong></p>" +
+      "<p>Qualquer dúvida, é só responder a este e-mail.</p>" +
+      "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>"
+    );
 
   } catch (e) {
     Logger.log("enviarEmailIndeferimentoVoucher_ erro: " + e.message);

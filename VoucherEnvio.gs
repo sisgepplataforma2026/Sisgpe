@@ -263,7 +263,7 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     if (copia) msg.cc = copia;
     if (anexos.length) msg.attachments = anexos;
 
-    MailApp.sendEmail(msg);
+    voucherEnviarMsg_(msg);
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
       para + (copia ? " (cc " + copia + ")" : ""), sessao);
 

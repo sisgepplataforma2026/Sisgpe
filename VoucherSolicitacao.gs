@@ -618,7 +618,7 @@ function enviarEmailConfirmacaoSolicitacaoVoucher_(dados) {
         "</p>";
     }
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: dados.email,
       subject: "Protocolo de Solicitação de Bolsa — SindEducação-ES · " + dados.protocolo,
       htmlBody:
@@ -659,7 +659,7 @@ function enviarEmailInternoNovaSolicitacaoVoucher_(dados) {
   try {
     const emailSecretaria = "secretaria@sindeducacao.com";
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: emailSecretaria,
       cc: "financeiro@sindeducacao.com",
       subject: "📋 Nova solicitação de bolsa — " + dados.protocolo,
