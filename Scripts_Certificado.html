@@ -30,7 +30,7 @@
 #secCertificadoAdmin .cert-hero p  { font-size: 13px; color: rgba(255,255,255,.58); }
 
 #secCertificadoAdmin .cert-metrics { padding: 0 32px; margin-top: -64px; position: relative; z-index: 10; margin-bottom: 28px; }
-#secCertificadoAdmin .cert-metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+#secCertificadoAdmin .cert-metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
 #secCertificadoAdmin .cert-mcard { background: #fff; border-radius: 16px; padding: 16px 15px; box-shadow: 0 8px 30px rgba(0,20,60,.13); position: relative; overflow: hidden; cursor: pointer; transition: transform .18s, box-shadow .18s; border: 2px solid transparent; }
 #secCertificadoAdmin .cert-mcard:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(0,20,60,.18); }
 #secCertificadoAdmin .cert-mcard.ativo { border-color: var(--blue); }
@@ -322,6 +322,20 @@
         <div class="cert-mval" id="certStatAprovado">—</div>
         <div class="cert-msub">Prontas para emissão</div>
       </div>
+      <!-- SEXTO CARD — 16/09/2026.
+
+           `AGUARDANDO_VALIDACAO_CADASTRAL` é o estado de quem pediu pelo
+           portal e cujo CPF não foi achado na base de Associados. Ele não
+           era contado em card NENHUM: a solicitação aparecia só no TOTAL e
+           sumia de todos os indicadores. Uma real (Fucape) ficou parada
+           esperando uma conferência que a tela não oferecia onde fazer. -->
+      <div class="cert-mcard" id="certMcardCadastro" onclick="certFiltrarPorStatus('AGUARDANDO_VALIDACAO_CADASTRAL')">
+        <div class="cert-mac mac-amber"></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Validação cadastral</span><div class="cert-mico mico-amber">🪪</div></div>
+        <div class="cert-mval" id="certStatCadastro">—</div>
+        <div class="cert-msub">CPF não localizado na base</div>
+      </div>
+
       <div class="cert-mcard" id="certMcardEmitido" onclick="certFiltrarPorStatus('EMITIDO')">
         <div class="cert-mac mac-violet"></div>
         <div class="cert-mcard-top"><span class="cert-mlbl">Emitidas</span><div class="cert-mico mico-violet">📄</div></div>
@@ -436,6 +450,7 @@
               <th>
                 <select class="cert-filtro-col" id="certFiltroStatus">
                   <option value="">todos</option>
+                  <option value="AGUARDANDO_VALIDACAO_CADASTRAL">Validação cadastral</option>
                   <option value="PENDENTE">Pendente</option>
                   <option value="ANALISE">Em Análise</option>
                   <option value="APROVADO">Aprovado</option>
@@ -544,6 +559,19 @@
 
       <!-- Ações de status -->
       <div id="certModalAcoes" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
+        <!-- CONFIRMAR CADASTRO — 16/09/2026.
+
+             Aparece SÓ quando a solicitação está aguardando validação
+             cadastral. Botão que existe sempre e só funciona às vezes é pior
+             do que botão que não existe: ensina a pessoa a clicar e receber
+             recusa.
+
+             E NÃO APROVA. Confirmar cadastro é dizer "esta pessoa é
+             associada"; aprovar é dizer "esta bolsa está deferida". Juntar as
+             duas faria a conferência cadastral conceder benefício sem ninguém
+             olhar a regra da convenção. Daqui a solicitação vai para PENDENTE,
+             a fila de análise normal. -->
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certBtnConfirmarCadastro" style="display:none;">🪪 Confirmar cadastro</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnComplementar">📄 Solicitar Complementação</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm"   id="certBtnIndeferir">❌ Indeferir</button>
         <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
@@ -1119,7 +1147,7 @@ function cert_resetBtn(btn){ if(!btn) return; btn.disabled=false; if(btn._orig!=
 
 // ── Métricas
 function cert_atualizarMetricas(){
-  var t=0,p=0,a=0,ap=0,em=0;
+  var t=0,p=0,a=0,ap=0,em=0,vc=0;
   _lista.forEach(function(s){
     t++;
     var st=String(s.status||'').toUpperCase();
@@ -1127,12 +1155,14 @@ function cert_atualizarMetricas(){
     if(st==='ANALISE')  a++;
     if(st==='APROVADO') ap++;
     if(st==='EMITIDO')  em++;
+    if(st==='AGUARDANDO_VALIDACAO_CADASTRAL') vc++;
   });
   if(g('certStatTotal'))   g('certStatTotal').textContent   = t;
   if(g('certStatPendente'))g('certStatPendente').textContent = p;
   if(g('certStatAnalise')) g('certStatAnalise').textContent  = a;
   if(g('certStatAprovado'))g('certStatAprovado').textContent = ap;
   if(g('certStatEmitido')) g('certStatEmitido').textContent  = em;
+  if(g('certStatCadastro'))g('certStatCadastro').textContent = vc;
 }
 
 // ── Filtros
@@ -1558,6 +1588,10 @@ function cert_abrirModal(s){
     if(!dh) dh='<span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>';
     docsEl.innerHTML=dh;
   }
+
+  /* O botão de confirmar cadastro só existe para quem está nesse estado. */
+  var btnCad = g('certBtnConfirmarCadastro');
+  if(btnCad) btnCad.style.display = (st === 'AGUARDANDO_VALIDACAO_CADASTRAL') ? '' : 'none';
 
   var podeEmitir=['APROVADO','EMITIDO'].includes(st);
   var podeAcao  =['PENDENTE','ANALISE'].includes(st);
@@ -3451,6 +3485,10 @@ function initInterno(){
   if(g('certModalClose'))      g('certModalClose').addEventListener('click',cert_fecharModal);
   if(g('certModalCancelar'))   g('certModalCancelar').addEventListener('click',cert_fecharModal);
   if(g('certModalOverlay'))    g('certModalOverlay').addEventListener('click',function(e){if(e.target===this)cert_fecharModal();});
+
+  if(g('certBtnConfirmarCadastro')) g('certBtnConfirmarCadastro').addEventListener('click',function(){
+    acao('confirmarCadastroCertBolsa','certBtnConfirmarCadastro','Cadastro confirmado — foi para a fila de análise');
+  });
 
   if(g('certBtnComplementar')) g('certBtnComplementar').addEventListener('click',function(){
     acao('solicitarComplementacaoCertBolsa','certBtnComplementar','Complementação solicitada');

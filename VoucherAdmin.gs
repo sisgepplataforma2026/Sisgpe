@@ -260,6 +260,80 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
+/**
+ * CONFIRMA QUE A PESSOA É ASSOCIADA, e tira a solicitação do limbo.
+ *
+ * POR QUE PRECISOU EXISTIR — 16/09/2026.
+ *
+ * `AGUARDANDO_VALIDACAO_CADASTRAL` é o estado de quem pediu pelo portal e
+ * cujo CPF NÃO FOI ENCONTRADO na base de Associados. Não é recusa: pode ser
+ * associado novo ainda não lançado, e barrá-lo seria negar direito por atraso
+ * de cadastro. O sistema pede conferência humana.
+ *
+ * SÓ QUE A CONFERÊNCIA NÃO TINHA ONDE ACONTECER. Nenhum card de contagem
+ * cobria esse status, o filtro de status não o oferecia, e não havia ação que
+ * o resolvesse — só Aprovar, Indeferir e Complementação. Uma solicitação real
+ * (Marcelha, pela Fucape) ficou parada, invisível em todos os indicadores,
+ * esperando um passo que o sistema exigia e não oferecia.
+ *
+ * O QUE ESTA FUNÇÃO NÃO FAZ: aprovar. Confirmar o cadastro é dizer "esta
+ * pessoa é associada"; aprovar é dizer "esta bolsa está deferida". São duas
+ * decisões, e juntá-las faria a conferência cadastral conceder benefício sem
+ * ninguém olhar a regra. A solicitação vai para PENDENTE — a fila de análise
+ * normal, de onde ela deveria ter saído se o CPF estivesse na base.
+ *
+ * O RASTRO VAI PARA O HISTÓRICO, que é append-only, e não para OBSERVACOES,
+ * que a ação seguinte sobrescreve.
+ */
+function confirmarCadastroSolicitacaoVoucher(protocolo, obs, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    const item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    const statusAtual = String(item.registro.STATUS_SOLICITACAO || "").toUpperCase();
+    if (statusAtual !== "AGUARDANDO_VALIDACAO_CADASTRAL") {
+      /* Recusa explicando, em vez de aceitar em silêncio: confirmar cadastro
+         de uma solicitação já aprovada ou indeferida a jogaria de volta para
+         PENDENTE, desfazendo uma decisão sem que ninguém percebesse. */
+      return {
+        ok: false,
+        mensagem: "Esta solicitação não está aguardando validação cadastral (está " +
+                  (statusAtual || "sem status") + "). Nada foi alterado."
+      };
+    }
+
+    const usuario = obterUsuarioAtualVoucher_();
+    const observacao = obs ||
+      "Cadastro conferido pela Secretaria: filiação confirmada fora da base no momento da solicitação.";
+
+    atualizarStatusSolicitacao_(item, "PENDENTE", observacao, {
+      SITUACAO_SINDICAL: "ASSOCIADO",
+      STATUS_VALIDACAO_SINDICAL: "VALIDADO",
+      USUARIO_VALIDACAO: usuario,
+      DATA_VALIDACAO: new Date()
+    });
+    atualizarStatusProtocolo_(protocolo, "PENDENTE", usuario, observacao);
+
+    registrarHistoricoVoucher_(
+      item.registro.ID_SOLICITACAO,
+      item.registro.CPF_SOLICITANTE,
+      "CADASTRO_CONFIRMADO",
+      usuario,
+      observacao,
+      protocolo
+    );
+
+    return {
+      ok: true,
+      mensagem: "Cadastro confirmado. A solicitação foi para a fila de análise."
+    };
+
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao confirmar cadastro: " + e.message };
+  }
+}
+
 function indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
@@ -427,6 +501,11 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
 
 function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao) {
   return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao);
+}
+
+/* A tela de Bolsas chama pelos nomes CertBolsa — mesma convenção dos demais. */
+function confirmarCadastroCertBolsa(protocolo, obs, tokenSessao) {
+  return confirmarCadastroSolicitacaoVoucher(protocolo, obs, tokenSessao);
 }
 
 function aprovarSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {

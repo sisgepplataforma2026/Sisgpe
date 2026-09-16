@@ -179,6 +179,72 @@ b.ok(/cert-pct-falta/.test(painelHtml),
 b.ok(/s\.percentual/.test(painelHtml),
   "e a renderização lê o campo que o servidor manda");
 
+b.fluxo("BOLSAS · A validação cadastral tem onde ser feita");
+/* O ESTADO QUE NÃO TINHA FILA — 16/09/2026.
+
+   Quem pede pelo portal e cujo CPF NÃO está na base de Associados fica em
+   AGUARDANDO_VALIDACAO_CADASTRAL. Não é recusa: pode ser associado novo,
+   ainda não lançado. O sistema pede conferência humana.
+
+   Só que ela não tinha onde acontecer. Nenhum card de contagem cobria o
+   status, o filtro não o oferecia, e não havia ação que o resolvesse. Uma
+   solicitação real (Fucape) ficou parada, invisível em todos os indicadores.
+   Este bloco existe para isso não voltar. */
+
+/* Um CPF que a base NÃO conhece — é o que produz o estado. */
+const CPF_FORA = "52998224725";
+const foraDaBase = g.salvarCadastroESolicitacaoVoucher(
+  Object.assign({}, PAYLOAD, { cpf: CPF_FORA, nome: "MARCELA DE TESTE",
+                               periodoReferencia: "2028/1" }));
+b.ok(foraDaBase && foraDaBase.ok, "a solicitação de quem não está na base é ACEITA — não recusada",
+  (foraDaBase && foraDaBase.mensagem) || "");
+b.ok(String(foraDaBase.status || "") === "AGUARDANDO_VALIDACAO_CADASTRAL",
+  "e nasce aguardando validação cadastral", foraDaBase.status);
+
+const protoFora = foraDaBase.protocolo.numeroProtocolo;
+b.bloqueia(() => g.confirmarCadastroCertBolsa(protoFora, "", TOKEN_SEM),
+  "usuário sem Benefícios não confirma cadastro");
+
+const conf = g.confirmarCadastroCertBolsa(protoFora, "", TOKEN);
+b.ok(conf.ok, "o administrador confirma o cadastro", conf.mensagem);
+
+const depois = g.listarSolicitacoesCertBolsa(TOKEN)
+  .filter(x => x.protocolo === protoFora)[0];
+b.ok(depois && depois.status === "PENDENTE",
+  "e a solicitação vai para a FILA DE ANÁLISE, não para aprovada",
+  depois && depois.status);
+b.ok(depois && /ASSOCIADO/i.test(String(depois.situacaoSindicalDeclarada || "")),
+  "com a situação sindical registrada como associado",
+  depois && depois.situacaoSindicalDeclarada);
+
+/* CONFIRMAR NÃO É APROVAR. Se as duas decisões fossem a mesma, a conferência
+   cadastral concederia benefício sem ninguém olhar a regra da convenção. */
+b.ok(depois && depois.status !== "APROVADO",
+  "confirmar cadastro NÃO aprova a bolsa — são duas decisões");
+
+/* E não pode ser aplicado duas vezes: repetir jogaria de volta para PENDENTE
+   uma solicitação já decidida, desfazendo-a em silêncio. */
+const repetido = g.confirmarCadastroCertBolsa(protoFora, "", TOKEN);
+b.ok(!repetido.ok && /não está aguardando/i.test(repetido.mensagem),
+  "repetir é recusado, com o motivo dito", repetido.mensagem);
+b.ok(g.confirmarCadastroCertBolsa("NAO-EXISTE", "", TOKEN).ok === false,
+  "protocolo inexistente é recusado");
+
+/* A TELA precisa mostrar a fila, senão a função existe e ninguém a alcança. */
+const painelHtml2 = fsP.readFileSync(require("path").join(__dirname, "..", "..", "Scripts_Certificado.html"), "utf8");
+b.ok(/id="certStatCadastro"/.test(painelHtml2), "o painel tem o card de validação cadastral");
+/* Precisa CONTAR, não só ter o card: a primeira versão desta asserção tinha
+   um `||` que a deixava quase sempre verdadeira — asserção que não pode
+   falhar de novo, no mesmo dia. Aqui se exige a linha exata que incrementa. */
+b.ok(/if\(st==='AGUARDANDO_VALIDACAO_CADASTRAL'\) vc\+\+;/.test(painelHtml2),
+  "e conta esse status — antes ele não entrava em card nenhum");
+b.ok(/certStatCadastro'\)\.textContent = vc;/.test(painelHtml2.replace(/g\('/g, "('")),
+  "escrevendo a contagem no card");
+b.ok(/<option value="AGUARDANDO_VALIDACAO_CADASTRAL">/.test(painelHtml2),
+  "o filtro de status oferece a fila");
+b.ok(/id="certBtnConfirmarCadastro"/.test(painelHtml2),
+  "e existe o botão que resolve o estado");
+
 b.naoTestavel("Os botões no navegador e o arquivo abrindo do Drive",
   "jsdom não renderiza o modal do painel; o Drive é dublê no emulador");
 b.resumo();

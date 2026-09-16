@@ -1,7 +1,7 @@
 {
   "medidoEm": "2026-09-16",
-  "totalPublicas": 1006,
-  "protegidas": 719,
+  "totalPublicas": 1008,
+  "protegidas": 721,
   "expostas": [
     {
       "nome": "validarCPF",
