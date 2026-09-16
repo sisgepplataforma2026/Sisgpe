@@ -179,6 +179,35 @@ b.ok(/cert-pct-falta/.test(painelHtml),
 b.ok(/s\.percentual/.test(painelHtml),
   "e a renderização lê o campo que o servidor manda");
 
+b.fluxo("BOLSAS · O CPF chega ao painel com o zero que a planilha comeu");
+/* O CASO REAL: o CPF 085.381.047-80 aparecia no painel como "8538104780".
+   A planilha guarda a coluna como NÚMERO, e número não tem zero à esquerda.
+
+   O conserto de fundo já existia — `formatarCpfVoucher_` completa os zeros e
+   PROVA o resultado pelo dígito verificador antes de aceitar, e é por isso
+   que o certificado e o e-mail sempre saíram certos. A lista do painel era o
+   único lugar que ainda mostrava o número cru. */
+b.ok(g.formatarCpfVoucher_("8538104780") === "085.381.047-80",
+  "o formatador devolve o zero perdido", g.formatarCpfVoucher_("8538104780"));
+b.ok(g.formatarCpfVoucher_("08538104780") === "085.381.047-80",
+  "e é idempotente — CPF já íntegro passa igual");
+
+/* NÃO INVENTA. Se o número completado não passar no dígito verificador, não
+   era CPF com zero perdido: volta como veio. Documento com dado cru é ruim;
+   documento com CPF fabricado que pertence a outra pessoa é muito pior. */
+b.ok(g.formatarCpfVoucher_("999999999") === "999999999",
+  "número que não vira CPF válido volta cru, sem chute",
+  g.formatarCpfVoucher_("999999999"));
+
+/* Sem `||` de escape: a solicitação do teste tem CPF de 11 dígitos válido, e
+   o que se exige é a máscara. Um `||` que aceita "qualquer coisa que não
+   tenha 11 dígitos" tornaria a asserção quase sempre verdadeira. */
+const daMaria = g.listarSolicitacoesCertBolsa(TOKEN)
+  .filter(x => String(x.cpf || "").replace(/\D/g, "") === CPF)[0];
+b.ok(!!daMaria, "a solicitação é achável pelo CPF em dígitos, venha como vier");
+b.ok(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(String(daMaria.cpf)),
+  "e a LISTA do painel entrega o CPF formatado, não o número cru", daMaria.cpf);
+
 b.fluxo("BOLSAS · A validação cadastral tem onde ser feita");
 /* O ESTADO QUE NÃO TINHA FILA — 16/09/2026.
 

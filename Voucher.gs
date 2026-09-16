@@ -1487,7 +1487,21 @@ function listarSolicitacoesVoucher() {
         id: String(val(l, "ID_SOLICITACAO", "ID", "ID_SOL", "SOLICITACAO_ID") || ""),
         protocolo: String(val(l, "NUMERO_PROTOCOLO", "PROTOCOLO", "Nº PROTOCOLO", "NUMERO DO PROTOCOLO", "NÚMERO_PROTOCOLO") || ""),
         nome: String(val(l, "NOME_SOLICITANTE", "NOME", "NOME COMPLETO", "SOLICITANTE", "NOME_ASSOCIADO") || ""),
-        cpf: String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || ""),
+        /* FORMATADO, NÃO CRU — 16/09/2026.
+         *
+         * A planilha guarda CPF_SOLICITANTE como NÚMERO, e número não tem
+         * zero à esquerda: o CPF 085.381.047-80 virou "8538104780" na célula.
+         * O certificado e o e-mail já saíam certos, porque passam por
+         * `formatarCpfVoucher_` — que completa os zeros e PROVA o resultado
+         * pelo dígito verificador antes de aceitar. A lista do painel era o
+         * único lugar que ainda mostrava o número cru.
+         *
+         * Isso não era só feio: a busca por solicitante procura no nome E no
+         * CPF, e quem digitasse o CPF de verdade (com o zero, ou pontuado)
+         * não achava a solicitação. */
+        cpf: (typeof formatarCpfVoucher_ === "function"
+          ? formatarCpfVoucher_(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO"))
+          : String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || "")),
 
         email: String(val(l, "EMAIL", "E-MAIL", "E_MAIL") || ""),
         telefone: String(val(l, "TELEFONE", "WHATSAPP", "CELULAR") || ""),

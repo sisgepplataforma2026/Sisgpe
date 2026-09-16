@@ -1213,6 +1213,7 @@ function montarFiltroPeriodo(){
 
 function cert_aplicarFiltros(){
   var busca  = normTxt(filtroVal('certBusca'));
+  var buscaDigitos = String(filtroVal('certBusca') || '').replace(/\D/g, '');
   var status = filtroVal('certFiltroStatus');
   var mod    = filtroVal('certFiltroModalidade');
   var prot   = normTxt(filtroVal('certFiltroProtocolo'));
@@ -1232,8 +1233,19 @@ function cert_aplicarFiltros(){
     if(per    && String(s.periodoReferencia||s.periodo||'').trim() !== per) return false;
     if(prot   && normTxt(s.protocolo).indexOf(prot) === -1) return false;
     /* Solicitante procura no nome E no CPF: quem tem o CPF na mão digita o
-       CPF, e obrigar a lembrar em qual campo cada coisa vai é atrito puro. */
-    if(quem   && normTxt([s.nome, s.cpf].join(' ')).indexOf(quem) === -1) return false;
+       CPF, e obrigar a lembrar em qual campo cada coisa vai é atrito puro.
+
+       E COMPARA TAMBÉM SÓ OS DÍGITOS — 16/09/2026. O CPF agora chega
+       formatado ("085.381.047-80"), e quem digita "08538104780" sem pontos
+       não achava nada. Ninguém decora se cadastrou com ponto. */
+    if(quem){
+      var alvoQuem = normTxt([s.nome, s.cpf].join(' '));
+      var soDigitos = String(quem).replace(/\D/g, '');
+      var cpfDigitos = String(s.cpf || '').replace(/\D/g, '');
+      var achouQuem = alvoQuem.indexOf(quem) > -1 ||
+                      (soDigitos.length >= 3 && cpfDigitos.indexOf(soDigitos) > -1);
+      if(!achouQuem) return false;
+    }
     if(esc    && normTxt(s.escola).indexOf(esc) === -1) return false;
     if(curso  && normTxt(s.curso).indexOf(curso) === -1) return false;
     if(de || ate){
@@ -1244,7 +1256,13 @@ function cert_aplicarFiltros(){
     }
     if(busca){
       var txt = normTxt([s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
-      if(txt.indexOf(busca)===-1) return false;
+      /* Mesma história da busca por solicitante: o CPF chega pontuado, e quem
+         digita só os números precisa achar. Exige 3 dígitos para não fazer
+         "2026" do período casar com qualquer CPF que contenha 2026. */
+      var achou = txt.indexOf(busca) > -1 ||
+                  (buscaDigitos.length >= 3 &&
+                   String(s.cpf || '').replace(/\D/g, '').indexOf(buscaDigitos) > -1);
+      if(!achou) return false;
     }
     return true;
   });
