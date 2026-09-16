@@ -368,6 +368,56 @@ b.ok(/<option value="AGUARDANDO_ATENDIMENTO_PRESENCIAL">/.test(painelHtml3),
 b.ok(/id="certStatRegra"/.test(painelHtml3) && /if\(st==='BLOQUEADA_POR_REGRA'\) fr\+\+;/.test(painelHtml3),
   "com card próprio e contagem de verdade");
 
+b.fluxo("BOLSAS · O teto de três é POR ASSOCIADO, somando tudo");
+/* "Respeita o quantitativo por associado, é até três" — você, 16/09/2026.
+   Não são três filhos: são três VOUCHERS do mesmo associado no ano, em
+   qualquer combinação de nível. Dois no Infantil a 100% e um na Graduação a
+   70% já fecham a conta. */
+const CPF_TETO = "39053344705";
+/* Este arquivo não tem helper `sheet()` — semeia direto, como no topo. */
+shA.appendRow([CPF_TETO, "PAI DE TRES", "SIM", "pai@teste.com", "27988881111"]);
+const basePaiTeto = Object.assign({}, PAYLOAD, {
+  cpf: CPF_TETO, nome: "PAI DE TRES", periodoReferencia: "2031/1"
+});
+delete basePaiTeto.modalidade; delete basePaiTeto.curso; delete basePaiTeto.docPessoal;
+
+const tresDoTeto = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePaiTeto, {
+  dependentes: [dependente("UM", 1, "2016-01-01"),
+                dependente("DOIS", 2, "2015-01-01"),
+                dependente("TRES", 3, "2014-01-01")]
+}));
+b.ok(tresDoTeto.gravadas === 3, "os três primeiros entram normalmente", tresDoTeto.mensagem);
+b.ok(tresDoTeto.resultados.every(r => r.status !== "BLOQUEADA_POR_REGRA"),
+  "e nenhum deles cai na fila por limite");
+
+/* O QUARTO É DE OUTRA PESSOA E MESMO ASSIM NÃO CABE — é por associado. */
+const quartoVoucher = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePaiTeto, {
+  tipoBeneficiario: "TITULAR", parentesco: "TITULAR",
+  nomeBeneficiario: "PAI DE TRES", dataNascimentoBeneficiario: "1980-01-01",
+  modalidade: "POS_GRADUACAO", curso: "MBA",
+  docPessoal: { nome: "rg.pdf", tipo: "application/pdf", tamanho: 20, base64: JPG_FALSO }
+}));
+b.ok(quartoVoucher.ok, "o quarto pedido é ACEITO — não é recusa muda", quartoVoucher.mensagem);
+b.ok(quartoVoucher.status === "BLOQUEADA_POR_REGRA",
+  "mas vai para a fila da Secretaria", quartoVoucher.status);
+
+const oQuarto = g.listarSolicitacoesCertBolsa(TOKEN)
+  .filter(x => x.protocolo === quartoVoucher.protocolo.numeroProtocolo)[0];
+b.ok(/LIMITE POR ASSOCIADO/.test(String(oQuarto.observacao || "")),
+  "com o motivo escrito na observação, para ninguém investigar",
+  String(oQuarto.observacao || "").slice(0, 90));
+b.ok(/UM|DOIS|TRES/.test(String(oQuarto.observacao || "")),
+  "e a lista de quem já ocupa as vagas");
+
+/* INDEFERIDA LIBERA VAGA: só conta o que ocupa. Sem isto, um erro corrigido
+   travaria o associado pelo resto do ano. */
+const contaAntes = g.voucherContarAtivosDoAssociado_(CPF_TETO, "2031/1").total;
+b.ok(contaAntes === 3, "a contagem enxerga os três ativos", contaAntes + "");
+b.ok(g.voucherContarAtivosDoAssociado_(CPF_TETO, "2032/1").total === 0,
+  "e o ano seguinte começa do zero — a convenção concede por ano letivo");
+b.ok(g.voucherContarAtivosDoAssociado_("", "2031/1").total === 0,
+  "sem CPF não há de quem falar");
+
 b.naoTestavel("Os botões no navegador e o arquivo abrindo do Drive",
   "jsdom não renderiza o modal do painel; o Drive é dublê no emulador");
 b.resumo();

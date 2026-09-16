@@ -132,7 +132,26 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     let statusValidacaoSindical = "PENDENTE_VALIDACAO_SINDICAL";
     let statusSolicitacao       = "AGUARDANDO_VALIDACAO_CADASTRAL";
 
-    if (!regra.apto) {
+    /* O TETO DE TRÊS É POR ASSOCIADO, NO ANO — 16/09/2026.
+     *
+     * "Respeita o quantitativo por associado, é até três." Não são três
+     * filhos: são três VOUCHERS do mesmo associado, em qualquer combinação de
+     * nível — dois no Infantil a 100% e um na Graduação a 70% já fecham.
+     *
+     * NÃO RECUSA: grava com BLOQUEADA_POR_REGRA e manda para a fila da
+     * Secretaria, que é a postura do módulo inteiro. Quem pede o quarto pode
+     * ter um caso que a regra não prevê — uma bolsa cancelada que não baixou,
+     * um dependente que mudou de escola — e barrar em silêncio faz o
+     * sindicato perder o registro de que a pessoa procurou. */
+    var jaTem = { total: 0, itens: [], ano: "" };
+    try {
+      jaTem = voucherContarAtivosDoAssociado_(cpf, payload.periodoReferencia);
+    } catch (eConta) {
+      Logger.log("voucherContarAtivosDoAssociado_ falhou: " + eConta.message);
+    }
+    var estouraTeto = jaTem.total >= VOUCHER_MAX_DEPENDENTES_;
+
+    if (!regra.apto || estouraTeto) {
       statusSolicitacao = "BLOQUEADA_POR_REGRA";
       statusValidacaoSindical = "NAO_ANALISADO";
     } else if (resultadoBase.filiado) {
@@ -211,11 +230,23 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     setCol("STATUS_SOLICITACAO", statusSolicitacao);
     setCol("CANAL_ENTRADA", "PORTAL");
     setCol("USUARIO_CADASTRO", usuario);
-    setCol("OBSERVACOES", montarObservacaoSolicitacaoVoucher_(regra, {
-      escolaNaoCadastrada: escolaNaoCadastrada,
-      funcionarioNovo: funcionarioNovo,
-      situacaoSindicalFinal: situacaoSindicalFinal
-    }));
+    /* O MOTIVO VIAJA JUNTO. A Secretaria abre a solicitação e precisa saber,
+       sem investigar, por que ela caiu na fila: idade, ordem, ou o quarto
+       voucher do ano. O teto vem primeiro porque é o único que a regra da
+       convenção não explica sozinha. */
+    setCol("OBSERVACOES",
+      (estouraTeto
+        ? "LIMITE POR ASSOCIADO: já existem " + jaTem.total + " voucher(s) ativos em " +
+          (jaTem.ano || "no ano") + " e a convenção permite " + VOUCHER_MAX_DEPENDENTES_ + ". " +
+          "Constam: " + jaTem.itens.map(function (x) {
+            return (x.beneficiario || "?") + " — " + (x.modalidade || "?") + " (" + x.status + ")";
+          }).join("; ") + ". "
+        : "") +
+      montarObservacaoSolicitacaoVoucher_(regra, {
+        escolaNaoCadastrada: escolaNaoCadastrada,
+        funcionarioNovo: funcionarioNovo,
+        situacaoSindicalFinal: situacaoSindicalFinal
+      }));
     setCol("NUMERO_PROTOCOLO", protocolo);
 
     sh.appendRow(linha);
