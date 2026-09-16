@@ -277,8 +277,22 @@ function declTratamento_(cargo) {
  * VALIDAÇÃO COMPARTILHADA (prévia e emissão)
  * ========================================= */
 
-function declValidarPedido_(dados) {
+/**
+ * @param {Object} dados        o pedido vindo da tela
+ * @param {Object} [opcoes]     { semContatos: true } para o caminho da prévia
+ *
+ * MODO LEVE — nasceu em 15/09/2026, com o usuário dizendo pela terceira vez
+ * que a tela estava lenta. A prévia chamava esta validação inteira, e ela
+ * monta os CONTATOS de cada escola do dirigente: lê a base de Associados, o
+ * cadastro de Escolas, a aba Controle e o histórico de entrega de cada
+ * e-mail — tudo para exibir um parágrafo de texto que não usa nada disso.
+ *
+ * A emissão continua no caminho completo, porque ali os contatos vão para a
+ * coluna CONTATOS_ORIGEM e são a trava de destinatário do envio.
+ */
+function declValidarPedido_(dados, opcoes) {
   dados = dados || {};
+  opcoes = opcoes || {};
 
   var diretor = declDiretorPorId_(dados.diretorId);
   if (!diretor) return { ok: false, mensagem: "Selecione o diretor." };
@@ -328,7 +342,7 @@ function declValidarPedido_(dados) {
 
   var dataEmi = declSoData_(dados.dataEmissao) || declHoje_();
 
-  var contexto = declContextoDiretor_interno_(diretor);
+  var contexto = declContextoDiretor_interno_(diretor, opcoes);
   var escolaId = declTexto_(dados.escolaId);
   var escola = contexto.vinculos.filter(function (v) { return v.escolaId === escolaId; })[0];
 
@@ -343,7 +357,7 @@ function declValidarPedido_(dados) {
    * A escola escolhida à mão vale, e fica gravada dizendo que foi escolhida
    * à mão (coluna VINCULO_ORIGEM). É a REGRA Nº 0.6 nos dois sentidos: o
    * sistema sugere o que sabe, e não esconde o que não sabia. */
-  if (!escola && escolaId) escola = declEscolaDoCadastro_(escolaId, diretor);
+  if (!escola && escolaId) escola = declEscolaDoCadastro_(escolaId, diretor, opcoes);
   if (!escola) return { ok: false, mensagem: "Selecione a escola empregadora do dirigente." };
 
   var signatario = declSignatario_();
@@ -439,7 +453,7 @@ function declDadosEmissao(tokenSessao) {
 function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
   try {
-    var v = declValidarPedido_(dados);
+    var v = declValidarPedido_(dados, { semContatos: true });
     if (!v.ok) return v;
 
     var dup = declDuplicatas_(v.diretor.id, v.dataLiberacao);
@@ -468,7 +482,7 @@ function declPreviaDeclaracaoDiretor(dados, tokenSessao) {
 function declPreviaDocumento(dados, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
   try {
-    var v = declValidarPedido_(dados);
+    var v = declValidarPedido_(dados, { semContatos: true });
     if (!v.ok) return v;
     return {
       ok: true,
@@ -618,6 +632,23 @@ function declEmitirDeclaracaoDiretor(dados, tokenSessao) {
 var DECL_MEMO_CONTROLE = null;   /* índice escola normalizada -> e-mails      */
 var DECL_MEMO_ESCOLAS  = null;   /* cadastro de Escolas já lido                */
 var DECL_MEMO_HISTORICO = {};    /* e-mail -> falhas/confirmações dos Ofícios   */
+var DECL_MEMO_ASSOCIADOS = null; /* a base inteira, lida uma vez                */
+var DECL_MEMO_CELULAR = {};      /* dirigente -> celular achado em Associados   */
+
+/**
+ * A base de Associados, lida uma vez por execução.
+ *
+ * São ~8.000 linhas. Sem isto, `declBuscarEscolas` lia a base INTEIRA uma vez
+ * por escola encontrada — até 12 varreduras numa busca só, porque o telefone
+ * do dirigente era procurado dentro do laço das escolas. Foi a segunda vez
+ * que o usuário relatou lentidão na busca, em 15/09/2026, e o culpado era
+ * este.
+ */
+function declAssociados_() {
+  if (DECL_MEMO_ASSOCIADOS) return DECL_MEMO_ASSOCIADOS;
+  DECL_MEMO_ASSOCIADOS = (typeof assoc_todos_ === "function") ? (assoc_todos_() || []) : [];
+  return DECL_MEMO_ASSOCIADOS;
+}
 
 /** O cadastro de Escolas, lido uma vez por execução. */
 function declEscolas_() {
@@ -677,10 +708,11 @@ function declNormalizar_(v) {
     .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 }
 
-function declContextoDiretor_interno_(diretor) {
+function declContextoDiretor_interno_(diretor, opcoes) {
+  opcoes = opcoes || {};
   if (typeof assoc_todos_ !== "function") throw new Error("A base de Associados não está disponível.");
   var chave = declNormalizar_(diretor && diretor.nome);
-  var associados = assoc_todos_().filter(function (a) { return declNormalizar_(a.nome) === chave; });
+  var associados = declAssociados_().filter(function (a) { return declNormalizar_(a.nome) === chave; });
   var escolas = declEscolas_();
   var porId = {};
 
@@ -701,7 +733,7 @@ function declContextoDiretor_interno_(diretor) {
         documento: declTexto_(e.CNPJ || e.cnpj),
         vinculoOrigem: "Associados",
         telefoneDiretor: declTexto_(a.celular),
-        contatos: declContatosEscola_(e)
+        contatos: opcoes.semContatos ? [] : declContatosEscola_(e)
       };
     });
   });
@@ -717,38 +749,43 @@ function declContextoDiretor_interno_(diretor) {
  * de funcionar justamente para quem precisou escolher a escola à mão.
  */
 function declCelularDoDiretor_(diretor) {
+  var chave = declNormalizar_(diretor && diretor.nome);
+  if (!chave) return "";
+  /* Procurado uma vez por dirigente, não uma vez por escola da busca. */
+  if (Object.prototype.hasOwnProperty.call(DECL_MEMO_CELULAR, chave)) return DECL_MEMO_CELULAR[chave];
+  var fone = "";
   try {
-    if (typeof assoc_todos_ !== "function") return "";
-    var chave = declNormalizar_(diretor && diretor.nome);
-    var achados = assoc_todos_().filter(function (a) {
+    var achados = declAssociados_().filter(function (a) {
       return declNormalizar_(a.nome) === chave && String(a.celular || "").replace(/\D/g, "").length >= 10;
     });
-    return achados.length ? declTexto_(achados[0].celular) : "";
+    fone = achados.length ? declTexto_(achados[0].celular) : "";
   } catch (e) {
     Logger.log("DeclaracaoDiretor: celular do dirigente indisponível — " + e.message);
-    return "";
   }
+  DECL_MEMO_CELULAR[chave] = fone;
+  return fone;
 }
 
 /** Uma escola do cadastro no mesmo formato de um vínculo, marcada como manual. */
-function declEscolaDoCadastro_(escolaId, diretor) {
+function declEscolaDoCadastro_(escolaId, diretor, opcoes) {
   escolaId = declTexto_(escolaId);
   var achadas = declEscolas_().filter(function (e) {
     return declTexto_(e.escolaId || e.EscolaID || e.linha) === escolaId;
   });
   if (!achadas.length) return null;
-  return declEscolaComoVinculo_(achadas[0], diretor, "Escolhida manualmente");
+  return declEscolaComoVinculo_(achadas[0], diretor, "Escolhida manualmente", opcoes);
 }
 
-function declEscolaComoVinculo_(e, diretor, origem) {
+function declEscolaComoVinculo_(e, diretor, origem, opcoes) {
+  opcoes = opcoes || {};
   return {
     escolaId: declTexto_(e.escolaId || e.EscolaID || e.linha),
     nome: declTexto_(e.NomeEscola || e.escola),
     fantasia: declTexto_(e.Fantasia || e.fantasia),
     documento: declTexto_(e.CNPJ || e.cnpj),
     vinculoOrigem: origem,
-    telefoneDiretor: declCelularDoDiretor_(diretor),
-    contatos: declContatosEscola_(e)
+    telefoneDiretor: opcoes.semContatos ? "" : declCelularDoDiretor_(diretor),
+    contatos: opcoes.semContatos ? [] : declContatosEscola_(e)
   };
 }
 
@@ -866,12 +903,99 @@ function declEntregaDeclaracao(numero, tokenSessao) {
         contatos: contatos
       },
       pdfUrl: campo("PDF_URL"),
+      /* O assunto e o corpo saem das mesmas funções do envio — a aba de
+         preview mostra o e-mail de verdade, não uma segunda redação dele. */
+      emailAssunto: declAssuntoEmail_(campo("NUMERO"), campo("DIRETOR_NOME")),
+      emailCorpo: declCorpoEmail_(campo("DIRETOR_NOME"),
+                                  String((typeof getAmbienteAtual === "function" ? getAmbienteAtual() : "producao") || "").toLowerCase(),
+                                  campo("EMAILS_USADOS") || "(os que você marcar)"),
       emailStatus: campo("EMAIL_STATUS"),
       emailsUsados: campo("EMAILS_USADOS"),
       whatsappStatus: campo("WHATSAPP_STATUS")
     };
   } catch (e) {
     return { ok: false, mensagem: "Erro ao abrir a entrega: " + e.message };
+  }
+}
+
+function declAssuntoEmail_(numero, nome) {
+  return "Declaração " + numero + " — " + nome;
+}
+
+/**
+ * O corpo do e-mail. UMA função, usada pela prévia e pelo envio.
+ *
+ * O modal de envio do ofício monta a prévia no cliente, a partir de um texto
+ * escrito de novo no JavaScript. Funciona, mas cria duas versões da mesma
+ * mensagem, que envelhecem separadas — prévia que mente é pior do que prévia
+ * nenhuma. Aqui a tela exibe exatamente a string que o MailApp vai receber.
+ */
+function declCorpoEmail_(nome, ambiente, destinoReal) {
+  var html =
+    "<p>Prezados(as),</p>" +
+    "<p>Segue, em anexo, a declaração de liberação sindical de <strong>" +
+    declEscapar_(nome) + "</strong>.</p>" +
+    "<p>Atenciosamente,<br>SindEducação-ES</p>";
+  if (String(ambiente || "").toLowerCase() === "homologacao") {
+    html = "<p><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " +
+           declEscapar_(destinoReal || "") + "</p>" + html;
+  }
+  return html;
+}
+
+/**
+ * Inclui um destinatário na conferência desta declaração.
+ *
+ * POR QUE PRECISA EXISTIR. `declEnviarEmail` recusa endereço fora de
+ * CONTATOS_ORIGEM — é a trava contra alguém injetar destinatário pela tela.
+ * Mas a secretaria precisa poder mandar para um endereço que o cadastro não
+ * tem: o RH mudou, a escola deu outro contato na hora. Sem esta porta, a
+ * trava viraria um "não" burro e a pessoa resolveria por fora do sistema,
+ * que é o que nenhuma trava deve provocar.
+ *
+ * A diferença entre incluir e injetar é o REGISTRO: o endereço entra na
+ * linha com origem "Incluído no envio" e vai para a trilha de auditoria, com
+ * o nome de quem incluiu. Depois disso ele é um destinatário conferido como
+ * qualquer outro.
+ */
+function declIncluirContato(numero, email, tokenSessao) {
+  var sessao = exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    var achado = declAcharEmissao_(numero);
+    if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
+
+    email = declTexto_(email).toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return { ok: false, mensagem: "E-mail inválido." };
+    }
+
+    var contatos = [];
+    try { contatos = JSON.parse(declTexto_(achado.valores[achado.hm.CONTATOS_ORIGEM - 1]) || "[]") || []; }
+    catch (eJson) { contatos = []; }
+
+    if (contatos.some(function (c) { return String(c.email || "").toLowerCase() === email; })) {
+      return { ok: false, mensagem: "Esse e-mail já está na lista.", contatos: contatos };
+    }
+
+    var h = declHistoricoEmail_(email);
+    contatos.push({
+      email: email,
+      origens: ["Incluído no envio"],
+      falhas: h.falhas,
+      confirmacoes: h.confirmacoes,
+      marcado: true
+    });
+
+    achado.sh.getRange(achado.linha, achado.hm.CONTATOS_ORIGEM).setValue(JSON.stringify(contatos));
+    declAuditar_({
+      sessao: sessao, registroId: numero,
+      acao: "DECLARACAO_DESTINATARIO_INCLUIDO",
+      documento: email, valorNovo: declQuem_(sessao)
+    });
+
+    return { ok: true, contatos: contatos, mensagem: "E-mail incluído na conferência desta declaração." };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao incluir: " + e.message };
   }
 }
 
@@ -895,9 +1019,8 @@ function declEnviarEmail(numero, emails, tokenSessao) {
   var pdfId = declTexto_(achado.valores[achado.hm.PDF_ID - 1]);
   var nome = declTexto_(achado.valores[achado.hm.DIRETOR_NOME - 1]);
   var escola = declTexto_(achado.valores[achado.hm.ESCOLA_NOME - 1]);
-  var assunto = "Declaração " + numero + " — " + nome;
-  var html = "<p>Prezados(as),</p><p>Segue, em anexo, a declaração de liberação sindical de <strong>" + declEscapar_(nome) + "</strong>.</p><p>Atenciosamente,<br>SindEducação-ES</p>";
-  if (ambiente === "homologacao") html = "<p><strong>HOMOLOGAÇÃO.</strong> Destinatário real: " + declEscapar_(destinoReal) + "</p>" + html;
+  var assunto = declAssuntoEmail_(numero, nome);
+  var html = declCorpoEmail_(nome, ambiente, destinoReal);
   try {
     var op = montarOpcoesEmailSISGEP_(declQuem_(sessao), html, [DriveApp.getFileById(pdfId).getBlob()], assunto, destinoEnvio);
     MailApp.sendEmail(op);

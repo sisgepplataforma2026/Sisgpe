@@ -318,6 +318,47 @@ b.ok(capturado.length === 1 && !!capturado[0].dataLiberacao,
 b.ok(/WANDERSON NASCIMENTO CASTELO/.test(g.declNomeArquivo_(capturado[0])),
   "e o nome do arquivo sai nominal", g.declNomeArquivo_(capturado[0]));
 
+b.fluxo("DECLARAÇÕES · A prévia não paga o preço dos contatos");
+/* Terceiro relato de lentidão do usuário em 15/09/2026. A prévia chamava a
+   validação completa, que monta os contatos de CADA escola do dirigente —
+   base de Associados, cadastro de Escolas, aba Controle e histórico de
+   entrega de cada e-mail — para exibir um parágrafo que não usa nada disso. */
+let lidasNaPrevia = 0;
+const contatosReal = g.declContatosEscola_;
+g.declContatosEscola_ = e => { lidasNaPrevia++; return contatosReal(e); };
+g.declPreviaDeclaracaoDiretor(pedido, TOKEN);
+b.ok(lidasNaPrevia === 0, "a prévia do texto não monta contato nenhum", lidasNaPrevia + " leitura(s)");
+g.declPreviaDocumento(pedido, TOKEN);
+b.ok(lidasNaPrevia === 0, "a pré-visualização do documento também não");
+
+lidasNaPrevia = 0;
+g.declEmitirDeclaracaoDiretor({
+  diretorId: dir.id, escolaId: "ESC-UVV", periodo: "",
+  dataLiberacao: amanha.toISOString().slice(0, 10), confirmado: true
+}, TOKEN);
+b.ok(lidasNaPrevia > 0, "mas a EMISSÃO continua montando — é a trava de destinatário do envio",
+  lidasNaPrevia + " leitura(s)");
+g.declContatosEscola_ = contatosReal;
+
+b.fluxo("DECLARAÇÕES · Incluir destinatário é registrar, não afrouxar");
+/* A trava recusa endereço fora da conferência. Sem uma porta registrada, a
+   secretaria resolveria por fora do sistema quando o RH da escola mudasse —
+   que é o que nenhuma trava deve provocar. */
+const novoEmail = "rh.novo@uvv.br";
+b.ok(g.declEnviarEmail(emitida.numero, [novoEmail], TOKEN).ok === false,
+  "antes de incluir, o envio recusa o endereço");
+const inclusao = g.declIncluirContato(emitida.numero, novoEmail, TOKEN);
+b.ok(inclusao.ok && inclusao.contatos.some(c => c.email === novoEmail), "a inclusão entra na conferência");
+b.ok(inclusao.contatos.filter(c => c.email === novoEmail)[0].origens.join("") === "Incluído no envio",
+  "com a origem à vista, não disfarçada de cadastro");
+b.ok(g.declEntregaDeclaracao(emitida.numero, TOKEN).escola.contatos.some(c => c.email === novoEmail),
+  "e fica GRAVADA na linha, não só na tela");
+b.ok(g.declEnviarEmail(emitida.numero, [novoEmail], TOKEN).ok, "depois de incluir, o envio aceita");
+b.ok(g.declIncluirContato(emitida.numero, "isso-nao-e-email", TOKEN).ok === false, "endereço inválido é recusado");
+b.ok(g.declIncluirContato(emitida.numero, novoEmail, TOKEN).ok === false, "e o repetido não duplica a lista");
+b.bloqueia(() => g.declIncluirContato(emitida.numero, "x@y.br", TOKEN_ESC),
+  "usuário sem Documentos não inclui destinatário");
+
 b.fluxo("DECLARAÇÕES · Segurança");
 b.bloqueia(() => g.declContextoDiretor(dir.id, TOKEN_ESC), "usuário sem Documentos não consulta vínculo");
 b.bloqueia(() => g.declEmitirDeclaracaoDiretor(pedido, TOKEN_ESC), "usuário sem Documentos não emite");

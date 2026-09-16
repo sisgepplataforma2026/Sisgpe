@@ -25,12 +25,16 @@
 
 <div class="declWrap">
 
-  <div class="of-modulo-header">
-    <div>
-      <div class="of-modulo-header-title">📜 Declarações</div>
-      <div class="of-modulo-header-sub">Declaração de diretor à disposição da entidade — art. 543 da CLT</div>
-    </div>
-    <div class="of-modulo-header-badge">SindEducação-ES</div>
+  <!-- SEM CABEÇALHO DE MÓDULO AQUI — corrigido em 15/09/2026.
+       A SPA já mostra "Documentos" no topo e "Declarações" marcado no menu
+       lateral; repetir um cabeçalho navy com o mesmo nome e o mesmo selo
+       SindEducação-ES empilhava dois títulos e empurrava o formulário para
+       baixo da dobra. O Ofício usa .of-modulo-header só nas SUBTELAS
+       (Histórico, Monitoramento), não na entrada do módulo. -->
+
+  <div class="declTitulo">
+    <h3>📜 Declarações</h3>
+    <small>de diretor à disposição da entidade — art. 543 da CLT</small>
   </div>
 
   <div class="declTabs">
@@ -111,13 +115,18 @@
 
     <div class="of-action-bar">
       <div class="of-action-bar-info">
-        <div class="of-action-bar-title">🚀 Emitir declaração</div>
+        <!-- O VERBO DA AÇÃO É "GERAR" — corrigido em 15/09/2026.
+             A barra dizia "Emitir declaração" e logo abaixo "antes de gerar o
+             documento", e o botão em ação mostrava "Emitindo…". Três palavras
+             para o mesmo clique. "Emitida" continua sendo o estado do
+             REGISTRO — é o que a aba Emitidas lista e o que a planilha grava. -->
+        <div class="of-action-bar-title">🚀 Gerar declaração</div>
         <div class="of-action-bar-sub">Revise os dados antes de gerar o documento</div>
       </div>
       <div class="of-action-bar-btns">
         <button type="button" class="btn btn-on-dark" onclick="declLimpar()">Limpar</button>
         <button type="button" class="btn btn-on-dark" id="declBtnVer" onclick="declVerDocumento()">👁 Pré-visualizar</button>
-        <button type="button" class="btn btn-gold" id="declBtnEmitir" onclick="declEmitir(false)">✅ Emitir declaração</button>
+        <button type="button" class="btn btn-gold" id="declBtnEmitir" onclick="declEmitir(false)">✅ Gerar declaração</button>
       </div>
     </div>
 
@@ -179,7 +188,7 @@
     </div>
     <div class="declModalRodape">
       <button type="button" class="btn-outline" onclick="declImprimirPrevia()">🖨 Imprimir</button>
-      <button type="button" class="btn-navy" onclick="declFechar('declModalDocumento');declEmitir(false)">✅ Emitir declaração</button>
+      <button type="button" class="btn-navy" onclick="declFechar('declModalDocumento');declEmitir(false)">✅ Gerar declaração</button>
     </div>
   </div>
 </div>
@@ -208,14 +217,24 @@
 <!-- Modal — entrega de uma declaração já emitida -->
 <div class="of-modal-overlay" id="declModalEntrega">
   <div class="of-modal" style="max-width:560px;">
-    <div class="of-modal-head">
-      <div>
-        <div class="of-modal-head-title">📨 Entrega da declaração</div>
-        <div class="of-modal-head-sub" id="declEntregaModalResumo"></div>
+    <div class="of-modal-head" style="border-bottom:3px solid var(--gold);">
+      <div class="declEntregaHead">
+        <div class="declEntregaIco">📨</div>
+        <div>
+          <div class="of-modal-head-title">Confirmar entrega da declaração</div>
+          <div class="of-modal-head-sub" id="declEntregaModalResumo"></div>
+        </div>
       </div>
+      <div class="declEntregaSelo">Envio oficial</div>
       <button type="button" class="of-modal-close" onclick="declFecharEntrega()">✕</button>
     </div>
-    <div class="of-modal-body">
+
+    <div class="declEntregaAbas">
+      <button type="button" id="declAbaDados" class="declEntregaAba declEntregaAba-ativa" onclick="declEntregaAba('dados')">📋 Dados do envio</button>
+      <button type="button" id="declAbaPreview" class="declEntregaAba" onclick="declEntregaAba('preview')">👁 Preview do e-mail</button>
+    </div>
+
+    <div class="of-modal-body" id="declEntregaPainelDados">
       <div class="declEntregaGrid">
         <div><span>Nº da declaração</span><strong id="declEntregaNumero">—</strong></div>
         <div><span>Diretor</span><strong id="declEntregaDiretor">—</strong></div>
@@ -223,13 +242,35 @@
       </div>
       <div class="declEntregaRotulo">E-mails de destino</div>
       <div id="declEntregaModalContatos" class="declContatos"></div>
-      <div class="declOrigem" style="margin-top:8px;">conferidos no dia da emissão — o servidor só aceita estes</div>
+
+      <div class="declIncluir">
+        <input type="text" id="declIncluirEmail" placeholder="incluir outro e-mail…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();declIncluirContato();}">
+        <button type="button" class="btn-outline btn-sm" id="declBtnIncluir" onclick="declIncluirContato()">+ Incluir</button>
+      </div>
+      <div class="declOrigem" style="margin-top:6px;">
+        conferidos no dia da emissão · e-mail incluído fica <b>registrado na declaração</b>, com quem incluiu
+      </div>
       <div id="declEntregaAvisoHml" class="declAviso" style="display:none;margin-top:12px;"></div>
+      <div class="declEntregaNota declEntregaNotaOk">
+        <span>✅</span>
+        <div><strong>Remetente</strong><br><span id="declEntregaRemetente">conta oficial do SISGEP</span></div>
+      </div>
+      <div class="declEntregaNota declEntregaNotaAviso">
+        <span>⚠️</span>
+        <div>Depois do envio, o status da declaração é atualizado sozinho na aba Emitidas.</div>
+      </div>
+    </div>
+
+    <div class="of-modal-body" id="declEntregaPainelPreview" style="display:none;padding:0;">
+      <div id="declEntregaPreview" class="declEntregaPreviewBox"></div>
+      <div class="declEntregaPreviewNota">É o e-mail que o servidor vai enviar — mesmo assunto e mesmo corpo, montados pela função do envio.</div>
     </div>
     <div class="declModalRodape">
-      <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('modal')">Preparar WhatsApp</button>
+      <button type="button" class="btn-outline" onclick="declFecharEntrega()">✕ Cancelar</button>
+      <button type="button" class="btn-outline" onclick="declPrepararWhatsapp('modal')">📱 Preparar WhatsApp</button>
       <button type="button" class="btn-outline" id="declBtnConfirmarZapModal" onclick="declConfirmarWhatsapp('modal')" style="display:none;">Marcar WhatsApp como enviado</button>
-      <button type="button" class="btn-navy" id="declBtnEmailModal" onclick="declEnviarEmail('modal')">Enviar para a escola</button>
+      <button type="button" class="btn-navy" id="declBtnEmailModal" onclick="declEnviarEmail('modal')">📨 Enviar agora</button>
     </div>
   </div>
 </div>
@@ -253,8 +294,17 @@
 </div>
 
 <style>
-.declWrap { max-width: 980px; margin: 0 auto; padding: 24px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
-.declTabs { display: flex; gap: 8px; margin: 18px 0 16px; flex-wrap: wrap; }
+/* MESMA LARGURA DO RESTO DO SISTEMA. `.of-wrap` (OficiosStyles.html:61) é o
+   contêiner canônico: 1480px, centralizado, com 48px embaixo para a barra de
+   ações fixa não cobrir o último card. Os 980px daqui faziam a tela usar um
+   terço da área disponível num monitor comum, com os quatro campos
+   espremidos e o resto em branco. */
+.declWrap { width: 100%; max-width: 1480px; margin: 0 auto; padding: 20px 24px 48px;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+.declTitulo { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.declTitulo h3 { margin: 0; font-size: 17px; font-weight: 900; color: var(--navy, #001f4d); }
+.declTitulo small { font-size: 12px; color: var(--g500, #64748b); font-weight: 600; }
+.declTabs { display: flex; gap: 8px; margin: 10px 0 16px; flex-wrap: wrap; }
 .declTab {
   border: 1.5px solid var(--g200, #e2e8f0); background: #fff; color: var(--g700, #334155);
   border-radius: 10px; padding: 9px 16px; font-size: 12.5px; font-weight: 800; cursor: pointer;
@@ -262,7 +312,7 @@
 }
 .declTab-ativa { background: var(--navy, #001f4d); border-color: var(--navy, #001f4d); color: #fff; }
 .declCard { margin-bottom: 16px; }
-.declGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.declGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
 .declCampo { display: flex; flex-direction: column; gap: 6px; }
 /* O Período fica FORA da grade, logo abaixo dela. Sem esta margem ele cola
    no texto de origem do campo Diretor, que quebra em duas linhas — foi o que
@@ -334,6 +384,39 @@
 }
 .declImportLinha { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--g100, #f1f5f9); font-size: 12.5px; }
 .declImportLinha small { color: var(--g500, #64748b); }
+.declMailCard { font-family:'Segoe UI',Arial,sans-serif; max-width:560px; margin:0 auto; border-radius:8px;
+  overflow:hidden; box-shadow:0 4px 16px rgba(0,20,60,.1); background:#fff; }
+.declMailTopo { background:linear-gradient(135deg,#001228,var(--navy,#001f4d),#003b82); padding:18px 22px; }
+.declMailMarca { font-size:17px; font-weight:900; color:#fff; }
+.declMailSub { font-size:10.5px; color:rgba(255,255,255,.6); margin-top:4px; }
+.declMailSelo { display:inline-flex; background:rgba(255,255,255,.12); color:var(--gold,#C9A84C); font-size:10px;
+  font-weight:800; padding:4px 12px; border-radius:999px; margin-top:12px; }
+.declMailCorpo { padding:20px 22px; font-size:13px; color:#1a2233; line-height:1.7; }
+.declMailCorpo p { margin:0 0 12px; }
+.declMailRodape { background:linear-gradient(135deg,#001228,var(--navy,#001f4d)); padding:14px 22px;
+  font-size:10.5px; color:rgba(255,255,255,.7); }
+.declIncluir { display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--g200,#e2e8f0); }
+.declIncluir input { flex:1; height:38px; border:1.5px solid var(--g200,#e2e8f0); border-radius:10px;
+  padding:0 12px; font-size:12.5px; font-family:inherit; }
+.declIncluir input:focus { outline:none; border-color:var(--blue,#1565C0); }
+.declEntregaHead { display:flex; align-items:center; gap:14px; flex:1; }
+.declEntregaIco { width:50px; height:50px; border-radius:14px; background:rgba(255,255,255,.12);
+  border:1.5px solid rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center;
+  font-size:24px; flex-shrink:0; }
+.declEntregaSelo { background:rgba(201,168,76,.18); border:1.5px solid rgba(201,168,76,.4);
+  color:var(--gold2,#f0c843); font-size:10px; font-weight:800; padding:5px 13px; border-radius:999px;
+  text-transform:uppercase; letter-spacing:.12em; flex-shrink:0; }
+.declEntregaAbas { display:flex; border-bottom:1px solid var(--g100,#f1f5f9); background:#fafcff; }
+.declEntregaAba { flex:1; padding:12px; font-size:13px; font-weight:700; border:none; background:transparent;
+  cursor:pointer; color:var(--g400,#94a3b8); border-bottom:2px solid transparent; font-family:inherit; }
+.declEntregaAba-ativa { color:var(--navy2,#002f6c); border-bottom-color:var(--navy2,#002f6c); }
+.declEntregaNota { display:flex; gap:9px; align-items:flex-start; padding:12px 14px; margin-top:10px;
+  font-size:12px; font-weight:600; border-radius:10px; }
+.declEntregaNotaOk { background:#ecfdf5; border:1.5px solid #6ee7b7; border-left:3px solid #0f8a5f; color:#065f46; }
+.declEntregaNotaAviso { background:#fffbeb; border:1.5px solid #fcd34d; border-left:3px solid #d97706; color:#92400e; }
+.declEntregaPreviewBox { background:#f0f4f9; padding:14px; min-height:280px; max-height:420px; overflow-y:auto; }
+.declEntregaPreviewNota { padding:10px 16px; background:#fafcff; border-top:1px solid var(--g100,#f1f5f9);
+  font-size:11px; color:var(--g500,#64748b); text-align:center; }
 .declEntregaGrid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--g100,#f1f5f9);
   border:1.5px solid var(--g200,#e2e8f0); border-radius:14px; overflow:hidden; margin-bottom:16px; }
 .declEntregaGrid > div { background:#fff; padding:13px 15px; }
@@ -651,11 +734,21 @@ function declPreviaAgora() {
   var caixa = document.getElementById("declPrevia");
   var aviso = document.getElementById("declPreviaAviso");
 
-  if (!d.diretorId || !d.escolaId || !d.dataLiberacao) {
+  /* "__BUSCAR__" é a opção de busca manual, não uma escola. Mandá-la ao
+     servidor fazia a prévia responder "Selecione a escola empregadora" e,
+     segundos depois, o texto certo chegar por cima — o pisca-pisca que o
+     usuário fotografou em 15/09/2026. Pedido que não vai dar certo não sai
+     daqui. */
+  if (!d.diretorId || !d.escolaId || d.escolaId === "__BUSCAR__" || !d.dataLiberacao) {
     caixa.textContent = "Selecione o diretor, a escola empregadora e a data para ver a prévia.";
     aviso.style.display = "none";
     return;
   }
+
+  /* Enquanto o servidor responde, a caixa diz que está montando — em vez de
+     manter o texto anterior, que parece o resultado novo. */
+  caixa.textContent = "Montando a prévia…";
+  aviso.style.display = "none";
 
   google.script.run
     .withSuccessHandler(function (r) {
@@ -690,12 +783,12 @@ function declPreviaAgora() {
 function declEmitir(confirmado) {
   var btn = document.getElementById("declBtnEmitir");
   btn.disabled = true;
-  btn.textContent = "Emitindo…";
+  btn.textContent = "Gerando…";
 
   google.script.run
     .withSuccessHandler(function (r) {
       btn.disabled = false;
-      btn.textContent = "Emitir declaração";
+      btn.textContent = "Gerar declaração";
 
       if (r && r.precisaConfirmar) {
         document.getElementById("declDuplicataTexto").textContent = r.mensagem;
@@ -717,7 +810,7 @@ function declEmitir(confirmado) {
     })
     .withFailureHandler(function (e) {
       btn.disabled = false;
-      btn.textContent = "Emitir declaração";
+      btn.textContent = "Gerar declaração";
       declMsg("Erro ao emitir: " + e, "erro");
     })
     .declEmitirDeclaracaoDiretor(declDados(confirmado), declToken());
@@ -761,6 +854,57 @@ function declRenderEntrega_(escopo, r) {
      só hoje voltou para confirmar. */
   var zap = document.getElementById(alvo.btnZap);
   if (zap) zap.style.display = (r.whatsappStatus === "PREPARADO") ? "inline-flex" : "none";
+
+  /* O PREVIEW É O E-MAIL DE VERDADE. O assunto e o corpo vêm do servidor,
+     das mesmas funções que o envio usa — a tela não redige uma segunda
+     versão da mensagem. */
+  var prev = document.getElementById("declEntregaPreview");
+  if (prev) {
+    prev.innerHTML =
+      '<div class="declMailCard">' +
+        '<div class="declMailTopo">' +
+          '<div class="declMailMarca">SINDEDUCAÇÃO-ES</div>' +
+          '<div class="declMailSub">Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular — ES</div>' +
+          '<div class="declMailSelo">' + declEsc(r.emailAssunto || "") + '</div>' +
+        '</div>' +
+        '<div class="declMailCorpo">' + (r.emailCorpo || "") + '</div>' +
+        '<div class="declMailRodape">📱 (27) 99735-8900 · ✉️ secretaria@sindeducacao.com · 📞 (27) 3222-2706</div>' +
+      '</div>';
+  }
+  declEntregaAba("dados");
+}
+
+/* ─── abas do modal de entrega ─── */
+function declEntregaAba(aba) {
+  var dados = aba === "dados";
+  document.getElementById("declEntregaPainelDados").style.display = dados ? "block" : "none";
+  document.getElementById("declEntregaPainelPreview").style.display = dados ? "none" : "block";
+  document.getElementById("declAbaDados").classList.toggle("declEntregaAba-ativa", dados);
+  document.getElementById("declAbaPreview").classList.toggle("declEntregaAba-ativa", !dados);
+}
+
+/* ─── incluir um destinatário que o cadastro não tinha ─── */
+function declIncluirContato() {
+  if (!DECL_ESTADO.entrega) return;
+  var campo = document.getElementById("declIncluirEmail");
+  var email = String(campo.value || "").trim();
+  if (!email) return declMsg("Digite o e-mail que quer incluir.", "alerta");
+
+  var btn = document.getElementById("declBtnIncluir");
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false;
+      if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não consegui incluir.", "alerta");
+      campo.value = "";
+      /* A lista volta do servidor: o que está na tela passa a ser exatamente
+         o que a linha da declaração guarda, e é isso que o envio aceita. */
+      DECL_ESTADO.entrega.escola.contatos = r.contatos || [];
+      declRenderEntrega_("modal", DECL_ESTADO.entrega);
+      declMsg(r.mensagem, "sucesso");
+    })
+    .withFailureHandler(function (e) { btn.disabled = false; declMsg("Erro: " + e, "erro"); })
+    .declIncluirContato(DECL_ESTADO.entrega.numero, email, declToken());
 }
 
 /* ─── entrega reaberta pela lista de Emitidas ─── */
@@ -1023,5 +1167,7 @@ window.declAba = declAba;
 window.declAbrirEntrega = declAbrirEntrega;
 window.declEscolherAchada = declEscolherAchada;
 window.declConferirConfig = declConferirConfig;
+window.declEntregaAba = declEntregaAba;
+window.declIncluirContato = declIncluirContato;
 window.declVerDocumento = declVerDocumento;
 </script>
