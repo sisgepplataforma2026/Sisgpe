@@ -384,6 +384,67 @@ function clicar(el, oque) {
   b.ok($("declErroEmissao").style.display === "none",
     "e o erro some quando a emissão volta a dar certo");
 
+  b.passo("13b. O modal traz baixar e imprimir, junto com e-mail e WhatsApp");
+  /* "Após gerar deve abrir um modal para download/impressão, enviar zap e
+     e-mail" — você, 16/09/2026. "Usar como é feito em ofícios."
+
+     Baixar e imprimir existiam FORA do modal, num rodapé que ele cobre: quem
+     emitia para imprimir e entregar em mãos tinha de fechar o modal para
+     achar o botão. */
+  declFecharModais();
+  const entrega13 = g.declEntregaDeclaracao(emitida.numero, TOKEN);
+  win.declRenderEntrega_("modal", entrega13);
+  win.declAbrir("declModalEntrega");
+  await tela.assentar(60);
+
+  b.ok(!!$("declBtnBaixarModal") && !!$("declBtnImprimirModal"),
+    "os dois botões do documento estão DENTRO do modal");
+  b.ok(!!$("declBtnEmailModal") && /declPrepararWhatsapp/.test($("declModalEntrega").innerHTML),
+    "ao lado do e-mail e do WhatsApp — as quatro ações no mesmo lugar, como no ofício");
+
+  /* O PDF sai da ENTREGA ABERTA, não do último link da tela: pela lista de
+     Emitidas o modal abre dias depois, quando declLinkPdf aponta para outra
+     declaração ou para nada. */
+  let abriu = "";
+  win.open = (u) => { abriu = u; return null; };
+  clicar($("declBtnBaixarModal"), "baixar pelo modal");
+  b.ok(/PDF-1/.test(abriu), "baixar abre o PDF daquela declaração", abriu);
+
+  abriu = "";
+  let mandouImprimir = false;
+  win.open = (u) => { abriu = u; return { focus() {}, print() { mandouImprimir = true; } }; };
+  clicar($("declBtnImprimirModal"), "imprimir pelo modal");
+  await tela.assentar(1400);
+  b.ok(/PDF-1/.test(abriu) && mandouImprimir,
+    "imprimir abre E manda imprimir, como o ofício faz", abriu + " · print=" + mandouImprimir);
+
+  /* Pop-up bloqueado é o caso comum e não pode virar silêncio nem exceção.
+     `b.ok(true, ...)` não serve aqui: asserção que não pode falhar é pior do
+     que asserção nenhuma. O que se afirma é que o clique NÃO estoura e que a
+     tela avisa. */
+  win.open = () => null;
+  let avisou = "";
+  const msgOriginal = win.declMsg;
+  win.declMsg = function (t, tipo) { avisou = String(t); return msgOriginal.apply(null, arguments); };
+  let estourou = null;
+  try { clicar($("declBtnImprimirModal"), "imprimir com pop-up bloqueado"); }
+  catch (e) { estourou = e; }
+  b.ok(!estourou, "pop-up bloqueado não estoura exceção na tela",
+    estourou ? String(estourou.message) : "sem exceção");
+  b.ok(/pop-?up/i.test(avisou), "e a pessoa é avisada do bloqueio", avisou);
+  win.declMsg = msgOriginal;
+
+  /* E sem PDF nenhum também avisa, em vez de abrir "undefined". */
+  const entregaGuardada = win.DECL_ESTADO.entrega;
+  win.DECL_ESTADO.entrega = { numero: "X" };
+  avisou = "";
+  win.declMsg = function (t) { avisou = String(t); };
+  clicar($("declBtnBaixarModal"), "baixar sem PDF");
+  b.ok(/não encontrado/i.test(avisou), "sem PDF na entrega, avisa em vez de abrir aba vazia", avisou);
+  win.declMsg = msgOriginal;
+  win.DECL_ESTADO.entrega = entregaGuardada;
+  win.open = () => null;
+
   b.passo("14. Dirigente sem vínculo recebe a escola da última declaração");
   /* "E até mesmo salvar quando for feita a primeira vez?" — você, 16/09/2026.
 
