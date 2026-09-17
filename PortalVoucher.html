@@ -308,16 +308,43 @@
       transition: background .15s;
     }
     .btn-remove-dep:hover { background: rgba(239,68,68,.28); }
+    /* O NÚMERO DO DEPENDENTE, como o do trabalhador no ofício: quem preenche
+       três cartões precisa saber em qual está sem contar de cima. */
+    .dep-num {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:24px; height:24px; border-radius:50%;
+      background:var(--accent); color:#fff;
+      font-size:12px; font-weight:800; margin-right:9px;
+    }
+    /* O aviso de idade mora DENTRO do cartão, colado no campo que o causou —
+       um aviso no topo da página não diria de qual dependente se trata. */
+    .dep-aviso {
+      display:none; margin-top:10px; padding:10px 13px; border-radius:9px;
+      background:var(--warn-bg); border:1px solid var(--warn-bdr);
+      color:#92400e; font-size:12.5px; line-height:1.55;
+    }
+    .dep-aviso.visivel { display:block; }
+    .dep-doc {
+      margin-top:14px; padding:13px 15px; border-radius:10px;
+      background:var(--surface); border:1px dashed var(--border);
+    }
+    .dep-doc label {
+      font-size:11px; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px;
+    }
+    .dep-doc-nome { font-size:12px; color:var(--ok-txt); font-weight:700; margin-top:7px; }
     .btn-add-dep {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       height: 44px;
       padding: 0 20px;
-      border: 1.5px dashed rgba(14,165,233,.4);
+      /* Estes rgba(14,165,233) eram o azul-céu da paleta antiga, cravados
+         fora dos tokens — por isso escaparam da repaginação de 16/09. */
+      border: 1.5px dashed rgba(21,101,192,.45);
       border-radius: 11px;
-      background: rgba(14,165,233,.05);
-      color: var(--cyan);
+      background: rgba(21,101,192,.05);
+      color: var(--blue-act);
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 13px;
       font-weight: 600;
@@ -327,8 +354,21 @@
       justify-content: center;
       margin-top: 4px;
     }
-    .btn-add-dep:hover { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.7); }
+    .btn-add-dep:hover { background: rgba(21,101,192,.12); border-color: rgba(21,101,192,.7); }
     .btn-add-dep:disabled { opacity: .4; cursor: not-allowed; }
+    /* OS DOIS BOTÕES DE ESCOLHA. Botão e não select: são duas opções, e uma
+       lista de dois itens esconde metade da pergunta atrás de um clique. */
+    .btn-escolha {
+      flex:1; min-width:180px; height:46px; padding:0 18px;
+      border:1.5px solid var(--border); border-radius:11px;
+      background:var(--blue-deep); color:var(--white);
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:13.5px; font-weight:700;
+      cursor:pointer; transition:all .18s;
+    }
+    .btn-escolha:hover { border-color:var(--blue-act); }
+    .btn-escolha.ativo {
+      background:var(--accent); border-color:var(--accent); color:#fff;
+    }
   </style>
 </head>
 <body>
@@ -491,7 +531,24 @@
         <div class="secao-num">3</div>
         <div class="secao-title">Solicitação</div>
       </div>
-      <div class="grid2">
+
+      <!-- PARA QUEM É A BOLSA — a primeira pergunta, antes de qualquer campo.
+           "Quando a solicitação é para o associado, só tem que aparecer os
+           dados do associado, somente. Tem que ter um seletor. Se é para o
+           dependente, tem que aparecer os dados do dependente." — você,
+           16/09/2026.
+
+           Sem esta pergunta, quem pede para um filho preenche campos de
+           titular e descobre no fim que era outro caminho. -->
+      <div class="field" style="margin-bottom:20px;">
+        <label>Para quem é a bolsa?</label>
+        <div id="paraQuem" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn-escolha" data-alvo="TITULAR">Para mim</button>
+          <button type="button" class="btn-escolha" data-alvo="DEPENDENTES">Para meus dependentes</button>
+        </div>
+      </div>
+
+      <div class="grid2" id="camposTitular">
         <div class="field required">
           <label for="tipoBeneficiario">Tipo de beneficiário</label>
           <select id="tipoBeneficiario"></select>
@@ -572,6 +629,13 @@
           </select>
         </div>
 
+      </div>
+
+      <!-- O PERÍODO VALE PARA O ENVIO INTEIRO, não para um beneficiário.
+           Ele morava dentro de `camposTitular`, que some no caminho dos
+           dependentes — e aí o envio era recusado por um campo obrigatório
+           que a pessoa não tinha como ver nem preencher. -->
+      <div class="grid2" id="camposComuns">
         <div class="field required">
           <label for="periodoReferencia">Período de referência</label>
           <input type="text" id="periodoReferencia" autocomplete="off" placeholder="Ex.: 2026 ou 2026/1">
@@ -579,15 +643,37 @@
       </div>
     </div>
 
-    <!-- SEÇÃO 3b — Dependentes (até 3 filhos) -->
+    <!-- SEÇÃO 3b — DEPENDENTES, ATÉ TRÊS NUM ENVIO SÓ
+         ═══════════════════════════════════════════════════════════════════
+         Esta seção existia no HTML desde sempre e NUNCA FUNCIONOU: era casca
+         vazia, sem uma linha de JavaScript. Nada preenchia a lista, nada
+         escutava o botão, e ela nascia escondida e nunca aparecia. O backend
+         aceitava três dependentes e ninguém mandava. Você apontou isso três
+         vezes em dois dias — "onde eu adiciono outros filhos", "aqui não tem
+         a opção", "faltou dos dependentes" — e está certo em todas.
+
+         A LÓGICA É A DO OFÍCIO, como você pediu: cartões repetíveis, com `+`
+         dentro de cada um para inserir o próximo, `✕` para remover, e
+         renumeração automática. O que vem de lá junto é a lição que o
+         cabeçalho do ofício registra: o arquivo anexado mora NO ELEMENTO
+         (`card._arquivo`), não numa variável de closure — senão remover um
+         anexo não atualiza a fila e o próximo ressuscita o apagado.
+
+         UM ENVIO, TRÊS PROTOCOLOS. O backend cria uma solicitação por
+         dependente, cada uma com o seu número. É o certo: a Secretaria pode
+         aprovar a de um e pedir documento de outro sem travar as demais.
+         ═══════════════════════════════════════════════════════════════════ -->
     <div class="secao" id="secaoDependentes" style="display:none;">
       <div class="secao-header">
         <div class="secao-num">3b</div>
         <div class="secao-title">Dependentes</div>
       </div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
-        Informe os dados de cada filho(a) beneficiário. Você pode adicionar até <strong style="color:var(--white);">3 dependentes</strong>.<br>
-        Anexe a declaração de matrícula de cada um individualmente.
+        Informe os dados de cada beneficiário. Você pode pedir para até
+        <strong style="color:var(--white);">3 dependentes</strong> de uma vez —
+        cada um recebe o seu protocolo.<br>
+        O contracheque você anexa uma vez só, na seção de documentos; o
+        <strong style="color:var(--white);">documento de cada dependente</strong> vai no cartão dele.
       </p>
 
       <div id="listaDependentes"></div>
@@ -595,6 +681,9 @@
       <button type="button" class="btn-add-dep" id="btnAdicionarDependente">
         ➕ Adicionar dependente
       </button>
+      <div id="depLimite" style="display:none;font-size:12.5px;color:var(--muted);margin-top:10px;text-align:center;">
+        Três é o máximo que a convenção permite por associado no mesmo período.
+      </div>
     </div>
 
     <!-- SEÇÃO 4 — Documentos -->
@@ -620,7 +709,7 @@
           <span class="field-help">Se não possuir contracheque, anexe declaração do RH informando a contratação recente</span>
         </div>
 
-        <div class="field required">
+        <div class="field required" id="boxDocPessoalTitular">
           <label>Documento pessoal</label>
           <div class="upload-area" id="areaDocPessoal">
             <input type="file" id="docPessoal" accept=".pdf,.jpg,.jpeg,.png">
@@ -958,6 +1047,298 @@ function atualizarProgresso() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    /* ══════════════════════════════════════════════════════════════════
+       DEPENDENTES — CARTÕES REPETÍVEIS, NA LÓGICA DO OFÍCIO
+
+       "Parecido com é feito hoje para adicionar trabalhador em ofício" —
+       você, 16/09/2026. O que vem de lá: cartão montado em innerHTML, `+`
+       dentro de cada um para inserir o próximo, `✕` para remover,
+       renumeração automática, e o payload lido do DOM na hora do envio.
+
+       E A LIÇÃO QUE O OFÍCIO REGISTRA NO CABEÇALHO DELE: o arquivo mora NO
+       ELEMENTO (`card._arquivo`), não numa variável de closure. Enquanto
+       morou na closure, remover um anexo não atualizava a fila e o anexo
+       seguinte ressuscitava o apagado — "o pior tipo de defeito num anexo,
+       porque o documento sai com uma ficha que a pessoa jurava ter tirado".
+       ══════════════════════════════════════════════════════════════════ */
+    var DEP_MAX = 3;
+    var depContador = 0;
+
+    function depCartoes() {
+      return Array.prototype.slice.call(
+        document.querySelectorAll('#listaDependentes .dep-card'));
+    }
+
+    function depRenumerar() {
+      depCartoes().forEach(function (card, i) {
+        var num = card.querySelector('.dep-num');
+        var tit = card.querySelector('.dep-titulo-txt');
+        if (num) num.textContent = i + 1;
+        if (tit) tit.textContent = 'Dependente ' + (i + 1);
+      });
+      var btn = document.getElementById('btnAdicionarDependente');
+      var avisoLimite = document.getElementById('depLimite');
+      var cheio = depCartoes().length >= DEP_MAX;
+      if (btn) btn.style.display = cheio ? 'none' : '';
+      if (avisoLimite) avisoLimite.style.display = cheio ? '' : 'none';
+    }
+
+    /* O AVISO DE IDADE VIVE DENTRO DO CARTÃO, colado no campo que o causou.
+       No topo da página ele não diria de QUAL dependente se trata — e com
+       três cartões abertos isso é a diferença entre corrigir e adivinhar. */
+    function depConferirIdade(card) {
+      var dataEl = card.querySelector('.dep-nascimento');
+      var modEl  = card.querySelector('.dep-modalidade');
+      var aviso  = card.querySelector('.dep-aviso');
+      if (!dataEl || !aviso) return;
+
+      var partes = String(dataEl.value || '').split('-');
+      if (partes.length !== 3) { aviso.classList.remove('visivel'); return; }
+
+      var nasc = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+      var hoje = new Date();
+      var idade = hoje.getFullYear() - nasc.getFullYear();
+      if (hoje.getMonth() < nasc.getMonth() ||
+         (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+
+      /* O limite de 24 é da convenção e vale para filho e enteado, em
+         qualquer curso. Avisa e deixa seguir: a Secretaria decide. */
+      if (idade > 24) {
+        aviso.innerHTML = '⚠️ <strong>' + idade + ' anos</strong> — a convenção prevê o ' +
+          'benefício para dependentes de até 24 anos. Pode enviar assim mesmo: ' +
+          'a Secretaria analisa e responde pelo SISGEP.';
+        aviso.classList.add('visivel');
+        return;
+      }
+
+      /* A faixa por curso é só conferência de digitação — nunca recusa. */
+      var faixas = {
+        'CRECHE':{min:0,max:3,nome:'Creche'},
+        'EDUCACAO_INFANTIL':{min:4,max:5,nome:'Educação Infantil'},
+        'ENSINO_FUNDAMENTAL':{min:6,max:14,nome:'Ensino Fundamental'},
+        'ENSINO_MEDIO':{min:15,max:17,nome:'Ensino Médio'},
+        'PRE_VESTIBULAR':{min:16,max:30,nome:'Pré-Vestibular'},
+        'TECNICO':{min:15,max:25,nome:'Técnico'},
+        'GRADUACAO':{min:17,max:35,nome:'Graduação'},
+        'POS_GRADUACAO':{min:21,max:50,nome:'Pós-Graduação'}
+      };
+      var f = modEl ? faixas[String(modEl.value || '').toUpperCase()] : null;
+      if (f && (idade < f.min || idade > f.max)) {
+        aviso.innerHTML = '⚠️ <strong>' + idade + ' anos</strong> para ' + f.nome +
+          ' está fora do previsto (' + f.min + '–' + f.max + '). Confira a data; ' +
+          'se estiver certa, pode enviar.';
+        aviso.classList.add('visivel');
+        return;
+      }
+      aviso.classList.remove('visivel');
+    }
+
+    function depOpcoes(lista, vazio) {
+      return '<option value="">' + (vazio || 'Selecione...') + '</option>' +
+        (lista || []).map(function (i) {
+          return '<option value="' + i.value + '">' + i.label + '</option>';
+        }).join('');
+    }
+
+    function depCriarCartao() {
+      depContador++;
+      var card = document.createElement('div');
+      card.className = 'dep-card';
+
+      card.innerHTML =
+        '<div class="dep-card-titulo">' +
+          '<span><span class="dep-num">' + depContador + '</span>' +
+          '<span class="dep-titulo-txt">Dependente ' + depContador + '</span></span>' +
+          '<span style="display:flex;gap:7px;">' +
+            '<button type="button" class="btn-remove-dep dep-add" title="Adicionar outro depois deste">+</button>' +
+            '<button type="button" class="btn-remove-dep dep-remove" title="Remover">✕</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="grid2">' +
+          '<div class="field required"><label>Nome do dependente</label>' +
+            '<input type="text" class="dep-nome" autocomplete="off" placeholder="Nome completo"></div>' +
+          '<div class="field required"><label>Data de nascimento</label>' +
+            '<input type="date" class="dep-nascimento" autocomplete="off"></div>' +
+          '<div class="field required"><label>Parentesco</label>' +
+            '<select class="dep-tipo">' + depOpcoes([
+              { value:'FILHO',   label:'Filho(a)' },
+              { value:'ENTEADO', label:'Enteado(a)' }
+            ]) + '</select></div>' +
+          '<div class="field required"><label>Ordem do filho</label>' +
+            '<select class="dep-ordem">' + depOpcoes([
+              { value:'1', label:'1º filho' },
+              { value:'2', label:'2º filho' },
+              { value:'3', label:'3º filho' }
+            ]) + '</select></div>' +
+          '<div class="field required"><label>Modalidade</label>' +
+            '<select class="dep-modalidade">' + depOpcoes(INIT.modalidades) + '</select></div>' +
+          '<div class="field required"><label>Curso / série</label>' +
+            '<input type="text" class="dep-curso" autocomplete="off" placeholder="Ex.: 6º ano, Direito"></div>' +
+          '<div class="field dep-box-area hidden"><label>Área do curso</label>' +
+            '<select class="dep-area">' + depOpcoes(INIT.areas) + '</select></div>' +
+        '</div>' +
+        '<div class="dep-aviso"></div>' +
+        '<div class="dep-doc">' +
+          '<label>Documento do dependente *</label>' +
+          '<input type="file" class="dep-arquivo" accept=".pdf,.jpg,.jpeg,.png">' +
+          '<div class="dep-doc-nome"></div>' +
+          '<span style="font-size:11.5px;color:var(--muted);">Certidão de nascimento, RG ou documento com foto.</span>' +
+        '</div>';
+
+      /* O ARQUIVO MORA NO ELEMENTO — ver o cabeçalho desta seção. */
+      card._arquivo = null;
+
+      card.querySelector('.dep-add').onclick = function () {
+        if (depCartoes().length >= DEP_MAX) return;
+        var novo = depCriarCartao();
+        card.parentNode.insertBefore(novo, card.nextSibling);
+        depRenumerar(); atualizarProgresso();
+      };
+      card.querySelector('.dep-remove').onclick = function () {
+        card.remove();
+        if (!depCartoes().length) depAdicionar();
+        depRenumerar(); atualizarProgresso();
+      };
+
+      /* A ÁREA DO CURSO só existe para graduação — é ela que decide 70/60/50.
+         Em creche não há área, e o campo vazio pediria resposta impossível. */
+      var mod = card.querySelector('.dep-modalidade');
+      mod.onchange = function () {
+        var ehGrad = String(mod.value || '').toUpperCase() === 'GRADUACAO';
+        card.querySelector('.dep-box-area').classList.toggle('hidden', !ehGrad);
+        depConferirIdade(card);
+        atualizarProgresso();
+      };
+      card.querySelector('.dep-nascimento').oninput = function () {
+        depConferirIdade(card); atualizarProgresso();
+      };
+      card.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () {
+          el.classList.remove('invalid'); atualizarProgresso();
+        });
+        el.addEventListener('change', function () {
+          el.classList.remove('invalid'); atualizarProgresso();
+        });
+      });
+
+      var arq = card.querySelector('.dep-arquivo');
+      arq.onchange = function () {
+        var f = arq.files && arq.files[0];
+        card._arquivo = f || null;
+        card.querySelector('.dep-doc-nome').textContent = f ? '✓ ' + f.name : '';
+        arq.classList.remove('invalid');
+        atualizarProgresso();
+      };
+
+      return card;
+    }
+
+    function depAdicionar() {
+      if (depCartoes().length >= DEP_MAX) return;
+      document.getElementById('listaDependentes').appendChild(depCriarCartao());
+      depRenumerar(); atualizarProgresso();
+    }
+
+    /* O PAYLOAD SAI DO DOM na hora do envio, como em getTrabalhadoresPayload.
+       Ler do DOM em vez de manter um espelho em memória evita que os dois
+       discordem — e quem discorda em silêncio é o espelho. */
+    function depPayload() {
+      return depCartoes().map(function (card, i) {
+        function v(sel) {
+          var el = card.querySelector(sel);
+          return el ? String(el.value || '').trim() : '';
+        }
+        return {
+          ordem: i + 1,
+          nomeBeneficiario: v('.dep-nome'),
+          dataNascimentoBeneficiario: v('.dep-nascimento'),
+          tipoBeneficiario: v('.dep-tipo') || 'FILHO',
+          parentesco: v('.dep-tipo') || 'FILHO',
+          ordemFilho: v('.dep-ordem'),
+          modalidade: v('.dep-modalidade'),
+          curso: v('.dep-curso'),
+          areaCurso: v('.dep-area'),
+          _arquivo: card._arquivo || null,
+          _card: card
+        };
+      });
+    }
+
+    /* ORDEM REPETIDA É ERRO DE DIGITAÇÃO, e barra antes de gravar: dois "1º
+       filho" produziriam dois certificados de 100% para a mesma posição, e o
+       segundo não teria como ser desfeito sem cancelar o voucher emitido. O
+       backend também barra — esta é a checagem que avisa antes da viagem. */
+    function depValidar() {
+      var deps = depPayload();
+      if (!deps.length) {
+        showMsg('❌ Adicione ao menos um dependente.', 'erro');
+        return null;
+      }
+
+      var ordens = {};
+      for (var i = 0; i < deps.length; i++) {
+        var d = deps[i], card = d._card;
+        function marcar(sel, msg) {
+          var el = card.querySelector(sel);
+          if (el) { el.classList.add('invalid'); el.focus(); }
+          showMsg('❌ Dependente ' + (i + 1) + ': ' + msg, 'erro');
+        }
+        if (!d.nomeBeneficiario)            { marcar('.dep-nome', 'informe o nome.'); return null; }
+        if (!d.dataNascimentoBeneficiario)  { marcar('.dep-nascimento', 'informe a data de nascimento.'); return null; }
+        if (!d.ordemFilho)                  { marcar('.dep-ordem', 'informe a ordem do filho.'); return null; }
+        if (!d.modalidade)                  { marcar('.dep-modalidade', 'escolha a modalidade.'); return null; }
+        if (!d.curso)                       { marcar('.dep-curso', 'informe o curso ou a série.'); return null; }
+        if (String(d.modalidade).toUpperCase() === 'GRADUACAO' && !d.areaCurso) {
+          marcar('.dep-area', 'escolha a área do curso — é ela que define o percentual.'); return null;
+        }
+        if (!d._arquivo)                    { marcar('.dep-arquivo', 'anexe o documento dele.'); return null; }
+        if (ordens[d.ordemFilho]) {
+          marcar('.dep-ordem', 'dois dependentes foram informados como ' +
+                 d.ordemFilho + 'º filho. Cada ordem só aparece uma vez.');
+          return null;
+        }
+        ordens[d.ordemFilho] = true;
+      }
+      return deps;
+    }
+
+    /* PARA QUEM É A BOLSA — o seletor que abre um caminho e fecha o outro. */
+    var paraQuemAtual = 'TITULAR';
+    function paraQuemEscolher(alvo) {
+      paraQuemAtual = alvo === 'DEPENDENTES' ? 'DEPENDENTES' : 'TITULAR';
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('#paraQuem .btn-escolha'), function (b) {
+          b.classList.toggle('ativo', b.getAttribute('data-alvo') === paraQuemAtual);
+        });
+
+      var ehDep = paraQuemAtual === 'DEPENDENTES';
+      var campos = document.getElementById('camposTitular');
+      var secDep = document.getElementById('secaoDependentes');
+      if (campos) campos.style.display = ehDep ? 'none' : '';
+      if (secDep) secDep.style.display = ehDep ? '' : 'none';
+
+      /* O DOCUMENTO PESSOAL DO TITULAR SAI DE CENA no caminho dos
+         dependentes: cada cartão traz o documento do seu, e é esse que o
+         backend grava em cada solicitação. Pedir o do titular ali seria pedir
+         um arquivo que não vai a lugar nenhum — e ainda contaria como campo
+         obrigatório na barra de progresso. O contracheque continua: ele
+         comprova o vínculo do associado, e vale para todas. */
+      var boxDoc = document.getElementById('boxDocPessoalTitular');
+      if (boxDoc) boxDoc.classList.toggle('hidden', ehDep);
+
+      /* Para o titular, o beneficiário É ele — ajustarCamposVoucher já sabe
+         fazer isso, e chamá-lo aqui evita duas lógicas para a mesma coisa. */
+      if (!ehDep) {
+        var tipo = document.getElementById('tipoBeneficiario');
+        if (tipo && !tipo.value) tipo.value = 'TITULAR';
+        if (typeof ajustarCamposVoucher === 'function') ajustarCamposVoucher();
+      } else if (!depCartoes().length) {
+        depAdicionar();
+      }
+      atualizarProgresso();
+    }
+
     function validarIdadeModalidade() {
       var dataNascStr = document.getElementById('dataNascimentoBeneficiario').value;
       var modalidade = document.getElementById('modalidade').value;
@@ -1271,6 +1652,41 @@ function ajustarCamposVoucher() {
     }
 
     // ── Ler arquivo em base64 ──
+    /* Lê um File direto, e não o input. Os cartões de dependente guardam o
+       File no elemento (`card._arquivo`), não num input que ainda exista —
+       remover um cartão tira o input do documento, e ler dele depois disso
+       devolveria vazio em silêncio. */
+    function lerFileBase64(file, callback) {
+      if (!file) { callback(null); return; }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        callback({ nome: file.name, tipo: file.type, tamanho: file.size,
+                   base64: e.target.result.split(',')[1] });
+      };
+      reader.onerror = function () { callback(null); };
+      reader.readAsDataURL(file);
+    }
+
+    /* Lê os documentos dos dependentes EM SÉRIE e só então segue. Em paralelo
+       a ordem de chegada não é garantida, e o documento da Ana poderia ser
+       gravado na solicitação do Bruno — erro que ninguém percebe até a escola
+       receber o documento de outra criança. */
+    function lerDocsDependentes(deps, callback) {
+      var prontos = [];
+      (function proximo(i) {
+        if (i >= deps.length) { callback(prontos); return; }
+        lerFileBase64(deps[i]._arquivo, function (arq) {
+          var d = {};
+          Object.keys(deps[i]).forEach(function (k) {
+            if (k !== '_arquivo' && k !== '_card') d[k] = deps[i][k];
+          });
+          d.docPessoal = arq;
+          prontos.push(d);
+          proximo(i + 1);
+        });
+      })(0);
+    }
+
     function lerArquivoBase64(inputEl, callback) {
       if (!inputEl || !inputEl.files || !inputEl.files[0]) { callback(null); return; }
       var file = inputEl.files[0];
@@ -1397,16 +1813,33 @@ aplicarCadastroLocalizado(c);
       if (!document.getElementById('nome').value.trim()) { showMsg('❌ Informe o nome completo.', 'erro'); document.getElementById('nome').classList.add('invalid'); return; }
       if (!document.getElementById('escolaAtual').value.trim()) { showMsg('❌ Informe a escola — busque na lista ou escreva o nome.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
       if (!document.getElementById('situacaoSindicalDeclarada').value) { showMsg('❌ Informe a situação sindical.', 'erro'); document.getElementById('situacaoSindicalDeclarada').classList.add('invalid'); return; }
-      if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
-      if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
-      if (!document.getElementById('modalidade').value) { showMsg('❌ Selecione a modalidade.', 'erro'); document.getElementById('modalidade').classList.add('invalid'); return; }
-      if (!document.getElementById('curso').value.trim()) { showMsg('❌ Informe o nome do curso.', 'erro'); document.getElementById('curso').classList.add('invalid'); return; }
       if (!document.getElementById('periodoReferencia').value.trim()) { showMsg('❌ Informe o período de referência.', 'erro'); document.getElementById('periodoReferencia').classList.add('invalid'); return; }
 
+      /* OS CAMPOS DO BENEFICIÁRIO ÚNICO SÓ SÃO EXIGIDOS NO CAMINHO DO
+         TITULAR. No caminho dos dependentes eles estão escondidos, e exigi-los
+         fechava a porta pelo lado de dentro: a mensagem apontava um campo que
+         a pessoa não via na tela, sem nada a fazer a respeito. */
+      if (paraQuemAtual !== 'DEPENDENTES') {
+        if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
+        if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
+        if (!document.getElementById('modalidade').value) { showMsg('❌ Selecione a modalidade.', 'erro'); document.getElementById('modalidade').classList.add('invalid'); return; }
+        if (!document.getElementById('curso').value.trim()) { showMsg('❌ Informe o nome do curso.', 'erro'); document.getElementById('curso').classList.add('invalid'); return; }
+      }
+
+      /* OS DOIS CAMINHOS SE SEPARAM AQUI. Para dependentes, os campos do
+         beneficiário único não existem — quem valida é depValidar(), cartão
+         por cartão, e o erro aponta o cartão certo. */
+      var depsValidados = null;
+      if (paraQuemAtual === 'DEPENDENTES') {
+        depsValidados = depValidar();
+        if (!depsValidados) return;
+      } else {
+        var nomeBeneficiarioFinal2 = obterNomeBeneficiarioFinal();
+        if (!nomeBeneficiarioFinal2) { showMsg('❌ Informe o nome do beneficiário.', 'erro'); document.getElementById('nomeBeneficiario').classList.add('invalid'); return; }
+        if (!validarCamposCondicionais()) return;
+        if (!validarIdadeModalidade()) return;
+      }
       var nomeBeneficiarioFinal = obterNomeBeneficiarioFinal();
-      if (!nomeBeneficiarioFinal) { showMsg('❌ Informe o nome do beneficiário.', 'erro'); document.getElementById('nomeBeneficiario').classList.add('invalid'); return; }
-      if (!validarCamposCondicionais()) return;
-      if (!validarIdadeModalidade()) return;
 
       setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', true, 'Enviando...', 'Salvar solicitação');
       showMsg('💾 Registrando solicitação...', 'info');
@@ -1442,6 +1875,33 @@ aplicarCadastroLocalizado(c);
             docPessoal: arqDocPessoal
           };
 
+          /* PARA DEPENDENTES O BACKEND JÁ SABE O CAMINHO:
+             `salvarCadastroESolicitacaoVoucher` desvia sozinho quando acha
+             `payload.dependentes`, criando uma solicitação por dependente,
+             cada uma com o seu protocolo.
+
+             Os documentos são lidos EM SÉRIE (ver lerDocsDependentes): em
+             paralelo a ordem de chegada não é garantida, e o documento da Ana
+             poderia ser gravado na solicitação do Bruno — erro que ninguém
+             percebe até a escola receber o documento de outra criança.
+
+             E o docPessoal do TITULAR sai do payload: quem manda em cada
+             solicitação é o do dependente. Deixá-lo faria o backend gravar o
+             documento do pai como se fosse o da criança. */
+          if (paraQuemAtual === 'DEPENDENTES' && depsValidados) {
+            lerDocsDependentes(depsValidados, function (deps) {
+              payload.dependentes = deps;
+              delete payload.docPessoal;
+              chamarSalvarVoucher(payload);
+            });
+            return;
+          }
+
+          chamarSalvarVoucher(payload);
+        });
+      });
+
+      function chamarSalvarVoucher(payload) {
           google.script.run
            .withSuccessHandler(function(res) {
               setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', false, 'Enviando...', 'Salvar solicitação');
@@ -1518,6 +1978,31 @@ aplicarCadastroLocalizado(c);
                   '</div>' +
                 '</div>';
 
+              /* TRÊS DEPENDENTES, TRÊS PROTOCOLOS — e a tela precisa mostrar
+                 os três. O backend devolve `resultados`, um por dependente,
+                 com nome, protocolo, percentual e status.
+
+                 Sem isto a pessoa veria UM protocolo e iria embora achando
+                 que os outros dois não entraram. */
+              if (res.resultados && res.resultados.length > 1) {
+                subHtml +=
+                  '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">' +
+                  '<div style="font-size:12px;font-weight:800;letter-spacing:.12em;' +
+                  'text-transform:uppercase;color:var(--muted);margin-bottom:10px;">' +
+                  res.resultados.length + ' solicitações registradas</div>' +
+                  res.resultados.map(function (r) {
+                    var cor = r.ok ? 'var(--ok-txt)' : '#b45309';
+                    return '<div style="display:flex;justify-content:space-between;gap:12px;' +
+                      'padding:7px 0;font-size:13px;border-bottom:1px solid var(--border);">' +
+                      '<span style="font-weight:700;">' + (r.nome || '—') + '</span>' +
+                      '<span style="color:' + cor + ';font-weight:700;white-space:nowrap;">' +
+                      (r.ok ? (r.protocolo || '') + (r.percentual ? ' · ' + r.percentual + '%' : '')
+                            : 'em análise') +
+                      '</span></div>';
+                  }).join('') +
+                  '</div>';
+              }
+
               protSub.innerHTML = subHtml;
 
               showMsg(
@@ -1541,8 +2026,7 @@ aplicarCadastroLocalizado(c);
               showMsg('❌ Erro ao salvar solicitação: ' + ((err && err.message) || err), 'erro');
             })
             .salvarCadastroESolicitacaoVoucher(payload);
-        });
-      });
+      }
     }
 
 function limparFormulario(confirmar) {
@@ -1749,6 +2233,22 @@ document.getElementById('escolaAtual').addEventListener('input', function() {
 });
     document.getElementById('btnIdentificar').addEventListener('click', identificar);
     document.getElementById('btnSalvar').addEventListener('click', salvarTudo);
+
+    /* OS DOIS BOTÕES DE "PARA QUEM É A BOLSA" e o de adicionar dependente.
+       Sem estas três linhas a seção 3b continua sendo casca — foi exatamente
+       assim que ela ficou parada: o HTML existia e ninguém o ligava. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll('#paraQuem .btn-escolha'), function (b) {
+        b.addEventListener('click', function () {
+          paraQuemEscolher(b.getAttribute('data-alvo'));
+        });
+      });
+    var btnAddDep = document.getElementById('btnAdicionarDependente');
+    if (btnAddDep) btnAddDep.addEventListener('click', depAdicionar);
+
+    /* Começa em "para mim", que é o caso mais comum — e deixa o estado da
+       tela coerente desde o primeiro segundo, em vez de esperar um clique. */
+    paraQuemEscolher('TITULAR');
     document.getElementById('btnLimpar').addEventListener('click', function() { limparFormulario(true); });
 
     /* O CAMPO LIMPA O PRÓPRIO ERRO — 16/09/2026.

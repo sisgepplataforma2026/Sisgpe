@@ -1346,7 +1346,13 @@ function registrarDocumentosPayloadVoucher_(idSolicitacao, cpf, payload) {
       payload.docPessoal,
       "DOCUMENTO_PESSOAL",
       "Documento pessoal.",
-      nomeSolicitante
+      /* O DOCUMENTO PESSOAL É DE QUEM RECEBE A BOLSA, não de quem pede.
+         Nas solicitações de dependente o arquivo saía com o nome do titular
+         no rótulo — "Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf" —
+         e quem abre a pasta do Drive para conferir o documento da Ana lê o
+         nome do pai. O contracheque continua no nome do titular, porque é
+         dele que ele é. */
+      valorSeguroVoucher_(payload && payload.nomeBeneficiario) || nomeSolicitante
     );
 
     if (doc) documentos.push(doc);

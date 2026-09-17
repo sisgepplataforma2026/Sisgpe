@@ -28,7 +28,7 @@
  */
 const b = require("./base");
 
-const { g } = b.subir({});
+const { g, amb } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 g.setupVoucherModuleFase1();
@@ -323,6 +323,24 @@ b.ok(listaDeps.every(x => String(x.linkDocPessoal || "").length > 0),
   "e cada uma com o documento do SEU dependente");
 b.ok(new Set(listaDeps.map(x => x.linkDocPessoal)).size === 3,
   "documentos DIFERENTES entre si — o mesmo link nas três seria o bug mais fácil de não notar");
+
+/* O NOME DO ARQUIVO NO DRIVE É DE QUEM RECEBE A BOLSA — 17/09/2026.
+   Saía "Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf": o documento
+   certo, com o nome do pai no rótulo. Quem abre a pasta para conferir o
+   documento da Ana lê o nome de outra pessoa, e a conferência a olho — que é
+   como a Secretaria faz — passa a depender de abrir arquivo por arquivo. */
+const pessoaisDeps = (amb.driveFiles || []).filter(f =>
+  /DOCUMENTO_PESSOAL/.test(f.name) && /ANA\.pdf|BRUNO\.pdf|CLARA\.pdf/.test(f.name));
+b.ok(pessoaisDeps.length === 3, "os três documentos pessoais foram para o Drive",
+  pessoaisDeps.length + "");
+b.ok(pessoaisDeps.every(f => /^Voucher - (ANA|BRUNO|CLARA) - DOCUMENTO_PESSOAL/.test(f.name)),
+  "cada um com o nome do DEPENDENTE no rótulo, não o do titular",
+  pessoaisDeps.map(f => f.name).join(" | "));
+
+/* O CONTRACHEQUE CONTINUA NO NOME DO TITULAR, porque é dele que ele é. */
+const vinculoDeps = (amb.driveFiles || []).filter(f => !/DOCUMENTO_PESSOAL/.test(f.name));
+b.ok(vinculoDeps.length > 0 && vinculoDeps.every(f => !/ - (ANA|BRUNO|CLARA) - /.test(f.name)),
+  "e o comprovante de vínculo não trocou de dono junto");
 
 b.passo("O teto de três, e a ordem repetida");
 const quatro = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
