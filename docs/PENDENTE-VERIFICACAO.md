@@ -5899,9 +5899,40 @@ remetente institucional. O alias está verificado na conta executora.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 53 | 🔴 a pasta **Rascunhos da conta do financeiro** está vazia de ofícios | Gmail |
+| 53 | ✅ **nenhum rascunho órfão do envio** — fechado 17/09/2026 | Gmail |
 | 54 | 🔴 a emissão não ficou mais lenta nem deu erro na tela | ao emitir |
 
 O 53 importa porque o envio agora CRIA um rascunho antes de mandar; se o envio
 falha, o código apaga. Rascunho sobrando ali significa que o apagamento não
 funcionou — e alguém um dia acharia que é ofício pendente de mandar.
+
+### ✅ Item 53 fechado — 17/09/2026
+
+A caixa de Rascunhos tem 31 itens, e **nenhum deles é do envio do ofício**. A
+prova está na ordem: a lista é decrescente, o rascunho mais recente é de
+**11:50**, e o ofício 540/2026 saiu às **22:11**. Se o envio tivesse deixado
+rascunho, ele estaria no topo.
+
+O rascunho das 11:50 — "(sem assunto)", corpo de Solicitação de Voucher — foi
+descartado como sinal de defeito por três razões somadas: é anterior ao
+ofício; é anterior à troca do envio de Bolsas para `createDraft().send()`, que
+foi na noite de 16/09 (até então o módulo usava `MailApp`, que não cria
+rascunho nenhum); e tem a assinatura do botão "Escrever" da Central de E-mail
+IA, que cria rascunho DE PROPÓSITO com `assunto || "(sem assunto)"`
+(`CentralEmailIA.gs:1608`) e corpo em texto plano — daí os asteriscos.
+
+### 🔴 O buraco que continua existindo, e que nenhum teste pega
+
+| | O que é | Onde |
+|---|---|---|
+| 55 | 🔴 execução interrompida entre criar o rascunho e enviar deixa órfão | Apps Script |
+
+Os dois caminhos de envio apagam o rascunho quando o `send()` FALHA. O que
+nenhum deles cobre é a execução ser **interrompida** — timeout de 6 minutos do
+Apps Script, ou execução cancelada — entre o `createDraft` e o `send`: aí o
+`catch` nunca roda. Não dá para cobrir de dentro do mesmo script.
+
+A saída seria uma varredura periódica que ache rascunhos criados pelo sistema
+com mais de X minutos e os apague, ou pelo menos os liste. **Aguarda decisão
+do usuário** — não faço por conta própria porque apagar rascunho é
+irreversível, e a caixa tem rascunhos legítimos dele, escritos à mão.
