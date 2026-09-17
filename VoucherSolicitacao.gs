@@ -673,26 +673,67 @@ function enviarEmailInternoNovaSolicitacaoVoucher_(dados) {
   try {
     const emailSecretaria = "secretaria@sindeducacao.com";
 
+    /* QUATRO LINHAS, NÃO ONZE — 17/09/2026.
+     *
+     * "Se aparece no painel todos os solicitantes, e vai aparecer no e-mail,
+     *  eu não sei se fica redundante." — o usuário, olhando este e-mail.
+     *
+     * Ele não é redundante: é o que faz alguém SABER que chegou solicitação
+     * sem precisar abrir o painel. Mas repetia demais. CPF, escola,
+     * modalidade, período, situação sindical, funcionário novo, escola não
+     * cadastrada — tudo isso é dado de ANÁLISE, e análise não se faz no
+     * e-mail: se faz no painel, onde estão os documentos anexados e os
+     * botões de decidir.
+     *
+     * Fica o que responde "preciso olhar isso agora?": quem pediu, o que
+     * pediu, quanto vale e o que trava. O resto está a um clique.
+     *
+     * O SINAL DE ATENÇÃO É CALCULADO, não copiado. "AGUARDANDO_VALIDACAO_
+     * CADASTRAL" é nome de estado interno; quem lê o e-mail às onze da noite
+     * precisa de "CPF não localizado na base", que é o que aquilo quer dizer.
+     */
+    var status = String(dados.statusSolicitacao || "").toUpperCase();
+    var situacao = "";
+    if (status === "AGUARDANDO_VALIDACAO_CADASTRAL") {
+      situacao = "CPF não localizado na base de associados";
+    } else if (status === "BLOQUEADA_POR_REGRA") {
+      situacao = "Fora da regra da convenção — confira antes de decidir";
+    } else if (status === "AGUARDANDO_ATENDIMENTO_PRESENCIAL") {
+      situacao = "Não associado — atendimento presencial";
+    }
+
+    var linkPainel = "";
+    try { linkPainel = ScriptApp.getService().getUrl() || ""; } catch (eUrl) {}
+
+    function linha(rotulo, valor, cor) {
+      return "<tr><td style='color:#64748b;padding:7px 0;width:38%;'>" + rotulo + "</td>" +
+             "<td style='font-weight:700;" + (cor ? "color:" + cor + ";" : "") + "'>" +
+             escHtmlVoucher_(valor) + "</td></tr>";
+    }
+
     voucherEnviarMsg_({
       to: emailSecretaria,
       cc: "financeiro@sindeducacao.com",
-      subject: "📋 Nova solicitação de bolsa — " + dados.protocolo,
+      subject: "Nova solicitação de bolsa — " + dados.protocolo,
       htmlBody:
         voucherEmailHtml_("Nova solicitação de bolsa",
-            "<table style='width:100%;font-size:13px;border-collapse:collapse;'>" +
-              "<tr><td style='color:#64748b;padding:5px 0;width:38%;'>Protocolo:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.protocolo) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Solicitante:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.nome) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>CPF:</td><td>" + escHtmlVoucher_(formatarCpfVoucher_(dados.cpf)) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Escola:</td><td>" + escHtmlVoucher_(dados.escola) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Modalidade:</td><td>" + escHtmlVoucher_(dados.modalidade) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Curso:</td><td>" + escHtmlVoucher_(dados.curso) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Período:</td><td>" + escHtmlVoucher_(dados.periodoReferencia) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Status:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.statusSolicitacao) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Situação sindical:</td><td style='font-weight:700;'>" + escHtmlVoucher_(dados.situacaoSindicalFinal) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Funcionário novo:</td><td>" + escHtmlVoucher_(dados.funcionarioNovo) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Escola não cadastrada:</td><td>" + escHtmlVoucher_(dados.escolaNaoCadastrada) + "</td></tr>" +
-              "<tr><td style='color:#64748b;padding:5px 0;'>Desconto calculado:</td><td style='font-weight:700;color:#059669;'>" + (dados.percentual || "—") + "%</td></tr>" +
-            "</table>")
+          "<p style='margin:0 0 18px;'>Chegou uma solicitação de bolsa para análise.</p>" +
+          "<table style='width:100%;font-size:13.5px;border-collapse:collapse;margin-bottom:20px;'>" +
+            linha("Solicitante", dados.nome) +
+            linha("Curso", String(dados.curso || "") +
+                  (dados.modalidade ? " — " + dados.modalidade : "") +
+                  (dados.periodoReferencia ? " · " + dados.periodoReferencia : "")) +
+            linha("Desconto calculado", (dados.percentual || "—") + "%", "#0f8a5f") +
+            (situacao ? linha("Situação", situacao, "#d97706") : "") +
+          "</table>" +
+          (linkPainel
+            ? "<a href='" + escHtmlVoucher_(linkPainel) + "' style='display:inline-block;" +
+              "background:#001f4d;color:#ffffff;font-size:13px;font-weight:800;" +
+              "text-decoration:none;padding:11px 22px;border-radius:9px;'>Abrir no SISGEP</a>"
+            : "") +
+          "<p style='margin:18px 0 0;font-size:12px;color:#94a3b8;'>CPF, escola e documentos " +
+          "estão no painel — é lá que a análise acontece.</p>",
+          { protocolo: dados.protocolo, badge: "Análise" })
     });
 
   } catch(e) {

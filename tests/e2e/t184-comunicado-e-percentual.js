@@ -42,6 +42,7 @@ const anexos = {
   docPessoal:   { nome: "r.jpg", tipo: "image/jpeg",      tamanho: 12, base64: JPG_FALSO }
 };
 const ano = new Date().getFullYear();
+function formatarCpf(c){ return String(c).replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'); }
 
 /* CADA CASO PRECISA DE PESSOA PRÓPRIA — e isto foi o primeiro teste a
    reprovar aqui. A segunda pós-graduação do mesmo CPF não era criada: bate na
@@ -395,6 +396,80 @@ if (paraFabio.length) {
   b.ok(!/até <strong>5 dias úteis<\/strong>/.test(naoAssoc),
     "e sem o prazo de análise, que não se aplica a quem vai à sede");
 }
+
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("BOLSAS · O aviso interno diz o que decide, e nada mais");
+
+/* "Se aparece no painel todos os solicitantes, e vai aparecer no e-mail, eu
+   não sei se fica redundante." — você, 17/09/2026. Ele não é redundante: é o
+   que faz alguém SABER que chegou solicitação sem abrir o painel. Mas
+   repetia onze linhas de dado de análise — e análise se faz no painel, onde
+   estão os documentos e os botões de decidir. */
+b.passo("O que ficou, e o que saiu");
+
+const quemF = novoAssociado("GISELE DE TESTE");
+amb.reset();
+enviarPeloPortal({
+  tipoBeneficiario: "TITULAR", nomeBeneficiario: quemF.nome,
+  dataNascimentoBeneficiario: "1980-05-10",
+  modalidade: "POS_GRADUACAO", curso: "MBA CONTROLADORIA"
+}, quemF);
+
+const interno = amb.outbox.filter(function (m) {
+  return String(m.to || "").indexOf("secretaria@") > -1;
+});
+b.igual(interno.length, 1, "o aviso interno saiu");
+b.igual(interno[0].cc, "financeiro@sindeducacao.com", "com cópia para o financeiro");
+
+const corpo = interno[0].htmlBody;
+/* FICA o que responde "preciso olhar isso agora?" */
+b.ok(corpo.indexOf(quemF.nome) > -1, "fica: quem pediu");
+b.ok(corpo.indexOf("MBA CONTROLADORIA") > -1, "fica: o que pediu");
+b.ok(corpo.indexOf("70%") > -1, "fica: quanto vale");
+b.ok(corpo.indexOf("Abrir no SISGEP") > -1, "e o caminho para o painel, a um clique");
+
+/* SAI o que é dado de análise e já está na tela. O CPF é o que mais importa
+   aqui: e-mail circula, é encaminhado e fica em caixa de entrada — dado
+   pessoal viaja menos quando não precisa viajar. */
+b.ok(corpo.indexOf(formatarCpf(quemF.cpf)) === -1 && corpo.indexOf(quemF.cpf) === -1,
+  "sai: o CPF, que é dado pessoal e já está no painel");
+b.ok(corpo.indexOf("Escola não cadastrada") === -1, "sai: escola não cadastrada");
+b.ok(corpo.indexOf("Funcionário novo") === -1, "sai: funcionário novo");
+b.ok(corpo.indexOf("Situação sindical:") === -1, "sai: situação sindical crua");
+
+/* O SINAL DE ATENÇÃO É TRADUZIDO, não copiado. "AGUARDANDO_VALIDACAO_
+   CADASTRAL" é nome de estado interno; quem lê o e-mail precisa do que
+   aquilo QUER DIZER. */
+b.passo("O estado interno vira frase de gente");
+amb.reset();
+g.enviarEmailInternoNovaSolicitacaoVoucher_({
+  protocolo: "BOLSA-2026-XX", nome: "TESTE", curso: "Economia",
+  modalidade: "GRADUACAO", periodoReferencia: "2027/1", percentual: "70",
+  statusSolicitacao: "AGUARDANDO_VALIDACAO_CADASTRAL"
+});
+const traduzido = amb.outbox[0].htmlBody;
+b.ok(traduzido.indexOf("CPF não localizado na base") > -1,
+  "AGUARDANDO_VALIDACAO_CADASTRAL vira 'CPF não localizado na base'");
+b.ok(traduzido.indexOf("AGUARDANDO_VALIDACAO_CADASTRAL") === -1,
+  "e o nome do estado interno não aparece");
+
+amb.reset();
+g.enviarEmailInternoNovaSolicitacaoVoucher_({
+  protocolo: "BOLSA-2026-YY", nome: "TESTE", curso: "X", percentual: "60",
+  statusSolicitacao: "BLOQUEADA_POR_REGRA"
+});
+b.ok(amb.outbox[0].htmlBody.indexOf("Fora da regra da convenção") > -1,
+  "BLOQUEADA_POR_REGRA vira 'fora da regra da convenção'");
+
+/* SEM SINAL, SEM LINHA. Solicitação normal não pode ganhar uma linha
+   "Situação: —" que faz a pessoa procurar problema que não existe. */
+amb.reset();
+g.enviarEmailInternoNovaSolicitacaoVoucher_({
+  protocolo: "BOLSA-2026-ZZ", nome: "TESTE", curso: "X", percentual: "100",
+  statusSolicitacao: "PENDENTE"
+});
+b.ok(amb.outbox[0].htmlBody.indexOf("Situação") === -1,
+  "solicitação sem pendência não ganha linha de situação");
 
 b.naoTestavel("o botão e o modal na tela do painel",
   "jsdom não aplica CSS — roteiro manual: abrir uma solicitação BLOQUEADA_POR_REGRA " +
