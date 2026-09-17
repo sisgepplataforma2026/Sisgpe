@@ -5873,3 +5873,35 @@ está errado é o dado. Aparece igual no painel e no nome do arquivo PDF.
 indistinguível de um nome legítimo com partícula curta, e um corretor
 automático de nome erraria em gente de nome incomum — que é exatamente quem
 menos pode ser renomeado pelo sistema. A correção é na origem.
+
+### ✅ ITEM 26 FECHADO — 16/09/2026, 22h11
+
+**Ofício de Filiação Nº 540/2026, emitido em produção e recebido.** Estava
+aberto desde 15/09, quando o caminho de envio do ofício passou a usar
+`GmailApp.createDraft().send()`.
+
+| O que foi confirmado | Como |
+|---|---|
+| ✅ o ofício sai de **`secretaria@sindeducacao.com`** | o "De:" da mensagem recebida |
+| ✅ o `replyTo` é a Secretaria | cabeçalho |
+| ✅ **os dois anexos chegam**: ofício (118 KB) e ficha de filiação (751 KB) | anexos na mensagem |
+| ✅ a casca do ofício: navy, CNPJ, badge FILIAÇÃO, número em dourado | corpo |
+
+**Por que este item pesava mais que todos os outros:** Ofícios é a única
+operação viva do sindicato. Todo o resto que foi publicado nestes dois dias
+pode quebrar e custa uma correção; ofício parado é trabalho parado. O caminho
+de envio tinha mudado e a prova só podia vir de um ofício real.
+
+Fecha junto o par do item 21: os ofícios de produção **estão** saindo com o
+remetente institucional. O alias está verificado na conta executora.
+
+### Do roteiro do ofício, ainda não conferidos
+
+| | O que conferir | Onde |
+|---|---|---|
+| 53 | 🔴 a pasta **Rascunhos da conta do financeiro** está vazia de ofícios | Gmail |
+| 54 | 🔴 a emissão não ficou mais lenta nem deu erro na tela | ao emitir |
+
+O 53 importa porque o envio agora CRIA um rascunho antes de mandar; se o envio
+falha, o código apaga. Rascunho sobrando ali significa que o apagamento não
+funcionou — e alguém um dia acharia que é ofício pendente de mandar.
