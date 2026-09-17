@@ -180,6 +180,52 @@ b.ok(g.sisgepSaudacaoEmail_("MARCELHA ALINE PINTO GOMES").indexOf("Olá, <strong
 b.ok(g.sisgepSaudacaoEmail_("").indexOf("Olá! Tudo bem?") > -1,
   "e sem nome ela não fica com um vazio no meio");
 
+/* ── 4c. O CERTIFICADO, QUE ERA O ÚLTIMO CABEÇALHO PRÓPRIO ──────────────── */
+b.passo("o certificado entra na casca única sem perder o que tinha");
+
+const cert = g.voucherCorpoEmail_({
+  nome: "MARCELHA ALINE PINTO GOMES", protocolo: "BOLSA-2026-187653",
+  curso: "Economia", periodo: "2027/1", percentual: "70",
+  codigo: "VAL-20260916211149-7850", linkPdf: "https://drive.google.com/x"
+});
+
+["SINDEDUCAÇÃO-ES", "CNPJ: 31.815.780/0001-51", "Nossa Senhora dos Navegantes"]
+  .forEach(function (parte) {
+    b.ok(cert.indexOf(parte) > -1, "o certificado usa a casca do SISGEP: " + parte);
+  });
+b.ok(cert.indexOf("BOLSA-2026-187653") > -1, "com o protocolo no cabeçalho");
+
+/* O QUE NÃO PODIA SE PERDER NA MIGRAÇÃO, e por isso a casca foi estendida
+   em vez de o certificado ser aparado. */
+b.ok(cert.indexOf("rgba(16,185,129") > -1,
+  "o badge VERDE continua — dourado é identidade, não estado, e conceder bolsa é notícia boa");
+b.ok(cert.indexOf("MARCELHA ALINE PINTO GOMES") > -1,
+  "a assinatura de quem manda continua no rodapé — diz a quem responder");
+b.ok(cert.indexOf("Administrativo &amp; Secretaria") > -1, "com o cargo, escapado");
+
+/* O QUE ELE GANHOU: o cabeçalho de antes usava flexbox, e no Outlook o
+   protocolo caía para baixo do nome do sindicato. */
+b.ok(cert.indexOf("<table role='presentation'") > -1,
+  "e ganhou o cabeçalho em tabela, que o Outlook entende");
+b.ok(cert.indexOf("display:flex;align-items:flex-start;justify-content:space-between") === -1,
+  "o flexbox do cabeçalho antigo não sobrou");
+
+/* O MIOLO CONTINUA INTEIRO — migrar casca não podia mexer no conteúdo. */
+["Certificado de Bolsa de Estudo", "Economia", "2027/1", "70%",
+ "VAL-20260916211149-7850", "Abrir o certificado",
+ "Apresente o certificado à instituição de ensino"].forEach(function (t) {
+  b.ok(cert.indexOf(t) > -1, "o conteúdo do certificado continua: " + t);
+});
+
+/* OS TRÊS TONS DE BADGE SÃO VOCABULÁRIO, não hex solto por módulo. */
+b.passo("o tom do badge é nomeado, não escolhido em hex");
+b.ok(g.sisgepEmailHtml_({ badge: "X", badgeTom: "sucesso" }).indexOf("rgba(16,185,129") > -1, "tom 'sucesso' é verde");
+b.ok(g.sisgepEmailHtml_({ badge: "X", badgeTom: "alerta" }).indexOf("rgba(251,191,36") > -1, "tom 'alerta' é âmbar");
+b.ok(g.sisgepEmailHtml_({ badge: "X" }).indexOf("#C9A84C") > -1, "sem pedir nada, vem o dourado");
+/* Tom inventado não pode quebrar o e-mail nem inventar cor. */
+b.ok(g.sisgepEmailHtml_({ badge: "X", badgeTom: "roxo-neon" }).indexOf("#C9A84C") > -1,
+  "e um tom que não existe cai no dourado, em vez de sair sem cor");
+
 /* ── 5. NENHUM E-MAIL DO MÓDULO MONTA CABEÇALHO PRÓPRIO ─────────────────── */
 /* Era o defeito 2: um e-mail em roxo, outro em azul chapado, cada um com o
    seu <h2>. Agora todo corpo entra pela casca — ou pelo corpo do certificado,
@@ -207,6 +253,34 @@ arquivos.forEach(function (arq) {
   b.ok(!/<h2 style='color:#(166534|92400e|002f6c)/.test(src),
     arq + " não tem mais cabeçalho de cor própria");
 });
+
+/* ── 6. A TRAVA: NENHUMA CASCA NOVA NASCE NESTE MÓDULO ──────────────────── */
+/* Bolsas chegou a ter DUAS cascas próprias, e o sistema inteiro tinha SEIS.
+   Isso não aconteceu por decisão: aconteceu um arquivo de cada vez, cada um
+   resolvendo o seu e-mail. Esta varredura é o que impede a sétima. */
+b.passo("6. Só existe uma casca, e ela não é daqui");
+
+const marcasDeCasca = [
+  ["linear-gradient(135deg,#001228", "o gradiente do cabeçalho"],
+  ["CNPJ: 31.815.780/0001-51",       "o CNPJ do cabeçalho"],
+  ["Nossa Senhora dos Navegantes",    "o endereço do rodapé"]
+];
+
+arquivos.forEach(function (arq) {
+  const src = fs.readFileSync(path.join(RAIZ, arq), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  marcasDeCasca.forEach(function (par) {
+    b.ok(src.indexOf(par[0]) === -1,
+      arq + " não desenha " + par[1] + " por conta própria");
+  });
+});
+
+/* E A CASCA MORA FORA DE BOLSAS, de propósito: se morasse aqui, o próximo
+   módulo copiaria em vez de chamar — que é como se chega a seis. */
+const oficios = fs.readFileSync(path.join(RAIZ, "EmailOficios.gs"), "utf8");
+b.ok(oficios.indexOf("function sisgepEmailHtml_") > -1,
+  "a casca canônica vive em EmailOficios.gs, fora do módulo que a usa");
+b.igual(typeof g.sisgepEmailHtml_, "function", "e está disponível para todos");
 
 b.naoTestavel("o e-mail chegando de fato na caixa do associado",
   "entrega depende do Gmail real e do alias verificado na conta executora — roteiro manual: aprovar uma bolsa em homologação e conferir o remetente na mensagem recebida");

@@ -447,43 +447,36 @@ function voucherCorpoEmail_(d) {
     "</tr>";
   }
 
-  var saudacao = "Olá" + (d.nome ? ", " + esc(voucherPrimeiroNome_(d.nome)) : "") + "!";
-
-  return "" +
-  "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
-
-    /* ── CABEÇALHO ── */
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);" +
-      "padding:22px 28px 20px;border-radius:8px 8px 0 0;'>" +
-      "<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:20px;'>" +
-        "<div style='border-left:4px solid #C9A84C;padding-left:16px;'>" +
-          "<div style='font-size:21px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
-          "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;'>" +
-            "Sindicato dos Educadores Técnico-Administrativos<br>" +
-            "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
-          "<div style='font-size:10.5px;font-weight:800;color:#C9A84C;margin-top:6px;'>" +
-            "CNPJ: 31.815.780/0001-51</div>" +
-        "</div>" +
-        "<div style='text-align:right;'>" +
-          "<div style='font-size:10px;font-weight:700;color:rgba(255,255,255,.4);" +
-            "text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;'>Protocolo</div>" +
-          "<div style='font-size:16px;font-weight:900;color:#C9A84C;white-space:nowrap;'>" +
-            esc(d.protocolo) + "</div>" +
-        "</div>" +
-      "</div>" +
-      "<div style='height:1px;background:rgba(201,168,76,.25);margin:16px 0 14px;'></div>" +
-      /* Verde, e não o dourado institucional: o dourado é identidade, não
-         estado. Concessão de benefício é notícia boa, e o badge diz isso
-         antes de a pessoa ler o texto. */
-      "<div style='display:inline-block;background:rgba(16,185,129,.18);" +
-        "border:1px solid rgba(52,211,153,.42);color:#6ee7b7;font-size:11px;" +
-        "font-weight:800;padding:5px 14px;border-radius:999px;" +
-        "text-transform:uppercase;'>Bolsa de Estudo</div>" +
-    "</div>" +
-
-    /* ── CORPO ── */
-    "<div style='background:#fff;padding:28px 28px 24px;border:1px solid #e2e8f0;border-top:none;'>" +
-      "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + " Tudo bem?</p>" +
+  /* ESTE ERA O ÚLTIMO CABEÇALHO PRÓPRIO DE BOLSAS — 17/09/2026.
+   *
+   * Ele já era o mais parecido com o do ofício: tinha CNPJ, protocolo à
+   * direita e badge. Mas era OUTRO código fazendo a mesma coisa, e duas
+   * cópias do mesmo desenho envelhecem separadas — foi exatamente assim que
+   * o módulo chegou a ter seis cascas diferentes.
+   *
+   * Duas coisas daqui foram para a casca única em vez de se perderem:
+   *
+   *   o BADGE VERDE, que tinha razão registrada — "o dourado é identidade,
+   *   não estado; concessão de benefício é notícia boa". Virou `badgeTom`,
+   *   vocabulário nomeado em vez de hex solto.
+   *
+   *   a ASSINATURA da Marcelha no rodapé, que diz a quem responder. Virou
+   *   `assinatura`, opcional.
+   *
+   * E ganhou o que não tinha: o cabeçalho em TABELA, que o Outlook entende.
+   * O de antes usava flexbox, e no Outlook o protocolo caía para baixo do
+   * nome do sindicato. */
+  return sisgepEmailHtml_({
+    numero: d.protocolo,
+    rotuloNumero: "Protocolo",
+    badge: "Bolsa de Estudo",
+    badgeTom: "sucesso",
+    assinatura: {
+      nome: "MARCELHA ALINE PINTO GOMES",
+      cargo: "Administrativo & Secretaria — SindEducação-ES"
+    },
+    corpo:
+      sisgepSaudacaoEmail_(d.nome) +
 
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
         "Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo SindEducação-ES, " +
@@ -513,27 +506,8 @@ function voucherCorpoEmail_(d) {
         "font-size:13px;color:#1e3a8a;line-height:1.65;'>" +
         "<strong>Apresente o certificado à instituição de ensino</strong> para que o desconto " +
         "seja aplicado na matrícula, rematrícula e mensalidades." +
-      "</div>" +
-    "</div>" +
-
-    /* ── RODAPÉ ── */
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);" +
-      "border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
-      "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
-        "margin-bottom:18px;'></div>" +
-      "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
-      "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
-        "Administrativo &amp; Secretaria — SindEducação-ES</div>" +
-      "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);" +
-        "font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
-        "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
-        "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
-        "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
-      "</div>" +
-      "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>" +
-        "Documento gerado pelo SISGEP · SindEducação-ES</div>" +
-    "</div>" +
-  "</div>";
+      "</div>"
+  });
 }
 
 /** Extrai o id do arquivo de uma URL do Drive, para poder anexar o blob. */

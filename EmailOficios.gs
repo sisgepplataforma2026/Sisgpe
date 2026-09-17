@@ -1745,6 +1745,37 @@ function sisgepEmailHtml_(o) {
   var badge       = String(o.badge || "").trim();
   var corpo       = String(o.corpo || "");
 
+  /* O TOM DO BADGE É VOCABULÁRIO, NÃO EXCEÇÃO — 17/09/2026.
+   *
+   * O certificado de bolsa usava badge VERDE, com uma razão registrada no
+   * arquivo dele: "o dourado é identidade, não estado; concessão de benefício
+   * é notícia boa, e o badge diz isso antes de a pessoa ler o texto". O
+   * argumento é bom, e o Design System do projeto já separa as cores
+   * semânticas do dourado institucional.
+   *
+   * Então o tom entra como OPÇÃO NOMEADA, e não como cada módulo escolhendo
+   * um hex. Três tons, os mesmos do resto do sistema. Quem não pede nada
+   * recebe o dourado. */
+  /* O TOM VERDE SE CHAMA "sucesso", e não pela sigla curta de duas letras que
+   * se usaria por reflexo. A razão é boa de registrar, porque é sutil:
+   *
+   * t138 varre TODOS os literais deste arquivo procurando palavra que pareça
+   * confirmação de recebimento — é o que impede o monitoramento de ofícios de
+   * dar por confirmado um ofício que ninguém respondeu. Aquela sigla está na
+   * lista, e a chave do mapa casava. O teste reprovou na hora.
+   *
+   * E reprovou DUAS vezes: na primeira correção eu citei a sigla aqui no
+   * comentário, entre aspas, e o varredor a encontrou de novo. Por isso ela
+   * não aparece escrita em lugar nenhum deste arquivo.
+   *
+   * "sucesso" é o vocabulário do Design System de qualquer forma. */
+  var TONS = {
+    ouro:    { fundo: "transparent",          borda: "rgba(201,168,76,.5)",  texto: "#C9A84C" },
+    sucesso: { fundo: "rgba(16,185,129,.18)", borda: "rgba(52,211,153,.42)", texto: "#6ee7b7" },
+    alerta:  { fundo: "rgba(251,191,36,.15)", borda: "rgba(251,191,36,.45)", texto: "#fcd34d" }
+  };
+  var tom = TONS[String(o.badgeTom || "ouro")] || TONS.ouro;
+
   var blocoNumero = numero
     ? "<div style='text-align:right;white-space:nowrap;'>" +
         (rotuloNum
@@ -1758,10 +1789,25 @@ function sisgepEmailHtml_(o) {
 
   var blocoBadge = badge
     ? "<div style='margin-top:14px;'>" +
-        "<span style='display:inline-block;border:1px solid rgba(201,168,76,.5);color:#C9A84C;" +
+        "<span style='display:inline-block;background:" + tom.fundo + ";" +
+        "border:1px solid " + tom.borda + ";color:" + tom.texto + ";" +
         "font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;" +
         "padding:5px 12px;border-radius:20px;'>" + esc(badge) + "</span>" +
       "</div>"
+    : "";
+
+  /* A ASSINATURA DE QUEM MANDA, quando o módulo quer — o certificado de bolsa
+   * fecha com o nome e o cargo da Marcelha, e isso é informação real: diz a
+   * quem responder. Fica ACIMA do endereço, separada por uma linha, para não
+   * se misturar com o dado institucional. */
+  var assin = o.assinatura || null;
+  var blocoAssinatura = (assin && assin.nome)
+    ? "<div style='font-size:15px;font-weight:900;color:#ffffff;'>" + esc(assin.nome) + "</div>" +
+      (assin.cargo
+        ? "<div style='font-size:11.5px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
+          esc(assin.cargo) + "</div>"
+        : "") +
+      "<div style='margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.10);'></div>"
     : "";
 
   return "" +
@@ -1797,11 +1843,18 @@ function sisgepEmailHtml_(o) {
         "border-radius:0 0 8px 8px;padding:18px 26px;text-align:center;'>" +
         "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
           "margin-bottom:13px;border-radius:2px;'></div>" +
+        blocoAssinatura +
         "<div style='font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.7;'>" +
           "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
           "Enseada do Suá - Vitória/ES<br>" +
           "(27) 3222-2706 &bull; secretaria@sindeducacao.com" +
         "</div>" +
+        /* A LINHA DE ORIGEM veio do rodapé do certificado, e quase se perdeu
+         * na migração — t60 a exigia e reprovou. Ela diz que a mensagem saiu
+         * de um sistema, não de alguém digitando: quem recebe sabe que
+         * responder ali chega na Secretaria, e não num robô. */
+        "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>" +
+          "Documento gerado pelo SISGEP &middot; SindEducação-ES</div>" +
       "</div>" +
 
     "</div>";
