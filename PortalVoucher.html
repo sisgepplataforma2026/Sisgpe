@@ -998,7 +998,23 @@ function atualizarProgresso() {
        *
        * Por isso a saída é aqui em cima, antes de qualquer faixa: o titular
        * não passa nem pela regra dos 24 nem pela tabela por modalidade. */
-      if (tipoBenef === 'TITULAR') {
+      /* TITULAR E CÔNJUGE NÃO TÊM REGRA DE IDADE. NENHUMA.
+       *
+       * O titular saiu daqui em 16/09, quando você pediu Pós aos 45 e levou
+       * "idade incompatível". O CÔNJUGE continuou caindo na tabela de faixas,
+       * e em 17/09 você disse: "esposo, esposa não tem limite de idade".
+       *
+       * MEDIDO ANTES DE CORRIGIR, e o defeito era real: cônjuge de 45 anos
+       * passava em Pós-Graduação (faixa 21–50) e era BARRADO em Graduação
+       * (17–35) e em Técnico (15–25). A pessoa não fazia ideia do porquê — a
+       * mensagem falava de idade, não de parentesco.
+       *
+       * A convenção limita idade só para FILHO e ENTEADO, e o limite é 24.
+       * Para os outros dois a tabela de faixas não tem base nenhuma: ela
+       * existe para pegar erro de digitação em dependente criança, e adulto
+       * não tem série esperada. */
+      if (tipoBenef === 'TITULAR' || tipoBenef === 'CONJUGE' ||
+          tipoBenef === 'ESPOSO'  || tipoBenef === 'ESPOSA') {
         document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
         return true;
       }

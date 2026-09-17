@@ -133,6 +133,42 @@ b.ok(!campo("dataNascimentoBeneficiario").classList.contains("invalid"),
 setar("dataNascimentoBeneficiario", (hoje.getFullYear() - 20) + "-03-15");
 b.ok(win.validarIdadeModalidade() === true, "e um filho de 20 anos passa");
 
+/* ── 1b. CÔNJUGE TAMBÉM NÃO TEM REGRA DE IDADE ──────────────────────────── */
+/* "Esposo, esposa não tem limite de idade" — você, 17/09/2026.
+
+   MEDIDO ANTES DE CORRIGIR, e o defeito era real: cônjuge de 45 anos passava
+   em Pós-Graduação (faixa 21–50) e era BARRADO em Graduação (17–35) e em
+   Técnico (15–25). A pessoa não fazia ideia do porquê — a mensagem falava de
+   idade, não de parentesco.
+
+   É o MESMO defeito que o titular tinha, corrigido em 16/09 e não estendido
+   ao cônjuge. Por isso este bloco varre as duas isenções juntas: quem
+   corrigir uma no futuro esbarra na outra. */
+b.passo("1b. Cônjuge passa em qualquer modalidade, em qualquer idade");
+
+["TITULAR", "CONJUGE"].forEach(function (quem) {
+  setar("tipoBeneficiario", quem);
+  [30, 45, 60, 70].forEach(function (idade) {
+    setar("dataNascimentoBeneficiario", (hoje.getFullYear() - idade) + "-05-10");
+    ["GRADUACAO", "POS_GRADUACAO", "TECNICO", "ENSINO_MEDIO"].forEach(function (mod) {
+      setar("modalidade", mod);
+      b.ok(win.validarIdadeModalidade() === true,
+        quem + " de " + idade + " anos passa em " + mod);
+    });
+  });
+});
+
+/* A REGRA DO FILHO NÃO PODE TER IDO JUNTO NA ISENÇÃO. Este é o par do teste
+   acima: isentar demais é tão errado quanto isentar de menos. */
+setar("tipoBeneficiario", "FILHO");
+setar("dataNascimentoBeneficiario", (hoje.getFullYear() - 30) + "-05-10");
+setar("modalidade", "GRADUACAO");
+win.validarIdadeModalidade();
+const avisoFilho = (tela.avisos || []).map(function (a) { return String(a.msg || ""); }).join(" ") +
+  (doc.getElementById("msgBox") ? doc.getElementById("msgBox").textContent : "");
+b.ok(/24 anos/.test(avisoFilho),
+  "mas FILHO de 30 continua sendo avisado do limite de 24");
+
 /* ── 2. ESCOLA ───────────────────────────────────────────────────────────── */
 b.passo("2. Um campo só: busca na lista, ou escreve o nome");
 
