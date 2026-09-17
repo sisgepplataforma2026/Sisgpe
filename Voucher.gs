@@ -724,7 +724,8 @@ function seedVoucherRules_() {
    * `if (existingData.length > 1) return;` logo acima). Alterar percentual
    * de planilha que já opera é mudança de dinheiro e exige migração
    * própria, com prévia — nunca de passagem por um seed. */
-  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
+  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+                  "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"];
   const POR_ORDEM = { "1": 100, "2": 100, "3": 60 };
   const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
   const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
@@ -977,8 +978,11 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
    * nas regras do voucher" lá no fim — pedido recusado por um buraco no
    * código, não por regra da convenção. Segue os mesmos 100/100/60 das
    * demais modalidades do ensino básico. */
+  /* PRE_VESTIBULAR entra aqui junto com as demais do ensino básico —
+     confirmado pelo usuário em 17/09/2026: mesma regra, 100/100/60 por ordem
+     do filho, e contando no teto de três por associado. */
   if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
-       "ENSINO_MEDIO", "TECNICO"].indexOf(modalidade) > -1) {
+       "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"].indexOf(modalidade) > -1) {
     let percentual = "";
 
     if (ordemFilho === "1" || ordemFilho === "2") percentual = "100";
@@ -1409,6 +1413,17 @@ function getPortalVoucherInitData() {
       { value: "CRECHE",             label: "Creche (0–3 anos)" },
       { value: "ENSINO_FUNDAMENTAL", label: "Ensino Fundamental (6–14 anos)" },
       { value: "ENSINO_MEDIO",       label: "Ensino Médio (15–17 anos)" },
+      /* PRÉ-VESTIBULAR FALTAVA NO MENU — 17/09/2026, apontado pelo usuário:
+         "tem pré-vestibular também". Ele existia numa tabela de percentual do
+         painel (100%) e em lugar nenhum mais: não estava aqui, então ninguém
+         conseguia pedir, e não estava na regra, então quem pedisse por outro
+         caminho levaria "Modalidade não reconhecida".
+
+         É o MESMO defeito que o Ensino Médio teve, e que está documentado
+         vinte linhas abaixo em calcularRegraVoucherConvencao_. Duas vezes a
+         mesma falha: uma modalidade que existe num lugar do sistema e não
+         existe nos outros dois. */
+      { value: "PRE_VESTIBULAR",     label: "Pré-Vestibular (17–18 anos)" },
       { value: "TECNICO",            label: "Técnico (15–25 anos)" },
       { value: "GRADUACAO",          label: "Graduação" },
       { value: "POS_GRADUACAO",      label: "Pós-Graduação" }

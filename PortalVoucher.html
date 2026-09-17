@@ -973,6 +973,7 @@ function atualizarProgresso() {
         'EDUCACAO_INFANTIL':{'min':4,'max':5,'nome':'Educação Infantil'},
         'ENSINO_FUNDAMENTAL':{'min':6,'max':14,'nome':'Ensino Fundamental'},
         'ENSINO_MEDIO':{'min':15,'max':17,'nome':'Ensino Médio'},
+        'PRE_VESTIBULAR':{'min':16,'max':30,'nome':'Pré-Vestibular'},
         'TECNICO':{'min':15,'max':25,'nome':'Técnico'},
         'GRADUACAO':{'min':17,'max':35,'nome':'Graduação'},
         'POS_GRADUACAO':{'min':21,'max':50,'nome':'Pós-Graduação'}
@@ -1192,7 +1193,7 @@ function ajustarCamposVoucher() {
       var modalidade = String(document.getElementById('modalidade').value || '').toUpperCase();
       var tipoBenef  = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
 
-      if (['EDUCACAO_INFANTIL','CRECHE','ENSINO_FUNDAMENTAL','ENSINO_MEDIO','TECNICO','GRADUACAO','POS_GRADUACAO'].indexOf(modalidade) > -1 && !document.getElementById('ordemFilho').value) {
+      if (['EDUCACAO_INFANTIL','CRECHE','ENSINO_FUNDAMENTAL','ENSINO_MEDIO','PRE_VESTIBULAR','TECNICO','GRADUACAO','POS_GRADUACAO'].indexOf(modalidade) > -1 && !document.getElementById('ordemFilho').value) {
         if(tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA'){
           showMsg('❌ Informe a ordem do filho para a modalidade selecionada.', 'erro');
           document.getElementById('ordemFilho').classList.add('invalid');

@@ -501,7 +501,8 @@ function validarPayloadPortalVoucher_(payload) {
   }
 
   if (
-    ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "TECNICO"].indexOf(modalidade) > -1 &&
+    ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+     "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"].indexOf(modalidade) > -1 &&
     tipoBenef !== "TITULAR" &&
     !valorSeguroVoucher_(payload.ordemFilho)
   ) {
