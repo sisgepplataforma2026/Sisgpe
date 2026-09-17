@@ -5936,3 +5936,19 @@ A saída seria uma varredura periódica que ache rascunhos criados pelo sistema
 com mais de X minutos e os apague, ou pelo menos os liste. **Aguarda decisão
 do usuário** — não faço por conta própria porque apagar rascunho é
 irreversível, e a caixa tem rascunhos legítimos dele, escritos à mão.
+
+## 🔴 Bolsas — a seção de dependentes (17/09/2026)
+
+Publicado na homologação e na produção em 17/09. O que só o navegador prova:
+
+| | O que conferir | Onde |
+|---|---|---|
+| 56 | 🔴 o seletor "para quem é a bolsa" aparece e troca de caminho | portal público |
+| 57 | 🔴 os cartões aparecem empilhados e legíveis (jsdom não aplica CSS) | portal público |
+| 58 | 🔴 um envio com três dependentes devolve três protocolos na tela | portal público |
+| 59 | 🔴 na pasta do Drive, o documento pessoal sai com o nome do DEPENDENTE | Drive |
+
+O 59 é a correção de hoje: o arquivo saía como
+`Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf`, com o documento
+certo e o nome do pai no rótulo. O emulador confirma o nome montado; quem a
+Secretaria abre de verdade é a pasta.
