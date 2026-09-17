@@ -5838,3 +5838,38 @@ quiser limpar, é pedido explícito e em passo separado.
 | | O que conferir | Onde |
 |---|---|---|
 | 51 | 🔴 a próxima promoção funciona só empurrando para `producao/sisgep` | esteira |
+
+### ✅ Fechados em 16/09/2026, 21h13 — pelo e-mail recebido de BOLSA-2026-187653
+
+O print do e-mail que chegou em `marcelhagomes@gmail.com` fecha, de uma vez,
+o item mais importante da rodada e mais três:
+
+| | O que foi confirmado | Como |
+|---|---|---|
+| 46 | ✅ **o e-mail sai de `secretaria@sindeducacao.com`** | o "De:" da mensagem recebida |
+| — | ✅ o `replyTo` e a cópia também vão para a Secretaria | cabeçalho |
+| — | ✅ o PDF chega **anexado** (~125 KB), não só como link | anexo na mensagem |
+| — | ✅ a casca visual do SISGEP: navy, CNPJ, badge, protocolo em dourado | corpo |
+
+**Por que o 46 era o mais importante:** nove envios do módulo saíam por
+`MailApp`, que ignora a opção `from` EM SILÊNCIO — o mesmo defeito que fez a
+Declaração de Diretor sair da conta executora com o alias já configurado.
+Nenhum teste alcança isso: depende de o alias estar verificado na conta que
+executa o script. Agora está provado por uma mensagem recebida, que é a única
+prova que vale.
+
+### 🔴 Achado no mesmo print — e é dado, não código
+
+| | O que conferir | Onde |
+|---|---|---|
+| 52 | 🔴 corrigir o nome **"Marcelh a Aline Pinto Gomes"** no cadastro | planilha |
+
+O e-mail abre com "Olá, Marcelh!" porque o nome gravado tem um espaço no meio
+do primeiro nome: `Marcelh a Aline Pinto Gomes`. O código pega a primeira
+palavra (`voucherPrimeiroNome_`, VoucherEnvio.gs:377) e faz o certo — quem
+está errado é o dado. Aparece igual no painel e no nome do arquivo PDF.
+
+**Não dá para consertar isto no código sem risco.** "Marcelh a" é
+indistinguível de um nome legítimo com partícula curta, e um corretor
+automático de nome erraria em gente de nome incomum — que é exatamente quem
+menos pode ser renomeado pelo sistema. A correção é na origem.
