@@ -1818,27 +1818,47 @@ function acao(funcaoGas,labelBtn,labelMsg,extra){
       cert_msg('✅ '+(resp.mensagem||labelMsg+' com sucesso!'),'ok');
       cert_carregarLista();
 
-      /* APROVAR E EMITIR VÊM COLADOS.
+      /* TODA AÇÃO FECHA O MODAL — inclusive aprovar.
        *
-       * Fechar o modal aqui obrigava a pessoa a achar a mesma linha na lista
-       * e clicar no 🎓 — dois passos para continuar o que ela já estava
-       * fazendo. E a área de emissão JÁ ESTÁ neste modal; ela só ficava
-       * escondida porque o status ainda não era APROVADO.
+       * REVERTE UMA DECISÃO MINHA, e o registro fica porque a razão antiga
+       * não era boba: aprovar e emitir vêm colados, a área de emissão já está
+       * neste mesmo modal, e fechar obriga a achar a linha de novo na lista.
+       * Por isso o modal se REABRIA sozinho com o registro atualizado.
        *
-       * Então o modal fica aberto e se REABRE com o registro atualizado: a
-       * área de emissão aparece, com o percentual já lá. Quem não quiser
-       * emitir agora fecha, e a aprovação continua gravada.
+       * O usuário pediu o contrário em 16/09/2026, olhando a tela: "quando
+       * aprovar tem que fechar essa tela". E quem analisa trinta solicitações
+       * seguidas sabe melhor do que eu o que atrapalha — um modal que se
+       * reabre sozinho depois de a pessoa ter terminado com aquele registro
+       * é uma janela que ela precisa fechar de novo, trinta vezes.
        *
-       * As outras duas ações — indeferir e solicitar complementação —
-       * fecham, porque ali o trabalho realmente acabou. */
-      if(labelBtn === 'certBtnAprovar' && _solAtual){
-        var prot = _solAtual.protocolo;
+       * A aprovação continua gravada e a lista se recarrega; quem quiser
+       * emitir na sequência abre a linha, que agora está como APROVADO. */
+      cert_fecharModal();
+
+      /* E CADA AÇÃO LEVA A UM LUGAR — 16/09/2026, pedido do usuário:
+       *
+       *   "Se foi aprovar, ele tem que voltar para o painel. Se foi
+       *    indeferir, ele tem que voltar para o painel. Se solicitar a
+       *    complementação, ele tem que ir para outro caminho."
+       *
+       * Aprovar e indeferir ENCERRAM aquele registro: a pessoa volta ao
+       * painel como estava, e o filtro que ela tinha aberto continua de pé —
+       * mexer nele seria tirá-la do lugar onde estava trabalhando.
+       *
+       * Complementação NÃO encerra: fica uma pendência esperando documento, e
+       * o lugar dela é a fila "Em Análise", que é literalmente rotulada
+       * "Complementação solicitada" no card. Levar para lá é mostrar o que
+       * acabou de acontecer, e é isso que o "outro caminho" resolve —
+       * confirmar que a solicitação entrou na fila certa.
+       *
+       * Depois de cert_carregarLista(), porque filtrar antes de a lista
+       * chegar filtraria a lista velha. */
+      if(labelBtn === 'certBtnComplementar'){
         setTimeout(function(){
-          var atualizada = _lista.find(function(x){ return x.protocolo === prot; });
-          if(atualizada) cert_abrirModal(atualizada);
-        }, 400);
-      } else {
-        cert_fecharModal();
+          if(typeof window.certFiltrarPorStatus === 'function'){
+            window.certFiltrarPorStatus('ANALISE');
+          }
+        }, 450);
       }
     })
     .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
@@ -2088,6 +2108,10 @@ window.certAbrirEnvio = envAbrir;
  * Descoberto ao escrever t185, que precisava abrir o modal em cada estado e
  * não tinha por onde. */
 window.certAbrirSolicitacao = cert_abrirModal;
+/* O par da de cima. Quem consegue abrir de fora precisa conseguir fechar —
+   e sem isto o teste de tela só conseguia remover a classe na mão, medindo
+   o próprio remendo em vez do que a tela faz. */
+window.certFecharSolicitacao = cert_fecharModal;
 
 function envQuando(v){
   if(!v) return '—';

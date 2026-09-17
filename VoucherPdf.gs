@@ -212,9 +212,21 @@ if (voucherExistente) {
     }
 
     etapa = "converter em PDF e salvar na pasta do Drive";
+    /* A DATA ENTRA NO NOME DO ARQUIVO — pedido do usuário em 16/09/2026,
+     * olhando o PDF que chegou por e-mail.
+     *
+     * Vai em AAAA-MM-DD, não em dd/MM/yyyy, por dois motivos: barra não pode
+     * aparecer em nome de arquivo (o sanitizador a trocaria por outra coisa),
+     * e nesse formato a ordenação alfabética da pasta do Drive já fica em
+     * ordem cronológica — que é como se procura um documento emitido.
+     *
+     * Vem PRIMEIRO pela mesma razão: a pasta cresce um voucher por vez, e
+     * quem procura "os de setembro" acha tudo junto. */
+    const dataArquivo = Utilities.formatDate(
+      new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
     const pdfVoucher = salvarHtmlComoPdfVoucher_(
       htmlVoucher,
-      "Voucher Bolsa - " + protocolo + " - " + reg.NOME_SOLICITANTE
+      dataArquivo + " - Voucher Bolsa - " + protocolo + " - " + reg.NOME_SOLICITANTE
     );
 
     let linkOficio = "";
@@ -612,7 +624,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const rotuloPeriodo = (ehAnual ? "ano letivo de " : "semestre letivo de ") + periodo;
   const rotuloPeriodoTitular = (ehAnual ? "ano " : "semestre ") + periodo;
 
-  const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
+  /* SEM CHAMAR O GERADOR DE QR, já que o QR não é mais impresso.
+   *
+   * Isto não é limpeza cosmética: `gerarQrCodeVoucherUrl_` faz um UrlFetch
+   * para quickchart.io a CADA emissão. Mantida a chamada, toda bolsa emitida
+   * pagaria uma ida à internet — com o tempo de espera e a chance de falha —
+   * para produzir uma imagem que o documento descarta.
+   *
+   * A função continua no projeto, pronta, para o dia em que a página pública
+   * de validação existir. Ver o comentário no bloco do rodapé. */
   const assinaturaImg = assinaturaPresidenteVoucher_();
   const logoImg = logoSindicatoVoucher_();
   /* A marca d'água tem imagem PRÓPRIA — a do papel do sindicato, extraída do
@@ -889,7 +909,6 @@ function gerarHtmlDocumentoVoucher_(dados) {
      * espaço com o que a escola já sabe ler. Discreto no canto do rodapé,
      * flutuando sobre a arte, sem empurrar nada. */
     ".valida{font-size:7pt;color:#64748b;line-height:1.35;margin-top:1mm;}" +
-    ".valida-qr{width:15mm;height:15mm;display:block;margin-left:auto;}" +
     "</style>" +
     "</head>" +
     "<body>" +
@@ -950,8 +969,22 @@ function gerarHtmlDocumentoVoucher_(dados) {
           "</div>" +
           "<div class='rod-tarja'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
         "</div>") +
+    /* O QR CODE SAIU DO DOCUMENTO — pedido do usuário em 16/09/2026.
+     *
+     * E ele estava QUEBRADO, o que só apareceu ao conferir antes de mexer: o
+     * QR apontava para `?page=pub-validar-voucher`, e essa rota NÃO EXISTE no
+     * doGet do Code.gs. Quem apontasse a câmera não chegava a lugar nenhum —
+     * num documento oficial que a instituição de ensino recebe.
+     *
+     * `gerarQrCodeVoucherUrl_` e `validarVoucherPublico` FICAM no projeto, em
+     * vez de serem apagadas junto: a validação por código é uma função que o
+     * sindicato pode querer de volta com a página feita, e a REGRA Nº 1 manda
+     * manter e documentar em vez de remover. O que muda aqui é só o que é
+     * impresso.
+     *
+     * O código de validação continua no papel, em texto — que é o que a
+     * instituição usaria para conferir por telefone de qualquer forma. */
     "<div class='valida-box'>" +
-    (qrCodeUrl ? "<img class='valida-qr' src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
     "<div class='valida'>" +
     (codigo ? "Código " + escHtmlVoucher_(codigo) + "<br>" : "") +
     (protocolo ? escHtmlVoucher_(protocolo) : "") +

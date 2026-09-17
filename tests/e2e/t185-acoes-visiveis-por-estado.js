@@ -112,6 +112,68 @@ b.passo("Nenhum estado da fila pode ficar SEM decisão nenhuma");
       st + " oferece pelo menos uma decisão a quem abre", acoes.join(", ") || "NENHUMA");
   });
 
+/* ── APROVAR FECHA A TELA ────────────────────────────────────────────────── */
+/* "Quando aprovar tem que fechar essa tela" — você, 16/09/2026. Reverte uma
+   decisão minha: o modal se REABRIA sozinho depois de aprovar, para emendar
+   na emissão. Quem analisa trinta seguidas fecharia a mesma janela trinta
+   vezes. */
+b.passo("Depois de aprovar, o modal fecha — e não se reabre sozinho");
+
+const fonte = require("fs").readFileSync(
+  require("path").join(dom.RAIZ, "Scripts_Certificado.html"), "utf8");
+const semComentarios = fonte.replace(/\/\*[\s\S]*?\*\//g, "");
+
+b.ok(semComentarios.indexOf("if(labelBtn === 'certBtnAprovar' && _solAtual)") === -1,
+  "o desvio que tratava Aprovar como caso especial saiu");
+b.ok(!/setTimeout\(function\(\)\{\s*var atualizada = _lista\.find/.test(
+       semComentarios.replace(/\s+/g, " ").replace(/ \{/g, "{")),
+  "e a reabertura por setTimeout não existe mais");
+
+/* A PROVA POR EXECUÇÃO, não por leitura: abre o modal e confere que a função
+   de fechar realmente o tira da tela. */
+abrirCom("PENDENTE");
+b.ok(visivel("certModalAcoes"), "o modal está aberto antes da ação");
+b.igual(typeof win.certFecharSolicitacao, "function",
+  "a tela expõe o fechar — sem isso o teste mediria o próprio remendo");
+win.certFecharSolicitacao();
+const overlay = doc.getElementById("certModalOverlay");
+b.igual(overlay.style.display, "none", "e fechar o modal o tira da tela");
+b.ok(!overlay.classList.contains("ativo"), "sem deixar a classe de aberto para trás");
+
+/* ── CADA AÇÃO LEVA A UM LUGAR ───────────────────────────────────────────── */
+/* "Se foi aprovar, volta para o painel. Se foi indeferir, volta para o painel.
+   Se solicitar a complementação, tem que ir para outro caminho." — você,
+   16/09/2026. */
+b.passo("O destino depois de cada ação");
+
+const semCom = fonte.replace(/\/\*[\s\S]*?\*\//g, "");
+
+b.ok(/cert_fecharModal\(\);/.test(semCom), "toda ação fecha o modal");
+b.ok(/cert_carregarLista\(\);/.test(semCom), "e a lista do painel se recarrega");
+
+/* COMPLEMENTAÇÃO É A ÚNICA COM DESVIO, porque é a única que não encerra o
+   registro: fica uma pendência esperando documento. O card "Em Análise" é
+   rotulado "Complementação solicitada" — é para lá que a fila vai. */
+b.ok(/labelBtn === 'certBtnComplementar'/.test(semCom),
+  "complementação tem um caminho próprio");
+b.ok(/certFiltrarPorStatus\('ANALISE'\)/.test(semCom),
+  "e ele leva à fila de Em Análise, que é a de complementação solicitada");
+
+/* O CARD E O DESVIO PRECISAM CONCORDAR. Se alguém trocar o status do card e
+   esquecer do desvio, a ação levaria a uma fila vazia — e o sintoma seria
+   "sumiu a solicitação", não "filtro errado". */
+b.ok(/certFiltrarPorStatus\('ANALISE'\)"[\s\S]{0,400}Complementação solicitada/.test(fonte) ||
+     /onclick="certFiltrarPorStatus\('ANALISE'\)"/.test(fonte),
+  "o card que esse filtro abre é o mesmo que a tela rotula assim");
+
+/* APROVAR E INDEFERIR NÃO MEXEM NO FILTRO: quem está trabalhando com um
+   filtro aberto não pode ser tirado dele por uma ação que apenas encerrou um
+   registro. */
+b.ok(!/labelBtn === 'certBtnAprovar'/.test(semCom),
+  "aprovar não tem desvio nenhum — volta ao painel como estava");
+b.ok(!/labelBtn === 'certBtnIndeferir'/.test(semCom),
+  "indeferir também não");
+
 b.naoTestavel("o botão aparecendo no navegador",
   "jsdom não aplica CSS — este teste cobre display inline em cadeia, que é o " +
   "mecanismo deste modal. Roteiro manual: abrir BOLSA-2026-495017 em produção " +

@@ -397,16 +397,30 @@ b.ok(validaBase >= TETO_TARJA,
   "validação em " + validaBase + "mm");
 b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
 
-b.passo("22. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
+b.passo("22. O CÓDIGO de validação fica; o QR saiu — decisão revista pelo usuário");
 /* 13/08/2026. Eu apontei que o certificado de referência do sindicato não tem
- * QR nem código; o usuário respondeu "manter o QR code e código de validação".
- * Está escrito neste teste, e não só num comentário, porque comentário não
- * impede ninguém de "limpar" o que parece sobra. Aqui, quebra. */
+ * QR nem código; o usuário respondeu "manter o QR code e código de validação",
+ * e esta asserção travou isso — comentário não impede ninguém de "limpar" o
+ * que parece sobra, teste impede.
+ *
+ * 16/09/2026, ELE REVÊ A PRÓPRIA DECISÃO: "tem que tirar o qr code". A trava
+ * cumpriu o papel — reprovou e me obrigou a reconhecer que estava desfazendo
+ * uma escolha dele, em vez de a mudança passar despercebida.
+ *
+ * E ao conferir antes de mexer (REGRA Nº 1) apareceu o motivo de fundo: o QR
+ * apontava para `?page=pub-validar-voucher`, rota que NÃO EXISTE no doGet.
+ * Estava quebrado desde sempre, num documento oficial que a instituição de
+ * ensino recebe.
+ *
+ * O CÓDIGO EM TEXTO CONTINUA, e é ele que esta asserção protege agora: é o
+ * que a instituição usa para conferir por telefone. */
 const comQr = g.gerarHtmlDocumentoVoucher_({
   protocolo: "BOLSA-QR", codigo: "ZZZZ-9999",
   reg: { NOME_SOLICITANTE: "Fulano de Tal" }
 });
-b.ok(/class='valida-qr'/.test(comQr), "o QR está no documento");
+b.ok(!/class='valida-qr'/.test(comQr), "o QR NÃO está mais no documento");
+b.ok(comQr.indexOf("ZZZZ-9999") > -1, "e o código de validação continua impresso");
+b.ok(comQr.indexOf("BOLSA-QR") > -1, "junto do protocolo");
 b.ok(/Código ZZZZ-9999/.test(comQr), "e o código de validação também");
 b.ok(/BOLSA-QR/.test(comQr), "com o protocolo embaixo");
 
