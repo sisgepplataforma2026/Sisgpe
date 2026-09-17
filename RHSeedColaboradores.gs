@@ -179,6 +179,18 @@ function aplicarCentroCustoEDepartamentoReal_publico(tokenSessao) {
 
 function aplicarCentroCustoEDepartamentoReal_() {
   var NOMES_DEPARTAMENTO_ = { "1": "Administração", "2": "Limpeza", "3": "Homologadores", "4": "Atendimento" };
+  /* ⚠️ DIVERGE DO PADRÃO DE TEXTO, E É DE PROPÓSITO — nota de 15/09/2026.
+   *
+   * O sindicato se escreve "SindEducação-ES" em todo texto do sistema, e em
+   * 15/09/2026 as 10 ocorrências com barra que sobravam em documento foram
+   * padronizadas. ESTA não foi, porque aqui não é texto: é o VALOR gravado
+   * no campo Centro de Custo dos colaboradores, que já está na planilha
+   * assim.
+   *
+   * Trocar a constante sem migrar os registros criaria duas grafias do mesmo
+   * centro de custo na base — e relatório que agrupa por esse campo passaria
+   * a mostrar dois centros onde há um. Se for para alinhar, alinha-se a base
+   * junto, em operação própria. */
   var CENTRO_CUSTO_UNICO_ = "SindEducação/ES";
 
   // matrícula -> código do departamento (mesmo valor real do Extrato Mensal 06/2026)

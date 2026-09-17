@@ -174,7 +174,13 @@ const htmlTitular = g.gerarHtmlDocumentoVoucher_({
 });
 b.ok(!/dependente de/.test(htmlTitular),
   "quando o beneficiário é o próprio titular, a oração some");
-b.ok(/semestre letivo de 2026\/1/.test(htmlTitular), "e semestral diz 'semestre letivo'");
+/* O papel do TITULAR escreve o período mais curto que o do dependente:
+   "do Curso de X semestre 2026/1", sem o "letivo de". Confirmado nos dois
+   modelos que o usuário mandou em 18/08/2026 — ver t61. */
+b.ok(/semestre 2026\/1/.test(htmlTitular),
+  "e o titular semestral diz 'semestre 2026/1', como no papel dele");
+b.ok(!/semestre letivo de 2026\/1/.test(htmlTitular),
+  "sem o 'letivo de', que é a forma do papel do dependente");
 b.ok(/instituição <strong>MULTIVIX<\/strong>/.test(htmlTitular),
   "a instituição é o NOME FANTASIA");
 b.ok(/mantida pela <strong>EMBRAE S\/A<\/strong>/.test(htmlTitular),
@@ -391,16 +397,30 @@ b.ok(validaBase >= TETO_TARJA,
   "validação em " + validaBase + "mm");
 b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
 
-b.passo("22. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
+b.passo("22. O CÓDIGO de validação fica; o QR saiu — decisão revista pelo usuário");
 /* 13/08/2026. Eu apontei que o certificado de referência do sindicato não tem
- * QR nem código; o usuário respondeu "manter o QR code e código de validação".
- * Está escrito neste teste, e não só num comentário, porque comentário não
- * impede ninguém de "limpar" o que parece sobra. Aqui, quebra. */
+ * QR nem código; o usuário respondeu "manter o QR code e código de validação",
+ * e esta asserção travou isso — comentário não impede ninguém de "limpar" o
+ * que parece sobra, teste impede.
+ *
+ * 16/09/2026, ELE REVÊ A PRÓPRIA DECISÃO: "tem que tirar o qr code". A trava
+ * cumpriu o papel — reprovou e me obrigou a reconhecer que estava desfazendo
+ * uma escolha dele, em vez de a mudança passar despercebida.
+ *
+ * E ao conferir antes de mexer (REGRA Nº 1) apareceu o motivo de fundo: o QR
+ * apontava para `?page=pub-validar-voucher`, rota que NÃO EXISTE no doGet.
+ * Estava quebrado desde sempre, num documento oficial que a instituição de
+ * ensino recebe.
+ *
+ * O CÓDIGO EM TEXTO CONTINUA, e é ele que esta asserção protege agora: é o
+ * que a instituição usa para conferir por telefone. */
 const comQr = g.gerarHtmlDocumentoVoucher_({
   protocolo: "BOLSA-QR", codigo: "ZZZZ-9999",
   reg: { NOME_SOLICITANTE: "Fulano de Tal" }
 });
-b.ok(/class='valida-qr'/.test(comQr), "o QR está no documento");
+b.ok(!/class='valida-qr'/.test(comQr), "o QR NÃO está mais no documento");
+b.ok(comQr.indexOf("ZZZZ-9999") > -1, "e o código de validação continua impresso");
+b.ok(comQr.indexOf("BOLSA-QR") > -1, "junto do protocolo");
 b.ok(/Código ZZZZ-9999/.test(comQr), "e o código de validação também");
 b.ok(/BOLSA-QR/.test(comQr), "com o protocolo embaixo");
 
@@ -466,4 +486,3 @@ b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
   "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
 
 b.resumo();
-process.exit(0);

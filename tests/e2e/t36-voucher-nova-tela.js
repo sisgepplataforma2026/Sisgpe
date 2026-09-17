@@ -19,7 +19,7 @@ const dom = require("./dom");
 if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Tela de nova solicitação");
   b.naoTestavel("tela de nova solicitação", "jsdom não instalado");
-  b.resumo(); process.exit(0);
+  b.resumo(); process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -538,10 +538,22 @@ function el(id) { return doc.getElementById(id); }
 
     t.clicar("#certBtnAprovar");
     await t.assentar(700);
-    b.ok(el("certModalOverlay").classList.contains("ativo"),
-      "continua aberto depois de aprovar");
-    b.ok(el("certModalEmissaoArea").style.display !== "none",
-      "e a área de emissão apareceu, pronta para gerar o certificado");
+    /* FECHA DEPOIS DE APROVAR — decisão revista pelo usuário em 16/09/2026:
+       "quando aprovar tem que fechar essa tela".
+
+       Esta asserção exigia o CONTRÁRIO, e por uma razão que não era boba:
+       aprovar e emitir vêm colados, a área de emissão está neste mesmo modal,
+       e o modal se reabria sozinho para emendar os dois passos. A trava
+       cumpriu o papel — reprovou e me obrigou a reconhecer que eu estava
+       desfazendo uma escolha anterior, em vez de a mudança passar batida.
+
+       Quem analisa trinta solicitações seguidas fecharia a mesma janela trinta
+       vezes. A aprovação continua gravada e a lista se recarrega; quem quiser
+       emitir abre a linha, que agora está APROVADO. */
+    b.ok(!el("certModalOverlay").classList.contains("ativo"),
+      "o modal FECHA depois de aprovar");
+    b.igual(el("certModalOverlay").style.display, "none",
+      "e sai da tela de verdade, não só perde a classe");
   } else {
     b.aviso("lista vazia no teste", "passo 27 não pôde rodar");
   }
@@ -700,5 +712,5 @@ function el(id) { return doc.getElementById(id); }
   b.igual(quantosAvisos, 1, "e só naquela linha");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

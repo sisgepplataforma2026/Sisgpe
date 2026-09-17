@@ -33,7 +33,7 @@ b.fluxo("OFÍCIOS · Lote de trabalhadores na tela");
 if (!dom.jsdomDisponivel || !dom.jsdomDisponivel()) {
   b.naoTestavel("Comportamento do lote na tela", "jsdom não instalado (npm install)");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 const g = b.subir({}).g;
@@ -264,6 +264,18 @@ b.passo("9. O botão '+ Adicionar' um a um continua funcionando");
 const antes = cards().length;
 clicar("btnAddTrabalhador");
 b.igual(cards().length, antes + 1, "o fluxo antigo não foi quebrado pelo lote");
+
+b.passo("9a. Cada ficha oferece o próprio '+' para continuar a lista");
+const cardOrigem = cards()[0];
+const btnAdicionarNoCard = cardOrigem.querySelector(".btn-adicionar-trabalhador-card");
+b.ok(!!btnAdicionarNoCard, "cada cartão mostra o botão '+' de adicionar trabalhador");
+const antesDoMais = cards().length;
+btnAdicionarNoCard.click();
+b.igual(cards().length, antesDoMais + 1, "o '+' do cartão adiciona um novo trabalhador");
+b.ok(cardOrigem.nextElementSibling && cardOrigem.nextElementSibling.classList.contains("trabalhador-card"),
+  "o novo trabalhador entra logo depois da ficha em que o '+' foi clicado");
+b.igual(cardOrigem.nextElementSibling.querySelector(".trabalhador-titulo").textContent,
+  "Trabalhador 2", "a ordem é renumerada depois da inclusão local");
 
 b.passo("10. O ofício sai com os nomes do mesmo jeito do fluxo um a um");
 /* Pedido do usuário: "tem que ser o ofício com o nome das pessoas do mesmo

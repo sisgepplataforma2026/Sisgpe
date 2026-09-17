@@ -1323,7 +1323,7 @@ function popularMunicipios(){
   });
 }
 
-function aplicarFiltros(){
+function ceAplicarFiltros(){
   var termo=norm(g("ceBusca")?g("ceBusca").value:"");
   var fSit=g("ceFiltroSit")?g("ceFiltroSit").value:"";
   var fMun=g("ceFiltroMun")?g("ceFiltroMun").value:"";
@@ -1348,11 +1348,11 @@ function ordenar(){
   });
 }
 
-function limparFiltros(){
+function ceLimparFiltros(){
   var b=g("ceBusca"); if(b)b.value="";
   var s=g("ceFiltroSit"); if(s)s.value="";
   var m=g("ceFiltroMun"); if(m)m.value="";
-  aplicarFiltros();
+  ceAplicarFiltros();
 }
 
 /* ═══════════════════════════════════
@@ -1409,7 +1409,7 @@ function ceMassaAtualizarSituacao(novaSituacao){
       btnReset(btn);
       if(!resp||resp.ok!==true){ ceMsg("ceMsgTabela",(resp&&resp.mensagem)||"Erro ao atualizar em massa.","err"); return; }
       ceMsg("ceMsgTabela","✅ "+(resp.atualizadas||cnpjs.length)+" escola(s) atualizada(s) para "+novaSituacao+".","ok");
-      ceDesmarcarTodas(); carregarLista();
+      ceDesmarcarTodas(); ceCarregarLista();
     })
     .withFailureHandler(function(err){
       btnReset(btn);
@@ -1430,7 +1430,7 @@ function ceMassaExcluir(){
       btnReset(btn);
       if(!resp||resp.ok!==true){ ceMsg("ceMsgTabela",(resp&&resp.mensagem)||"Erro ao excluir em massa.","err"); return; }
       ceMsg("ceMsgTabela","✅ "+(resp.excluidas||cnpjs.length)+" escola(s) excluída(s).","ok");
-      ceDesmarcarTodas(); carregarLista();
+      ceDesmarcarTodas(); ceCarregarLista();
     })
     .withFailureHandler(function(err){
       btnReset(btn);
@@ -1611,7 +1611,7 @@ function initOrdenacao(){
 /* ═══════════════════════════════════
    CARREGAR LISTA
 ═══════════════════════════════════ */
-function carregarLista(){
+function ceCarregarLista(){
   var btn=g("btnCeRecarregar"); btnLoad(btn,"...");
   if(typeof google==="undefined"||!google.script||!google.script.run){ btnReset(btn); return; }
   google.script.run
@@ -1668,7 +1668,7 @@ function sincronizarCnpj(){
       btnReset(btn);
       if(!resp||resp.erro){ ceCnpjStatus((resp&&resp.mensagem)||"Não foi possível sincronizar.","err"); return; }
       ceCnpjStatus("✅ Sincronização concluída. Status: "+(resp.status||"OK"),"ok");
-      carregarLista();
+      ceCarregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceCnpjStatus("Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
     .sincronizarEscolaPorCnpj(cnpj,true,SISGEP_TOKEN_SESSAO);
@@ -1706,7 +1706,7 @@ function salvarEscola(){
       if(resp.ok===false){ ceMsg("ceMsgBox",resp.mensagem||"Erro ao salvar.","err"); return; }
       ceMsg("ceMsgBox",resp.mensagem||(resp.atualizado?"✅ Escola atualizada com sucesso.":"✅ Escola cadastrada com sucesso."),"ok");
       if(typeof toast==="function") toast(resp.mensagem||"Escola salva!","ok");
-      limparForm(); carregarLista();
+      limparForm(); ceCarregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
     .cadastrarEscola(dados,SISGEP_TOKEN_SESSAO);
@@ -1719,7 +1719,7 @@ function importarDeAba(){
   var btn=g("btnCeImportar"); btnLoad(btn,"Importando...");
   ceMsg("ceMsgBox","Importando escolas da aba IMPORTACAO_ESCOLAS...","info");
   google.script.run
-    .withSuccessHandler(function(res){ btnReset(btn); res=res||{}; ceMsg("ceMsgBox","✅ Importação concluída! Importadas: <strong>"+(res.importadas||0)+"</strong> · Atualizadas: <strong>"+(res.atualizadas||0)+"</strong> · Puladas: <strong>"+(res.puladas||0)+"</strong>","ok"); carregarLista(); })
+    .withSuccessHandler(function(res){ btnReset(btn); res=res||{}; ceMsg("ceMsgBox","✅ Importação concluída! Importadas: <strong>"+(res.importadas||0)+"</strong> · Atualizadas: <strong>"+(res.atualizadas||0)+"</strong> · Puladas: <strong>"+(res.puladas||0)+"</strong>","ok"); ceCarregarLista(); })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro ao importar: "+esc((err&&err.message)||String(err||"")),"err"); })
     .importarEscolasDeAba(SISGEP_TOKEN_SESSAO);
 }
@@ -1748,7 +1748,7 @@ function removerDup(){
       btnReset(btn);
       if(!resp||resp.ok!==true){ ceMsg("ceMsgBox",(resp&&resp.mensagem)||"Erro.","err"); return; }
       ceMsg("ceMsgBox","✅ Removidas: <strong>"+(resp.removidas||0)+"</strong> · Mantidas: <strong>"+(resp.mantidas||0)+"</strong> · Backup: <strong>"+esc(resp.backup||"—")+"</strong>","ok");
-      carregarLista();
+      ceCarregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgBox","Erro: "+esc((err&&err.message)||String(err||"")),"err"); })
     .removerEscolasDuplicadas(SISGEP_TOKEN_SESSAO);
@@ -1799,7 +1799,7 @@ function mostrarCompBar(r){
 
 function criarAbas(){ runReceita("criarAbasModuloReceita","btnCeCriarAbas","Criando...",1,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(1);return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Abas criadas."),"ok"); setPipelineStep(2); }); }
 function processarExtracao(){ runReceita("processarExtracaoOficialReceita","btnCeProcessar","Processando...",3,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");setPipelineStep(3);return;} mostrarCompBar(r); ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Processado."),"ok"); setPipelineStep(4); }); }
-function importarReceita(){ runReceita("importarNovasEscolasReceita","btnCeImportarRec","Importando...",5,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Importado."),"ok"); setPipelineStep(5); carregarLista(); }); }
+function importarReceita(){ runReceita("importarNovasEscolasReceita","btnCeImportarRec","Importando...",5,function(r){ if(!r||r.ok!==true){ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err");return;} ceMsg("ceMsgReceita","✅ "+esc(r.mensagem||"Importado."),"ok"); setPipelineStep(5); ceCarregarLista(); }); }
 
 function carregarConfigReceita(){
   google.script.run
@@ -1837,7 +1837,7 @@ function executarPipeline(){
       if(!r||r.ok!==true){ ceMsg("ceMsgReceita",(r&&r.mensagem)||"Erro.","err"); return; }
       mostrarCompBar(r.comparar||{});
       ceMsg("ceMsgReceita","✅ Pipeline concluído! Captadas: <strong>"+((r.captar||{}).gravadas||0)+"</strong> · Novas: <strong>"+((r.comparar||{}).novas||0)+"</strong> · Existentes: <strong>"+((r.comparar||{}).existentes||0)+"</strong>","ok");
-      setPipelineStep(5); carregarLista();
+      setPipelineStep(5); ceCarregarLista();
     })
     .withFailureHandler(function(err){ btnReset(btn); ceMsg("ceMsgReceita","Erro: "+esc((err&&err.message)||String(err||"")),"err"); setPipelineStep(1); })
     .executarPipelineReceita(SISGEP_TOKEN_SESSAO);
@@ -1852,9 +1852,9 @@ function mask(id,fn){ var el=g(id); if(el&&!el.dataset.ceMask){ el.dataset.ceMas
 
 function bindEventos(){
   // Tabela / busca
-  bind("btnCeRecarregar",carregarLista);
+  bind("btnCeRecarregar",ceCarregarLista);
   bind("btnCeExportCsv",exportarCsv);
-  bind("btnCeLimparFiltros",limparFiltros);
+  bind("btnCeLimparFiltros",ceLimparFiltros);
   bind("btnCePagAnt",function(){ if(CE_PAG>1){CE_PAG--;renderTabela();} });
   bind("btnCePagProx",function(){ var tp=Math.ceil(CE_FILTRADA.length/CE_PAG_TAM); if(CE_PAG<tp){CE_PAG++;renderTabela();} });
 
@@ -1904,9 +1904,9 @@ function bindEventos(){
 
   // Busca com debounce
   var busca=g("ceBusca");
-  if(busca&&!busca.dataset.ceBound){ busca.dataset.ceBound="1"; busca.addEventListener("input",function(){ clearTimeout(busca._t); busca._t=setTimeout(aplicarFiltros,280); }); }
-  var fSit=g("ceFiltroSit"); if(fSit&&!fSit.dataset.ceBound2){ fSit.dataset.ceBound2="1"; fSit.addEventListener("change",aplicarFiltros); }
-  var fMun=g("ceFiltroMun"); if(fMun&&!fMun.dataset.ceBound2){ fMun.dataset.ceBound2="1"; fMun.addEventListener("change",aplicarFiltros); }
+  if(busca&&!busca.dataset.ceBound){ busca.dataset.ceBound="1"; busca.addEventListener("input",function(){ clearTimeout(busca._t); busca._t=setTimeout(ceAplicarFiltros,280); }); }
+  var fSit=g("ceFiltroSit"); if(fSit&&!fSit.dataset.ceBound2){ fSit.dataset.ceBound2="1"; fSit.addEventListener("change",ceAplicarFiltros); }
+  var fMun=g("ceFiltroMun"); if(fMun&&!fMun.dataset.ceBound2){ fMun.dataset.ceBound2="1"; fMun.addEventListener("change",ceAplicarFiltros); }
 
   // Formulário
   bind("btnCeConsultarCnpj",consultarCnpj);
@@ -2325,7 +2325,7 @@ window.initCadastroEscolas = function(){
   initOrdenacao();
   bindEventos();
   atualizarBadgeSit();
-  carregarLista();
+  ceCarregarLista();
   carregarConfigReceita();
 };
 

@@ -5,6 +5,10 @@
 // =============================================================================
 
 /* ================= CONFIG ================= */
+
+/* PADRÃO DE PRODUÇÃO — não leia esta constante para gravar arquivo.
+   A pasta em uso sai de getRecursoId_("VOUCHER_DOCUMENTOS")
+   (AmbienteRecursos.gs), que troca por ambiente. */
 const PASTA_VOUCHER_DOCUMENTOS_ID = "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n";
 
 /* A LOGO É LIDA DO DRIVE E EMBUTIDA EM base64 — não é buscada por URL.
@@ -158,33 +162,95 @@ function formatDateInput_(valor) {
   return Utilities.formatDate(data, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
-function formatarDataBrVoucher_(data) {
-  if (!data) return "";
+/**
+ * Lê uma data de onde ela vier: objeto Date, texto brasileiro ou ISO.
+ * Devolve um Date válido, ou null quando não dá para entender o valor.
+ *
+ * POR QUE ISTO EXISTE (medido em 18/08/2026)
+ *
+ * As quatro funções de data do voucher faziam `new Date(valor)` no texto
+ * cru. O JavaScript lê texto com barra no formato AMERICANO — mês primeiro.
+ * O resultado, medido:
+ *
+ *   "12/08/2026 10:30"  →  8 de DEZEMBRO de 2026   (dia e mês trocados)
+ *   "25/08/2026"        →  Date inválida            (não existe mês 25)
+ *
+ * Os dois estragos são diferentes e o segundo é o que o usuário viu:
+ *
+ *   - Dia até 12: a data SAI, e sai ERRADA. O certificado vai para a
+ *     instituição de ensino com outra data, e ninguém percebe, porque
+ *     08/12/2026 é uma data plausível.
+ *   - Dia de 13 em diante: a data não sai. Na lista fica em branco; no
+ *     documento saía "Vitória/ES, NaN de undefined de NaN.".
+ *
+ * O estrago pegava também a ORDENAÇÃO da lista: ela ordena por
+ * timestampSeguroVoucher_ aplicado ao texto já formatado, então toda linha
+ * com dia acima de 12 virava timestamp 0 e afundava para o fim.
+ *
+ * A ordem de leitura é deliberada: Date primeiro, depois o formato
+ * brasileiro, e só então o Date nativo. O brasileiro vem ANTES porque é o
+ * formato que este sistema grava e mostra — deixar o nativo tentar antes
+ * seria reintroduzir a troca de dia e mês.
+ */
+function voucherDataDeQualquerCoisa_(valor) {
+  if (valor === null || valor === undefined || valor === "") return null;
 
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  if (Object.prototype.toString.call(valor) === "[object Date]") {
+    return isNaN(valor.getTime()) ? null : valor;
+  }
+
+  const texto = String(valor).trim().replace(/^'/, "");
+  if (!texto) return null;
+
+  /* Formato brasileiro: dd/MM/yyyy, com hora opcional. Aceita barra ou
+     traço como separador, porque as duas coisas aparecem em planilha. */
+  const m = texto.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const dia = Number(m[1]), mes = Number(m[2]), ano = Number(m[3]);
+    const hh = Number(m[4] || 0), mi = Number(m[5] || 0), ss = Number(m[6] || 0);
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      const dt = new Date(ano, mes - 1, dia, hh, mi, ss);
+      /* Confere que a data existe de verdade: 31/02 vira 03/03 em
+         JavaScript, e uma data que "escorregou" de mês não é a data que
+         estava escrita na célula. */
+      if (dt.getFullYear() === ano && dt.getMonth() === mes - 1 && dt.getDate() === dia) {
+        return dt;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  /* Só ISO daqui para baixo, e conferido por formato antes de converter.
+     O Date nativo aceita coisa demais: medido, `new Date("período 2026/2")`
+     devolve 1º de fevereiro de 2026 sem reclamar. Como o campo
+     PERIODO_REFERENCIA deste módulo é literalmente "2026/2", deixar o
+     nativo tentar qualquer texto seria transformar período em data — o
+     mesmo tipo de erro silencioso que esta função existe para impedir. */
+  if (!/^\d{4}-\d{2}-\d{2}([T\s]\d{2}:\d{2}(:\d{2})?)?/.test(texto)) return null;
+
+  const nativo = new Date(texto);
+  return isNaN(nativo.getTime()) ? null : nativo;
+}
+
+function formatarDataBrVoucher_(data) {
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy");
 }
 
 function formatarDataHoraBrVoucher_(data) {
-  if (!data) return "";
-
-  const dt = Object.prototype.toString.call(data) === "[object Date]" ? data : new Date(data);
-  if (isNaN(dt.getTime())) return "";
+  const dt = voucherDataDeQualquerCoisa_(data);
+  if (!dt) return "";
 
   return Utilities.formatDate(dt, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
 }
 
 function timestampSeguroVoucher_(valor) {
-  if (!valor) return 0;
-
-  if (Object.prototype.toString.call(valor) === "[object Date]") {
-    return isNaN(valor.getTime()) ? 0 : valor.getTime();
-  }
-
-  const dt = new Date(valor);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+  const dt = voucherDataDeQualquerCoisa_(valor);
+  return dt ? dt.getTime() : 0;
 }
 
 function valorSeguroVoucher_(valor) {
@@ -239,23 +305,36 @@ function percentualPorExtensoVoucher_(n) {
   return mapa[n] || n + " por cento";
 }
 
+/**
+ * A linha de local e data do documento: "Vitória/ES, 12 de Agosto de 2026.".
+ *
+ * Lê pelo voucherDataDeQualquerCoisa_ e NUNCA imprime NaN. Antes, uma célula
+ * com "25/08/2026" — texto brasileiro com dia acima de 12 — saía no
+ * certificado como "Vitória/ES, NaN de undefined de NaN.". O documento ia
+ * assim para a instituição de ensino.
+ *
+ * Quando a data não é legível de jeito nenhum, cai para hoje — que é o mesmo
+ * que já acontecia com célula vazia. ATENÇÃO: numa REEMISSÃO de certificado
+ * antigo isso data o documento com o dia de hoje. Vale rever se aparecer
+ * reemissão de documento antigo na operação.
+ */
 function dataExtensoVoucher_(data) {
-  if (!data) data = new Date();
-
+  /* MINÚSCULA, e sem ponto no fim — é assim nos dois certificados que o
+     usuário mandou em 18/08/2026 ("Vitória/ES, 18 de agosto de 2026") e é
+     assim em português: nome de mês não é nome próprio. */
   const meses = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
   ];
 
-  const dt = data instanceof Date ? data : new Date(data);
+  const dt = voucherDataDeQualquerCoisa_(data) || new Date();
 
   return "Vitória/ES, " +
     String(dt.getDate()).padStart(2, "0") +
     " de " +
     meses[dt.getMonth()] +
     " de " +
-    dt.getFullYear() +
-    ".";
+    dt.getFullYear();
 }
 
 function escHtmlVoucher_(t) {
@@ -645,7 +724,8 @@ function seedVoucherRules_() {
    * `if (existingData.length > 1) return;` logo acima). Alterar percentual
    * de planilha que já opera é mudança de dinheiro e exige migração
    * própria, com prévia — nunca de passagem por um seed. */
-  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
+  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+                  "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"];
   const POR_ORDEM = { "1": 100, "2": 100, "3": 60 };
   const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
   const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
@@ -898,8 +978,11 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
    * nas regras do voucher" lá no fim — pedido recusado por um buraco no
    * código, não por regra da convenção. Segue os mesmos 100/100/60 das
    * demais modalidades do ensino básico. */
+  /* PRE_VESTIBULAR entra aqui junto com as demais do ensino básico —
+     confirmado pelo usuário em 17/09/2026: mesma regra, 100/100/60 por ordem
+     do filho, e contando no teto de três por associado. */
   if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
-       "ENSINO_MEDIO", "TECNICO"].indexOf(modalidade) > -1) {
+       "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"].indexOf(modalidade) > -1) {
     let percentual = "";
 
     if (ordemFilho === "1" || ordemFilho === "2") percentual = "100";
@@ -1161,7 +1244,10 @@ function registrarHistoricoVoucher_(idSolicitacao, cpf, acao, usuario, observaco
 /* ================= DOCUMENTOS NO DRIVE ================= */
 
 function obterPastaVoucherDocumentos_() {
-  const pastaId = String(PASTA_VOUCHER_DOCUMENTOS_ID || "").trim();
+  /* A pasta sai de getRecursoId_ (AmbienteRecursos.gs), que troca por ambiente
+     e trava a gravação se a homologação cair na pasta de produção.
+     PASTA_VOUCHER_DOCUMENTOS_ID, acima, é só o padrão de produção. */
+  const pastaId = String(getRecursoId_("VOUCHER_DOCUMENTOS") || "").trim();
 
   if (!pastaId) {
     throw new Error("Pasta de documentos do Voucher não configurada.");
@@ -1191,7 +1277,7 @@ function salvarDocumentoVoucher_(idSolicitacao, cpf, arquivo, tipoDocumento, obs
     const file = pasta.createFile(blob);
 
     try {
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      arquivoAplicarPolitica_(file, "Voucher.gs");
     } catch(e) {}
 
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -1260,7 +1346,13 @@ function registrarDocumentosPayloadVoucher_(idSolicitacao, cpf, payload) {
       payload.docPessoal,
       "DOCUMENTO_PESSOAL",
       "Documento pessoal.",
-      nomeSolicitante
+      /* O DOCUMENTO PESSOAL É DE QUEM RECEBE A BOLSA, não de quem pede.
+         Nas solicitações de dependente o arquivo saía com o nome do titular
+         no rótulo — "Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf" —
+         e quem abre a pasta do Drive para conferir o documento da Ana lê o
+         nome do pai. O contracheque continua no nome do titular, porque é
+         dele que ele é. */
+      valorSeguroVoucher_(payload && payload.nomeBeneficiario) || nomeSolicitante
     );
 
     if (doc) documentos.push(doc);
@@ -1327,6 +1419,17 @@ function getPortalVoucherInitData() {
       { value: "CRECHE",             label: "Creche (0–3 anos)" },
       { value: "ENSINO_FUNDAMENTAL", label: "Ensino Fundamental (6–14 anos)" },
       { value: "ENSINO_MEDIO",       label: "Ensino Médio (15–17 anos)" },
+      /* PRÉ-VESTIBULAR FALTAVA NO MENU — 17/09/2026, apontado pelo usuário:
+         "tem pré-vestibular também". Ele existia numa tabela de percentual do
+         painel (100%) e em lugar nenhum mais: não estava aqui, então ninguém
+         conseguia pedir, e não estava na regra, então quem pedisse por outro
+         caminho levaria "Modalidade não reconhecida".
+
+         É o MESMO defeito que o Ensino Médio teve, e que está documentado
+         vinte linhas abaixo em calcularRegraVoucherConvencao_. Duas vezes a
+         mesma falha: uma modalidade que existe num lugar do sistema e não
+         existe nos outros dois. */
+      { value: "PRE_VESTIBULAR",     label: "Pré-Vestibular (17–18 anos)" },
       { value: "TECNICO",            label: "Técnico (15–25 anos)" },
       { value: "GRADUACAO",          label: "Graduação" },
       { value: "POS_GRADUACAO",      label: "Pós-Graduação" }
@@ -1405,7 +1508,21 @@ function listarSolicitacoesVoucher() {
         id: String(val(l, "ID_SOLICITACAO", "ID", "ID_SOL", "SOLICITACAO_ID") || ""),
         protocolo: String(val(l, "NUMERO_PROTOCOLO", "PROTOCOLO", "Nº PROTOCOLO", "NUMERO DO PROTOCOLO", "NÚMERO_PROTOCOLO") || ""),
         nome: String(val(l, "NOME_SOLICITANTE", "NOME", "NOME COMPLETO", "SOLICITANTE", "NOME_ASSOCIADO") || ""),
-        cpf: String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || ""),
+        /* FORMATADO, NÃO CRU — 16/09/2026.
+         *
+         * A planilha guarda CPF_SOLICITANTE como NÚMERO, e número não tem
+         * zero à esquerda: o CPF 085.381.047-80 virou "8538104780" na célula.
+         * O certificado e o e-mail já saíam certos, porque passam por
+         * `formatarCpfVoucher_` — que completa os zeros e PROVA o resultado
+         * pelo dígito verificador antes de aceitar. A lista do painel era o
+         * único lugar que ainda mostrava o número cru.
+         *
+         * Isso não era só feio: a busca por solicitante procura no nome E no
+         * CPF, e quem digitasse o CPF de verdade (com o zero, ou pontuado)
+         * não achava a solicitação. */
+        cpf: (typeof formatarCpfVoucher_ === "function"
+          ? formatarCpfVoucher_(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO"))
+          : String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || "")),
 
         email: String(val(l, "EMAIL", "E-MAIL", "E_MAIL") || ""),
         telefone: String(val(l, "TELEFONE", "WHATSAPP", "CELULAR") || ""),
@@ -1417,6 +1534,15 @@ function listarSolicitacoesVoucher() {
 
         tipoBeneficiario: String(val(l, "TIPO_BENEFICIARIO", "BENEFICIARIO", "TIPO BENEFICIÁRIO") || ""),
         nomeBeneficiario: String(val(l, "NOME_BENEFICIARIO", "NOME DO BENEFICIARIO", "NOME_BENEF") || ""),
+        /* A IDADE VIAJA ATÉ O PAINEL — 16/09/2026.
+         *
+         * Era medida na entrada, gravada na planilha, e parava ali: a tela de
+         * análise não tinha o número. Quem conferia via o status
+         * BLOQUEADA_POR_REGRA e precisava abrir a observação para descobrir
+         * que o motivo era idade. O pedido do usuário é o contrário — "o
+         * sistema automaticamente tem que informar: dependente fora da
+         * idade". Informar exige o dado do lado de cá. */
+        idade: String(val(l, "IDADE_BENEFICIARIO", "IDADE") || ""),
 
         nivel: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),
         modalidade: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),
@@ -1692,7 +1818,7 @@ function excluirSolicitacaoVoucher(idSolicitacao) {
       if (String(dados[i][idxId] || "") === String(idSolicitacao || "")) {
         const protocolo = String(dados[i][idxProt] || "");
 
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirSolicitacaoVoucher" });
 
         registrarHistoricoVoucher_(
           idSolicitacao,

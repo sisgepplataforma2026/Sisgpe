@@ -297,4 +297,3 @@ b.naoTestavel("A faixa na tela e o apóstrofo protetor na planilha real",
   "a faixa se confere abrindo o modal no ar; o apóstrofo, olhando a célula no Sheets");
 
 b.resumo();
-process.exit(0);
