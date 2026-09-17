@@ -69,14 +69,40 @@ function atualizarStatusProtocolo_(protocolo, status, responsavel, observacao) {
   }
 }
 
+/**
+ * PEDIR DOCUMENTO SEM DIZER QUAL NÃO É PEDIDO, É ADIVINHAÇÃO — 17/09/2026.
+ *
+ * O usuário perguntou se o associado recebia e-mail ao ter a complementação
+ * solicitada. Recebia — e foi ao conferir POR EXECUÇÃO que o defeito
+ * apareceu: sem ninguém digitar nada, saía um e-mail dizendo
+ *
+ *   "Precisamos de complementação para dar continuidade à sua solicitação.
+ *    Complementação solicitada pela análise administrativa."
+ *
+ * ...que não nomeia UM documento. Quem recebe não sabe o que mandar, e liga
+ * para o sindicato para perguntar — o oposto do que o e-mail existia para
+ * fazer. O texto padrão preenchia a lacuna e, ao preenchê-la, escondia que
+ * ela existia.
+ *
+ * Agora a orientação é OBRIGATÓRIA, como já era a justificativa do
+ * indeferimento. A trava fica aqui, no backend, e não só na tela: tela é
+ * conveniência, servidor é regra.
+ */
 function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
 
+    const observacao = String(obs || "").trim();
+    if (!observacao) {
+      return {
+        ok: false,
+        mensagem: "Escreva o que está faltando — esse texto vai no e-mail para o associado."
+      };
+    }
+
     const usuario = obterUsuarioAtualVoucher_();
-    const observacao = obs || "Complementação solicitada pela análise administrativa.";
 
     atualizarStatusSolicitacao_(item, "ANALISE", observacao);
     atualizarStatusProtocolo_(protocolo, "ANALISE", usuario, observacao);
@@ -444,10 +470,18 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
       htmlBody:
         voucherEmailHtml_("Solicitação de complementação",
         "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
-        "<p>Precisamos de complementação para dar continuidade à sua solicitação de bolsa.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
-        "<div style='margin:14px 0;padding:12px 16px;background:#f8fafc;border-left:4px solid #001f4d;border-radius:8px;'>" +
+        "<p>Para dar continuidade à sua solicitação de bolsa, precisamos do seguinte:</p>" +
+        /* O QUE FALTA VEM ANTES DO PROTOCOLO e em destaque. Na versão
+         * anterior o pedido aparecia depois do número, num bloco cinza sem
+         * título — e quem lê no celular via primeiro um código e depois uma
+         * frase administrativa. O documento pedido é a única informação que
+         * essa mensagem precisa entregar. */
+        "<div style='margin:14px 0;padding:14px 16px;background:#fffbeb;border:1px solid #fcd34d;" +
+        "border-left:4px solid #d97706;border-radius:8px;font-size:14.5px;color:#92400e;'>" +
         escHtmlVoucher_(obs) + "</div>" +
+        "<p style='font-size:13px;color:#475569;'>Basta responder a este e-mail com o documento anexado, " +
+        "ou falar com a Secretaria se tiver dúvida sobre o que enviar.</p>" +
+        "<p style='font-size:12.5px;color:#64748b;'>Protocolo: <strong>" + escHtmlVoucher_(protocolo) + "</strong></p>" +
         "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 

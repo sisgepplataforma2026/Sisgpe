@@ -251,6 +251,66 @@ b.igual(String(linha(prot3).STATUS_SOLICITACAO), "PENDENTE",
 b.igual(String(linha(prot3).PERCENTUAL_APLICADO), "70",
   "com o percentual original preservado");
 
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("BOLSAS · Pedir documento sem dizer qual não é pedido");
+
+/* "Não deveria ir um e-mail para a pessoa solicitando documentos?" — você,
+   17/09/2026. Ia. Foi ao conferir POR EXECUÇÃO que o defeito apareceu: sem
+   ninguém digitar nada, o e-mail saía dizendo "Precisamos de complementação
+   para dar continuidade... Complementação solicitada pela análise
+   administrativa" — sem nomear um documento sequer. */
+b.passo("1. Sem dizer o que falta, o pedido é recusado");
+
+const quemD = novoAssociado("DANIELA DE TESTE");
+const r6 = enviarPeloPortal({
+  tipoBeneficiario: "TITULAR", nomeBeneficiario: quemD.nome,
+  dataNascimentoBeneficiario: "1980-05-10",
+  modalidade: "POS_GRADUACAO", curso: "MBA LOGISTICA"
+}, quemD);
+const protC = r6 && r6.protocolo && r6.protocolo.numeroProtocolo;
+b.ok(!!protC, "solicitação criada", protC);
+
+amb.reset();
+const vazio2 = g.solicitarComplementacaoVoucher(protC, "", TOKEN);
+b.ok(vazio2 && vazio2.ok === false,
+  "complementação sem orientação é recusada", vazio2 && vazio2.mensagem);
+b.ok(String(vazio2.mensagem).indexOf("e-mail") > -1,
+  "e a mensagem explica POR QUE: o texto vai para o associado", vazio2.mensagem);
+b.igual(amb.outbox.length, 0, "nenhum e-mail sai sem dizer o que falta");
+b.igual(String(linha(protC).STATUS_SOLICITACAO), "PENDENTE",
+  "e o status não muda — a solicitação não fica em análise por engano");
+
+/* SÓ ESPAÇO TAMBÉM NÃO VALE. Sem o trim, um espaço em branco passaria pela
+   checagem e o e-mail sairia com um bloco vazio em destaque. */
+const soEspaco = g.solicitarComplementacaoVoucher(protC, "     ", TOKEN);
+b.ok(soEspaco && soEspaco.ok === false, "nem só com espaços em branco");
+b.igual(amb.outbox.length, 0, "e continua sem enviar nada");
+
+b.passo("2. Com a orientação, o e-mail diz exatamente o que mandar");
+amb.reset();
+const PEDIDO = "Falta o comprovante de matrícula do semestre 2027/1 e o RG do beneficiário.";
+const okC = g.solicitarComplementacaoVoucher(protC, PEDIDO, TOKEN);
+b.ok(okC && okC.ok === true, "o pedido é aceito", okC && okC.mensagem);
+b.igual(amb.outbox.length, 1, "e sai um e-mail");
+
+const mailC = amb.outbox[0];
+b.igual(mailC.via, "GmailApp", "pela porta da Secretaria");
+b.igual(mailC.to, quemD.email, "para o associado");
+b.ok(mailC.htmlBody.indexOf(PEDIDO) > -1,
+  "com o texto da Secretaria, dizendo QUAIS documentos faltam");
+b.ok(mailC.htmlBody.indexOf("Complementação solicitada pela análise administrativa") === -1,
+  "e sem a frase genérica, que não nomeava documento nenhum");
+
+/* O QUE FALTA VEM ANTES DO PROTOCOLO: quem lê no celular não pode receber
+   primeiro um código e depois a frase que importa. */
+b.ok(mailC.htmlBody.indexOf(PEDIDO) < mailC.htmlBody.indexOf(protC),
+  "o documento pedido aparece ANTES do número de protocolo");
+b.ok(mailC.htmlBody.indexOf("responder a este e-mail") > -1,
+  "e o e-mail diz o que fazer com o documento");
+
+b.igual(String(linha(protC).STATUS_SOLICITACAO), "ANALISE",
+  "a solicitação vai para a fila de Em Análise — a de complementação solicitada");
+
 b.naoTestavel("o botão e o modal na tela do painel",
   "jsdom não aplica CSS — roteiro manual: abrir uma solicitação BLOQUEADA_POR_REGRA " +
   "em homologação, clicar em '📣 Comunicar fora da regra', editar o texto e enviar");

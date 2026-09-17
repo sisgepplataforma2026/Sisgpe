@@ -3791,6 +3791,22 @@ function initInterno(){
   });
 
   if(g('certBtnComplementar')) g('certBtnComplementar').addEventListener('click',function(){
+    /* DIZER O QUE FALTA É OBRIGATÓRIO — 17/09/2026.
+     *
+     * Este texto vai INTEIRO para o e-mail do associado. Sem ele, saía
+     * "Precisamos de complementação... Complementação solicitada pela
+     * análise administrativa" — que não nomeia um documento sequer. A pessoa
+     * recebia e ligava para perguntar o que mandar.
+     *
+     * A trava de verdade está no backend; esta aqui existe para o erro
+     * aparecer no campo que a pessoa acabou de deixar em branco, e não numa
+     * mensagem depois da ida ao servidor. */
+    var obs = g('certModalObs') ? String(g('certModalObs').value||'').trim() : '';
+    if(!obs){
+      cert_msg('Escreva o que está faltando — esse texto vai no e-mail para o associado.','warn');
+      if(g('certModalObs')) g('certModalObs').focus();
+      return;
+    }
     acao('solicitarComplementacaoCertBolsa','certBtnComplementar','Complementação solicitada');
   });
 
