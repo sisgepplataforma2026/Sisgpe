@@ -5817,3 +5817,24 @@ mensagem recebida prova que o alias está verificado na conta executora.
 vale para o que for digitado **daqui em diante**. O que o navegador já guardou
 antes da correção continua lá até alguém limpar os dados de navegação — no seu
 computador, os quatro CPFs do print vão continuar aparecendo.
+
+### Estado dos ambientes — 17/09/2026, 00h
+
+| Ambiente | Branch fixo | Commit |
+|---|---|---|
+| Homologação | `integracao/sisgep-homologacao` | `3e9aaaa` (run #156) |
+| Produção | `producao/sisgep` | `3e9aaaa` (run #76) |
+
+**A esteira mudou:** cada ambiente passou a ter o seu branch fixo. Promover é
+empurrar o commit homologado para `producao/sisgep` e disparar — nenhum
+arquivo é editado. A dívida das quatro âncoras reescritas à mão está
+**encerrada**, e no lugar entrou uma trava que não existia: o commit precisa
+estar contido no branch de homologação, senão o job reprova.
+
+Os branches `promocao/hml-*` ficaram órfãos. Não apaguei nenhum — REGRA Nº 1
+vale para branch também, e eles são o rastro das promoções anteriores. Se
+quiser limpar, é pedido explícito e em passo separado.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 51 | 🔴 a próxima promoção funciona só empurrando para `producao/sisgep` | esteira |
