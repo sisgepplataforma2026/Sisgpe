@@ -1568,3 +1568,132 @@ function formatarCorpoEmailHTML_(texto) {
     return "<p style='margin:0 0 14px 0;text-align:justify;line-height:1.7;'>" + html + "</p>";
   }).join("");
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RASCUNHOS ÓRFÃOS — A VARREDURA QUE LISTA, E NÃO APAGA
+
+   POR QUE EXISTE. O envio do SISGEP cria um rascunho e manda em seguida; se
+   o `send()` falha, o `catch` apaga o rascunho antes de deixar o erro subir.
+   O que NENHUM dos dois caminhos cobre é a execução ser INTERROMPIDA entre
+   uma coisa e outra — o timeout de 6 minutos do Apps Script, ou a execução
+   cancelada. Ali o `catch` nunca roda, e sobra um rascunho na caixa que, para
+   quem olha, parece documento pendente de mandar.
+
+   POR QUE ELA SÓ LISTA — decisão de 17/09/2026, com o usuário dizendo "caso
+   ache necessário". Duas razões, e as duas pesam mais do que a conveniência
+   de apagar sozinho:
+
+   1. NÃO DÁ PARA SABER COM CERTEZA o que o sistema criou. A caixa do
+      financeiro tem 31 rascunhos, vários escritos à mão, alguns de junho, com
+      assuntos de trabalho — "Relação de filiados atualizados", "Filiação -
+      Gabriel - UNISALES". Qualquer regra que eu escrevesse para reconhecer "o
+      que é do sistema" acertaria quase sempre e erraria um dia. Apagar
+      rascunho é irreversível, e o dia do erro seria o dia em que ele perde
+      um texto que estava escrevendo.
+
+   2. O CAMINHO DE ENVIO NÃO PODE SER INSTRUMENTADO POR ISSO. A alternativa
+      segura seria registrar o id do rascunho antes de mandar e apagar o
+      registro depois — aí a varredura saberia exatamente o que é do sistema.
+      Mas isso põe duas escritas de PropertiesService dentro do envio do
+      OFÍCIO, que é a única operação viva do sindicato. Trocar um risco raro
+      (rascunho sobrando quando o script morre no meio) por um risco no
+      caminho crítico de todo dia é mau negócio.
+
+   O QUE ELA RESOLVE: o problema real não é o rascunho existir, é NINGUÉM
+   SABER que ele existe. Listado, quem decide é quem conhece a caixa.
+
+   Roda pelo editor do Apps Script (botão Run) ou por uma tela com sessão —
+   ver escolaExigirAdminOuSessao_, o mesmo padrão de porta dupla.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Assuntos que o SISGEP produz. Usado só para CLASSIFICAR na listagem. */
+var OFICIOS_MARCAS_ASSUNTO_ = [
+  "Ofício de ", "Ofício ", "Certificado de Bolsa", "Voucher de Bolsa",
+  "Solicitação de Bolsa", "Complementação de documentos", "Bolsa aprovada",
+  "Taxa Negocial", "Declaração de ", "Atendimento presencial necessário"
+];
+
+function oficiosRascunhosOrfaos(minutosMinimos, tokenSessao) {
+  escolaExigirAdminOuSessao_(tokenSessao, "oficiosRascunhosOrfaos", true);
+
+  /* O PISO DE IDADE EXISTE PARA NÃO ACUSAR QUEM ESTÁ ENVIANDO AGORA.
+   * Entre createDraft e send passam segundos; um rascunho de 30 segundos
+   * atrás provavelmente está a caminho, não órfão. 15 minutos é folga
+   * confortável sobre o teto de 6 minutos de execução do Apps Script. */
+  var minutos = Number(minutosMinimos);
+  if (!minutos || minutos < 1) minutos = 15;
+  var limite = Date.now() - minutos * 60 * 1000;
+
+  try {
+    var rascunhos = GmailApp.getDrafts();
+    var achados = [];
+
+    rascunhos.forEach(function (d) {
+      var msg, assunto = "", quando = null, anexos = 0, para = "";
+      try {
+        msg = d.getMessage();
+        assunto = String(msg.getSubject() || "");
+        quando = msg.getDate();
+        para = String(msg.getTo() || "");
+        anexos = (msg.getAttachments() || []).length;
+      } catch (eLeitura) { return; }
+
+      if (!quando || quando.getTime() > limite) return;
+
+      /* PARECE do sistema — e "parece" é a palavra certa. Nenhuma marca aqui
+       * é prova; é por isso que esta função não apaga nada. */
+      var pareceDoSistema = false;
+      for (var i = 0; i < OFICIOS_MARCAS_ASSUNTO_.length; i++) {
+        if (assunto.indexOf(OFICIOS_MARCAS_ASSUNTO_[i]) > -1) { pareceDoSistema = true; break; }
+      }
+
+      achados.push({
+        assunto: assunto || "(sem assunto)",
+        para: para,
+        quando: Utilities.formatDate(quando, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+        idadeHoras: Math.floor((Date.now() - quando.getTime()) / 3600000),
+        anexos: anexos,
+        pareceDoSistema: pareceDoSistema,
+        id: d.getId()
+      });
+    });
+
+    achados.sort(function (a, b) { return b.idadeHoras - a.idadeHoras; });
+
+    var doSistema = achados.filter(function (a) { return a.pareceDoSistema; });
+
+    var linhas = [];
+    linhas.push("RASCUNHOS COM MAIS DE " + minutos + " MINUTOS: " + achados.length);
+    linhas.push("Dos quais PARECEM do SISGEP (pelo assunto): " + doSistema.length);
+    linhas.push("");
+    linhas.push("ATENÇÃO: 'parece' não é prova. Esta função NÃO apaga nada.");
+    linhas.push("Confira um a um antes de apagar qualquer coisa no Gmail.");
+    linhas.push("");
+    achados.forEach(function (a) {
+      linhas.push((a.pareceDoSistema ? "[SISGEP?] " : "[manual?] ") +
+        a.quando + " · " + a.idadeHoras + "h · " +
+        (a.anexos ? a.anexos + " anexo(s) · " : "") +
+        (a.para ? "para " + a.para + " · " : "sem destinatário · ") +
+        a.assunto);
+    });
+
+    var relatorio = linhas.join("\n");
+    Logger.log(relatorio);
+
+    return {
+      ok: true,
+      total: achados.length,
+      doSistema: doSistema.length,
+      minutos: minutos,
+      rascunhos: achados,
+      relatorio: relatorio,
+      mensagem: achados.length === 0
+        ? "Nenhum rascunho com mais de " + minutos + " minutos."
+        : achados.length + " rascunho(s), " + doSistema.length + " com cara de SISGEP. Nada foi apagado."
+    };
+
+  } catch (e) {
+    Logger.log("oficiosRascunhosOrfaos: " + e.message + "\n" + (e.stack || ""));
+    return { ok: false, mensagem: "Erro ao varrer os rascunhos: " + e.message };
+  }
+}
