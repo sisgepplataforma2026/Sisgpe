@@ -117,11 +117,22 @@ b.ok(/getElementById\('situacaoVinculo'\)/.test(portal),
   "mas o campo continua existindo — sete pontos do arquivo o leem, e removê-lo estouraria todos");
 
 b.passo("O parentesco não fica preso em TITULAR");
-/* Visto no seu print: tipo de beneficiário "Filho(a)" com parentesco
+/* Visto no seu print de 16/09: tipo de beneficiário "Filho(a)" com parentesco
    "Titular". O ramo do titular gravava 'TITULAR' no campo e nada desfazia ao
-   trocar para dependente — o valor errado ia junto na solicitação. */
-b.ok(/String\(parentesco\.value \|\| ''\)\.toUpperCase\(\) === 'TITULAR'\)[\s\S]{0,60}parentesco\.value = '';/.test(portal),
-  "ao sair de titular, o parentesco é limpo em vez de ficar com o valor velho");
+   trocar para dependente — o valor errado ia junto na solicitação.
+
+   A CORREÇÃO DE ONTEM LIMPAVA O CAMPO ao sair de titular, e esta asserção
+   travava isso. Em 17/09 ela foi substituída por uma trava mais forte: o
+   campo saiu da tela e o valor passou a ACOMPANHAR o tipo, sempre. Sem campo
+   para divergir, não há como divergir — o defeito deixou de ser possível em
+   vez de ser corrigido.
+
+   O teste de comportamento está em t183, que troca o tipo e lê o valor. Aqui
+   fica só a garantia estrutural de que a sincronia existe no arquivo. */
+b.ok(/if \(parentesco\) \{\s*parentesco\.value = tipo;/.test(portal),
+  "o parentesco acompanha o tipo do beneficiário, sem campo para divergir");
+b.ok(/id="boxParentesco" hidden/.test(portal),
+  "e o campo não é mais perguntado à pessoa");
 
 b.passo("O cabeçalho é o bloco navy do sistema, não um título solto");
 /* "Esse layout não é padrão SISGEP" — você, depois da troca de paleta, e com

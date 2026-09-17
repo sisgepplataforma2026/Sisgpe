@@ -497,7 +497,29 @@
           <select id="tipoBeneficiario"></select>
         </div>
 
-        <div class="field" id="boxParentesco">
+        <!-- PARENTESCO SAIU DA TELA — 17/09/2026, apontado pelo usuário:
+             "se dependente for filho o parentesco não deveria aparecer".
+
+             Ele está certo, e vale mais do que parece: as duas listas eram
+             quase a mesma. Tipo de beneficiário oferece Titular, Cônjuge,
+             Filho(a) e Enteado(a); parentesco oferecia Titular, Cônjuge,
+             Companheiro(a), Filho(a) e Enteado(a). Escolher "Filho(a)" no
+             primeiro e ter de escolher "Filho(a)" de novo no segundo é pedir
+             que a pessoa repita o que acabou de dizer — e abre a chance de
+             ela dizer coisa diferente nos dois, que foi exatamente o defeito
+             de ontem: tipo "Filho(a)" com parentesco preso em "Titular".
+
+             CONFERIDO ANTES DE ESCONDER: PARENTESCO não entra em documento
+             nenhum. É gravado na planilha e lido pela memória de instituições
+             — nada mais. E `obterParentescoFinal()` já derivava do tipo
+             quando o campo estava vazio, então o valor continua sendo
+             gravado, agora sempre coerente com o tipo.
+
+             FICA NO DOM, escondido, e não é removido: sete pontos deste
+             arquivo leem `getElementById('parentesco')`, e tirá-lo do
+             documento transformaria cada um deles num erro de JavaScript que
+             derruba a página inteira (REGRA Nº 0). -->
+        <div class="field" id="boxParentesco" hidden style="display:none;">
           <label for="parentesco">Parentesco</label>
           <select id="parentesco"></select>
         </div>
@@ -1140,12 +1162,13 @@ function ajustarCamposVoucher() {
       titular.readOnly = false;
     }
 
-    /* O PARENTESCO FICAVA PRESO EM "TITULAR" — 16/09/2026, visto no print do
-       usuário: tipo de beneficiário "Filho(a)" com parentesco "Titular". O
-       ramo do titular grava 'TITULAR' no campo, e nada o desfazia ao trocar
-       para dependente. O valor errado ia junto na solicitação. */
-    if (parentesco && String(parentesco.value || '').toUpperCase() === 'TITULAR') {
-      parentesco.value = '';
+    /* O PARENTESCO ACOMPANHA O TIPO, sempre — 17/09/2026.
+       Antes ele só era LIMPO ao sair de titular, e o resto dependia de a
+       pessoa escolher de novo. Agora é o tipo que manda: escolheu Filho(a),
+       o parentesco é FILHO. Sem campo para divergir, não há como divergir —
+       que era o defeito de ontem (tipo "Filho(a)" com parentesco "Titular"). */
+    if (parentesco) {
+      parentesco.value = tipo;
     }
   }
 }

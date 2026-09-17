@@ -272,6 +272,56 @@ b.igual(campo("protocoloEncerrado").style.display, "none",
 b.igual(campo("protocoloAcoesBox").style.display, "",
   "e devolve os botões do recibo para o próximo protocolo");
 
+/* ── 6. PARENTESCO SAIU DA TELA, MAS NÃO DO DADO ────────────────────────── */
+/* "Se dependente for filho o parentesco não deveria aparecer, correto?" —
+   você, 17/09/2026. Correto: as duas listas eram quase a mesma, e escolher
+   "Filho(a)" duas vezes abre a chance de dizer coisa diferente nas duas — que
+   foi o defeito de ontem, tipo "Filho(a)" com parentesco preso em "Titular". */
+b.passo("6. O parentesco deixa de ser perguntado");
+
+b.ok(!!campo("boxParentesco"), "o campo continua no DOM");
+b.ok(campo("boxParentesco").hasAttribute("hidden"), "mas escondido da pessoa");
+
+/* NÃO FOI REMOVIDO, e isso é decisão: sete pontos deste arquivo leem
+   getElementById('parentesco'). Tirá-lo do documento faria cada um deles
+   estourar e derrubar a página inteira — a REGRA Nº 0 de novo. */
+const usos = (fonte.match(/getElementById\('parentesco'\)/g) || []).length;
+b.ok(usos >= 4, "e continua sendo lido pelo código", usos + " pontos");
+
+/* O VALOR ACOMPANHA O TIPO. É o que garante que o dado gravado continua
+   certo mesmo sem ninguém escolher. */
+b.passo("e o valor passa a vir do tipo, sem chance de divergir");
+
+function opcao(id, valor) {
+  const el = campo(id);
+  if (!Array.prototype.some.call(el.options, function (o) { return o.value === valor; })) {
+    const op = doc.createElement("option");
+    op.value = valor; op.textContent = valor;
+    el.appendChild(op);
+  }
+  el.value = valor;
+}
+/* TITULAR JUNTO: sem ele o select rejeitaria o valor e o teste mediria ""
+   em vez do que a tela grava. Foi o que aconteceu na primeira rodada. */
+["TITULAR", "FILHO", "ENTEADO", "CONJUGE"].forEach(function (t) { opcao("parentesco", t); });
+
+[["FILHO", "FILHO"], ["ENTEADO", "ENTEADO"], ["CONJUGE", "CONJUGE"]].forEach(function (par) {
+  setar("tipoBeneficiario", par[0]);
+  win.ajustarCamposVoucher();
+  b.igual(campo("parentesco").value, par[1],
+    "tipo " + par[0] + " grava parentesco " + par[1]);
+});
+
+/* O CASO QUE QUEBROU ONTEM: titular grava TITULAR, e trocar para filho tem
+   de trocar o parentesco junto — antes ficava preso. */
+setar("tipoBeneficiario", "TITULAR");
+win.ajustarCamposVoucher();
+b.igual(campo("parentesco").value, "TITULAR", "titular grava TITULAR");
+setar("tipoBeneficiario", "FILHO");
+win.ajustarCamposVoucher();
+b.igual(campo("parentesco").value, "FILHO",
+  "e ao trocar para filho o parentesco acompanha — não fica preso em TITULAR");
+
 b.naoTestavel("como isso APARECE no navegador",
   "jsdom não desenha nem aplica CSS — roteiro manual: abrir o link público, " +
   "salvar uma solicitação e conferir que só o card verde fica na tela");
