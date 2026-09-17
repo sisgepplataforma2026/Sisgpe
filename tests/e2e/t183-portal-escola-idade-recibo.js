@@ -169,6 +169,65 @@ const avisoFilho = (tela.avisos || []).map(function (a) { return String(a.msg ||
 b.ok(/24 anos/.test(avisoFilho),
   "mas FILHO de 30 continua sendo avisado do limite de 24");
 
+/* ── 1c. A FAIXA POR CURSO AVISA, E NÃO RECUSA ──────────────────────────── */
+/* "A idade não interfere" — você, 17/09/2026. A medição deu razão: a tela
+   recusava CINCO casos que a convenção aprova. A tabela de faixas (Creche
+   0–3, Médio 15–17…) não está na convenção — alguém a escreveu como apoio e
+   ela virou regra por acidente, a mesma coisa que barrava o titular em Pós e
+   o cônjuge em Graduação. */
+b.passo("1c. Quem repetiu, entrou adiantado ou voltou a estudar consegue pedir");
+
+function msgDaTela() {
+  const el = doc.getElementById("msgBox");
+  return el ? el.textContent.replace(/\s+/g, " ").trim() : "";
+}
+function tentar(idade, modalidade, tipo) {
+  setar("tipoBeneficiario", tipo || "FILHO");
+  setar("dataNascimentoBeneficiario", (hoje.getFullYear() - idade) + "-05-10");
+  setar("modalidade", modalidade);
+  const el = doc.getElementById("msgBox"); if (el) el.textContent = "";
+  return { passou: win.validarIdadeModalidade(), aviso: msgDaTela() };
+}
+
+/* OS CINCO CASOS REAIS que a tela recusava. O backend aprovava todos —
+   a divergência entre os dois é o defeito. */
+[[16, "ENSINO_FUNDAMENTAL", "filho que repetiu"],
+ [19, "ENSINO_MEDIO",       "filho que voltou a estudar"],
+ [13, "TECNICO",            "filho que entrou cedo no técnico"],
+ [10, "ENSINO_MEDIO",       "filho adiantado"],
+ [4,  "ENSINO_FUNDAMENTAL", "criança alfabetizada cedo"]].forEach(function (c) {
+  const r = tentar(c[0], c[1]);
+  b.ok(r.passou === true, c[2] + " (" + c[0] + " em " + c[1] + ") consegue enviar");
+
+  /* E a regra tem de concordar: se o backend recusasse, a tela estaria só
+     empurrando o problema para a frente. */
+  const regra = g.calcularRegraVoucher_({
+    modalidade: c[1], tipoBeneficiario: "FILHO", ordemFilho: "1", curso: "x" }, c[0]);
+  b.ok(regra.apto === true,
+    "e a regra da convenção aprova o mesmo caso", regra.percentual + "%");
+});
+
+b.passo("mas o erro de digitação continua sendo avisado");
+/* É por isso que a faixa não saiu de vez: ano de nascimento com um dígito
+   trocado vira criança de 2 anos no Ensino Médio, e é bom ver isso ANTES do
+   envio — não depois, no voucher emitido. */
+const dedoErrado = tentar(2, "ENSINO_MEDIO");
+b.ok(dedoErrado.passou === true, "o envio não é travado");
+b.ok(/2 anos/.test(dedoErrado.aviso) && /fora do previsto/.test(dedoErrado.aviso),
+  "mas a tela avisa, com a idade e a faixa esperada", dedoErrado.aviso.slice(0, 90));
+b.ok(/[Cc]onfira a data/.test(dedoErrado.aviso),
+  "e diz o que fazer: conferir a data de nascimento");
+
+/* NÃO MARCA O CAMPO DE VERMELHO. Vermelho diz "você errou"; aqui o sistema
+   não sabe se errou — está pedindo conferência. */
+b.ok(!campo("dataNascimentoBeneficiario").classList.contains("invalid"),
+  "sem marcar o campo como errado — o sistema pede conferência, não acusa");
+
+/* E QUANDO A IDADE BATE, ninguém é incomodado. */
+const normal = tentar(16, "ENSINO_MEDIO");
+b.ok(normal.passou === true, "filho de 16 no Ensino Médio passa");
+b.igual(normal.aviso, "", "e sem aviso nenhum — o caso comum é silencioso");
+
 /* ── 2. ESCOLA ───────────────────────────────────────────────────────────── */
 b.passo("2. Um campo só: busca na lista, ou escreve o nome");
 

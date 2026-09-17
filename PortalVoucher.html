@@ -1047,14 +1047,37 @@ function atualizarProgresso() {
         document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
         return true;
       }
+      /* A FAIXA POR MODALIDADE AVISA, E NÃO BARRA MAIS — 17/09/2026.
+       *
+       * "A idade não interfere" — você. E a medição deu razão: a tela estava
+       * recusando cinco casos que a convenção APROVA.
+       *
+       *   filho de 16 no Fundamental (repetiu) ...... tela barrava, regra dá 100%
+       *   filho de 19 no Médio (voltou a estudar) ... tela barrava, regra dá 100%
+       *   filho de 13 no Técnico .................... tela barrava, regra dá 100%
+       *   filho de 10 no Médio (adiantado) .......... tela barrava, regra dá 100%
+       *   criança de 4 no Fundamental ............... tela barrava, regra dá 100%
+       *
+       * Esta tabela NÃO ESTÁ NA CONVENÇÃO. Alguém a escreveu como apoio e ela
+       * virou regra por acidente — a mesma coisa que barrava o titular em Pós
+       * aos 45 e o cônjuge em Graduação. Três vezes o mesmo erro: uma tela
+       * inventando limite que o sindicato não tem.
+       *
+       * POR QUE NÃO SAIU DE VEZ: ela ainda pega dedo errado. Ano de
+       * nascimento digitado com um dígito trocado vira criança de 2 anos no
+       * Ensino Médio, e é bom alguém ver isso antes do envio — não depois, no
+       * voucher emitido. Avisar cobre o erro de digitação sem recusar o caso
+       * raro, que é o lado certo de errar.
+       *
+       * O único limite que BARRA é o de 24 anos do filho e do enteado, acima
+       * — e mesmo ele avisa e deixa seguir, porque a Secretaria decide. */
       var limite = limites[modalidade];
-      if (limite) {
-        if (idade < limite.min || idade > limite.max) {
-          showMsg('⚠️ Idade incompatível! Para ' + limite.nome + ', a idade deve estar entre ' + limite.min + ' e ' + limite.max + ' anos. Idade atual: ' + idade + ' anos.', 'erro');
-          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
-          return false;
-        } else { document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid'); }
+      if (limite && (idade < limite.min || idade > limite.max)) {
+        showMsg('⚠️ <strong>' + idade + ' anos</strong> para ' + limite.nome + ' está fora do ' +
+                'previsto (' + limite.min + '–' + limite.max + '). Confira a data de nascimento; ' +
+                'se estiver certa, pode enviar assim mesmo.', 'warn');
       }
+      document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
       return true;
     }
 
