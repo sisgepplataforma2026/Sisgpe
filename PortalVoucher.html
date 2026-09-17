@@ -1003,17 +1003,33 @@ function atualizarProgresso() {
         return true;
       }
 
-      // Regra especial: filho em Graduação/Pós — máximo 24 anos para iniciar
-      var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
-      if(isFilho && (modalidade === 'GRADUACAO' || modalidade === 'POS_GRADUACAO')){
-        if(idade > 24){
-          showMsg('⚠️ Filho com mais de 24 anos não é elegível para bolsa em Graduação ou Pós-graduação. Limite de idade para iniciar o curso: 24 anos.','erro');
-          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
-          return false;
-        } else {
-          document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
-          return true;
-        }
+      /* O LIMITE DE 24 ANOS VALE PARA TODA MODALIDADE — 17/09/2026.
+       *
+       * "Mas para dependentes somente até 24 anos" — você, e com razão: esta
+       * checagem só rodava para Graduação e Pós. Para ensino básico, técnico
+       * e pré-vestibular ela nem era consultada — caía direto na tabela de
+       * faixas abaixo, e um filho de 26 no pré-vestibular (faixa 16–30)
+       * passava sem que ninguém avisasse nada.
+       *
+       * O limite é da CONVENÇÃO e não depende do curso. A tabela de faixas
+       * abaixo é outra coisa: ela existe para pegar erro de digitação
+       * (criança de 2 anos no Ensino Médio é dedo errado), e por isso vem
+       * depois, não antes.
+       *
+       * AVISA E DEIXA SEGUIR, em vez de travar. É a sua decisão de
+       * 16/09/2026: "ele pode preencher o cadastro, tudo normalmente; quando
+       * chegar para a Marcelha fazer validação, o sistema automaticamente tem
+       * que informar". O backend grava BLOQUEADA_POR_REGRA e a solicitação vai
+       * para a fila de quem analisa — travar aqui faria o sindicato perder o
+       * registro de que a pessoa procurou. */
+      var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' &&
+                    tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
+      if(isFilho && idade > 24){
+        showMsg('⚠️ <strong>' + idade + ' anos</strong> — a convenção prevê o benefício para ' +
+                'dependentes de até 24 anos. Você pode enviar assim mesmo: a Secretaria ' +
+                'analisa o caso e responde pelo SISGEP.', 'warn');
+        document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
+        return true;
       }
       var limite = limites[modalidade];
       if (limite) {

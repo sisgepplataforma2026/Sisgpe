@@ -95,11 +95,40 @@ b.ok(!campo("dataNascimentoBeneficiario").classList.contains("invalid"),
    correção de virar "tirei a validação": o limite de 24 anos para filho é da
    convenção, e o backend o aplica. Se a tela parasse de avisar, a pessoa
    preencheria o formulário inteiro para ser recusada depois. */
+/* O LIMITE DE 24 ANOS PARA DEPENDENTE — e ele mudou de forma em 17/09/2026.
+   ANTES: travava o envio, e SÓ para Graduação e Pós. Para ensino básico,
+   técnico e pré-vestibular a checagem nem rodava — um filho de 26 no
+   pré-vestibular passava sem aviso nenhum.
+   AGORA: vale para TODA modalidade, avisa e DEIXA SEGUIR. É a sua decisão de
+   16/09: "ele pode preencher o cadastro, tudo normalmente; quando chegar para
+   a Marcelha fazer validação, o sistema informa". O backend grava
+   BLOQUEADA_POR_REGRA e a Secretaria responde — travar aqui faria o sindicato
+   perder o registro de que a pessoa procurou. */
 setar("tipoBeneficiario", "FILHO");
 setar("dataNascimentoBeneficiario", (hoje.getFullYear() - 26) + "-03-15");
-setar("modalidade", "GRADUACAO");
-b.ok(win.validarIdadeModalidade() === false,
-  "FILHO de 26 anos em Graduação continua barrado — o limite da convenção é 24");
+
+["GRADUACAO", "POS_GRADUACAO", "PRE_VESTIBULAR", "ENSINO_MEDIO", "TECNICO"]
+  .forEach(function (mod) {
+    setar("modalidade", mod);
+    b.ok(win.validarIdadeModalidade() === true,
+      "FILHO de 26 em " + mod + ": o envio segue — a Secretaria decide");
+  });
+
+/* MAS O AVISO PRECISA APARECER, senão "deixa seguir" vira "não viu". */
+setar("modalidade", "PRE_VESTIBULAR");
+win.validarIdadeModalidade();
+const avisos = (tela.avisos || []).concat(
+  doc.getElementById("msgBox") ? [{ msg: doc.getElementById("msgBox").textContent }] : []);
+const textoAviso = avisos.map(function (a) { return String(a.msg || ""); }).join(" ");
+b.ok(/24 anos/.test(textoAviso) && /26 anos/.test(textoAviso),
+  "e a tela avisa, com a idade e o limite", textoAviso.slice(0, 120));
+b.ok(/Secretaria/.test(textoAviso),
+  "dizendo que a Secretaria analisa — em vez de só recusar");
+
+/* O CAMPO NÃO FICA MARCADO DE VERMELHO: não é erro de preenchimento, é caso
+   que precisa de análise. Vermelho ali diria "você errou", e ela não errou. */
+b.ok(!campo("dataNascimentoBeneficiario").classList.contains("invalid"),
+  "e o campo não é marcado como errado — não é erro, é caso para analisar");
 
 setar("dataNascimentoBeneficiario", (hoje.getFullYear() - 20) + "-03-15");
 b.ok(win.validarIdadeModalidade() === true, "e um filho de 20 anos passa");
