@@ -91,9 +91,29 @@ b.ok(ind.htmlBody.indexOf("Isso não impede novas solicitações") > -1,
 b.ok(ind.htmlBody.indexOf("Dependente fora da faixa etária prevista.") > -1,
   "o motivo registrado pela Secretaria aparece para quem recebe");
 b.ok(ind.htmlBody.indexOf("BOL-2026-0001") > -1, "com o protocolo, para ela localizar o caso");
-b.ok(ind.htmlBody.indexOf("Maria &amp; Silva") > -1,
-  "e o nome do associado escapado — nome com & não pode quebrar o e-mail");
-b.ok(ind.htmlBody.indexOf("#001f4d") > -1, "na mesma casca visual dos outros");
+/* A SAUDAÇÃO PASSOU A USAR SÓ O PRIMEIRO NOME — "Olá, Maria! Tudo bem?", a
+   mesma do ofício. O sobrenome não aparece mais, então o escape se prova no
+   próprio helper, logo abaixo, e não neste corpo. */
+b.ok(ind.htmlBody.indexOf("Olá, <strong>Maria</strong>! Tudo bem?") > -1,
+  "e abre com a saudação única do SISGEP");
+b.ok(g.sisgepSaudacaoEmail_("Ana&Paula Souza").indexOf("&amp;") > -1,
+  "nome com & é escapado — não pode quebrar o e-mail");
+b.ok(g.sisgepSaudacaoEmail_("<script>x</script> Souza").indexOf("&lt;script&gt;") > -1,
+  "e um < digitado por engano vira texto, não tag");
+/* ESTA ASSERÇÃO ACERTAVA PELO MOTIVO ERRADO, e escondeu um defeito por um
+   dia inteiro. Ela procurava a cor "#001f4d" no corpo — e a cor aparecia
+   numa BORDA do bloco de motivo, não no cabeçalho. O indeferimento estava
+   saindo SEM cabeçalho e SEM rodapé, texto solto, e o teste dizia verde.
+
+   Cor não é casca. O que prova a casca são as PARTES dela. */
+["SINDEDUCAÇÃO-ES", "CNPJ: 31.815.780", "Nossa Senhora dos Navegantes"].forEach(function (parte) {
+  b.ok(ind.htmlBody.indexOf(parte) > -1,
+    "o indeferimento traz a casca do SISGEP: " + parte);
+});
+b.ok(ind.htmlBody.indexOf("BOL-2026-0001") > -1,
+  "com o protocolo no cabeçalho, em dourado");
+b.ok(ind.htmlBody.indexOf("Solicitação não deferida") > -1,
+  "e o badge dizendo o assunto em uma palavra");
 
 /* SEM E-MAIL NÃO SE ENVIA NADA. Um registro sem e-mail não pode virar envio
    para endereço vazio nem estourar exceção no meio da aprovação. */
@@ -112,6 +132,53 @@ arquivos.forEach(function (arq) {
   b.ok(src.indexOf("MailApp.sendEmail") === -1,
     arq + " não envia mais pelo MailApp");
 });
+
+/* ── 4b. A CASCA É UMA SÓ, DO SISGEP INTEIRO ────────────────────────────── */
+/* "O padrão SISGEP é o único, independente se é para a instituição ou para o
+   associado" — você, 17/09/2026. Bolsas tinha o próprio cabeçalho navy, quase
+   igual ao do ofício e diferente o bastante para quem recebe os dois notar. */
+b.passo("a casca de Bolsas É a casca do SISGEP");
+
+const cascaDireta = g.sisgepEmailHtml_({
+  numero: "540/2026", rotuloNumero: "Ofício nº", badge: "Filiação", corpo: "<p>x</p>"
+});
+const cascaBolsas = g.voucherEmailHtml_("Bolsa aprovada", "<p>x</p>",
+  { protocolo: "BOLSA-2026-9", badge: "Bolsa aprovada" });
+
+/* As partes fixas têm de ser IDÊNTICAS nas duas — é isso que "um padrão só"
+   quer dizer. Comparar as strings inteiras não serviria: número e badge
+   mudam de propósito. */
+["SINDEDUCAÇÃO-ES", "CNPJ: 31.815.780/0001-51",
+ "Sindicato dos Educadores Técnico-Administrativos",
+ "Nossa Senhora dos Navegantes", "(27) 3222-2706"].forEach(function (parte) {
+  b.ok(cascaDireta.indexOf(parte) > -1 && cascaBolsas.indexOf(parte) > -1,
+    "presente nas duas: " + parte);
+});
+
+b.ok(cascaBolsas.indexOf("BOLSA-2026-9") > -1, "o protocolo de Bolsas entra onde o ofício põe o número");
+b.ok(cascaBolsas.indexOf("Protocolo") > -1, "com o rótulo certo");
+b.ok(cascaDireta.indexOf("Ofício nº") > -1, "e o ofício mantém o dele");
+
+/* QUEM NÃO TEM NÚMERO NÃO FICA COM BURACO. */
+const semNumero = g.sisgepEmailHtml_({ badge: "Declaração", corpo: "<p>x</p>" });
+b.ok(semNumero.indexOf("text-align:right;white-space:nowrap") === -1,
+  "sem número, o canto direito nem é desenhado");
+b.ok(semNumero.indexOf("SINDEDUCAÇÃO-ES") > -1, "e o resto da casca continua inteiro");
+
+/* TABELA, NÃO FLEX: Outlook ignora flexbox e jogaria o número para baixo do
+   nome. Foi por isso que o cabeçalho usa table. */
+b.ok(cascaDireta.indexOf("<table role='presentation'") > -1,
+  "o cabeçalho usa tabela, que o Outlook entende");
+
+/* O QUE VEM DE DADO PRECISA SER ESCAPADO. */
+const comBravo = g.sisgepEmailHtml_({ numero: "A & B <x>", rotuloNumero: "N", corpo: "" });
+b.ok(comBravo.indexOf("A &amp; B &lt;x&gt;") > -1, "número vindo de dado é escapado");
+
+/* A SAUDAÇÃO TAMBÉM É UMA SÓ. */
+b.ok(g.sisgepSaudacaoEmail_("MARCELHA ALINE PINTO GOMES").indexOf("Olá, <strong>Marcelha</strong>! Tudo bem?") > -1,
+  "a saudação do SISGEP: 'Olá, Marcelha! Tudo bem?'");
+b.ok(g.sisgepSaudacaoEmail_("").indexOf("Olá! Tudo bem?") > -1,
+  "e sem nome ela não fica com um vazio no meio");
 
 /* ── 5. NENHUM E-MAIL DO MÓDULO MONTA CABEÇALHO PRÓPRIO ─────────────────── */
 /* Era o defeito 2: um e-mail em roxo, outro em azul chapado, cada um com o

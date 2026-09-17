@@ -1697,3 +1697,123 @@ function oficiosRascunhosOrfaos(minutosMinimos, tokenSessao) {
     return { ok: false, mensagem: "Erro ao varrer os rascunhos: " + e.message };
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A CASCA ÚNICA DE E-MAIL DO SISGEP — 17/09/2026
+
+   "O padrão SISGEP é o único, independente se é para a instituição ou para o
+    associado. Então tem que ter um padrão único: um padrão de escrita, um
+    padrão de cores, um padrão que o SISGEP já utiliza." — o usuário.
+
+   O QUE HAVIA. Seis funções diferentes montavam casca de e-mail, e dezesseis
+   arquivos desenhavam cabeçalho navy por conta própria. Cada módulo com o
+   seu: uns com CNPJ, outros sem; uns com rodapé institucional, outros com uma
+   linha solta; saudação diferente em cada um. Quem recebe dois e-mails do
+   sindicato via duas identidades.
+
+   DE ONDE VEM ESTE DESENHO. Da casca do OFÍCIO — não foi escolha de gosto:
+   é a única que o usuário já validou em produção, olhando um ofício real
+   recebido, e é a da operação viva. As outras se alinham a ela, nunca o
+   contrário.
+
+   AS PARTES, e por que cada uma existe:
+
+     cabeçalho   nome + descrição + CNPJ, com régua dourada à esquerda.
+                 O CNPJ está ali porque instituição de ensino confere.
+     número      à direita, com rótulo. "OFÍCIO Nº 540/2026" no ofício,
+                 "PROTOCOLO BOLSA-2026-187653" em Bolsas. Quem não tem
+                 número passa vazio e o canto fica limpo — sem buraco.
+     badge       o assunto em uma palavra: FILIAÇÃO, SOLICITAÇÃO, APROVADA.
+                 É o que a pessoa lê antes de ler o texto.
+     corpo       branco, o conteúdo de cada módulo.
+     rodapé      régua dourada + endereço e contato.
+
+   O `escaparTitulo` existe porque título e badge quase sempre vêm de código,
+   mas o número às vezes vem de dado — e dado não entra em HTML sem escapar.
+   ══════════════════════════════════════════════════════════════════════════ */
+function sisgepEmailHtml_(o) {
+  o = o || {};
+
+  function esc(t) {
+    return String(t === null || t === undefined ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  var numero      = String(o.numero || "").trim();
+  var rotuloNum   = String(o.rotuloNumero || "").trim();
+  var badge       = String(o.badge || "").trim();
+  var corpo       = String(o.corpo || "");
+
+  var blocoNumero = numero
+    ? "<div style='text-align:right;white-space:nowrap;'>" +
+        (rotuloNum
+          ? "<div style='font-size:9.5px;font-weight:800;letter-spacing:.14em;" +
+            "color:rgba(255,255,255,.55);text-transform:uppercase;'>" + esc(rotuloNum) + "</div>"
+          : "") +
+        "<div style='font-size:19px;font-weight:900;color:#C9A84C;margin-top:3px;'>" +
+          esc(numero) + "</div>" +
+      "</div>"
+    : "";
+
+  var blocoBadge = badge
+    ? "<div style='margin-top:14px;'>" +
+        "<span style='display:inline-block;border:1px solid rgba(201,168,76,.5);color:#C9A84C;" +
+        "font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;" +
+        "padding:5px 12px;border-radius:20px;'>" + esc(badge) + "</span>" +
+      "</div>"
+    : "";
+
+  return "" +
+    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:640px;color:#0f172a;'>" +
+
+      "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);" +
+        "padding:22px 26px 20px;border-radius:8px 8px 0 0;'>" +
+        /* A tabela em vez de flex: cliente de e-mail antigo (e o Outlook em
+           particular) ignora flexbox, e o número iria parar embaixo do nome.
+           Tabela com duas células alinha nos dois mundos. */
+        "<table role='presentation' cellpadding='0' cellspacing='0' border='0' style='width:100%;'>" +
+          "<tr>" +
+            "<td style='vertical-align:top;'>" +
+              "<div style='border-left:4px solid #C9A84C;padding-left:14px;'>" +
+                "<div style='font-size:19px;font-weight:900;color:#ffffff;'>SINDEDUCAÇÃO-ES</div>" +
+                "<div style='font-size:10.5px;color:rgba(255,255,255,.62);margin-top:5px;line-height:1.5;'>" +
+                  "Sindicato dos Educadores Técnico-Administrativos<br>" +
+                  "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+                "<div style='font-size:10px;font-weight:800;color:#C9A84C;margin-top:6px;'>" +
+                  "CNPJ: 31.815.780/0001-51</div>" +
+              "</div>" +
+            "</td>" +
+            "<td style='vertical-align:top;text-align:right;'>" + blocoNumero + "</td>" +
+          "</tr>" +
+        "</table>" +
+        blocoBadge +
+      "</div>" +
+
+      "<div style='background:#ffffff;padding:26px;border:1px solid #e2e8f0;border-top:none;" +
+        "line-height:1.7;font-size:14px;'>" + corpo + "</div>" +
+
+      "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);" +
+        "border-radius:0 0 8px 8px;padding:18px 26px;text-align:center;'>" +
+        "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
+          "margin-bottom:13px;border-radius:2px;'></div>" +
+        "<div style='font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.7;'>" +
+          "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+          "Enseada do Suá - Vitória/ES<br>" +
+          "(27) 3222-2706 &bull; secretaria@sindeducacao.com" +
+        "</div>" +
+      "</div>" +
+
+    "</div>";
+}
+
+/** A saudação do SISGEP, uma só. "Olá, Marcelha! Tudo bem?" */
+function sisgepSaudacaoEmail_(nomeCompleto) {
+  var t = String(nomeCompleto || "").trim();
+  if (!t) return "<p style='margin:0 0 16px;'>Olá! Tudo bem?</p>";
+  var p = t.split(/\s+/)[0];
+  var nome = p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+  return "<p style='margin:0 0 16px;'>Olá, <strong>" +
+    nome.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+    "</strong>! Tudo bem?</p>";
+}

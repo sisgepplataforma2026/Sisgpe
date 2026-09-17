@@ -469,7 +469,7 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
       subject: "Complementação de documentos — " + protocolo + " · SindEducação-ES",
       htmlBody:
         voucherEmailHtml_("Solicitação de complementação",
-        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
         "<p>Para dar continuidade à sua solicitação de bolsa, precisamos do seguinte:</p>" +
         /* O QUE FALTA VEM ANTES DO PROTOCOLO e em destaque. Na versão
          * anterior o pedido aparecia depois do número, num bloco cinza sem
@@ -481,8 +481,8 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
         escHtmlVoucher_(obs) + "</div>" +
         "<p style='font-size:13px;color:#475569;'>Basta responder a este e-mail com o documento anexado, " +
         "ou falar com a Secretaria se tiver dúvida sobre o que enviar.</p>" +
-        "<p style='font-size:12.5px;color:#64748b;'>Protocolo: <strong>" + escHtmlVoucher_(protocolo) + "</strong></p>" +
-        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Complementação" })
     });
 
   } catch (e) {
@@ -500,13 +500,13 @@ function enviarEmailNaoAssociadoVoucher_(reg, protocolo) {
       subject: "Atendimento presencial necessário — " + protocolo + " · SindEducação-ES",
       htmlBody:
         voucherEmailHtml_("Atendimento presencial necessário",
-        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
         "<p>Seu cadastro foi identificado como <strong>não associado</strong>.</p>" +
         "<p>Para continuidade da solicitação, compareça à sede do SindEducação-ES em até <strong>15 dias úteis</strong>, levando este protocolo e a documentação necessária.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Endereço:</strong> " + escHtmlVoucher_(ENDERECO_SIND_V) + "</p>" +
         "<p><strong>Telefone:</strong> " + escHtmlVoucher_(TELEFONE_SIND_V) + "</p>" +
-        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Atendimento presencial" })
     });
 
   } catch (e) {
@@ -543,9 +543,8 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
       subject: "Bolsa aprovada — " + protocolo + " · SindEducação-ES",
       htmlBody:
         voucherEmailHtml_("Bolsa aprovada",
-        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
         "<p>Sua solicitação de bolsa foi aprovada.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(percentual || "—") + "%</p>" +
         (presencial
@@ -555,7 +554,8 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
             "e-mail.</p>"
           : "<p>O voucher será emitido e encaminhado após a geração do " +
             "documento oficial.</p>") +
-        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Bolsa aprovada" })
     });
 
   } catch (e) {
@@ -573,27 +573,26 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
  * @param {string} titulo    o que aparece na faixa
  * @param {string} corpoHtml o conteúdo, já escapado por quem chama
  */
-function voucherEmailHtml_(titulo, corpoHtml) {
-  return "" +
-    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:640px;color:#0f172a;'>" +
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);padding:22px 26px;border-radius:8px 8px 0 0;'>" +
-    "<div style='border-left:4px solid #C9A84C;padding-left:14px;'>" +
-    "<div style='font-size:19px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
-    "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;'>Sindicato dos Educadores Técnico-Administrativos<br>em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
-    "</div>" +
-    "<div style='height:1px;background:rgba(201,168,76,.25);margin:14px 0 12px;'></div>" +
-    "<div style='font-size:15px;font-weight:800;color:#C9A84C;'>" + escHtmlVoucher_(titulo) + "</div>" +
-    "</div>" +
-    "<div style='background:#fff;padding:26px;border:1px solid #e2e8f0;border-top:none;line-height:1.7;font-size:14px;'>" +
-    corpoHtml +
-    "</div>" +
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:20px 26px;text-align:center;'>" +
-    "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:14px;'></div>" +
-    "<div style='font-size:12px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
-    "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
-    "Enseada do Suá - Vitória/ES<br>" +
-    "(27) 3222-2706 &bull; secretaria@sindeducacao.com" +
-    "</div></div></div>";
+function voucherEmailHtml_(titulo, corpoHtml, opcoes) {
+  /* DELEGA PARA A CASCA ÚNICA — 17/09/2026.
+   *
+   * Este arquivo tinha o seu próprio cabeçalho navy, quase igual ao do
+   * ofício e diferente o bastante para quem recebe os dois notar. A casca
+   * agora é uma só (sisgepEmailHtml_, em EmailOficios.gs), e esta função
+   * vira o atalho de Bolsas para ela.
+   *
+   * A ASSINATURA ANTIGA CONTINUA VALENDO, com `opcoes` no fim: são dez
+   * pontos chamando `voucherEmailHtml_(titulo, corpo)` neste módulo, e
+   * trocar todos de uma vez para ganhar dois campos opcionais seria dez
+   * chances de errar num commit que já mexe no visual de tudo. Quem não
+   * passa `opcoes` continua saindo certo, só sem protocolo e sem badge. */
+  opcoes = opcoes || {};
+  return sisgepEmailHtml_({
+    numero: opcoes.protocolo || "",
+    rotuloNumero: opcoes.protocolo ? "Protocolo" : "",
+    badge: opcoes.badge || titulo || "",
+    corpo: corpoHtml
+  });
 }
 
 /**
@@ -605,8 +604,24 @@ function voucherEmailHtml_(titulo, corpoHtml) {
  * Todo e-mail deste módulo usava MailApp, então todos saíam da conta errada.
  * Aqui passam pela mesma porta do ofício e da declaração.
  */
-function voucherEnviarEmail_(para, assunto, corpoHtml) {
-  return voucherEnviarMsg_({ to: para, subject: assunto, htmlBody: corpoHtml });
+/**
+ * ESTE HELPER MANDAVA O CORPO CRU, e foi assim que o indeferimento saiu sem
+ * cabeçalho nem rodapé — texto solto, sem identidade nenhuma.
+ *
+ * Achado em 17/09/2026, ao unificar a casca. O pior não foi o defeito: foi o
+ * teste. A asserção "está na mesma casca visual dos outros" procurava a cor
+ * `#001f4d` no corpo — e ela aparecia numa BORDA do bloco de motivo. O teste
+ * acertava pelo motivo errado, que é o mesmo que não testar.
+ *
+ * Agora quem chama entrega só o MIOLO, e a casca é vestida aqui. Assim não
+ * existe caminho em que alguém esqueça de vesti-la.
+ */
+function voucherEnviarEmail_(para, assunto, corpoHtml, opcoes) {
+  return voucherEnviarMsg_({
+    to: para,
+    subject: assunto,
+    htmlBody: voucherEmailHtml_((opcoes && opcoes.badge) || "", corpoHtml, opcoes || {})
+  });
 }
 
 /**
@@ -633,7 +648,7 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
     voucherEnviarEmail_(
       email,
       "Sobre sua solicitação de bolsa — " + protocolo,
-      "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+      sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
       "<p>Recebemos sua solicitação de bolsa de estudo e agradecemos a confiança.</p>" +
       "<p>Após a conferência, <strong>não foi possível conceder o benefício neste caso</strong>. " +
       "O motivo registrado pela Secretaria foi:</p>" +
@@ -642,9 +657,11 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
       "<p><strong>Isso não impede novas solicitações.</strong> Se algum dado tiver sido " +
       "informado por engano, ou se houver outro beneficiário que atenda aos critérios, " +
       "basta refazer o pedido pelo portal — ou falar com a Secretaria, que ajudamos a conferir.</p>" +
-      "<p style='font-size:12.5px;color:#64748b;'>Protocolo: <strong>" + escHtmlVoucher_(protocolo) + "</strong></p>" +
+      /* O protocolo saiu do corpo: agora ele está no cabeçalho, em dourado,
+         onde a pessoa olha primeiro. Repeti-lo aqui seria dizer duas vezes. */
       "<p>Qualquer dúvida, é só responder a este e-mail.</p>" +
-      "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>"
+      "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+      { protocolo: protocolo, badge: "Solicitação não deferida" }
     );
 
   } catch (e) {
@@ -1141,7 +1158,7 @@ function enviarComunicadoRegraVoucher(protocolo, texto, indeferir, tokenSessao) 
     }).join("");
 
     voucherEnviarEmail_(email, "Sobre sua solicitação de bolsa — " + protocolo,
-      voucherEmailHtml_("Sobre sua solicitação de bolsa", corpoHtml));
+      corpoHtml, { protocolo: protocolo, badge: "Comunicado" });
 
     var resumoMotivo = (motivo && motivo.rotulo) || "fora da regra";
 

@@ -301,10 +301,18 @@ b.ok(mailC.htmlBody.indexOf(PEDIDO) > -1,
 b.ok(mailC.htmlBody.indexOf("Complementação solicitada pela análise administrativa") === -1,
   "e sem a frase genérica, que não nomeava documento nenhum");
 
-/* O QUE FALTA VEM ANTES DO PROTOCOLO: quem lê no celular não pode receber
-   primeiro um código e depois a frase que importa. */
-b.ok(mailC.htmlBody.indexOf(PEDIDO) < mailC.htmlBody.indexOf(protC),
-  "o documento pedido aparece ANTES do número de protocolo");
+/* ISTO MUDOU DE LUGAR, NÃO DE INTENÇÃO — 17/09/2026, com a casca única.
+   A asserção exigia o pedido ANTES do protocolo no corpo, porque quem lê no
+   celular não pode receber primeiro um código e depois a frase que importa.
+   O protocolo agora vive NO CABEÇALHO, em dourado, e saiu do corpo: não há
+   mais o que ordenar. O que se prova aqui é que ele não voltou a ser repetido
+   no meio do texto. */
+const depoisDoCabecalho = mailC.htmlBody.slice(
+  mailC.htmlBody.indexOf("Nossa Senhora dos Navegantes") > -1
+    ? mailC.htmlBody.indexOf("padding:26px;border:1px solid #e2e8f0") : 0);
+b.ok(depoisDoCabecalho.indexOf(protC) === -1,
+  "o protocolo fica só no cabeçalho, sem repetir no corpo");
+b.ok(mailC.htmlBody.indexOf(protC) > -1, "e continua aparecendo, lá em cima");
 b.ok(mailC.htmlBody.indexOf("responder a este e-mail") > -1,
   "e o e-mail diz o que fazer com o documento");
 
