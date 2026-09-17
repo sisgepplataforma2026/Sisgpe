@@ -637,7 +637,30 @@ function enviarEmailConfirmacaoSolicitacaoVoucher_(dados) {
               (dados.percentual ? "<tr><td style='color:#64748b;padding:6px 0;'>Desconto previsto:</td><td style='font-weight:700;color:#059669;'>" + dados.percentual + "%</td></tr>" : "") +
             "</table>" +
             aviso +
-            "<p style='font-size:13px;color:#64748b;'>Prazo de análise: até <strong>15 dias úteis</strong>.</p>" +
+            /* O PRAZO DEPENDE DE QUEM ESTÁ ESPERANDO — 17/09/2026.
+             *
+             * "Para o associado a gente faz o mimo, então a gente leva no
+             *  máximo dois, três, uma semana. Essa análise de 15 dias é para
+             *  não associado." — o usuário.
+             *
+             * Até aqui, TODO MUNDO lia "15 dias úteis", e isso jogava contra
+             * o sindicato duas vezes: sumia com o mérito de atender em três
+             * dias, e deixava o associado duas semanas achando que silêncio
+             * era normal.
+             *
+             * CINCO E NÃO TRÊS, de propósito. O teto que ele deu foi "uma
+             * semana"; prometer três dias fura o próprio prazo numa semana de
+             * pico. Prometendo cinco e entregando em dois, erra-se para o
+             * lado certo.
+             *
+             * E OS DOIS "15 DIAS" NÃO ERAM A MESMA COISA — foi o que o
+             * levantamento mostrou. O do não associado é o prazo DELE para
+             * comparecer à sede, não o nosso para analisar; ele fica como
+             * está, no bloco `aviso` acima. */
+            (!isAssociado || status === "AGUARDANDO_ATENDIMENTO_PRESENCIAL"
+              ? ""
+              : "<p style='font-size:13px;color:#64748b;'>A análise costuma sair em até " +
+                "<strong>5 dias úteis</strong>. Você será avisado por e-mail.</p>") +
             "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 

@@ -319,6 +319,83 @@ b.ok(mailC.htmlBody.indexOf("responder a este e-mail") > -1,
 b.igual(String(linha(protC).STATUS_SOLICITACAO), "ANALISE",
   "a solicitação vai para a fila de Em Análise — a de complementação solicitada");
 
+/* ══════════════════════════════════════════════════════════════════════ */
+b.fluxo("BOLSAS · O prazo prometido é o prazo real");
+
+/* "Para o associado a gente faz o mimo, então a gente leva no máximo dois,
+   três, uma semana. Essa análise de 15 dias é para não associado." — você,
+   17/09/2026. Até aqui TODO MUNDO lia "15 dias úteis". */
+b.passo("1. Associado recebe o prazo curto");
+
+const quemE = novoAssociado("ELISA DE TESTE");
+amb.reset();
+const r7 = enviarPeloPortal({
+  tipoBeneficiario: "TITULAR", nomeBeneficiario: quemE.nome,
+  dataNascimentoBeneficiario: "1980-05-10",
+  modalidade: "POS_GRADUACAO", curso: "MBA DIREITO"
+}, quemE);
+b.ok(r7 && r7.ok === true, "solicitação de associado criada");
+
+const paraAssoc = amb.outbox.filter(function (m) { return m.to === quemE.email; });
+b.igual(paraAssoc.length, 1, "o associado recebeu o e-mail de protocolo");
+/* "5 dias" CASA DENTRO DE "15 dias" — e foi assim que a primeira versão
+   desta asserção deu verde sobre o texto errado. A busca precisa do contexto
+   que só o prazo curto tem. */
+b.ok(/até <strong>5 dias úteis<\/strong>/.test(paraAssoc[0].htmlBody),
+  "com o prazo REAL: 5 dias úteis");
+b.ok(paraAssoc[0].htmlBody.indexOf("15 dias úteis") === -1,
+  "e sem os 15 dias, que sumiam com o mérito de atender em três");
+
+/* CINCO E NÃO TRÊS, de propósito: o teto que ele deu foi "uma semana", e
+   prometer três fura o próprio prazo numa semana de pico. Entregando em dois,
+   erra-se para o lado certo. */
+b.ok(paraAssoc[0].htmlBody.indexOf("3 dias") === -1,
+  "não promete três dias — prometer menos e entregar antes é o lado certo de errar");
+
+b.passo("2. Não associado mantém os 15 dias — que são OUTRA coisa");
+/* Foi o que o levantamento mostrou: o "15 dias" do não associado é o prazo
+   DELE para comparecer à sede, não o nosso para analisar. Misturar os dois foi
+   o que gerou a confusão. */
+const shAssoc = ss.getSheetByName("Associados");
+shAssoc.appendRow(["99988877766", "FABIO NAO ASSOCIADO", "NAO", "fabio@teste.com", "27999990000"]);
+amb.reset();
+enviarPeloPortal({
+  tipoBeneficiario: "TITULAR", nomeBeneficiario: "FABIO NAO ASSOCIADO",
+  dataNascimentoBeneficiario: "1980-05-10",
+  modalidade: "POS_GRADUACAO", curso: "MBA GESTAO"
+}, { cpf: "99988877766", nome: "FABIO NAO ASSOCIADO", email: "fabio@teste.com" });
+
+const paraFabio = amb.outbox.filter(function (m) { return m.to === "fabio@teste.com"; });
+if (paraFabio.length) {
+  b.ok(paraFabio[0].htmlBody.indexOf("compareça à sede") > -1,
+    "o não associado é orientado a comparecer à sede");
+  b.ok(paraFabio[0].htmlBody.indexOf("15 dias úteis") > -1,
+    "com os 15 dias — que são o prazo DELE, e continuam certos");
+  b.ok(paraFabio[0].htmlBody.indexOf("5 dias úteis") === -1,
+    "e sem o prazo de análise, que não se aplica a quem vai à sede");
+} else {
+  /* O PORTAL RECUSA O NÃO ASSOCIADO ANTES DE GRAVAR — regra de 14/08/2026 —,
+     então por ali este ramo nunca roda. Mas o código existe e é usado quando a
+     solicitação nasce pela Secretaria. Deixar sem cobertura seria deixar um
+     texto que ninguém lê até o dia em que alguém lê. Exercito direto. */
+  amb.reset();
+  g.enviarEmailConfirmacaoSolicitacaoVoucher_({
+    email: "fabio@teste.com", nome: "FABIO NAO ASSOCIADO",
+    protocolo: "BOLSA-2026-NA", nomeBeneficiario: "FABIO NAO ASSOCIADO",
+    modalidade: "POS_GRADUACAO", curso: "MBA GESTAO", escola: "X",
+    situacaoSindicalFinal: "NAO_ASSOCIADO", statusSolicitacao: "AGUARDANDO_ATENDIMENTO_PRESENCIAL",
+    percentual: "70"
+  });
+  b.igual(amb.outbox.length, 1, "o e-mail do não associado sai por este caminho");
+  const naoAssoc = amb.outbox[0].htmlBody;
+  b.ok(naoAssoc.indexOf("compareça à sede") > -1,
+    "o não associado é orientado a comparecer à sede");
+  b.ok(naoAssoc.indexOf("15 dias úteis") > -1,
+    "com os 15 dias — que são o prazo DELE, e continuam certos");
+  b.ok(!/até <strong>5 dias úteis<\/strong>/.test(naoAssoc),
+    "e sem o prazo de análise, que não se aplica a quem vai à sede");
+}
+
 b.naoTestavel("o botão e o modal na tela do painel",
   "jsdom não aplica CSS — roteiro manual: abrir uma solicitação BLOQUEADA_POR_REGRA " +
   "em homologação, clicar em '📣 Comunicar fora da regra', editar o texto e enviar");
