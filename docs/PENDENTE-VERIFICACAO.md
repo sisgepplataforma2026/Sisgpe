@@ -5952,3 +5952,26 @@ O 59 é a correção de hoje: o arquivo saía como
 `Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf`, com o documento
 certo e o nome do pai no rótulo. O emulador confirma o nome montado; quem a
 Secretaria abre de verdade é a pasta.
+
+## 🔴 Cartão de ingresso com o QR da Blueticket (18/09/2026)
+
+| | O que conferir | Onde |
+|---|---|---|
+| 60 | 🔴 **o aplicativo da Blueticket lê o cartão do SISGEP** | app da Blueticket |
+| 61 | 🔴 lê também com o cartão impresso em papel | idem |
+| 62 | 🔴 lê com pouca luz e com a tela do celular escura | idem |
+| 63 | 🔴 o Blueticket exporta planilha com número + nome? | painel da Blueticket |
+
+O 60 é o item que sustenta o módulo inteiro. Já está provado daqui que o QR
+do nosso cartão carrega **exatamente** o número da Blueticket (t190) — o que
+nenhum teste meu alcança é o aparelho deles lendo. Enquanto o 60 estiver
+aberto, o veredito do módulo é **"não testado"**, por mais verde que a suíte
+esteja.
+
+Amostra enviada em 18/09 com o número real 76902432. Ele disse que não
+conseguiria testar nesse dia — cobrar depois, sem insistir.
+
+O 63 decide o desenho da tela de importação: com planilha, o casamento
+número→nome é automático; sem ela, a pessoa vincula pelo CPF, ingresso a
+ingresso. A tela nasce aceitando os dois caminhos, então isso não bloqueia
+nada — só muda quanto trabalho a secretaria tem.
