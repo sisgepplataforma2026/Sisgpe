@@ -103,6 +103,75 @@ b.ok(html.indexOf("LUCIANA RODRIGUES VIEIRA PORTUGAL") > -1, "o nome do associad
 b.ok(html.indexOf("No Ritmo da Vida") > -1, "o evento também");
 b.ok(html.indexOf("Espaço Patrick Ribeiro") > -1, "e o local");
 
+/* ══ A ESCOLA E A ARTE — 19/09/2026 ═══════════════════════════════════════ */
+b.passo("A escola vem do cadastro, não da mão de ninguém");
+/* "É possível incluir o nome da escola?" — você. E ela é o campo que resolve
+   homônimo na fila: dois "José Carlos" viram duas pessoas quando a escola
+   está no cartão. Pela REGRA Nº 0.6, dado que o sistema tem não se digita. */
+const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+let abaAssoc = ss.getSheetByName("Associados");
+if (!abaAssoc) abaAssoc = ss.insertSheet("Associados");
+abaAssoc.getRange(1, 1, 1, 5).setValues([["Nome", "CPF", "Nome fantasia", "Celular", "Filiado"]]);
+abaAssoc.getRange(2, 1, 1, 5).setValues([
+  ["GABRIEL MOZER FRAGA", "11144477735", "EEEFM MARIA ORTIZ", "27999887766", "S"]
+]);
+
+g.cartaoExterno_importar([{ numero: "69621594", arquivo: "11- Ingresso - 69621594.pdf" }], TOKEN);
+const vinc = g.cartaoExterno_vincular("69621594", { cpf: "11144477735" }, TOKEN);
+b.ok(vinc.ok, "o vínculo por CPF é aceito");
+b.igual(vinc.nome, "GABRIEL MOZER FRAGA", "o nome veio do cadastro, sem ninguém digitar");
+b.igual(vinc.telefone, "27999887766", "e o telefone junto — é por ele que o zap sai");
+
+const gabriel = g.cartaoExterno_listar(TOKEN).itens
+  .filter(function (i) { return i.numero === "69621594"; })[0];
+b.igual(gabriel.escola, "EEEFM MARIA ORTIZ", "a escola também veio do cadastro");
+b.igual(gabriel.status, "PRONTO", "e o ingresso saiu de 'falta o nome' sozinho");
+
+/* A ORIGEM FICA À VISTA, como manda a REGRA Nº 0.6: dado preenchido em
+   silêncio é o que vira erro que ninguém percebe. */
+b.ok(/cadastro de associados/i.test(vinc.observacao || ""),
+  "e a tela diz de onde vieram, em vez de parecer conferido", vinc.observacao);
+
+b.passo("A escola aparece no cartão");
+const htmlEscola = g.cartaoExterno_html_(
+  { NUMERO: "69621594", NOME: "GABRIEL MOZER FRAGA", ESCOLA: "EEEFM MARIA ORTIZ",
+    SETOR: "Cortesia", TIPO: "Cortesia" }, g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
+b.ok(htmlEscola.indexOf("EEEFM MARIA ORTIZ") > -1, "com o nome da escola impresso");
+b.ok(htmlEscola.indexOf(">Escola</div>") > -1, "sob o rótulo próprio");
+
+b.passo("Cartão de quem não tem escola no cadastro não fica com rótulo vazio");
+/* Rótulo "Escola" com nada embaixo é pior que a ausência da linha: parece
+   que faltou dado na hora de imprimir. */
+const semEscola = g.cartaoExterno_html_(
+  { NUMERO: "1", NOME: "FULANO", ESCOLA: "", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
+b.ok(semEscola.indexOf(">Escola</div>") === -1, "a linha inteira some");
+
+b.passo("A arte do evento entra como faixa no topo");
+/* "Tem como colocar a imagem do evento?" — você. Ela entra ACIMA do bloco
+   navy, e não atrás do texto: arte clara engole letra branca, arte carregada
+   engole qualquer letra, e quem descobre é quem recebeu o cartão. */
+const ARTE = "data:image/png;base64,AAAAARTE";
+const comArte = g.cartaoExterno_html_(
+  { NUMERO: "1", NOME: "FULANO", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA", ARTE);
+b.ok(comArte.indexOf('<img class="arte" src="' + ARTE + '"') > -1, "a arte aparece no cartão");
+b.ok(comArte.indexOf('class="topo compacto"') > -1,
+  "e o bloco navy encolhe, para o cartão não virar duas tarjas do mesmo tamanho");
+b.ok(comArte.indexOf('<img class="arte"') < comArte.indexOf('class="topo'),
+  "a arte vem ANTES do texto, não por trás dele");
+
+b.passo("Sem arte, o cartão continua inteiro");
+b.ok(semEscola.indexOf('class="arte"') === -1, "nenhuma imagem quebrada aparece");
+b.ok(semEscola.indexOf('class="topo"') > -1, "e o bloco navy volta ao tamanho cheio");
+
+b.passo("Arte que não carrega não derruba a geração");
+/* O ingresso vale pelo QR. Perder o cartão inteiro por causa de uma figura
+   seria trocar um cartão feio por nenhum cartão. */
+b.igual(g.cartaoExterno_arteDataUri_(""), "", "sem arte configurada, devolve vazio");
+b.igual(g.cartaoExterno_arteDataUri_("https://exemplo.invalido/arte.png"), "",
+  "endereço que não devolve imagem também — e sem estourar");
+
 b.passo("É o padrão visual do SISGEP, não uma paleta nova");
 ["#001f4d", "#002f6c", "#C9A84C"].forEach(function (cor) {
   b.ok(html.toUpperCase().indexOf(cor.toUpperCase()) > -1, "usa " + cor + " do Design System");

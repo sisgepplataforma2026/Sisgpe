@@ -62,7 +62,7 @@ var CARTAO_EXTERNO_ABA_ = "Eventos_CartoesExternos";
 var CARTAO_EXTERNO_ABA_CFG_ = "Eventos_CartoesExternos_Evento";
 
 var CARTAO_EXTERNO_COLUNAS_ = [
-  "NUMERO", "NOME", "CPF", "TELEFONE", "SETOR", "TIPO",
+  "NUMERO", "NOME", "ESCOLA", "CPF", "TELEFONE", "SETOR", "TIPO",
   "ORIGEM_NUMERO", "STATUS", "LINK_CARTAO", "ARQUIVO_ORIGEM",
   "IMPORTADO_EM", "IMPORTADO_POR", "GERADO_EM", "ENVIADO_EM", "OBSERVACAO"
 ];
@@ -84,6 +84,18 @@ function cartaoExterno_aba_() {
     sh.getRange(1, 1, 1, CARTAO_EXTERNO_COLUNAS_.length)
       .setValues([CARTAO_EXTERNO_COLUNAS_]);
     sh.setFrozenRows(1);
+    return sh;
+  }
+
+  /* COLUNA NOVA ENTRA NO FIM, e o que já está gravado não se mexe.
+     A ESCOLA foi acrescentada depois que a aba já existia (19/09/2026). Se a
+     coluna simplesmente não existir, `mapRowToObject_` devolve undefined e o
+     cartão sai sem escola — em silêncio, que é o pior jeito de faltar dado.
+     Acrescentar no fim preserva a posição de todas as outras. */
+  var atuais = obterHeaders_(sh).map(function (h) { return String(h || "").trim(); });
+  var faltando = CARTAO_EXTERNO_COLUNAS_.filter(function (c) { return atuais.indexOf(c) === -1; });
+  if (faltando.length) {
+    sh.getRange(1, atuais.length + 1, 1, faltando.length).setValues([faltando]);
   }
   return sh;
 }
@@ -110,7 +122,7 @@ function cartaoExterno_cfgAba_() {
    cartaoExterno_listar, que é travada. */
 function cartaoExterno_lerCfg_() {
   var sh = cartaoExterno_cfgAba_();
-  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "" };
+  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "", arte: "" };
   if (sh.getLastRow() < 2) return cfg;
   sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (l) {
     var k = String(l[0] || "").trim();
@@ -124,7 +136,7 @@ function cartaoExterno_salvarCfg(cfg, tokenSessao) {
   cfg = cfg || {};
   var sh = cartaoExterno_cfgAba_();
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
-  var linhas = ["evento", "data", "local", "cidade", "rodape"].map(function (k) {
+  var linhas = ["evento", "data", "local", "cidade", "rodape", "arte"].map(function (k) {
     return [k, String(cfg[k] == null ? "" : cfg[k]).trim()];
   });
   sh.getRange(2, 1, linhas.length, 2).setValues(linhas);
@@ -162,6 +174,7 @@ function cartaoExterno_importar(itens, tokenSessao) {
     var registro = {
       NUMERO: numero,
       NOME: nome,
+      ESCOLA: valorSeguroVoucher_(it.escola),
       CPF: String(it.cpf || "").replace(/\D/g, ""),
       TELEFONE: String(it.telefone || "").replace(/\D/g, ""),
       SETOR: String(it.setor || "Cortesia").trim(),
@@ -188,6 +201,7 @@ function cartaoExterno_importar(itens, tokenSessao) {
       registro.ENVIADO_EM  = atual.ENVIADO_EM || "";
       registro.IMPORTADO_EM = atual.IMPORTADO_EM || agora;
       if (!registro.NOME && atual.NOME) registro.NOME = atual.NOME;
+      if (!registro.ESCOLA && atual.ESCOLA) registro.ESCOLA = atual.ESCOLA;
       if (!registro.CPF && atual.CPF) registro.CPF = atual.CPF;
       if (!registro.TELEFONE && atual.TELEFONE) registro.TELEFONE = atual.TELEFONE;
       registro.STATUS = cartaoExterno_statusDe_(registro);
@@ -259,6 +273,7 @@ function cartaoExterno_listar(tokenSessao) {
       itens.push({
         numero: cartaoExterno_numeroLimpo_(o.NUMERO),
         nome: String(o.NOME || ""),
+        escola: String(o.ESCOLA || ""),
         cpf: String(o.CPF || ""),
         telefone: String(o.TELEFONE || ""),
         setor: String(o.SETOR || ""),
@@ -304,7 +319,12 @@ function cartaoExterno_vincular(numero, dados, tokenSessao) {
       reg.CPF = cpf;
       reg.NOME = valorSeguroVoucher_(achado.cadastro.nome) || reg.NOME;
       reg.TELEFONE = String(achado.cadastro.telefone || reg.TELEFONE || "").replace(/\D/g, "");
-      reg.OBSERVACAO = "Nome e telefone vieram do cadastro de associados.";
+      /* A ESCOLA SAI DO CADASTRO, não é perguntada. É o dado que o sistema já
+         tem e que ninguém deveria redigitar — e no cartão ela é o que faz a
+         portaria e o próprio associado reconhecerem de quem é o ingresso,
+         quando há dois homônimos na fila. */
+      reg.ESCOLA = valorSeguroVoucher_(achado.cadastro.escolaAtual) || reg.ESCOLA;
+      reg.OBSERVACAO = "Nome, escola e telefone vieram do cadastro de associados.";
     } else {
       reg.CPF = cpf;
       reg.OBSERVACAO = "CPF informado não foi localizado no cadastro.";
@@ -312,6 +332,7 @@ function cartaoExterno_vincular(numero, dados, tokenSessao) {
   }
 
   if (dados.nome) reg.NOME = valorSeguroVoucher_(dados.nome);
+  if (dados.escola) reg.ESCOLA = valorSeguroVoucher_(dados.escola);
   if (dados.telefone) reg.TELEFONE = String(dados.telefone).replace(/\D/g, "");
   if (dados.setor) reg.SETOR = String(dados.setor).trim();
 
@@ -351,8 +372,9 @@ function cartaoExterno_qrDataUri_(numero) {
   return "data:" + blob.getContentType() + ";base64," + Utilities.base64Encode(blob.getBytes());
 }
 
-function cartaoExterno_html_(reg, cfg, qrDataUri) {
+function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
   cfg = cfg || {};
+  arteDataUri = String(arteDataUri || "");
   function esc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -379,6 +401,14 @@ function cartaoExterno_html_(reg, cfg, qrDataUri) {
     'box-shadow:0 18px 50px rgba(16,24,40,.18)}' +
     '.topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;' +
     'padding:22px 22px 18px;text-align:center}' +
+    /* A ARTE É FAIXA NO TOPO, e o texto continua no bloco navy embaixo dela.
+       Pôr o nome do evento POR CIMA da arte seria mais bonito e imprevisível:
+       arte clara engole texto branco, arte carregada engole qualquer texto, e
+       quem descobre é a pessoa que recebeu o cartão. Faixa separada aceita
+       qualquer arte sem negociar legibilidade. */
+    '.arte{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;' +
+    'background:var(--navy)}' +
+    '.topo.compacto{padding:16px 22px 14px}' +
     '.selo{display:inline-block;border:1px solid rgba(201,168,76,.6);color:var(--gold);' +
     'border-radius:999px;padding:4px 14px;font-size:11px;font-weight:800;letter-spacing:.14em}' +
     '.marca{margin-top:12px;font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.85}' +
@@ -402,11 +432,13 @@ function cartaoExterno_html_(reg, cfg, qrDataUri) {
     '@media print{body{background:#fff;padding:0;display:block}' +
     '.cartao{box-shadow:none;width:100%;border:1px solid var(--linha)}}' +
     '</style></head><body><div class="cartao">' +
-    '<div class="topo"><div class="selo">' + esc(reg.TIPO || "CORTESIA").toUpperCase() + '</div>' +
+    (arteDataUri ? '<img class="arte" src="' + arteDataUri + '" alt="">' : '') +
+    '<div class="topo' + (arteDataUri ? ' compacto' : '') + '"><div class="selo">' + esc(reg.TIPO || "CORTESIA").toUpperCase() + '</div>' +
     '<div class="marca">SINDEDUCAÇÃO-ES</div>' +
     '<h1>' + esc(cfg.evento || "Evento") + '</h1></div>' +
     '<div class="regua"></div><div class="corpo">' +
     bloco("Nome", esc(reg.NOME), "nome") +
+    bloco("Escola", esc(reg.ESCOLA)) +
     bloco("Data", esc(cfg.data)) +
     bloco("Local", local) +
     bloco("Setor", esc(reg.SETOR)) +
@@ -450,7 +482,8 @@ function cartaoExterno_gerar(numero, tokenSessao) {
   }
 
   var qr = cartaoExterno_qrDataUri_(numero);
-  var html = cartaoExterno_html_(reg, cfg, qr);
+  var arte = cartaoExterno_arteDataUri_(cfg.arte);
+  var html = cartaoExterno_html_(reg, cfg, qr, arte);
   var nomeArquivo = "Ingresso - " + cfg.evento + " - " + numero + " - " + reg.NOME + ".pdf";
   var pdf = Utilities.newBlob(html, MimeType.HTML, nomeArquivo).getAs(MimeType.PDF);
   pdf.setName(nomeArquivo);
@@ -467,6 +500,49 @@ function cartaoExterno_gerar(numero, tokenSessao) {
 
   return { ok: true, numero: numero, nome: reg.NOME, link: reg.LINK_CARTAO,
            mensagem: "Cartão de " + reg.NOME + " gerado." };
+}
+
+/**
+ * A ARTE DO EVENTO, embutida como data: URI.
+ *
+ * MESMO MOTIVO DO QR: o conversor de PDF do Apps Script não busca host
+ * externo de forma confiável, e uma arte que "às vezes carrega" produz cartão
+ * que às vezes sai sem imagem — sem erro, sem aviso, e só quem recebeu vê.
+ *
+ * ACEITA ID DO DRIVE OU ENDEREÇO. É o que a secretaria tem na mão: ora o
+ * arquivo está no Drive do sindicato, ora é um link que o pessoal da arte
+ * mandou. Exigir um formato só seria exigir que ela convertesse.
+ *
+ * E NÃO ESTOURA POR CAUSA DE IMAGEM. Arte que não carrega devolve vazio e o
+ * cartão sai com o bloco navy de sempre — o ingresso continua válido, porque
+ * o que a portaria lê é o QR. Derrubar a geração inteira por causa de uma
+ * figura seria trocar um cartão feio por nenhum cartão.
+ */
+function cartaoExterno_arteDataUri_(origem) {
+  origem = String(origem || "").trim();
+  if (!origem) return "";
+  try {
+    var idDrive = origem;
+    var achado = origem.match(/[-\w]{25,}/);
+    if (/drive\.google\.com|docs\.google\.com/.test(origem) && achado) idDrive = achado[0];
+
+    var blob = null;
+    if (/^[-\w]{25,}$/.test(idDrive)) {
+      blob = DriveApp.getFileById(idDrive).getBlob();
+    } else if (/^https?:\/\//.test(origem)) {
+      var resp = UrlFetchApp.fetch(origem, { muteHttpExceptions: true });
+      if (resp.getResponseCode() !== 200) return "";
+      blob = resp.getBlob();
+    }
+    if (!blob) return "";
+
+    var tipo = String(blob.getContentType() || "");
+    if (tipo.indexOf("image/") !== 0) return "";
+    return "data:" + tipo + ";base64," + Utilities.base64Encode(blob.getBytes());
+  } catch (e) {
+    Logger.log("cartaoExterno_arteDataUri_ falhou: " + e.message);
+    return "";
+  }
 }
 
 /* A PASTA SAI DE getRecursoId_, como a do Voucher: homologação e produção não
