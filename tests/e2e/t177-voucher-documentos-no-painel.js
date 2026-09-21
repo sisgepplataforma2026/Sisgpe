@@ -291,6 +291,10 @@ const basePai = Object.assign({}, PAYLOAD, { periodoReferencia: "2029/1" });
 delete basePai.modalidade; delete basePai.curso; delete basePai.docPessoal;
 
 const antesDeps = ss.getSheetByName("Voucher_Solicitacoes").getLastRow();
+/* A CAIXA DE SAÍDA ACUMULA O TESTE INTEIRO. Sem marcar onde este envio
+   começa, a contagem soma os e-mails dos passos anteriores — e a primeira
+   asserção que escrevi contou 4 achando que eram os deste bloco. */
+const outboxAntesDeps = amb.outbox.length;
 const tres = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {
   dependentes: [dependente("ANA", 1, "2016-03-02"),
                 dependente("BRUNO", 2, "2014-07-19"),
@@ -341,6 +345,41 @@ b.ok(pessoaisDeps.every(f => /^Voucher - (ANA|BRUNO|CLARA) - DOCUMENTO_PESSOAL/.
 const vinculoDeps = (amb.driveFiles || []).filter(f => !/DOCUMENTO_PESSOAL/.test(f.name));
 b.ok(vinculoDeps.length > 0 && vinculoDeps.every(f => !/ - (ANA|BRUNO|CLARA) - /.test(f.name)),
   "e o comprovante de vínculo não trocou de dono junto");
+
+b.passo("UM e-mail para o associado, com todos os dependentes");
+/* "E enviado para o e-mail do solicitante todos os dependentes." — você,
+   21/09/2026. Antes saía um e-mail POR dependente: três filhos, três
+   mensagens quase idênticas na caixa dele e mais três na da secretaria, por
+   um pedido só. Quem recebe lê como defeito — e está certo. */
+const desteEnvio = amb.outbox.slice(outboxAntesDeps);
+const paraEle = desteEnvio.filter(x => String(x.to || "") === PAYLOAD.email);
+b.igual(paraEle.length, 1, "o associado recebeu UMA mensagem, não três",
+  paraEle.map(x => x.subject).join(" | "));
+
+const corpoEmail = String(paraEle[0].htmlBody || "");
+["ANA", "BRUNO", "CLARA"].forEach(nome => {
+  b.ok(corpoEmail.indexOf(nome) > -1, nome + " aparece no e-mail");
+});
+tres.protocolos.forEach(p => {
+  b.ok(corpoEmail.indexOf(p) > -1, "e o protocolo " + p + " também");
+});
+b.ok(/3 dependentes/.test(String(paraEle[0].subject || "")),
+  "o assunto diz quantos são", paraEle[0].subject);
+
+b.passo("Cada nome ao lado do SEU protocolo, não numa lista solta");
+/* Com três filhos e três números parecidos, uma lista de protocolos soltos
+   obriga a pessoa a adivinhar qual é de quem — e ela só descobre que errou
+   quando a Secretaria pedir documento do filho errado. */
+const linhaAna = corpoEmail.slice(corpoEmail.indexOf("ANA"),
+                                 corpoEmail.indexOf("ANA") + 400);
+b.ok(linhaAna.indexOf(porNome["ANA"].protocolo) > -1,
+  "o protocolo da ANA vem na mesma linha que o nome dela");
+
+b.passo("A secretaria também recebe um só");
+const paraSecretaria = desteEnvio.filter(x =>
+  String(x.to || "").indexOf("secretaria@sindeducacao.com") > -1);
+b.igual(paraSecretaria.length, 1, "uma mensagem interna, não três",
+  paraSecretaria.length + "");
 
 b.passo("O teto de três, e a ordem repetida");
 const quatro = g.salvarCadastroESolicitacaoVoucher(Object.assign({}, basePai, {

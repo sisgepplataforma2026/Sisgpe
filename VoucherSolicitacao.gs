@@ -280,33 +280,48 @@ function salvarCadastroESolicitacaoVoucher(payload) {
       protocolo
     );
 
-    enviarEmailConfirmacaoSolicitacaoVoucher_({
-      email: valorSeguroVoucher_(payload.email),
-      nome: nome,
-      protocolo: protocolo,
-      nomeBeneficiario: nomeBeneficiario,
-      modalidade: payload.modalidade,
-      curso: payload.curso,
-      escola: escolaInfo.escola || escolaAtual,
-      percentual: regra.percentual,
-      situacaoSindicalFinal: situacaoSindicalFinal,
-      statusSolicitacao: statusSolicitacao
-    });
+    /* NO CAMINHO DOS DEPENDENTES, O E-MAIL NÃO SAI AQUI — 21/09/2026.
+       Esta função é chamada UMA VEZ POR DEPENDENTE. Com três filhos, o
+       associado recebia TRÊS e-mails quase idênticos, e a secretaria mais
+       três, por um único pedido feito num único formulário. Quem recebe lê
+       isso como falha do sistema, e não sem razão: ele fez UMA solicitação.
 
-    enviarEmailInternoNovaSolicitacaoVoucher_({
-      protocolo: protocolo,
-      nome: nome,
-      cpf: cpf,
-      escola: escolaInfo.escola || escolaAtual,
-      modalidade: payload.modalidade,
-      curso: payload.curso,
-      periodoReferencia: payload.periodoReferencia,
-      percentual: regra.percentual,
-      statusSolicitacao: statusSolicitacao,
-      situacaoSindicalFinal: situacaoSindicalFinal,
-      escolaNaoCadastrada: escolaNaoCadastrada,
-      funcionarioNovo: funcionarioNovo
-    });
+       Há ainda o custo bobo: a cota diária de e-mail do Apps Script já
+       derrubou o envio do Compasso em 09/09 — "Service invoked too many
+       times for one day: gmail". Multiplicar por três o que pode ser um não
+       é só deselegante.
+
+       Quem manda o consolidado é `salvarSolicitacoesDependentesVoucher_`,
+       depois de gravar todos: um e-mail com os três protocolos. */
+    if (!payload._semEmailIndividual) {
+      enviarEmailConfirmacaoSolicitacaoVoucher_({
+        email: valorSeguroVoucher_(payload.email),
+        nome: nome,
+        protocolo: protocolo,
+        nomeBeneficiario: nomeBeneficiario,
+        modalidade: payload.modalidade,
+        curso: payload.curso,
+        escola: escolaInfo.escola || escolaAtual,
+        percentual: regra.percentual,
+        situacaoSindicalFinal: situacaoSindicalFinal,
+        statusSolicitacao: statusSolicitacao
+      });
+
+      enviarEmailInternoNovaSolicitacaoVoucher_({
+        protocolo: protocolo,
+        nome: nome,
+        cpf: cpf,
+        escola: escolaInfo.escola || escolaAtual,
+        modalidade: payload.modalidade,
+        curso: payload.curso,
+        periodoReferencia: payload.periodoReferencia,
+        percentual: regra.percentual,
+        statusSolicitacao: statusSolicitacao,
+        situacaoSindicalFinal: situacaoSindicalFinal,
+        escolaNaoCadastrada: escolaNaoCadastrada,
+        funcionarioNovo: funcionarioNovo
+      });
+    }
 
     return {
       ok: true,
@@ -424,6 +439,7 @@ function salvarSolicitacoesDependentesVoucher_(payload) {
       Object.keys(payload).forEach(function (k) {
         if (k !== "dependentes" && k !== "docPessoal") umaVez[k] = payload[k];
       });
+      umaVez._semEmailIndividual       = true;
       umaVez.tipoBeneficiario          = dep.tipoBeneficiario || "FILHO";
       umaVez.parentesco                = dep.parentesco || dep.tipoBeneficiario || "FILHO";
       umaVez.nomeBeneficiario          = dep.nomeBeneficiario;
@@ -457,6 +473,25 @@ function salvarSolicitacoesDependentesVoucher_(payload) {
         status: (r && r.status) || ""
       });
     });
+
+    /* UM E-MAIL, COM TODOS — 21/09/2026, a seu pedido: "e enviado para o
+       e-mail do solicitante todos os dependentes".
+       Sai depois de gravar todos, e só se alguma gravação deu certo: avisar
+       sobre um pedido que não entrou seria pior do que não avisar. */
+    if (gravadas > 0) {
+      try {
+        enviarEmailDependentesVoucher_({
+          email: valorSeguroVoucher_(payload.email),
+          nome: valorSeguroVoucher_(payload.nome),
+          cpf: String(payload.cpf || "").replace(/\D/g, ""),
+          escola: valorSeguroVoucher_(payload.escolaAtual),
+          periodoReferencia: payload.periodoReferencia,
+          resultados: resultados
+        });
+      } catch (eMail) {
+        Logger.log("enviarEmailDependentesVoucher_ falhou: " + eMail.message);
+      }
+    }
 
     return {
       ok: gravadas > 0,
@@ -739,5 +774,113 @@ function enviarEmailInternoNovaSolicitacaoVoucher_(dados) {
 
   } catch(e) {
     Logger.log("E-mail interno nova solicitação não enviado: " + e.message);
+  }
+}
+/**
+ * UM E-MAIL PARA O ASSOCIADO, COM TODOS OS DEPENDENTES — 21/09/2026
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * "E enviado para o e-mail do solicitante todos os dependentes." — você.
+ *
+ * O QUE ACONTECIA ANTES: o e-mail de confirmação saía de dentro de
+ * `salvarCadastroESolicitacaoVoucher`, que roda UMA VEZ POR DEPENDENTE. Três
+ * filhos, três e-mails quase idênticos na caixa do associado — e mais três
+ * na da secretaria — por um único pedido feito num único formulário. Quem
+ * recebe lê como defeito, e está certo: ele fez uma solicitação só.
+ *
+ * O QUE ESTE E-MAIL PRECISA RESPONDER, e por isso a tabela é o corpo dele:
+ * "de quem é cada protocolo?". Com três filhos e três números parecidos, uma
+ * lista de protocolos soltos obriga a pessoa a adivinhar qual é de quem — e
+ * ela só vai descobrir que errou quando a Secretaria pedir documento do
+ * filho errado.
+ *
+ * O QUE NÃO ENTRA: dado de análise. Situação sindical, escola não cadastrada,
+ * funcionário novo — isso é do painel, onde estão os documentos e os botões
+ * de decidir. Aqui vale o que a pessoa precisa guardar.
+ *
+ * E O QUE FALHOU FICA VISÍVEL. Se um dependente não gravou, ele aparece na
+ * tabela dizendo isso, em vez de sumir — sumir faria a pessoa contar dois e
+ * achar que o terceiro chegou.
+ */
+function enviarEmailDependentesVoucher_(dados) {
+  try {
+    if (!dados || !dados.email) return;
+
+    var resultados = Array.isArray(dados.resultados) ? dados.resultados : [];
+    if (!resultados.length) return;
+
+    var ok = resultados.filter(function (r) { return r && r.ok; });
+
+    var linhas = resultados.map(function (r) {
+      var nome = escHtmlVoucher_(r.nome || "");
+      if (!r.ok) {
+        return "<tr>" +
+          "<td style='padding:9px 0;border-bottom:1px solid #e2e8f0;'>" + nome + "</td>" +
+          "<td style='padding:9px 0;border-bottom:1px solid #e2e8f0;color:#b91c1c;' colspan='2'>" +
+          "não registrado — " + escHtmlVoucher_(r.mensagem || "tente novamente") + "</td></tr>";
+      }
+      return "<tr>" +
+        "<td style='padding:9px 0;border-bottom:1px solid #e2e8f0;font-weight:600;'>" + nome + "</td>" +
+        "<td style='padding:9px 0;border-bottom:1px solid #e2e8f0;font-family:monospace;" +
+          "letter-spacing:.03em;'>" + escHtmlVoucher_(r.protocolo || "") + "</td>" +
+        "<td style='padding:9px 0;border-bottom:1px solid #e2e8f0;text-align:right;" +
+          "font-weight:700;color:#059669;'>" +
+          (r.percentual ? escHtmlVoucher_(r.percentual) + "%" : "—") + "</td></tr>";
+    }).join("");
+
+    var quantos = ok.length === 1
+      ? "a solicitação do seu dependente foi registrada"
+      : "as solicitações dos seus " + ok.length + " dependentes foram registradas";
+
+    var corpo =
+      "<p>Olá, <strong>" + escHtmlVoucher_(dados.nome) + "</strong>,</p>" +
+      "<p>" + quantos.charAt(0).toUpperCase() + quantos.slice(1) + ".</p>" +
+      "<p style='font-size:13px;color:#475569;'>Cada dependente tem o <strong>seu próprio " +
+        "protocolo</strong>: é por ele que a Secretaria responde, e é ele que você informa " +
+        "se precisar falar sobre um deles em separado.</p>" +
+      "<table style='width:100%;font-size:13px;border-collapse:collapse;margin:18px 0;'>" +
+        "<tr>" +
+          "<th style='text-align:left;font-size:10px;letter-spacing:.1em;color:#64748b;" +
+            "text-transform:uppercase;padding-bottom:6px;'>Dependente</th>" +
+          "<th style='text-align:left;font-size:10px;letter-spacing:.1em;color:#64748b;" +
+            "text-transform:uppercase;padding-bottom:6px;'>Protocolo</th>" +
+          "<th style='text-align:right;font-size:10px;letter-spacing:.1em;color:#64748b;" +
+            "text-transform:uppercase;padding-bottom:6px;'>Desconto</th>" +
+        "</tr>" + linhas +
+      "</table>" +
+      (dados.escola ? "<p style='font-size:13px;color:#475569;'>Escola informada: <strong>" +
+        escHtmlVoucher_(dados.escola) + "</strong>" +
+        (dados.periodoReferencia ? " · Período: <strong>" +
+          escHtmlVoucher_(dados.periodoReferencia) + "</strong>" : "") + "</p>" : "") +
+      "<p style='background:#f0fdf4;border:1px solid #86efac;border-radius:8px;" +
+        "padding:12px 16px;font-size:13px;color:#166534;'>" +
+        "✅ A equipe do SindEducação-ES analisa e responde pelo SISGEP. " +
+        "O desconto acima é o previsto pela convenção e pode mudar na análise." +
+      "</p>";
+
+    voucherEnviarMsg_({
+      to: dados.email,
+      subject: "Solicitações de Bolsa de Estudo — SindEducação-ES · " +
+               ok.length + " dependente" + (ok.length === 1 ? "" : "s"),
+      htmlBody: voucherEmailHtml_("Solicitação de Bolsa de Estudo", corpo)
+    });
+
+    /* A SECRETARIA TAMBÉM RECEBE UM SÓ. Três e-mails para o mesmo pedido
+       enchem a caixa de quem precisa perceber o que é novo. */
+    voucherEnviarMsg_({
+      to: "secretaria@sindeducacao.com",
+      subject: "Nova solicitação de Bolsa · " + valorSeguroVoucher_(dados.nome) +
+               " · " + ok.length + " dependente" + (ok.length === 1 ? "" : "s"),
+      htmlBody: voucherEmailHtml_("Nova solicitação de Bolsa",
+        "<p><strong>" + escHtmlVoucher_(dados.nome) + "</strong>" +
+        (dados.cpf ? " · CPF " + escHtmlVoucher_(dados.cpf) : "") + "</p>" +
+        "<table style='width:100%;font-size:13px;border-collapse:collapse;margin:14px 0;'>" +
+          linhas + "</table>" +
+        "<p style='font-size:13px;color:#475569;'>Os documentos de cada dependente estão " +
+        "no painel de Bolsas, em cada protocolo.</p>")
+    });
+
+  } catch (e) {
+    Logger.log("enviarEmailDependentesVoucher_ falhou: " + e.message);
   }
 }
