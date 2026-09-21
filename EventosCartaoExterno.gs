@@ -122,7 +122,8 @@ function cartaoExterno_cfgAba_() {
    cartaoExterno_listar, que é travada. */
 function cartaoExterno_lerCfg_() {
   var sh = cartaoExterno_cfgAba_();
-  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "", arte: "", orientacoes: "" };
+  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "", arte: "", orientacoes: "",
+             arteTrazDataLocal: "", arteTrazMarca: "" };
   if (sh.getLastRow() < 2) return cfg;
   sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (l) {
     var k = String(l[0] || "").trim();
@@ -136,7 +137,8 @@ function cartaoExterno_salvarCfg(cfg, tokenSessao) {
   cfg = cfg || {};
   var sh = cartaoExterno_cfgAba_();
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
-  var linhas = ["evento", "data", "local", "cidade", "rodape", "arte", "orientacoes"].map(function (k) {
+  var linhas = ["evento", "data", "local", "cidade", "rodape", "arte", "orientacoes",
+   "arteTrazDataLocal", "arteTrazMarca"].map(function (k) {
     return [k, String(cfg[k] == null ? "" : cfg[k]).trim()];
   });
   sh.getRange(2, 1, linhas.length, 2).setValues(linhas);
@@ -395,6 +397,14 @@ var CARTAO_EXTERNO_ORIENTACOES_ = [
   "Guarde o número impresso: com ele a portaria localiza seu ingresso mesmo sem leitura do QR."
 ];
 
+/* "SIM" na configuração do evento. Vazio — o padrão — é NÃO.
+   O PADRÃO É MOSTRAR, e não é detalhe: informação repetida incomoda;
+   informação ausente faz a pessoa chegar no dia errado. Entre os dois
+   incômodos, o barato é a repetição. */
+function cartaoExterno_ligado_(valor) {
+  return /^(sim|s|true|1)$/i.test(String(valor || "").trim());
+}
+
 function cartaoExterno_orientacoesHtml_(cfg) {
   cfg = cfg || {};
   var lista = String(cfg.orientacoes || "").split(/\r?\n/)
@@ -461,7 +471,11 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
     '.rot{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--suave);' +
     'text-transform:uppercase}' +
     '.val{font-size:16px;font-weight:600;margin-top:3px;line-height:1.35}' +
-    '.val.nome{font-size:19px;font-weight:800;color:var(--navy)}' +
+    '.val.nome{font-size:21px;font-weight:800;color:var(--navy);line-height:1.25}' +
+    /* O QUE É CONSULTA PRÉVIA vem depois do QR e em corpo menor: já foi
+       lido dias antes, e na fila só atrapalharia. */
+    '.corpo.extras{padding:0 22px 4px}' +
+    '.corpo.extras .val{font-size:14px}' +
     '.qrarea{padding:18px 22px 22px;text-align:center}' +
     '.qrcaixa{display:inline-block;background:#fff;border:1px solid var(--linha);' +
     'border-radius:14px;padding:10px;line-height:0}' +
@@ -495,19 +509,45 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
        fora da arte — e como o bloco navy tinha parado de escrever a marca, o
        cartão ficou sem identidade do SindEducação em lugar nenhum. Perder o
        nome do evento repetido é ganho; perder de quem é o ingresso, não. */
-    '<div class="marca">SINDEDUCAÇÃO-ES</div>' +
+    ((arteDataUri && cartaoExterno_ligado_(cfg.arteTrazMarca)) ? '' :
+      '<div class="marca">SINDEDUCAÇÃO-ES</div>') +
     (arteDataUri ? '' : '<h1>' + esc(cfg.evento || "Evento") + '</h1>') +
     '</div>' +
+    /* ═══ A ORDEM É POR MOMENTO DE USO, NÃO POR ASSUNTO ═══════════════════
+       Este cartão é aberto em dois momentos muito diferentes:
+
+         dias antes  → para saber onde e quando é. A arte responde.
+         na fila     → para entrar. Só o QR, o número e o nome importam.
+
+       O desenho anterior atendia bem o primeiro e mal o segundo: para
+       chegar ao QR a pessoa passava por cinco linhas de campo, o que no
+       celular vira rolagem com a fila andando. Agora quem identifica
+       (nome e escola) vem primeiro, o QR logo em seguida, e o que é
+       consulta prévia desce para depois dele. */
     '<div class="regua"></div><div class="corpo">' +
     bloco("Nome", esc(reg.NOME), "nome") +
     bloco("Escola", esc(reg.ESCOLA)) +
-    bloco("Data", esc(cfg.data)) +
-    bloco("Local", local) +
-    bloco("Setor", esc(reg.SETOR)) +
     '</div><div class="qrarea">' +
     '<div class="qrcaixa"><img src="' + qrDataUri + '" alt=""></div>' +
     '<div class="numero">' + esc(reg.NUMERO) + '</div>' +
     '<div class="dica">Apresente este cartão na entrada</div></div>' +
+
+    /* DATA E LOCAL SÓ QUANDO A ARTE NÃO OS TRAZ. O cartão não PRESUME que
+       traz: isso é verdade nesta arte porque o recorte incluiu a faixa de
+       data, e a arte do ano que vem pode não ter. Quem sabe é quem
+       configurou o evento. */
+    ((cartaoExterno_ligado_(cfg.arteTrazDataLocal) && arteDataUri) ? '' :
+      '<div class="corpo extras">' +
+      bloco("Data", esc(cfg.data)) +
+      bloco("Local", local) +
+      '</div>') +
+
+    /* O SETOR SÓ APARECE QUANDO DIZ ALGO QUE A TARJA NÃO DISSE. Com
+       "Cortesia" nos dois, o cartão repetia a mesma palavra a quatro
+       centímetros de distância. */
+    (String(reg.SETOR || "").trim().toUpperCase() !==
+     String(reg.TIPO || "CORTESIA").trim().toUpperCase()
+      ? '<div class="corpo extras">' + bloco("Setor", esc(reg.SETOR)) + '</div>' : '') +
     cartaoExterno_orientacoesHtml_(cfg) +
     '<div class="rodape">' +
     esc(cfg.rodape || "Ingresso emitido pela plataforma de bilheteria do evento.") +

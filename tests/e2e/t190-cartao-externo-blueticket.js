@@ -341,6 +341,63 @@ const codigo = fonte
     "nada de '" + palavra + "' no código — validação não é nossa");
 });
 
+/* ══ A ORDEM POR MOMENTO DE USO — 21/09/2026 ══════════════════════════════ */
+b.passo("O cartão não repete o que a arte já diz — quando alguém marca que diz");
+
+g.cartaoExterno_salvarCfg({
+  evento: "No Compasso da Vida 2026",
+  data: "Sábado, 19 de dezembro de 2026 • Portões 19:30",
+  local: "Espaço Patrick Ribeiro", cidade: "Vitória, ES",
+  arteTrazDataLocal: "SIM", arteTrazMarca: "SIM"
+}, TOKEN);
+
+const enxuto = g.cartaoExterno_html_(
+  { NUMERO: "76902432", NOME: "LUCIANA RODRIGUES VIEIRA PORTUGAL",
+    ESCOLA: "EEEFM MARIA ORTIZ", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA", "data:image/jpeg;base64,ARTE");
+
+b.ok(enxuto.indexOf(">Data</div>") === -1, "Data sai, porque a arte a traz");
+b.ok(enxuto.indexOf(">Local</div>") === -1, "Local também");
+b.ok(enxuto.indexOf("SINDEDUCAÇÃO-ES") === -1, "e a marca, porque o logo está na arte");
+b.ok(enxuto.indexOf(">Setor</div>") === -1,
+  "Setor sai sozinho: dizia 'Cortesia' a quatro centímetros da tarja que já dizia 'Cortesia'");
+b.ok(enxuto.indexOf("LUCIANA RODRIGUES VIEIRA PORTUGAL") > -1, "o nome fica");
+b.ok(enxuto.indexOf("EEEFM MARIA ORTIZ") > -1, "a escola também");
+
+b.passo("E o QR sobe para antes do que é consulta prévia");
+/* Na fila, com a fila andando, cinco linhas de campo antes do código viram
+   rolagem. Quem precisa de data e local está consultando dias antes. */
+b.ok(enxuto.indexOf('class="qrarea"') < enxuto.indexOf('class="orient"'),
+  "o QR vem antes das orientações");
+b.ok(enxuto.indexOf("EEEFM MARIA ORTIZ") < enxuto.indexOf('class="qrarea"'),
+  "e depois do nome e da escola, que são o que a portaria confere");
+
+b.passo("O PADRÃO É MOSTRAR — o cartão nunca presume que a arte traz algo");
+/* Isto é a trava, e é o que separa ajuste de desenho de decisão de
+   arquitetura: esconder data e local só é correto NESTA arte, porque o
+   recorte incluiu a faixa de data. A arte do ano que vem pode não ter.
+   Informação repetida incomoda; informação ausente faz a pessoa chegar no
+   dia errado — entre os dois incômodos, o barato é a repetição. */
+g.cartaoExterno_salvarCfg({
+  evento: "Outro Evento", data: "Sábado, 10 de janeiro",
+  local: "Sede do sindicato", cidade: "Vitória, ES"
+}, TOKEN);
+const completo = g.cartaoExterno_html_(
+  { NUMERO: "1", NOME: "FULANO", ESCOLA: "ESCOLA X", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA", "data:image/jpeg;base64,ARTE");
+b.ok(completo.indexOf(">Data</div>") > -1, "sem a marcação, Data aparece");
+b.ok(completo.indexOf(">Local</div>") > -1, "Local também");
+b.ok(completo.indexOf("SINDEDUCAÇÃO-ES") > -1, "e a marca volta");
+b.ok(completo.indexOf('class="qrarea"') < completo.indexOf(">Data</div>"),
+  "mas ainda DEPOIS do QR — quem precisa deles não está na fila");
+
+b.passo("Setor volta quando diz algo que a tarja não disse");
+const camarote = g.cartaoExterno_html_(
+  { NUMERO: "1", NOME: "FULANO", SETOR: "Camarote", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
+b.ok(camarote.indexOf(">Setor</div>") > -1, "'Camarote' com tarja 'Cortesia' aparece");
+b.ok(camarote.indexOf("Camarote") > -1, "com o valor escrito");
+
 b.naoTestavel("O aplicativo da Blueticket lendo o nosso cartão",
   "só o aparelho deles responde. Roteiro: gerar um cartão, imprimir e abrir " +
   "no celular, e ler com o app do Blueticket nos dois — de dia e com pouca luz");
