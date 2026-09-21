@@ -48,6 +48,43 @@ b.igual(win.numeroDoArquivo("comprovante.pdf"), "", "arquivo sem número não in
 b.igual(win.numeroDoArquivo("nota-123.pdf"), "",
   "e três dígitos não são número de ingresso — o piso é seis");
 
+/* ── 1b. A PLANILHA COLADA ───────────────────────────────────────────── */
+b.passo("1b. Planilha colada: o nome vem junto e ninguém vincula um por um");
+/* "Vou importar a planilha" — você, 21/09/2026. Com ela o trabalho cai muito:
+   o nome chega com o número, e a fila já nasce em PRONTO. */
+
+const daPlanilha = win.lerColagem(
+  "NÚMERO\tNOME\tESCOLA\n" +
+  "76902432\tLuciana Rodrigues Vieira Portugal\tEEEFM Maria Ortiz\n" +
+  "69621594\tGabriel Mozer Fraga\tColégio Salesiano\n");
+
+b.igual(daPlanilha.length, 2, "duas linhas de dados");
+b.igual(daPlanilha[0].numero, "76902432", "o número foi reconhecido");
+b.igual(daPlanilha[0].nome, "Luciana Rodrigues Vieira Portugal", "o nome também");
+b.igual(daPlanilha[0].escola, "EEEFM Maria Ortiz", "e a escola");
+
+b.passo("O cabeçalho é descartado sozinho");
+/* Quem copia a tabela inteira leva o cabeçalho junto, e um cartão para
+   "NÚMERO / NOME" seria cômico na fila da portaria. */
+b.ok(!daPlanilha.some(function (d) { return /N.MERO/i.test(d.nome); }),
+  "nenhuma linha virou cartão do cabeçalho");
+
+b.passo("A ordem das colunas não precisa ser a nossa");
+/* Exigir ordem fixa seria exigir que a secretaria reorganizasse a planilha
+   antes — trabalho que o programa faz melhor. */
+const invertida = win.lerColagem("Gabriel Mozer Fraga;Colégio Salesiano;69621594");
+b.igual(invertida.length, 1, "linha com o número no fim também é lida");
+b.igual(invertida[0].numero, "69621594", "o número é achado por ser só dígitos");
+b.igual(invertida[0].nome, "Gabriel Mozer Fraga", "e o nome, por ter letras");
+
+b.passo("Separador de Excel, de CSV e de vírgula, todos servem");
+b.igual(win.lerColagem("76902432\tFULANO").length, 1, "TAB (é o que o Excel cola)");
+b.igual(win.lerColagem("76902432;FULANO").length, 1, "ponto e vírgula");
+b.igual(win.lerColagem("76902432,FULANO").length, 1, "vírgula");
+b.igual(win.lerColagem("linha sem numero nenhum").length, 0,
+  "e linha sem número não vira ingresso");
+b.igual(win.lerColagem("").length, 0, "colagem vazia não inventa nada");
+
 /* ── 2. A LEITURA DOS ARQUIVOS ───────────────────────────────────────── */
 b.passo("2. Arquivo lido entra na fila de importação, e o ruim fica de fora");
 
@@ -185,6 +222,29 @@ win.__lidos()[0].divergente = false;
     .forEach(function (t) {
       b.ok(marcacao.indexOf(t) === -1, "nada de '" + t + "' na tela");
     });
+
+  b.passo("8. Importar pela planilha já entrega o cartão PRONTO");
+  /* É a diferença que a planilha faz: sem ela, cada ingresso passa pelo
+     vínculo por CPF, um por um. Com ela, a fila nasce pronta para gerar. */
+  campo("colagem").value =
+    "NUMERO\tNOME\tESCOLA\n" +
+    "96706474\tCristiane Naomi Kawaguti\tEEEFM Arnulpho Mattos";
+  clicar("#btnLerColagem");
+  b.ok(/já com nome/.test(campo("resumoLeitura").textContent),
+    "a tela avisa que essas linhas já trazem nome",
+    campo("resumoLeitura").textContent.replace(/\s+/g, " ").slice(0, 80));
+
+  clicar("#btnImportar");
+  await tela.assentar(80);
+  win.carregarTela();
+  await tela.assentar(80);
+
+  const cristiane = win.__itens().filter(function (i) { return i.numero === "96706474"; })[0];
+  b.ok(!!cristiane, "o ingresso da planilha foi gravado");
+  b.igual(cristiane.nome, "Cristiane Naomi Kawaguti", "com o nome da planilha");
+  b.igual(cristiane.escola, "EEEFM Arnulpho Mattos", "e a escola");
+  b.igual(cristiane.status, "PRONTO",
+    "já em PRONTO — sem passar pelo vínculo por CPF");
 
   b.naoTestavel("Arrastar o PDF e o navegador ler o QR da página",
     "jsdom não renderiza PDF; roteiro manual: abrir a tela, arrastar três PDFs " +

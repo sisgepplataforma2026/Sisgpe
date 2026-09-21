@@ -153,11 +153,17 @@ véspera, a secretaria imprime o PDF da bilheteria e a festa acontece igual.
 
 ### Três consequências, e nenhuma é detalhe
 
-**1. O canhoto do sorteio deixa de existir no que o associado recebe.** O
-bilhete grande trazia "deposite este canhoto na urna para participar dos
-sorteios"; o cartão não tem canhoto — o usuário mandou tirar em 19/09. Se o
-sorteio continuar, ele precisa sair da **lista de quem entrou**, que o
-aplicativo da bilheteria já tem. **Isto está em aberto** e não foi desenhado.
+**1. O canhoto do sorteio deixa de existir no que o associado recebe** — e o
+sorteio **não será pelo SISGEP**. O bilhete grande trazia "deposite este
+canhoto na urna para participar dos sorteios"; o cartão não tem canhoto (o
+usuário mandou tirar em 19/09), e em 21/09 ele fechou a questão: *"o sorteio
+não será pelo SISGEP"*.
+
+Ponta encerrada, então — mas fica registrado o que foi descartado, para
+ninguém reabrir achando que é esquecimento: chegou a ser desenhado um sorteio
+que tirava da lista de quem entrou (importada do aplicativo da bilheteria) ou,
+se ela não existisse, de uma urna digital por QR no telão. Nada disso foi
+implementado, e não há código a remover.
 
 **2. A emissão própria do SISGEP fica sem uso — e NÃO foi removida.**
 `compasso_ingressoPdf_` (EventosEntrega.gs), `EventosIngressoTemplate.html`,

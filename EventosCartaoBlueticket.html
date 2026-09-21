@@ -162,6 +162,18 @@
       <input type="file" id="arquivos" accept=".pdf" multiple class="escondido">
     </div>
 
+    <!-- A PLANILHA É O CAMINHO CURTO. Com ela o nome vem junto do número e
+         ninguém precisa vincular associado um por um; os PDFs continuam
+         valendo para quem não tem planilha nenhuma. -->
+    <div class="campo" style="margin-top:16px">
+      <label for="colagem">…ou cole a planilha aqui (número e nome, um por linha)</label>
+      <textarea id="colagem" rows="4" placeholder="76902432&#9;Luciana Rodrigues Vieira Portugal&#9;EEEFM Maria Ortiz
+69621594&#9;Gabriel Mozer Fraga"></textarea>
+    </div>
+    <div class="acoes" style="margin-top:0">
+      <button class="btn btn-outline" id="btnLerColagem">Ler o que foi colado</button>
+    </div>
+
     <div id="resumoLeitura" class="aviso info escondido" style="margin-top:12px"></div>
 
     <div class="acoes">
@@ -258,6 +270,50 @@
     return achados[achados.length - 1].replace(/^0+/, '');
   }
 
+  /* ── A PLANILHA COLADA ────────────────────────────────────────────────
+     Aceita o que sai de uma planilha de verdade: separado por TAB (o que o
+     Excel e o Sheets colam), por ponto e vírgula ou por vírgula. Linha de
+     cabeçalho é descartada sozinha — quem copia a tabela inteira leva o
+     cabeçalho junto, e um cartão para "NÚMERO / NOME" seria cômico na fila.
+
+     A ORDEM DAS COLUNAS NÃO É FIXA. O número é reconhecido por ser o campo
+     só de dígitos com seis a doze deles; o nome é o primeiro campo com
+     letras; a escola, o seguinte. Exigir ordem fixa seria exigir que a
+     secretaria reorganizasse a planilha antes — trabalho que o programa faz
+     melhor. */
+  function lerColagem(texto){
+    var linhas = String(texto || '').split(/\r?\n/)
+      .map(function(l){ return l.trim(); }).filter(function(l){ return l; });
+    var achados = [];
+
+    linhas.forEach(function(linha){
+      var campos = linha.split(/\t|;|,/).map(function(c){ return c.trim(); })
+        .filter(function(c){ return c !== ''; });
+      if (!campos.length) return;
+
+      var numero = '';
+      var textos = [];
+      campos.forEach(function(c){
+        var soDigitos = c.replace(/\D/g, '');
+        if (!numero && soDigitos === c.replace(/[^\d]/g, '') &&
+            /^\d{6,12}$/.test(c)) { numero = soDigitos.replace(/^0+/, ''); return; }
+        if (/[A-Za-zÀ-ÿ]/.test(c)) textos.push(c);
+      });
+
+      /* Cabeçalho: tem letras onde deveria haver número. */
+      if (!numero) return;
+      achados.push({
+        arquivo: 'planilha',
+        numero: numero,
+        nome: textos[0] || '',
+        escola: textos[1] || '',
+        numeroQr: '', divergente: false, origemNumero: 'PLANILHA'
+      });
+    });
+
+    return achados;
+  }
+
   function desenharResumoLeitura(){
     var comNumero = lidos.filter(function(l){ return l.numero; });
     var divergentes = lidos.filter(function(l){ return l.divergente; });
@@ -267,7 +323,9 @@
 
     if (!lidos.length){ avisar('', 'info', 'resumoLeitura'); return; }
 
+    var comNome = comNumero.filter(function(l){ return l.nome; });
     var txt = '<b>' + comNumero.length + '</b> ingresso(s) lido(s)';
+    if (comNome.length) txt += ' · <b>' + comNome.length + '</b> já com nome';
     if (semNumero.length) txt += ' · <b>' + semNumero.length + '</b> sem número no nome do arquivo';
     if (divergentes.length) txt += ' · <b>' + divergentes.length + '</b> com QR diferente do nome do arquivo';
     var tipo = divergentes.length ? 'erro' : (semNumero.length ? 'alerta' : 'ok');
@@ -300,7 +358,8 @@
   function paraImportar(){
     return lidos.filter(function(l){ return l.numero && !l.divergente; })
       .map(function(l){
-        return { numero: l.numero, arquivo: l.arquivo, origemNumero: l.origemNumero };
+        return { numero: l.numero, arquivo: l.arquivo, origemNumero: l.origemNumero,
+                 nome: l.nome || '', escola: l.escola || '' };
       });
   }
 
@@ -421,8 +480,19 @@
       receberArquivos(e.dataTransfer && e.dataTransfer.files);
     });
 
+    g('btnLerColagem').addEventListener('click', function(){
+      var achados = lerColagem(g('colagem').value);
+      if (!achados.length){
+        avisar('❌ Não encontrei nenhuma linha com número de ingresso.', 'erro', 'resumoLeitura');
+        return;
+      }
+      lidos = lidos.concat(achados);
+      desenharResumoLeitura();
+    });
+
     g('btnLimparLeitura').addEventListener('click', function(){
-      lidos = []; g('arquivos').value = ''; desenharResumoLeitura();
+      lidos = []; g('arquivos').value = ''; g('colagem').value = '';
+      desenharResumoLeitura();
     });
 
     g('btnImportar').addEventListener('click', function(){
@@ -506,6 +576,7 @@
 
   /* Para os testes alcançarem o que a tela calcula sozinha. */
   window.numeroDoArquivo = numeroDoArquivo;
+  window.lerColagem = lerColagem;
   window.receberArquivos = receberArquivos;
   window.paraImportar = paraImportar;
   window.lerCfgDaTela = lerCfgDaTela;

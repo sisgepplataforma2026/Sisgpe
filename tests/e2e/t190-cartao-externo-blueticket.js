@@ -70,6 +70,63 @@ const zero = g.cartaoExterno_importar([{ numero: "0076902432", nome: "LUCIANA" }
 b.igual(zero.novos, 0, "'0076902432' é o mesmo ingresso que '76902432'");
 b.igual(g.cartaoExterno_listar(TOKEN).total, 2, "a lista não cresceu");
 
+b.passo("A ordem da fila é a dos arquivos, não a dos números");
+/* EFEITO COLATERAL DA CORREÇÃO ACIMA, pego no mesmo dia: os novos passaram a
+   ser juntados num objeto até o fim, e chave de objeto que PARECE número é
+   reordenada pelo próprio JavaScript em ordem crescente. A fila passou a
+   aparecer numa ordem que ninguém pediu — diferente da planilha que a pessoa
+   colou, o que é justamente o tipo de coisa que faz alguém achar que importou
+   errado. */
+const ordemPedida = ["77000003", "77000001", "77000002"];
+g.cartaoExterno_importar(ordemPedida.map(function (n) {
+  return { numero: n, nome: "FULANO " + n };
+}), TOKEN);
+const ordemGravada = g.cartaoExterno_listar(TOKEN).itens
+  .map(function (i) { return i.numero; })
+  .filter(function (n) { return ordemPedida.indexOf(n) > -1; });
+b.igual(ordemGravada.join(","), ordemPedida.join(","),
+  "saiu na ordem em que foi informado, e não em ordem crescente");
+
+
+b.passo("Número repetido DENTRO do mesmo lote não destrói a planilha");
+/* DEFEITO ACHADO EM 21/09, e ele era grave e silencioso. Ao enfileirar uma
+   linha nova, o código marcava `existentes[numero] = true`. Na segunda
+   ocorrência do mesmo número no MESMO lote, entrava no ramo de atualização
+   com `linha === true`, e `getRange(true, …)` vira LINHA 1: a gravação ia por
+   cima do CABEÇALHO. Depois disso nenhuma linha tinha coluna NUMERO, e a
+   lista inteira lia como vazia — dados na planilha, tela em branco, e nenhum
+   erro em lugar nenhum.
+
+   Acontece de verdade: a secretaria cola a planilha duas vezes, ou o mesmo
+   número aparece repetido nela. */
+const abaAntes = g.SpreadsheetApp.openById(g.PLANILHA_ID)
+  .getSheetByName("Eventos_CartoesExternos");
+const totalAntes = g.cartaoExterno_listar(TOKEN).total;
+
+const repetido = g.cartaoExterno_importar([
+  { numero: "55555555", nome: "REPETIDO UM" },
+  { numero: "55555555", nome: "REPETIDO UM" }
+], TOKEN);
+b.igual(repetido.novos, 1, "as duas ocorrências viram UMA linha");
+b.igual(abaAntes.getRange(1, 1, 1, 3).getValues()[0].join(","), "NUMERO,NOME,ESCOLA",
+  "e o cabeçalho continua de pé — era ele que ia embora");
+b.igual(g.cartaoExterno_listar(TOKEN).total, totalAntes + 1,
+  "a lista continua legível, com um ingresso a mais");
+
+b.passo("E a repetição no lote soma os dados, em vez de perder");
+/* Quem cola duas vezes costuma estar corrigindo: a segunda linha traz o que
+   faltava na primeira. */
+g.cartaoExterno_importar([
+  { numero: "66666666" },
+  { numero: "66666666", nome: "VEIO DEPOIS", escola: "ESCOLA TAL" }
+], TOKEN);
+const juntado = g.cartaoExterno_listar(TOKEN).itens
+  .filter(function (i) { return i.numero === "66666666"; })[0];
+b.igual(juntado.nome, "VEIO DEPOIS", "o nome da segunda linha entrou");
+b.igual(juntado.escola, "ESCOLA TAL", "a escola também");
+b.igual(juntado.status, "PRONTO", "e o status acompanha o que ficou");
+
+
 /* ══ O CORAÇÃO DO TESTE ═══════════════════════════════════════════════════ */
 b.passo("O QR do nosso cartão carrega o número da Blueticket — e nada mais");
 

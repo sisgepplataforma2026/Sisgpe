@@ -165,7 +165,14 @@ function cartaoExterno_importar(itens, tokenSessao) {
   var quem = (sessao && (sessao.nome || sessao.usuario)) || "";
 
   var novos = 0, atualizados = 0, recusados = [];
-  var paraAnexar = [];
+  /* Os novos ficam em memória até o fim e só então vão para a planilha: é o
+     que permite juntar repetições do mesmo lote em uma linha só. */
+  var pendentes = {};
+  /* A ORDEM É A DOS ARQUIVOS, NÃO A DOS NÚMEROS. Chave de objeto que parece
+     número é reordenada pelo próprio JavaScript em ordem crescente — e a fila
+     passaria a aparecer numa ordem que ninguém pediu, diferente da planilha
+     que a pessoa colou. Guardar a ordem à parte custa uma lista. */
+  var ordemPendentes = [];
 
   itens.forEach(function (it) {
     it = it || {};
@@ -192,6 +199,26 @@ function cartaoExterno_importar(itens, tokenSessao) {
       OBSERVACAO: String(it.observacao || "").trim()
     };
 
+    /* NÚMERO REPETIDO DENTRO DO MESMO LOTE — e este era um defeito sério.
+       A versão anterior marcava `existentes[numero] = true` ao enfileirar uma
+       linha nova. Na segunda ocorrência do mesmo número, o código entrava no
+       ramo de atualização com `linha === true`, e `getRange(true, …)` vira
+       LINHA 1: a gravação ia por cima do CABEÇALHO da planilha. Depois disso
+       nenhuma linha tinha mais coluna NUMERO, e a lista inteira passava a ler
+       como vazia — dados na planilha, tela em branco, sem erro nenhum.
+
+       Achado em 21/09 pelo t191, ao colar uma planilha cujo número já estava
+       na fila de leitura. Agora a repetição no lote atualiza o registro que
+       já está na fila, que é o que a pessoa quis dizer ao colar duas vezes. */
+    var naFila = pendentes[numero];
+    if (naFila !== undefined) {
+      Object.keys(registro).forEach(function (k) {
+        if (registro[k] !== "" && registro[k] != null) naFila[k] = registro[k];
+      });
+      naFila.STATUS = cartaoExterno_statusDe_(naFila);
+      return;
+    }
+
     var linha = existentes[numero];
     if (linha) {
       /* O que já foi gerado e enviado NÃO volta atrás numa reimportação: só
@@ -211,12 +238,16 @@ function cartaoExterno_importar(itens, tokenSessao) {
         .setValues([headers.map(function (h) { return registro[h] == null ? "" : registro[h]; })]);
       atualizados++;
     } else {
-      paraAnexar.push(headers.map(function (h) { return registro[h] == null ? "" : registro[h]; }));
-      existentes[numero] = true;
+      pendentes[numero] = registro;
+      ordemPendentes.push(numero);
       novos++;
     }
   });
 
+  var paraAnexar = ordemPendentes.map(function (n) {
+    var reg = pendentes[n];
+    return headers.map(function (h) { return reg[h] == null ? "" : reg[h]; });
+  });
   if (paraAnexar.length) {
     sh.getRange(sh.getLastRow() + 1, 1, paraAnexar.length, headers.length).setValues(paraAnexar);
   }
