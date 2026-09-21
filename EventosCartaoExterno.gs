@@ -509,9 +509,16 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
        fora da arte — e como o bloco navy tinha parado de escrever a marca, o
        cartão ficou sem identidade do SindEducação em lugar nenhum. Perder o
        nome do evento repetido é ganho; perder de quem é o ingresso, não. */
+    /* QUEM DECIDE ESCONDER É A MARCAÇÃO, NUNCA A PRESENÇA DE ARTE — 21/09/2026.
+       Eu tinha feito o nome do evento sumir sozinho sempre que houvesse
+       arte, por achar repetição. Você devolveu o cartão COM o nome e disse
+       "nesse formato": a repetição ali não incomoda, e o bloco navy sem
+       título vira uma tarja solta. A regra volta a ser a mesma dos outros
+       campos — o padrão é mostrar, e some só quando alguém marcar que a arte
+       já traz. Regra que decide sozinha é regra que decide errado calada. */
     ((arteDataUri && cartaoExterno_ligado_(cfg.arteTrazMarca)) ? '' :
-      '<div class="marca">SINDEDUCAÇÃO-ES</div>') +
-    (arteDataUri ? '' : '<h1>' + esc(cfg.evento || "Evento") + '</h1>') +
+      '<div class="marca">SINDEDUCAÇÃO-ES</div>' +
+      '<h1>' + esc(cfg.evento || "Evento") + '</h1>') +
     '</div>' +
     /* ═══ A ORDEM É POR MOMENTO DE USO, NÃO POR ASSUNTO ═══════════════════
        Este cartão é aberto em dois momentos muito diferentes:
@@ -542,12 +549,11 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
       bloco("Local", local) +
       '</div>') +
 
-    /* O SETOR SÓ APARECE QUANDO DIZ ALGO QUE A TARJA NÃO DISSE. Com
-       "Cortesia" nos dois, o cartão repetia a mesma palavra a quatro
-       centímetros de distância. */
-    (String(reg.SETOR || "").trim().toUpperCase() !==
-     String(reg.TIPO || "CORTESIA").trim().toUpperCase()
-      ? '<div class="corpo extras">' + bloco("Setor", esc(reg.SETOR)) + '</div>' : '') +
+    /* O SETOR FICA. Eu o havia escondido quando repetia a tarja do topo —
+       e a economia não valeu o que custou: o cartão que você aprovou tem o
+       campo, e um cartão de "Camarote" e um de "Cortesia" precisam parecer
+       diferentes na mesma linha, não em lugares diferentes. */
+    '<div class="corpo extras">' + bloco("Setor", esc(reg.SETOR)) + '</div>' +
     cartaoExterno_orientacoesHtml_(cfg) +
     '<div class="rodape">' +
     esc(cfg.rodape || "Ingresso emitido pela plataforma de bilheteria do evento.") +

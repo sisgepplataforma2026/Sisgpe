@@ -213,13 +213,16 @@ b.igual((proprias.match(/<li>/g) || []).length, 2, "uma linha por linha escrita"
 b.ok(!/documento com foto/i.test(proprias),
   "e o padrão sai de cena — senão as duas listas apareceriam juntas");
 
-b.passo("Com arte, o nome do evento não aparece duas vezes");
-/* SEU PRINT DE 19/09 MOSTROU O DEFEITO: a arte dizia "No Compasso da Vida
-   2026" em letra de cartaz e o bloco navy repetia o mesmo nome logo abaixo,
-   em corpo menor, com o logo do sindicato junto. O cartão falava duas vezes a
-   mesma coisa e empurrava para baixo o que a pessoa precisa ler — o nome dela
-   e o QR. */
-b.ok(comArte.indexOf("<h1>") === -1, "sem título repetido no bloco navy");
+b.passo("Quem esconde é a marcação, nunca a presença de arte");
+/* EU ERREI AQUI, E A CORREÇÃO É A REGRA. Em 19/09 fiz o nome do evento sumir
+   sozinho sempre que houvesse arte, por achar repetição. Em 21/09 você
+   devolveu o cartão COM o nome e disse "nesse formato": ali a repetição não
+   incomoda, e o bloco navy sem título vira tarja solta.
+   A regra passa a ser a mesma de todos os outros campos — o padrão é MOSTRAR,
+   e some só quando alguém marcar que a arte já traz. Regra que decide sozinha
+   é regra que decide errado calada. */
+b.ok(comArte.indexOf("<h1>") > -1,
+  "o nome do evento FICA no bloco navy, mesmo com arte");
 b.ok(comArte.indexOf('class="selo"') > -1, "a tarja do tipo de ingresso fica");
 
 b.passo("Mas a marca do sindicato fica SEMPRE");
@@ -359,8 +362,10 @@ const enxuto = g.cartaoExterno_html_(
 b.ok(enxuto.indexOf(">Data</div>") === -1, "Data sai, porque a arte a traz");
 b.ok(enxuto.indexOf(">Local</div>") === -1, "Local também");
 b.ok(enxuto.indexOf("SINDEDUCAÇÃO-ES") === -1, "e a marca, porque o logo está na arte");
-b.ok(enxuto.indexOf(">Setor</div>") === -1,
-  "Setor sai sozinho: dizia 'Cortesia' a quatro centímetros da tarja que já dizia 'Cortesia'");
+b.ok(enxuto.indexOf("<h1>") === -1,
+  "com a marca marcada, o nome do evento sai junto — é a arte que os carrega");
+b.ok(enxuto.indexOf(">Setor</div>") > -1,
+  "o Setor fica: cartão de Camarote e de Cortesia precisam diferir na mesma linha");
 b.ok(enxuto.indexOf("LUCIANA RODRIGUES VIEIRA PORTUGAL") > -1, "o nome fica");
 b.ok(enxuto.indexOf("EEEFM MARIA ORTIZ") > -1, "a escola também");
 
@@ -391,11 +396,11 @@ b.ok(completo.indexOf("SINDEDUCAÇÃO-ES") > -1, "e a marca volta");
 b.ok(completo.indexOf('class="qrarea"') < completo.indexOf(">Data</div>"),
   "mas ainda DEPOIS do QR — quem precisa deles não está na fila");
 
-b.passo("Setor volta quando diz algo que a tarja não disse");
+b.passo("O Setor mostra o que está gravado, seja qual for");
 const camarote = g.cartaoExterno_html_(
   { NUMERO: "1", NOME: "FULANO", SETOR: "Camarote", TIPO: "Cortesia" },
   g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
-b.ok(camarote.indexOf(">Setor</div>") > -1, "'Camarote' com tarja 'Cortesia' aparece");
+b.ok(camarote.indexOf(">Setor</div>") > -1, "o campo aparece");
 b.ok(camarote.indexOf("Camarote") > -1, "com o valor escrito");
 
 b.naoTestavel("O aplicativo da Blueticket lendo o nosso cartão",
