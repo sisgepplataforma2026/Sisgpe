@@ -5975,3 +5975,30 @@ O 63 decide o desenho da tela de importação: com planilha, o casamento
 número→nome é automático; sem ela, a pessoa vincula pelo CPF, ingresso a
 ingresso. A tela nasce aceitando os dois caminhos, então isso não bloqueia
 nada — só muda quanto trabalho a secretaria tem.
+
+## 🔴 Cartões de ingresso — publicado em homologação 21/09/2026 (run #164)
+
+A tela `?painel=cartoes`, o backend e a importação por planilha. **Produção
+ainda não.**
+
+| | O que conferir | Onde |
+|---|---|---|
+| 64 | 🔴 **o app da bilheteria lê o cartão gerado pelo SISGEP** | app da bilheteria |
+| 65 | 🔴 a tela abre e salva os dados do evento | homologação |
+| 66 | 🔴 colar a planilha traz número e nome, e a fila nasce PRONTO | homologação |
+| 67 | 🔴 arrastar os PDFs lê os números certos | homologação |
+| 68 | 🔴 gerar em lote produz os PDFs e os links abrem | homologação/Drive |
+| 69 | 🔴 o cartão impresso fica legível, e o QR lê no papel | impressora |
+
+O **64 decide o módulo**: se o app não ler, todo o resto não serve, e é
+melhor descobrir agora. Enquanto ele estiver aberto, o veredito do módulo
+inteiro é **"não testado"** pela REGRA Nº -1, por mais verde que a suíte
+esteja (hoje 193 arquivos, 7267 asserções).
+
+O 67 tem um detalhe que só o navegador mostra: a leitura do QR dentro do PDF
+depende do navegador, e quando ela não roda a tela usa só o nome do arquivo.
+Conferir se o aviso de divergência aparece quando deveria.
+
+**Fora do SISGEP, e não é meu:** a arte com a foto do presidente corrigida
+(com quem desenhou) e o caminho do sorteio, que o usuário decidiu em 21/09
+que **não será pelo SISGEP**.
