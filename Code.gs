@@ -177,6 +177,27 @@ function doGet(e) {
 
        Mesma trava do painel de check-in logo abaixo: sem sessão válida, cai no
        Login. O token vem na URL porque é assim que os outros painéis fazem. */
+    /* ── CARTÕES DE INGRESSO, POR URL ─────────────────────────────────────
+       A tela que vira ingresso de bilheteria em cartão do SISGEP. Mesma
+       trava dos outros painéis: sem sessão válida, cai no Login.
+
+       O token vai INJETADO, não lido da URL: dentro do sandbox do Apps
+       Script a página roda num iframe interno com endereço próprio, e
+       `location.search` ali é sempre vazio — foi o que derrubou a portaria
+       em 15/09/2026. */
+    if (p.painel === "cartoes") {
+      var tokenCartoes = String(p.sessao || "").trim();
+      var sessaoCartoes = getSessaoUsuario(tokenCartoes);
+      if (!sessaoCartoes) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      var tCartoes = HtmlService.createTemplateFromFile("EventosCartaoBlueticket");
+      tCartoes.tokenSessao = sessaoCartoes.token;
+      return tCartoes.evaluate()
+        .setTitle("Cartões de ingresso — SISGEP")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     if (p.painel === "portaria") {
       var tokenPortaria = String(p.sessao || "").trim();
       var sessaoPortaria = getSessaoUsuario(tokenPortaria);

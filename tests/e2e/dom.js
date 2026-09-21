@@ -215,10 +215,62 @@ function montar(g, arquivos, opts) {
   const navegacoes = [];
   win.abrirEscolas = function () { navegacoes.push("escolas"); };
 
+  /* ══ SCRIPTLET DE EXPRESSÃO, RESOLVIDO COMO O TEMPLATE FARIA — 21/09/2026
+   *
+   * Telas de painel recebem o token da sessão por scriptlet, injetado pela
+   * rota em Code.gs (`t.tokenSessao = sessao.token`). Este harness não
+   * resolvia isso: o `<?!= … ?>` chegava cru ao `eval` e a tela estourava em
+   * "Unexpected token '<'" — na PRIMEIRA linha, antes de qualquer coisa.
+   *
+   * O efeito colateral era pior do que parece: nenhuma tela que recebe token
+   * assim podia ser montada aqui. A portaria, por exemplo, só tinha teste de
+   * GREP no arquivo — e grep não clica em nada. Ficavam todas na categoria
+   * "não testado" da REGRA Nº -1 por limitação do andaime, não do código.
+   *
+   * O QUE É FIEL: o Apps Script avalia a expressão e escreve o resultado no
+   * lugar. Aqui só se resolvem as variáveis que a rota realmente injeta, com
+   * os valores que o teste passou.
+   *
+   * O QUE NÃO É: scriptlet com LÓGICA (`<? if … ?>`) continua fora, como diz
+   * o cabeçalho deste arquivo. Se algum sobrar sem resolver, o erro abaixo diz
+   * qual é — em vez de deixar o `eval` reclamar de sintaxe e mandar quem lê
+   * procurar defeito na tela. */
+  const valoresTemplate = { tokenSessao: (opts && opts.token) || "" };
+
+  function resolverScriptlet(js, arquivo) {
+    /* DUAS FORMAS, COMO NO APPS SCRIPT DE VERDADE:
+         `<?!= tokenSessao ?>`                 imprime o valor CRU;
+         `<?!= JSON.stringify(tokenSessao) ?>` imprime o valor com aspas.
+
+       A distinção não é preciosismo. O index.html escreve
+       `var T = "<?!= tokenSessao ?>";` — o scriptlet já está DENTRO de
+       aspas. A primeira versão daqui devolvia sempre a forma com aspas e
+       produzia `var T = ""abc123";`, que estoura em "Unexpected identifier"
+       no meio de um arquivo de 3.000 linhas. Foram três testes vermelhos
+       (t108, t109, t113) para achar oito caracteres. */
+    const resolvido = js.replace(/<\?!?=\s*([\s\S]*?)\s*\?>/g, function (todo, expr) {
+      const comAspas = String(expr)
+        .match(/^JSON\.stringify\(\s*([A-Za-z_$][\w$]*)[\s\S]*\)$/);
+      if (comAspas && Object.prototype.hasOwnProperty.call(valoresTemplate, comAspas[1])) {
+        return JSON.stringify(valoresTemplate[comAspas[1]]);
+      }
+      const cru = String(expr).match(/^([A-Za-z_$][\w$]*)\s*(?:\|\|\s*(?:''|""))?$/);
+      if (cru && Object.prototype.hasOwnProperty.call(valoresTemplate, cru[1])) {
+        return String(valoresTemplate[cru[1]]);
+      }
+      return todo;
+    });
+    if (/<\?/.test(resolvido)) {
+      throw new Error("scriptlet não resolvido em " + arquivo + ": " +
+        (resolvido.match(/<\?[\s\S]{0,60}/) || [""])[0]);
+    }
+    return resolvido;
+  }
+
   partes.forEach(function (p, i) {
     p.scripts.forEach(function (js, k) {
       try {
-        win.eval(js);
+        win.eval(resolverScriptlet(js, arquivos[i]));
       } catch (e) {
         throw new Error("script " + (k + 1) + " de " + arquivos[i] + " quebrou: " + e.message);
       }

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cartões de ingresso — SISGEP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --linha:#e2e8f0; --texto:#0f172a; --suave:#64748b; --fundo:#eef2f8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--fundo);color:var(--texto);
+      font-family:'Plus Jakarta Sans',system-ui,Arial,sans-serif;font-size:15px}
+    .of-modulo-header{background:linear-gradient(135deg,var(--navy),var(--navy2));
+      color:#fff;padding:20px 22px;border-radius:0 0 16px 16px}
+    .of-modulo-header b{font-size:18px;font-weight:800;display:block}
+    .of-modulo-header .sub{font-size:12.5px;opacity:.8;margin-top:4px;line-height:1.5}
+    .wrap{max-width:980px;margin:0 auto;padding:16px 16px 40px}
+    .of-card{background:#fff;border:1px solid var(--linha);border-radius:14px;
+      padding:18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(16,24,40,.05)}
+    .of-card h2{margin:0 0 4px;font-size:15px;font-weight:800}
+    .of-card p.ajuda{margin:0 0 14px;font-size:12.5px;color:var(--suave);line-height:1.5}
+
+    .cards-contagem{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+    .contador{flex:1 1 150px;background:#fff;border:1px solid var(--linha);
+      border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left}
+    .contador.ativo{border-color:var(--blue);box-shadow:0 0 0 2px rgba(21,101,192,.15)}
+    .contador .n{font-size:26px;font-weight:800;color:var(--navy);line-height:1.1}
+    .contador .r{font-size:11px;font-weight:700;letter-spacing:.1em;
+      text-transform:uppercase;color:var(--suave);margin-top:4px}
+
+    .solta{border:2px dashed var(--linha);border-radius:14px;padding:28px 18px;
+      text-align:center;color:var(--suave);background:#fbfdff}
+    .solta.sobre{border-color:var(--blue);background:#f2f8ff;color:var(--navy)}
+    .solta b{display:block;font-size:15px;color:var(--texto);margin-bottom:4px}
+
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th{text-align:left;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--suave);padding:8px 10px;border-bottom:1px solid var(--linha)}
+    td{padding:10px;border-bottom:1px solid var(--linha);vertical-align:middle}
+    tr:last-child td{border-bottom:0}
+    .num{font-weight:800;color:var(--navy);letter-spacing:.06em}
+    .sem{color:var(--alerta);font-weight:700}
+    .tag{display:inline-block;border-radius:999px;padding:3px 10px;font-size:11px;
+      font-weight:800;letter-spacing:.04em}
+    .tag.SEM_NOME{background:#fff7ed;color:#9a3412}
+    .tag.PRONTO{background:#eff6ff;color:#1e40af}
+    .tag.GERADO{background:#ecfdf5;color:#065f46}
+    .tag.ENVIADO{background:#f1f5f9;color:#334155}
+
+    .btn{border:0;border-radius:10px;padding:10px 16px;font-weight:800;font-size:14px;
+      font-family:inherit;cursor:pointer}
+    .btn-navy{background:var(--navy);color:#fff}
+    .btn-outline{background:#fff;border:1.5px solid var(--linha);color:var(--navy)}
+    .btn-mini{padding:6px 11px;font-size:12.5px;border-radius:8px}
+    .btn:disabled{opacity:.5;cursor:default}
+    .acoes{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+
+    .campo{margin-bottom:12px}
+    .campo label{display:block;font-weight:700;font-size:12.5px;margin-bottom:5px;color:var(--navy)}
+    .campo input,.campo textarea{width:100%;padding:11px;border:1.5px solid var(--linha);
+      border-radius:10px;font-size:14.5px;font-family:inherit;background:#fff}
+    .campo input:focus,.campo textarea:focus{outline:none;border-color:var(--blue)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+    .marcacao{display:flex;gap:9px;align-items:flex-start;margin-bottom:10px;font-size:13px}
+    .marcacao input{margin-top:3px}
+    .marcacao span{color:var(--suave);line-height:1.45}
+
+    .aviso{border-radius:11px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:12px}
+    .aviso.info{background:#eff6ff;color:#1e3a8a}
+    .aviso.erro{background:#fef2f2;color:#991b1b}
+    .aviso.ok{background:#ecfdf5;color:#065f46}
+    .aviso.alerta{background:#fff7ed;color:#9a3412}
+    .escondido{display:none}
+    @media(max-width:700px){.grid2{grid-template-columns:1fr}
+      td .oculta-mobile,th.oculta-mobile{display:none}}
+  </style>
+</head>
+<body>
+
+<div class="of-modulo-header">
+  <b>Cartões de ingresso</b>
+  <div class="sub">
+    Os ingressos são emitidos e validados pela plataforma de bilheteria.
+    Aqui o SISGEP só desenha o cartão do associado, com o <b>mesmo QR Code</b>,
+    e registra o envio. Nada aqui valida entrada.
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div id="avisoTopo" class="aviso info escondido"></div>
+
+  <!-- 1. O EVENTO ─────────────────────────────────────────────────────── -->
+  <div class="of-card">
+    <h2>1 · Dados do evento</h2>
+    <p class="ajuda">Valem para o lote inteiro. Repetir isso ingresso a ingresso
+      só criaria chance de divergirem entre si.</p>
+
+    <div class="grid2">
+      <div class="campo">
+        <label for="cfgEvento">Nome do evento</label>
+        <input type="text" id="cfgEvento" placeholder="No Compasso da Vida 2026">
+      </div>
+      <div class="campo">
+        <label for="cfgData">Data e horários</label>
+        <input type="text" id="cfgData" placeholder="Sábado, 19 de dezembro de 2026 • Portões 19:30">
+      </div>
+      <div class="campo">
+        <label for="cfgLocal">Local</label>
+        <input type="text" id="cfgLocal" placeholder="Espaço Patrick Ribeiro">
+      </div>
+      <div class="campo">
+        <label for="cfgCidade">Cidade</label>
+        <input type="text" id="cfgCidade" placeholder="Vitória, ES">
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="cfgArte">Arte do evento (link do Drive ou endereço da imagem)</label>
+      <input type="text" id="cfgArte" placeholder="Cole aqui o link da imagem">
+    </div>
+
+    <!-- AS MARCAÇÕES EXISTEM PORQUE O CARTÃO NÃO PODE PRESUMIR o que a arte
+         traz. Uma arte traz data e logo; a do ano seguinte pode não trazer.
+         Desmarcado, tudo aparece no cartão — informação repetida incomoda,
+         informação ausente faz a pessoa chegar no dia errado. -->
+    <label class="marcacao">
+      <input type="checkbox" id="cfgArteData">
+      <span>A arte já mostra a <b>data e o local</b> — pode tirar esses campos do cartão</span>
+    </label>
+    <label class="marcacao">
+      <input type="checkbox" id="cfgArteMarca">
+      <span>A arte já traz o <b>logo do SindEducação</b> — pode tirar a linha da marca</span>
+    </label>
+
+    <div class="campo">
+      <label for="cfgOrientacoes">Orientações (uma por linha — vazio usa o texto padrão)</label>
+      <textarea id="cfgOrientacoes" rows="4"
+        placeholder="Apresente este cartão na entrada..."></textarea>
+    </div>
+
+    <div class="acoes">
+      <button class="btn btn-navy" id="btnSalvarEvento">Salvar dados do evento</button>
+    </div>
+  </div>
+
+  <!-- 2. IMPORTAR ─────────────────────────────────────────────────────── -->
+  <div class="of-card">
+    <h2>2 · Importar os ingressos da bilheteria</h2>
+    <p class="ajuda">Arraste os PDFs baixados. O número sai do nome do arquivo e,
+      quando o navegador consegue ler o QR, os dois são comparados — se
+      divergirem, o ingresso não entra.</p>
+
+    <div class="solta" id="areaSolta">
+      <b>Arraste os PDFs aqui</b>
+      ou <button type="button" class="btn btn-outline btn-mini" id="btnEscolher">escolher arquivos</button>
+      <input type="file" id="arquivos" accept=".pdf" multiple class="escondido">
+    </div>
+
+    <div id="resumoLeitura" class="aviso info escondido" style="margin-top:12px"></div>
+
+    <div class="acoes">
+      <button class="btn btn-navy" id="btnImportar" disabled>Importar os lidos</button>
+      <button class="btn btn-outline" id="btnLimparLeitura">Limpar</button>
+    </div>
+  </div>
+
+  <!-- 3. A FILA ───────────────────────────────────────────────────────── -->
+  <div class="of-card">
+    <h2>3 · Cartões</h2>
+
+    <div class="cards-contagem" id="contadores">
+      <button class="contador" data-estado="" id="contTodos">
+        <div class="n" id="nTodos">0</div><div class="r">Todos</div></button>
+      <button class="contador" data-estado="SEM_NOME">
+        <div class="n" id="nSemNome">0</div><div class="r">Falta o nome</div></button>
+      <button class="contador" data-estado="PRONTO">
+        <div class="n" id="nPronto">0</div><div class="r">Prontos</div></button>
+      <button class="contador" data-estado="GERADO">
+        <div class="n" id="nGerado">0</div><div class="r">Gerados</div></button>
+      <button class="contador" data-estado="ENVIADO">
+        <div class="n" id="nEnviado">0</div><div class="r">Enviados</div></button>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>Nº</th><th>Nome</th><th class="oculta-mobile">Escola</th>
+        <th>Situação</th><th></th>
+      </tr></thead>
+      <tbody id="corpoTabela">
+        <tr><td colspan="5" style="color:var(--suave);text-align:center;padding:26px">
+          Nenhum ingresso importado ainda.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="acoes">
+      <button class="btn btn-navy" id="btnGerarLote">Gerar cartões dos prontos</button>
+      <button class="btn btn-outline" id="btnRecarregar">Atualizar lista</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ══════════════════════════════════════════════════════════════════════
+     A TELA QUE TRANSFORMA INGRESSO DE BILHETERIA EM CARTÃO DO SISGEP
+
+     O QUE ELA NÃO FAZ, e é o mais importante: não valida entrada, não marca
+     ingresso como usado e não conta quem entrou. Quem faz isso é o
+     aplicativo da bilheteria, que já é usado na porta e já foi testado em
+     festa de verdade. Se esta tela sumir na véspera, a secretaria imprime o
+     PDF da bilheteria e a festa acontece igual.
+
+     O NÚMERO VEM DE DOIS LUGARES INDEPENDENTES: do nome do arquivo e do
+     próprio QR desenhado na página. Quando o navegador consegue ler o QR, os
+     dois são comparados; divergiu, o arquivo não entra. Um número trocado
+     aqui vira ingresso recusado na portaria, com a pessoa na frente da fila.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  var TOKEN = <?!= JSON.stringify(tokenSessao || '') ?>;
+  var lidos = [];        /* o que saiu dos arquivos, antes de importar */
+  var itens = [];        /* o que já está gravado */
+  var filtro = '';
+
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function avisar(texto, tipo, alvo){
+    var el = g(alvo || 'avisoTopo');
+    el.className = 'aviso ' + (tipo || 'info') + (texto ? '' : ' escondido');
+    el.innerHTML = texto || '';
+  }
+
+  function chamar(fn, args, ok, erro){
+    var r = google.script.run
+      .withSuccessHandler(function(res){ if (ok) ok(res); })
+      .withFailureHandler(function(e){
+        if (erro) erro(e); else avisar('❌ ' + ((e && e.message) || e), 'erro');
+      });
+    r[fn].apply(r, (args || []).concat([TOKEN]));
+  }
+
+  /* ── O NÚMERO NO NOME DO ARQUIVO ──────────────────────────────────────
+     A bilheteria nomeia assim: "13- Ingresso - EVENTO - 76902432.pdf".
+     Pega-se a ÚLTIMA sequência longa de dígitos, não a primeira: a primeira
+     é a posição no lote ("13-"), e usá-la geraria cartões com número de
+     ordem no lugar do número do ingresso — todos errados, e parecidos o
+     bastante com o certo para ninguém desconfiar. */
+  function numeroDoArquivo(nome){
+    var achados = String(nome || '').replace(/\.pdf$/i, '').match(/\d{6,12}/g);
+    if (!achados || !achados.length) return '';
+    return achados[achados.length - 1].replace(/^0+/, '');
+  }
+
+  function desenharResumoLeitura(){
+    var comNumero = lidos.filter(function(l){ return l.numero; });
+    var divergentes = lidos.filter(function(l){ return l.divergente; });
+    var semNumero = lidos.filter(function(l){ return !l.numero; });
+
+    g('btnImportar').disabled = !comNumero.length;
+
+    if (!lidos.length){ avisar('', 'info', 'resumoLeitura'); return; }
+
+    var txt = '<b>' + comNumero.length + '</b> ingresso(s) lido(s)';
+    if (semNumero.length) txt += ' · <b>' + semNumero.length + '</b> sem número no nome do arquivo';
+    if (divergentes.length) txt += ' · <b>' + divergentes.length + '</b> com QR diferente do nome do arquivo';
+    var tipo = divergentes.length ? 'erro' : (semNumero.length ? 'alerta' : 'ok');
+
+    var listaRuim = semNumero.concat(divergentes);
+    if (listaRuim.length){
+      txt += '<br><br>' + listaRuim.map(function(l){
+        return '• ' + esc(l.arquivo) + (l.divergente
+          ? ' — arquivo diz ' + esc(l.numero) + ', QR diz ' + esc(l.numeroQr)
+          : ' — nenhum número encontrado');
+      }).join('<br>');
+    }
+    avisar(txt, tipo, 'resumoLeitura');
+  }
+
+  function receberArquivos(arquivos){
+    var novos = Array.prototype.slice.call(arquivos || []);
+    novos.forEach(function(f){
+      var numero = numeroDoArquivo(f.name);
+      lidos.push({ arquivo: f.name, numero: numero, numeroQr: '',
+                   divergente: false, origemNumero: numero ? 'ARQUIVO' : '' });
+    });
+    desenharResumoLeitura();
+  }
+
+  /* ── O QUE VAI AO SERVIDOR ────────────────────────────────────────────
+     Só o que tem número e não diverge. Ingresso duvidoso fica de fora e
+     aparece na lista de problemas: importar "mais ou menos" é o mesmo que
+     mandar a portaria descobrir. */
+  function paraImportar(){
+    return lidos.filter(function(l){ return l.numero && !l.divergente; })
+      .map(function(l){
+        return { numero: l.numero, arquivo: l.arquivo, origemNumero: l.origemNumero };
+      });
+  }
+
+  function desenharContadores(c){
+    g('nTodos').textContent    = itens.length;
+    g('nSemNome').textContent  = c.SEM_NOME || 0;
+    g('nPronto').textContent   = c.PRONTO || 0;
+    g('nGerado').textContent   = c.GERADO || 0;
+    g('nEnviado').textContent  = c.ENVIADO || 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.contador'), function(b){
+      b.classList.toggle('ativo', b.getAttribute('data-estado') === filtro);
+    });
+  }
+
+  function desenharTabela(){
+    var corpo = g('corpoTabela');
+    var lista = filtro ? itens.filter(function(i){ return i.status === filtro; }) : itens;
+
+    if (!lista.length){
+      corpo.innerHTML = '<tr><td colspan="5" style="color:var(--suave);' +
+        'text-align:center;padding:26px">' +
+        (itens.length ? 'Nenhum ingresso nesta situação.' : 'Nenhum ingresso importado ainda.') +
+        '</td></tr>';
+      return;
+    }
+
+    corpo.innerHTML = lista.map(function(i){
+      var nome = i.nome ? esc(i.nome) : '<span class="sem">falta o nome</span>';
+      var acao = '';
+      if (!i.nome){
+        acao = '<button class="btn btn-outline btn-mini acao-vincular" ' +
+               'data-numero="' + esc(i.numero) + '">Vincular associado</button>';
+      } else if (i.status === 'PRONTO'){
+        acao = '<button class="btn btn-navy btn-mini acao-gerar" ' +
+               'data-numero="' + esc(i.numero) + '">Gerar cartão</button>';
+      } else if (i.status === 'GERADO'){
+        acao = '<a class="btn btn-outline btn-mini" target="_blank" href="' +
+               esc(i.linkCartao) + '">Abrir</a> ' +
+               '<button class="btn btn-outline btn-mini acao-enviado" ' +
+               'data-numero="' + esc(i.numero) + '">Marcar enviado</button>';
+      } else {
+        acao = '<a class="btn btn-outline btn-mini" target="_blank" href="' +
+               esc(i.linkCartao) + '">Abrir</a>';
+      }
+      return '<tr>' +
+        '<td class="num">' + esc(i.numero) + '</td>' +
+        '<td>' + nome + '</td>' +
+        '<td class="oculta-mobile">' + esc(i.escola || '—') + '</td>' +
+        '<td><span class="tag ' + esc(i.status) + '">' + esc(i.statusLabel) + '</span></td>' +
+        '<td style="text-align:right">' + acao + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function carregar(){
+    chamar('cartaoExterno_listar', [], function(res){
+      if (!res || !res.ok) return;
+      itens = res.itens || [];
+      desenharContadores(res.contagem || {});
+      desenharTabela();
+      aplicarCfg(res.cfg || {});
+    });
+  }
+
+  function aplicarCfg(cfg){
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    g('cfgEvento').value = cfg.evento || '';
+    g('cfgData').value = cfg.data || '';
+    g('cfgLocal').value = cfg.local || '';
+    g('cfgCidade').value = cfg.cidade || '';
+    g('cfgArte').value = cfg.arte || '';
+    g('cfgOrientacoes').value = cfg.orientacoes || '';
+    g('cfgArteData').checked = /^sim$/i.test(String(cfg.arteTrazDataLocal || ''));
+    g('cfgArteMarca').checked = /^sim$/i.test(String(cfg.arteTrazMarca || ''));
+  }
+
+  function lerCfgDaTela(){
+    return {
+      evento: g('cfgEvento').value.trim(),
+      data: g('cfgData').value.trim(),
+      local: g('cfgLocal').value.trim(),
+      cidade: g('cfgCidade').value.trim(),
+      arte: g('cfgArte').value.trim(),
+      orientacoes: g('cfgOrientacoes').value,
+      arteTrazDataLocal: g('cfgArteData').checked ? 'SIM' : '',
+      arteTrazMarca: g('cfgArteMarca').checked ? 'SIM' : ''
+    };
+  }
+
+  /* ── LIGAÇÕES ─────────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function(){
+
+    g('btnSalvarEvento').addEventListener('click', function(){
+      chamar('cartaoExterno_salvarCfg', [lerCfgDaTela()], function(res){
+        avisar(res && res.ok ? '✅ Dados do evento salvos.'
+                             : '❌ Não foi possível salvar.',
+               res && res.ok ? 'ok' : 'erro');
+      });
+    });
+
+    g('btnEscolher').addEventListener('click', function(){ g('arquivos').click(); });
+    g('arquivos').addEventListener('change', function(ev){
+      receberArquivos(ev.target.files);
+    });
+
+    var area = g('areaSolta');
+    ['dragenter','dragover'].forEach(function(evt){
+      area.addEventListener(evt, function(e){
+        e.preventDefault(); area.classList.add('sobre');
+      });
+    });
+    ['dragleave','drop'].forEach(function(evt){
+      area.addEventListener(evt, function(e){
+        e.preventDefault(); area.classList.remove('sobre');
+      });
+    });
+    area.addEventListener('drop', function(e){
+      receberArquivos(e.dataTransfer && e.dataTransfer.files);
+    });
+
+    g('btnLimparLeitura').addEventListener('click', function(){
+      lidos = []; g('arquivos').value = ''; desenharResumoLeitura();
+    });
+
+    g('btnImportar').addEventListener('click', function(){
+      var carga = paraImportar();
+      if (!carga.length) return;
+      g('btnImportar').disabled = true;
+      chamar('cartaoExterno_importar', [carga], function(res){
+        avisar((res && res.ok ? '✅ ' : '❌ ') + ((res && res.mensagem) || ''),
+               res && res.ok ? 'ok' : 'erro');
+        lidos = []; desenharResumoLeitura(); carregar();
+      }, function(e){
+        g('btnImportar').disabled = false;
+        avisar('❌ ' + ((e && e.message) || e), 'erro');
+      });
+    });
+
+    document.addEventListener('click', function(ev){
+      var b = ev.target;
+
+      if (b.classList && b.classList.contains('acao-vincular')){
+        var numero = b.getAttribute('data-numero');
+        var cpf = window.prompt('CPF do associado (só números).\n' +
+          'O nome, a escola e o telefone vêm do cadastro.');
+        if (!cpf) return;
+        chamar('cartaoExterno_vincular', [numero, { cpf: cpf }], function(res){
+          avisar(res && res.ok
+            ? '✅ ' + esc(res.nome || '') + (res.observacao ? ' — ' + esc(res.observacao) : '')
+            : '❌ ' + ((res && res.mensagem) || ''), res && res.ok ? 'ok' : 'erro');
+          carregar();
+        });
+        return;
+      }
+
+      if (b.classList && b.classList.contains('acao-gerar')){
+        b.disabled = true;
+        chamar('cartaoExterno_gerar', [b.getAttribute('data-numero')], function(res){
+          avisar((res && res.ok ? '✅ ' : '❌ ') + ((res && res.mensagem) || ''),
+                 res && res.ok ? 'ok' : 'erro');
+          carregar();
+        });
+        return;
+      }
+
+      if (b.classList && b.classList.contains('acao-enviado')){
+        chamar('cartaoExterno_marcarEnviado', [b.getAttribute('data-numero')], function(){
+          carregar();
+        });
+        return;
+      }
+
+      if (b.classList && b.classList.contains('contador')){
+        filtro = b.getAttribute('data-estado') || '';
+        desenharContadores(contagemAtual());
+        desenharTabela();
+      }
+    });
+
+    g('btnGerarLote').addEventListener('click', function(){
+      g('btnGerarLote').disabled = true;
+      avisar('⏳ Gerando os cartões…', 'info');
+      chamar('cartaoExterno_gerarLote', [20], function(res){
+        g('btnGerarLote').disabled = false;
+        avisar((res && res.ok ? '✅ ' : '❌ ') + ((res && res.mensagem) || ''),
+               res && res.ok ? 'ok' : 'erro');
+        carregar();
+      }, function(e){
+        g('btnGerarLote').disabled = false;
+        avisar('❌ ' + ((e && e.message) || e), 'erro');
+      });
+    });
+
+    g('btnRecarregar').addEventListener('click', carregar);
+    carregar();
+  });
+
+  function contagemAtual(){
+    var c = { SEM_NOME:0, PRONTO:0, GERADO:0, ENVIADO:0 };
+    itens.forEach(function(i){ if (c[i.status] != null) c[i.status]++; });
+    return c;
+  }
+
+  /* Para os testes alcançarem o que a tela calcula sozinha. */
+  window.numeroDoArquivo = numeroDoArquivo;
+  window.receberArquivos = receberArquivos;
+  window.paraImportar = paraImportar;
+  window.lerCfgDaTela = lerCfgDaTela;
+  window.carregarTela = function(){ return carregar(); };
+  window.__lidos = function(){ return lidos; };
+  window.__itens = function(){ return itens; };
+</script>
+</body>
+</html>
