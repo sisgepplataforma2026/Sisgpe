@@ -122,7 +122,7 @@ function cartaoExterno_cfgAba_() {
    cartaoExterno_listar, que é travada. */
 function cartaoExterno_lerCfg_() {
   var sh = cartaoExterno_cfgAba_();
-  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "", arte: "" };
+  var cfg = { evento: "", data: "", local: "", cidade: "", rodape: "", arte: "", orientacoes: "" };
   if (sh.getLastRow() < 2) return cfg;
   sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (l) {
     var k = String(l[0] || "").trim();
@@ -136,7 +136,7 @@ function cartaoExterno_salvarCfg(cfg, tokenSessao) {
   cfg = cfg || {};
   var sh = cartaoExterno_cfgAba_();
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
-  var linhas = ["evento", "data", "local", "cidade", "rodape", "arte"].map(function (k) {
+  var linhas = ["evento", "data", "local", "cidade", "rodape", "arte", "orientacoes"].map(function (k) {
     return [k, String(cfg[k] == null ? "" : cfg[k]).trim()];
   });
   sh.getRange(2, 1, linhas.length, 2).setValues(linhas);
@@ -372,6 +372,43 @@ function cartaoExterno_qrDataUri_(numero) {
   return "data:" + blob.getContentType() + ";base64," + Utilities.base64Encode(blob.getBytes());
 }
 
+/* AS ORIENTAÇÕES DE USO — 19/09/2026, a seu pedido.
+ *
+ * O TEXTO NÃO É O DA BILHETERIA, e a diferença importa. O ingresso do
+ * Blueticket fala em "não compre fora dos pontos oficiais" e "compra com
+ * cartão": é linguagem de quem vendeu. Aqui é cortesia de associado, e repetir
+ * aquilo mandaria a pessoa procurar uma compra que não existe.
+ *
+ * O que ficou vem da PRÓPRIA ARTE APROVADA, que já traz as regras impressas no
+ * rodapé do bilhete — documento com foto, ingresso pessoal e intransferível,
+ * QR para o check-in. Copiar dali é o oposto de inventar: é dizer no cartão o
+ * que o sindicato já decidiu dizer.
+ *
+ * E É EDITÁVEL. Cada evento tem a sua regra; uma lista cravada no código viraria
+ * mentira no primeiro evento diferente. Vazio na configuração = a lista padrão.
+ */
+var CARTAO_EXTERNO_ORIENTACOES_ = [
+  "Apresente este cartão na entrada — o QR Code é lido no check-in.",
+  "Leve documento com foto. Ele pode ser solicitado na portaria.",
+  "Ingresso pessoal e intransferível.",
+  "Cada código vale uma única entrada. Depois de lido, não é reutilizado.",
+  "Guarde o número impresso: com ele a portaria localiza seu ingresso mesmo sem leitura do QR."
+];
+
+function cartaoExterno_orientacoesHtml_(cfg) {
+  cfg = cfg || {};
+  var lista = String(cfg.orientacoes || "").split(/\r?\n/)
+    .map(function (l) { return l.trim(); })
+    .filter(function (l) { return l; });
+  if (!lista.length) lista = CARTAO_EXTERNO_ORIENTACOES_;
+
+  return '<div class="orient"><h2>Orientações</h2><ul>' +
+    lista.map(function (item) {
+      return '<li>' + String(item)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</li>';
+    }).join("") + '</ul></div>';
+}
+
 function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
   cfg = cfg || {};
   arteDataUri = String(arteDataUri || "");
@@ -406,12 +443,16 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
        arte clara engole texto branco, arte carregada engole qualquer texto, e
        quem descobre é a pessoa que recebeu o cartão. Faixa separada aceita
        qualquer arte sem negociar legibilidade. */
-    '.arte{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;' +
-    'background:var(--navy)}' +
-    '.topo.compacto{padding:16px 22px 14px}' +
+    /* A ARTE ENTRA INTEIRA, NA PROPORÇÃO DELA. Antes a faixa era 16:7 fixa e
+       o `object-fit:cover` cortava o que não coubesse — foi assim que o
+       presidente saiu cortado na altura do peito no primeiro desenho. Deixar
+       a altura livre significa que a arte manda, e quem escolhe o recorte é
+       quem prepara o arquivo, não o CSS. */
+    '.arte{display:block;width:100%;height:auto;background:var(--navy)}' +
+    '.topo.compacto{padding:12px 22px 14px}' +
     '.selo{display:inline-block;border:1px solid rgba(201,168,76,.6);color:var(--gold);' +
     'border-radius:999px;padding:4px 14px;font-size:11px;font-weight:800;letter-spacing:.14em}' +
-    '.marca{margin-top:12px;font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.85}' +
+    '.marca{margin-top:10px;font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.85}' +
     'h1{margin:6px 0 0;font-size:23px;font-weight:800;line-height:1.2}' +
     '.regua{height:3px;background:linear-gradient(90deg,var(--gold),#f0c843,var(--gold))}' +
     '.corpo{padding:20px 22px 6px}' +
@@ -429,13 +470,34 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
     '.dica{margin-top:4px;font-size:12px;color:var(--suave)}' +
     '.rodape{background:#f7f9fc;border-top:1px solid var(--linha);padding:14px 22px;' +
     'font-size:11px;color:var(--suave);text-align:center;line-height:1.5}' +
+    /* AS ORIENTAÇÕES FICAM DEPOIS DO QR, e não antes: quem abre o cartão na
+       fila precisa do código primeiro. Regra que se lê depois de entrar ainda
+       serve; código que aparece depois de três parágrafos, não. */
+    '.orient{padding:0 22px 16px}' +
+    '.orient h2{font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--suave);' +
+    'text-transform:uppercase;margin:0 0 8px}' +
+    '.orient ul{margin:0;padding-left:18px}' +
+    '.orient li{font-size:12px;line-height:1.5;margin-bottom:5px;color:var(--texto)}' +
     '@media print{body{background:#fff;padding:0;display:block}' +
     '.cartao{box-shadow:none;width:100%;border:1px solid var(--linha)}}' +
     '</style></head><body><div class="cartao">' +
     (arteDataUri ? '<img class="arte" src="' + arteDataUri + '" alt="">' : '') +
+    /* COM ARTE, O NOME DO EVENTO NÃO SE REPETE.
+       A arte oficial já traz o logo do sindicato e o nome do evento em letra
+       de cartaz. Repetir os dois no bloco navy logo abaixo fazia o cartão
+       dizer a mesma coisa duas vezes em dois tamanhos — e empurrava para
+       baixo o que a pessoa precisa ler, que é o nome dela e o QR.
+       Sem arte, o bloco volta a ser o cabeçalho inteiro: ali ele é o único
+       lugar que diz para onde a pessoa está indo. */
     '<div class="topo' + (arteDataUri ? ' compacto' : '') + '"><div class="selo">' + esc(reg.TIPO || "CORTESIA").toUpperCase() + '</div>' +
+    /* A MARCA FICA SEMPRE; o NOME DO EVENTO é que não se repete.
+       Ao recortar a faixa no bloco do título, o logo do sindicato ficou de
+       fora da arte — e como o bloco navy tinha parado de escrever a marca, o
+       cartão ficou sem identidade do SindEducação em lugar nenhum. Perder o
+       nome do evento repetido é ganho; perder de quem é o ingresso, não. */
     '<div class="marca">SINDEDUCAÇÃO-ES</div>' +
-    '<h1>' + esc(cfg.evento || "Evento") + '</h1></div>' +
+    (arteDataUri ? '' : '<h1>' + esc(cfg.evento || "Evento") + '</h1>') +
+    '</div>' +
     '<div class="regua"></div><div class="corpo">' +
     bloco("Nome", esc(reg.NOME), "nome") +
     bloco("Escola", esc(reg.ESCOLA)) +
@@ -446,6 +508,7 @@ function cartaoExterno_html_(reg, cfg, qrDataUri, arteDataUri) {
     '<div class="qrcaixa"><img src="' + qrDataUri + '" alt=""></div>' +
     '<div class="numero">' + esc(reg.NUMERO) + '</div>' +
     '<div class="dica">Apresente este cartão na entrada</div></div>' +
+    cartaoExterno_orientacoesHtml_(cfg) +
     '<div class="rodape">' +
     esc(cfg.rodape || "Ingresso emitido pela plataforma de bilheteria do evento.") +
     '<br>Cartão gerado pelo SISGEP · SindEducação-ES</div>' +

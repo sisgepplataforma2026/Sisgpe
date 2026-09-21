@@ -161,6 +161,90 @@ b.ok(comArte.indexOf('class="topo compacto"') > -1,
 b.ok(comArte.indexOf('<img class="arte"') < comArte.indexOf('class="topo'),
   "a arte vem ANTES do texto, não por trás dele");
 
+b.passo("As orientações de uso ficam DEPOIS do QR");
+/* "Incluir algumas informações de orientações" — você, 19/09/2026, junto com
+   a arte e a escola. Aprovado no mesmo dia: "gostei".
+
+   A ORDEM É A REGRA: quem abre o cartão na fila precisa do código primeiro.
+   Regra que se lê depois de entrar ainda serve; código que aparece depois de
+   três parágrafos, não. */
+const comOrient = g.cartaoExterno_html_(
+  { NUMERO: "76902432", NOME: "FULANO", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
+b.ok(comOrient.indexOf('class="orient"') > -1, "o bloco de orientações existe");
+b.ok(comOrient.indexOf('class="qrarea"') < comOrient.indexOf('class="orient"'),
+  "e vem depois do QR, não antes dele");
+b.ok(comOrient.indexOf('class="orient"') < comOrient.indexOf('class="rodape"'),
+  "e antes do rodapé");
+b.ok((comOrient.match(/<li>/g) || []).length >= 4, "com as linhas da regra do evento");
+
+b.passo("O texto NÃO é o da bilheteria");
+/* O ingresso do Blueticket fala em "não compre fora dos pontos oficiais" e
+   "compra com cartão": é linguagem de quem vendeu. Aqui é cortesia de
+   associado, e repetir aquilo mandaria a pessoa se preocupar com uma compra
+   que não existe. */
+/* A VARREDURA OLHA SÓ O BLOCO DE ORIENTAÇÕES. A primeira versão lia o cartão
+   inteiro e acusou a palavra "bilheteria" — que está no RODAPÉ, dizendo
+   corretamente que o ingresso foi emitido pela plataforma de bilheteria do
+   evento. Varredura que mede o texto errado reprova o texto certo. */
+const blocoOrient = comOrient.split('class="orient"')[1].split("</div>")[0];
+["não compre", "pontos oficiais", "compra com cartão", "comprador"]
+  .forEach(function (trecho) {
+    b.ok(blocoOrient.toLowerCase().indexOf(trecho.toLowerCase()) === -1,
+      "nada de '" + trecho + "' nas orientações — não houve compra nenhuma");
+  });
+b.ok(/documento com foto/i.test(comOrient),
+  "e as regras que vieram da arte aprovada continuam: documento com foto");
+b.ok(/intransfer/i.test(comOrient), "pessoal e intransferível");
+
+b.passo("Cada evento pode escrever as suas");
+/* Lista cravada no código vira mentira no primeiro evento diferente. */
+g.cartaoExterno_salvarCfg({
+  evento: "No Compasso da Vida 2026",
+  data: "Sábado, 19 de dezembro de 2026",
+  local: "Espaço Patrick Ribeiro", cidade: "Vitória, ES",
+  orientacoes: "Chegue com uma hora de antecedência.\nTraga o cartão impresso ou no celular."
+}, TOKEN);
+const proprias = g.cartaoExterno_html_(
+  { NUMERO: "1", NOME: "FULANO", SETOR: "Cortesia", TIPO: "Cortesia" },
+  g.cartaoExterno_lerCfg_(), "data:image/png;base64,AA");
+b.ok(/uma hora de antecedência/.test(proprias), "o texto do evento substitui o padrão");
+b.igual((proprias.match(/<li>/g) || []).length, 2, "uma linha por linha escrita");
+b.ok(!/documento com foto/i.test(proprias),
+  "e o padrão sai de cena — senão as duas listas apareceriam juntas");
+
+b.passo("Com arte, o nome do evento não aparece duas vezes");
+/* SEU PRINT DE 19/09 MOSTROU O DEFEITO: a arte dizia "No Compasso da Vida
+   2026" em letra de cartaz e o bloco navy repetia o mesmo nome logo abaixo,
+   em corpo menor, com o logo do sindicato junto. O cartão falava duas vezes a
+   mesma coisa e empurrava para baixo o que a pessoa precisa ler — o nome dela
+   e o QR. */
+b.ok(comArte.indexOf("<h1>") === -1, "sem título repetido no bloco navy");
+b.ok(comArte.indexOf('class="selo"') > -1, "a tarja do tipo de ingresso fica");
+
+b.passo("Mas a marca do sindicato fica SEMPRE");
+/* DEFEITO QUE EU MESMO CRIEI E QUE ESTA ASSERÇÃO IMPEDE DE VOLTAR: ao
+   recortar a faixa no bloco do título, o logo do SindEducação ficou fora da
+   arte; e como o bloco navy tinha parado de escrever a marca junto com o
+   nome do evento, o cartão ficou sem identidade do sindicato em lugar
+   nenhum. Perder o nome do evento repetido é ganho; perder de quem é o
+   ingresso, não. */
+b.ok(comArte.indexOf("SINDEDUCAÇÃO-ES") > -1, "com arte, a marca continua no cartão");
+b.ok(semEscola.indexOf("SINDEDUCAÇÃO-ES") > -1, "e sem arte também");
+
+b.passo("Sem arte, o bloco navy volta a ser o cabeçalho inteiro");
+/* Ali ele é o ÚNICO lugar que diz para onde a pessoa está indo. */
+b.ok(semEscola.indexOf("<h1>") > -1, "o nome do evento aparece");
+
+b.passo("A arte entra na proporção dela, sem corte do CSS");
+/* A faixa era 16:7 cravada e o `object-fit:cover` cortava o excesso — foi
+   assim que o presidente saiu cortado na altura do peito. Altura fixa no CSS
+   decide o enquadramento pelas costas de quem preparou o arquivo. */
+b.ok(!/aspect-ratio:16\/7/.test(comArte), "nenhuma proporção cravada na faixa");
+b.ok(!/object-fit:cover/.test(comArte), "e nenhum corte automático");
+b.ok(/\.arte\{[^}]*height:auto/.test(comArte.replace(/\s+/g, "")),
+  "a altura acompanha a arte");
+
 b.passo("Sem arte, o cartão continua inteiro");
 b.ok(semEscola.indexOf('class="arte"') === -1, "nenhuma imagem quebrada aparece");
 b.ok(semEscola.indexOf('class="topo"') > -1, "e o bloco navy volta ao tamanho cheio");
@@ -238,9 +322,19 @@ const fonte = require("fs").readFileSync(
    tirava: ela acusou o arquivo por causa do próprio comentário que EXPLICA a
    ausência da palavra. Varredura que lê comentário mede o que se escreveu
    sobre o código, não o código — é a mesma armadilha do t138. */
+/* A VARREDURA IGNORA COMENTÁRIO **E** TEXTO ENTRE ASPAS, e as duas exclusões
+   foram aprendidas na marra, uma em cada rodada:
+     - lendo comentário, ela acusou o próprio comentário que EXPLICA a
+       ausência da palavra;
+     - lendo texto, acusou a orientação "depois de lido, não é reutilizado",
+       que é frase para o associado, não código que valida nada.
+   O que se quer provar é que este arquivo não FAZ validação. Então o que se
+   varre é código — não o que está escrito sobre ele nem o que ele imprime. */
 const codigo = fonte
   .replace(/\/\*[\s\S]*?\*\//g, " ")
   .replace(/^\s*\/\/.*$/gm, " ")
+  .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+  .replace(/'(?:[^'\\]|\\.)*'/g, "''")
   .toLowerCase();
 ["utilizado", "checkin", "validarqr", "marcarentrada"].forEach(function (palavra) {
   b.ok(codigo.indexOf(palavra) === -1,
