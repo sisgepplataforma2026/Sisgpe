@@ -6002,3 +6002,19 @@ Conferir se o aviso de divergência aparece quando deveria.
 **Fora do SISGEP, e não é meu:** a arte com a foto do presidente corrigida
 (com quem desenhou) e o caminho do sorteio, que o usuário decidiu em 21/09
 que **não será pelo SISGEP**.
+
+## 🔴 Portal e painel de Bolsas — 22/09/2026, dos seus prints
+
+Duas correções que saíram do que você viu na tela e mandou. Ambas já rodam
+verdes na suíte (t189 §7, t193), e as duas dependem de você conferir no ar.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 70 | 🔴 recibo de dependentes sem o "Curso: Fundamental 1 — ENSINO_MEDIO" — no lugar, a contagem e o curso de cada dependente na linha dele | portal público |
+| 71 | 🔴 a modalidade sai por extenso ("Ensino Fundamental"), nunca com o valor do banco | portal público |
+| 72 | 🔴 a lista do painel mostra o nome do beneficiário em destaque, a etiqueta "filho(a)" e "Titular: NOME · CPF" embaixo | painel de Bolsas |
+| 73 | 🔴 buscar pelo nome do dependente acha a bolsa dele | painel de Bolsas |
+
+O **72 é o que motivou tudo**: no seu print, duas linhas iguais davam a
+impressão de dois vouchers no mesmo CPF, e a regra é um por CPF. Enquanto não
+for conferido no ar, o veredito é **"não testado"** pela REGRA Nº -1.
