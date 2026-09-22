@@ -151,6 +151,11 @@
        dourado, cantos de 16px. É o que a pessoa já viu no e-mail que a
        trouxe até aqui. */
     .portal-header { background:linear-gradient(135deg,var(--accent),var(--cyan)); color:#fff; border-radius:16px; padding:26px 24px; margin:28px 0 20px; }
+    /* O LOGO FICA ACIMA DA TARJA, centralizado com ela. Altura fixa e largura
+       automática: a arte pode vir em qualquer proporção, e travar a largura
+       espremeria o brasão. */
+    .portal-logo { display:none; height:54px; width:auto; margin:0 auto 14px; }
+    .portal-logo.visivel { display:block; }
     .portal-eyebrow { display:inline-block; background:rgba(255,255,255,.16); border-radius:999px; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#fff; margin-bottom:12px; }
     .portal-eyebrow::before, .portal-eyebrow::after { content:none; }
     .portal-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(24px,4.4vw,32px); font-weight:800; line-height:1.15; margin-bottom:10px; color:#fff; letter-spacing:-.01em; }
@@ -394,7 +399,8 @@
   <div class="wrap">
     <a href="#" onclick="history.back();return false;" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--cyan);text-decoration:none;margin-bottom:18px;">‹ Voltar</a>
     <div class="portal-header">
-      <div class="portal-eyebrow">SindEducação-ES · SISGEP</div>
+      <img id="portalLogo" class="portal-logo" alt="SindEducação-ES">
+      <div class="portal-eyebrow">SindEducação-ES</div>
       <h1 class="portal-title">Portal de Solicitação de Voucher</h1>
       <div class="gold-bar"></div>
       <p class="portal-sub">Cadastro, atualização e solicitação de voucher de bolsa</p>
@@ -2284,6 +2290,15 @@ document.getElementById('escolaAtual').addEventListener('input', function() {
     google.script.run
       .withSuccessHandler(function(res) {
         INIT = res || INIT;
+
+        /* Só aparece quando a imagem chegou de verdade. Um <img> com src
+           vazio rende o ícone de imagem quebrada, que é pior do que não ter
+           logo nenhum. */
+        var elLogo = document.getElementById('portalLogo');
+        if (elLogo && INIT.logo) {
+          elLogo.src = INIT.logo;
+          elLogo.classList.add('visivel');
+        }
         preencherEscolas();
         preencherSelect('modalidade', INIT.modalidades || []);
         preencherSelect('areaCurso', INIT.areas || []);

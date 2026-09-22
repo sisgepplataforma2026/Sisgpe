@@ -1412,7 +1412,27 @@ function buscarSolicitacaoPorProtocolo_(protocolo) {
 /* ================= PORTAL — DADOS INICIAIS ================= */
 
 function getPortalVoucherInitData() {
+  /* O LOGO VAI EMBUTIDO, NÃO LINKADO — 22/09/2026, a pedido do usuário:
+     "acho que falta a logo do SindEducação aqui".
+
+     É o mesmo motivo do QR e da assinatura no certificado: imagem do Drive
+     apontada por URL depende de o navegador de QUEM ABRE conseguir baixá-la,
+     e o portal é público — quem entra não está logado em conta nenhuma do
+     sindicato. Linkar daria um cabeçalho que funciona na máquina de quem
+     testou e mostra ícone quebrado para o associado.
+
+     `logoSindicatoVoucher_()` já resolve isso e guarda em cache por 6 horas,
+     então o custo é de uma leitura a cada seis horas, não por visita.
+
+     E FALHAR AQUI NÃO PODE DERRUBAR O PORTAL: sem logo o cabeçalho continua
+     de pé com o nome do sindicato. Um formulário de bolsa que não abre por
+     causa de uma figura seria péssimo negócio. */
+  var logo = "";
+  try { logo = logoSindicatoVoucher_() || ""; }
+  catch (eLogo) { Logger.log("Logo do portal não carregou: " + eLogo.message); }
+
   return {
+    logo: logo,
     escolas: listarEscolasVoucher_(),
     modalidades: [
       { value: "EDUCACAO_INFANTIL",  label: "Educação Infantil (4–5 anos)" },

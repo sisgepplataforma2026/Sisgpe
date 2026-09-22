@@ -164,6 +164,40 @@ b.ok(/caixa\.classList\.contains\('hidden'\)/.test(portal),
 b.ok(/var percentual = total \? Math\.round\(\(preenchidos \/ total\) \* 100\) : 0;/.test(portal),
   "e o denominador é o que está VISÍVEL, não a lista fixa");
 
+b.passo("O logo do sindicato entra no cabeçalho");
+/* "Acho que falta a logo do SindEducação aqui" — você, 22/09/2026, olhando o
+   portal público. O cabeçalho tinha só texto. */
+b.ok(/id="portalLogo"/.test(portal), "existe o elemento do logo no cabeçalho");
+b.ok(/elLogo\.src = INIT\.logo/.test(portal),
+  "e ele é preenchido com o que o servidor manda no INIT");
+
+b.passo("O logo vai EMBUTIDO, não linkado");
+/* Mesmo motivo do QR e da assinatura no certificado: imagem do Drive apontada
+   por URL depende de o navegador de QUEM ABRE conseguir baixá-la — e o portal
+   é público, quem entra não está logado em conta nenhuma do sindicato.
+   Linkar daria um cabeçalho que funciona na máquina de quem testou e mostra
+   ícone quebrado para o associado. */
+const voucherGs = fs.readFileSync(path.join(RAIZ, "Voucher.gs"), "utf8");
+b.ok(/logo: logo,/.test(voucherGs), "o INIT carrega o logo");
+b.ok(/logo = logoSindicatoVoucher_\(\)/.test(voucherGs),
+  "vindo da mesma função que o certificado usa — não de uma segunda fonte");
+
+b.passo("E falhar ao carregar o logo NÃO derruba o portal");
+/* Um formulário de bolsa que não abre por causa de uma figura seria péssimo
+   negócio. Sem logo, o cabeçalho continua de pé com o nome do sindicato. */
+b.ok(/catch \(eLogo\)/.test(voucherGs), "a leitura do logo é protegida");
+b.ok(/if \(elLogo && INIT\.logo\)/.test(portal),
+  "e a tela só mostra a imagem quando ela veio — src vazio renderiza ícone quebrado");
+
+b.passo("A tarja deixa de anunciar o nome do sistema");
+/* "Tirar o nome do SISGEP" — você, no mesmo dia. Quem abre o portal é o
+   associado: o que importa para ele é de quem é o formulário, não em que
+   sistema ele foi feito. */
+b.ok(!/portal-eyebrow">SindEducação-ES · SISGEP/.test(portal),
+  "'SindEducação-ES · SISGEP' saiu da tarja");
+b.ok(/portal-eyebrow">SindEducação-ES<\/div>/.test(portal),
+  "e ficou só o sindicato");
+
 b.naoTestavel("A aparência final no navegador",
   "nenhum teste daqui aplica folha de estilo; só a tela publicada responde");
 b.resumo();
