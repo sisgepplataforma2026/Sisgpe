@@ -555,7 +555,7 @@
       </div>
 
       <div class="grid2" id="camposTitular">
-        <div class="field required">
+        <div class="field required" id="boxTipoBeneficiario">
           <label for="tipoBeneficiario">Tipo de beneficiário</label>
           <select id="tipoBeneficiario"></select>
         </div>
@@ -613,6 +613,7 @@
         <div class="field required">
           <label for="modalidade">Modalidade</label>
           <select id="modalidade"></select>
+          <span class="field-help sugestao" id="avisoModalidade"></span>
         </div>
 
         <div class="field required">
@@ -694,36 +695,47 @@
 
     <!-- SEÇÃO 4 — Documentos -->
     <div class="secao">
+      <!-- "TEM QUE ESTAR VISÍVEL QUE A DOCUMENTAÇÃO AQUI É DO TITULAR" — você,
+           22/09/2026. Estava escrito, mas em letra miúda debaixo do título:
+           quem chega nesta seção depois de cadastrar três filhos lê
+           "Documentos Obrigatórios" e anexa o documento da criança. Agora o
+           dono aparece no TÍTULO e numa tarja, que é onde o olho passa. -->
       <div class="secao-header">
         <div class="secao-num">4</div>
-        <div class="secao-title">Documentos Obrigatórios</div>
+        <div class="secao-title">Documentos do titular</div>
+        <span class="tarja-dono">DO ASSOCIADO</span>
       </div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
-        Anexe os documentos do <strong style="color:var(--white);">titular</strong> abaixo.<br>
+        São os documentos de <strong style="color:var(--white);">quem é associado</strong> —
+        não os do dependente. Os documentos de cada dependente vão no cartão dele, acima.<br>
         Formatos aceitos: <strong style="color:var(--white);">PDF, JPG ou PNG</strong> — máx. 5MB por arquivo.
       </p>
       <div class="grid2">
 
         <div class="field required">
-          <label>Comprovante de vínculo empregatício</label>
+          <label>Comprovante de vínculo com a escola</label>
           <div class="upload-area" id="areaContracheque">
             <input type="file" id="contracheque" accept=".pdf,.jpg,.jpeg,.png">
             <div class="upload-ico">📄</div>
-            <div class="upload-txt">Último contracheque<br><span style="font-weight:400;opacity:.7;">ou Declaração do RH (funcionário recém-contratado)</span></div>
+            <div class="upload-txt">Último contracheque<br><span style="font-weight:400;opacity:.7;">ou declaração da escola, para quem entrou há pouco</span></div>
             <div class="upload-nome" id="nomeContracheque"></div>
           </div>
-          <span class="field-help">Se não possuir contracheque, anexe declaração do RH informando a contratação recente</span>
+          <span class="field-help">Quem está há pouco tempo na escola e ainda não tem contracheque
+            pode anexar a <strong>declaração da escola informando o vínculo</strong>.</span>
         </div>
 
         <div class="field required" id="boxDocPessoalTitular">
-          <label>Documento pessoal</label>
+          <label>Documento com CPF</label>
           <div class="upload-area" id="areaDocPessoal">
             <input type="file" id="docPessoal" accept=".pdf,.jpg,.jpeg,.png">
             <div class="upload-ico">🪪</div>
-            <div class="upload-txt">CNH ou documento oficial com foto</div>
+            <div class="upload-txt">Documento do titular que mostre o CPF</div>
             <div class="upload-nome" id="nomeDocPessoal"></div>
           </div>
-          <span class="field-help">CNH, RG, ou outro documento oficial com foto</span>
+          <!-- O QUE IMPORTA AQUI É O CPF, não a foto: é por ele que a
+               Secretaria confere o cadastro do associado. Pedir "documento com
+               foto" fazia gente anexar RG antigo sem CPF, que não serve. -->
+          <span class="field-help">RG com CPF, CNH, ou o próprio comprovante de CPF.</span>
         </div>
 
       </div>
@@ -1139,6 +1151,26 @@ function atualizarProgresso() {
       aviso.classList.remove('visivel');
     }
 
+    /* O RECIBO FALA A LÍNGUA DA PESSOA, NÃO A DO BANCO DE DADOS.
+       "ENSINO_MEDIO" é o valor que o sistema grava; quem lê o recibo espera
+       "Ensino Médio". A lista de modalidades já vem do backend com os dois
+       lados (value/label) — é só usar o que já está ali. O trecho entre
+       parênteses ("(6–14 anos)") é ajuda de preenchimento do formulário e sai
+       do recibo: ali a idade já foi informada. */
+    function rotuloModalidade(valor) {
+      var achado = (INIT.modalidades || []).filter(function (m) { return m.value === valor; })[0];
+      if (!achado) return valor || '';
+      return String(achado.label).replace(/\s*\([^)]*\)\s*$/, '');
+    }
+
+    function reciboLinha(icone, rotulo, valor) {
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+        '<span style="font-size:16px;">' + icone + '</span>' +
+        '<span style="color:var(--muted);">' + rotulo + ':</span>' +
+        '<strong>' + valor + '</strong>' +
+        '</div>';
+    }
+
     function depOpcoes(lista, vazio) {
       return '<option value="">' + (vazio || 'Selecione...') + '</option>' +
         (lista || []).map(function (i) {
@@ -1177,7 +1209,8 @@ function atualizarProgresso() {
               { value:'3', label:'3º filho' }
             ]) + '</select></div>' +
           '<div class="field required"><label>Modalidade</label>' +
-            '<select class="dep-modalidade">' + depOpcoes(INIT.modalidades) + '</select></div>' +
+            '<select class="dep-modalidade">' + depOpcoes(INIT.modalidades) + '</select>' +
+            '<span class="field-help sugestao dep-sugestao"></span></div>' +
           '<div class="field required"><label>Curso / série</label>' +
             '<input type="text" class="dep-curso" autocomplete="off" placeholder="Ex.: 6º ano, Direito"></div>' +
           '<div class="field dep-box-area hidden"><label>Área do curso</label>' +
@@ -1210,12 +1243,20 @@ function atualizarProgresso() {
          Em creche não há área, e o campo vazio pediria resposta impossível. */
       var mod = card.querySelector('.dep-modalidade');
       mod.onchange = function () {
+        /* Escolheu, a sugestão se cala — o mesmo trato do beneficiário único. */
+        mod.dataset.tocado = '1';
+        var sug = card.querySelector('.dep-sugestao');
+        if (sug) sug.classList.remove('visivel');
         var ehGrad = String(mod.value || '').toUpperCase() === 'GRADUACAO';
         card.querySelector('.dep-box-area').classList.toggle('hidden', !ehGrad);
         depConferirIdade(card);
         atualizarProgresso();
       };
       card.querySelector('.dep-nascimento').oninput = function () {
+        /* A SUGESTÃO VALE PARA CADA CARTÃO, com a idade daquele dependente.
+           Um titular com três filhos de idades diferentes teria de escolher
+           três modalidades na mão; aqui cada cartão já nasce com a sua. */
+        aplicarSugestaoModalidade(this, mod, card.querySelector('.dep-sugestao'));
         depConferirIdade(card); atualizarProgresso();
       };
       card.querySelectorAll('input,select').forEach(function (el) {
@@ -1333,16 +1374,100 @@ function atualizarProgresso() {
       var boxDoc = document.getElementById('boxDocPessoalTitular');
       if (boxDoc) boxDoc.classList.toggle('hidden', ehDep);
 
+      /* O tipo de beneficiário sai de cena no caminho do titular — quem
+         responde isso é o seletor "para quem é a bolsa". */
+      var boxTipo = document.getElementById('boxTipoBeneficiario');
+      if (boxTipo) boxTipo.classList.add('hidden');
+
       /* Para o titular, o beneficiário É ele — ajustarCamposVoucher já sabe
          fazer isso, e chamá-lo aqui evita duas lógicas para a mesma coisa. */
       if (!ehDep) {
+        /* "PARA MIM" IMPÕE O TITULAR — 22/09/2026.
+           Seu print mostrou o defeito: "Para mim" marcado e a tela dizendo
+           "Filho(a)", com o nome de outra pessoa e "1º filho". A linha aqui
+           só ajustava o tipo QUANDO ELE ESTAVA VAZIO, então quem tivesse
+           escolhido Filho(a) antes de trocar para "Para mim" levava a escolha
+           antiga junto — e a solicitação ia ao servidor dizendo duas coisas
+           contrárias sobre a mesma pessoa.
+
+           E O CAMPO SOME. O seletor lá em cima já perguntou para quem é a
+           bolsa; repetir a pergunta logo abaixo é convidar a resposta
+           divergente. Pergunta feita duas vezes é pergunta que um dia vem com
+           duas respostas. */
         var tipo = document.getElementById('tipoBeneficiario');
-        if (tipo && !tipo.value) tipo.value = 'TITULAR';
+        if (tipo) tipo.value = 'TITULAR';
         if (typeof ajustarCamposVoucher === 'function') ajustarCamposVoucher();
       } else if (!depCartoes().length) {
         depAdicionar();
       }
       atualizarProgresso();
+    }
+
+    /* ══ A MODALIDADE SUGERIDA PELA IDADE — 22/09/2026 ═══════════════════════
+       "Pela idade dos dependentes eles poderiam limitar a modalidade,
+       correto?" — você. A resposta é SUGERIR, não limitar, e a diferença não
+       é de estilo.
+
+       Em 17/09 medimos que a tela RECUSAVA cinco casos que a convenção
+       aprova: filho de 16 no Fundamental (repetiu), de 19 no Médio (voltou a
+       estudar), de 13 no Técnico, de 10 no Médio (adiantado), criança de 4 no
+       Fundamental. Você concluiu que a idade não interfere, e a recusa virou
+       aviso.
+
+       Se o MENU escondesse as modalidades fora da faixa, o mesmo defeito
+       voltaria pela porta dos fundos — e pior: antes a pessoa via a mensagem;
+       escondendo, ela simplesmente não acha a opção e não entende por quê.
+
+       Então: o campo nasce preenchido com o mais provável, a lista continua
+       inteira, e a origem fica à vista (REGRA Nº 0.6 — sugerir com a origem
+       visível, nunca impor em silêncio).
+
+       E NUNCA SOBRESCREVE ESCOLHA DA PESSOA: se ela já mexeu na modalidade, a
+       sugestão se cala. Campo que se reescreve sozinho depois de preenchido é
+       o jeito mais rápido de perder a confiança de quem digita. */
+    function idadeEmAnos(dataStr) {
+      var partes = String(dataStr || '').split('-');
+      if (partes.length !== 3) return null;
+      var nasc = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+      if (isNaN(nasc.getTime())) return null;
+      var hoje = new Date();
+      var idade = hoje.getFullYear() - nasc.getFullYear();
+      if (hoje.getMonth() < nasc.getMonth() ||
+         (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+      return idade;
+    }
+
+    function modalidadeSugerida(idade) {
+      if (idade === null || idade < 0) return '';
+      if (idade <= 3)  return 'CRECHE';
+      if (idade <= 5)  return 'EDUCACAO_INFANTIL';
+      if (idade <= 14) return 'ENSINO_FUNDAMENTAL';
+      if (idade <= 17) return 'ENSINO_MEDIO';
+      if (idade === 18) return 'PRE_VESTIBULAR';
+      return 'GRADUACAO';
+    }
+
+    /** Aplica a sugestão a um par (campo de data, campo de modalidade). */
+    function aplicarSugestaoModalidade(elData, elModalidade, elAviso) {
+      if (!elData || !elModalidade) return;
+      if (elModalidade.dataset.tocado === '1') return;   /* a pessoa já escolheu */
+
+      var idade = idadeEmAnos(elData.value);
+      var sugerida = modalidadeSugerida(idade);
+      if (!sugerida) return;
+
+      /* Só sugere o que existe no menu: o menu vem do servidor e pode mudar. */
+      if (!elModalidade.querySelector('option[value="' + sugerida + '"]')) return;
+
+      elModalidade.value = sugerida;
+      if (elAviso) {
+        var rotulo = elModalidade.options[elModalidade.selectedIndex].textContent;
+        elAviso.textContent = 'Sugerido pela idade (' + idade +
+          (idade === 1 ? ' ano' : ' anos') + '): ' + rotulo + '. Pode trocar.';
+        elAviso.classList.add('visivel');
+      }
+      if (typeof ajustarCamposVoucher === 'function') ajustarCamposVoucher();
+      if (typeof atualizarProgresso === 'function') atualizarProgresso();
     }
 
     function validarIdadeModalidade() {
@@ -1821,6 +1946,37 @@ aplicarCadastroLocalizado(c);
       if (!document.getElementById('situacaoSindicalDeclarada').value) { showMsg('❌ Informe a situação sindical.', 'erro'); document.getElementById('situacaoSindicalDeclarada').classList.add('invalid'); return; }
       if (!document.getElementById('periodoReferencia').value.trim()) { showMsg('❌ Informe o período de referência.', 'erro'); document.getElementById('periodoReferencia').classList.add('invalid'); return; }
 
+      /* OS ANEXOS OBRIGATÓRIOS PASSAM A SER EXIGIDOS DE VERDADE — 22/09/2026.
+         "Se preenchi tudo, por que somente 86%?" — você, e a conta estava
+         certa: faltava o comprovante de vínculo. O que estava errado era o
+         resto: a BARRA contava o contracheque como obrigatório e o BOTÃO
+         deixava enviar sem ele. Regra que só existe num dos dois lugares
+         ensina a ignorar o lugar onde ela existe — e a solicitação chegava à
+         Secretaria sem a prova do vínculo, para ser cobrada depois por
+         e-mail, com a pessoa já tendo ido embora da tela.
+
+         O documento do titular só é exigido quando está VISÍVEL: no caminho
+         dos dependentes ele sai de cena, porque quem manda em cada
+         solicitação é o documento do dependente. */
+      var elContracheque = document.getElementById('contracheque');
+      if (!elContracheque.files || !elContracheque.files.length) {
+        showMsg('❌ Anexe o comprovante de vínculo com a escola — o último contracheque, ' +
+                'ou a declaração da escola para quem entrou há pouco.', 'erro');
+        elContracheque.classList.add('invalid');
+        document.getElementById('areaContracheque').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      var boxDocTit = document.getElementById('boxDocPessoalTitular');
+      var elDocPessoal = document.getElementById('docPessoal');
+      if (boxDocTit && !boxDocTit.classList.contains('hidden') &&
+          (!elDocPessoal.files || !elDocPessoal.files.length)) {
+        showMsg('❌ Anexe um documento do titular que mostre o CPF.', 'erro');
+        elDocPessoal.classList.add('invalid');
+        document.getElementById('areaDocPessoal').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
       /* OS CAMPOS DO BENEFICIÁRIO ÚNICO SÓ SÃO EXIGIDOS NO CAMINHO DO
          TITULAR. No caminho dos dependentes eles estão escondidos, e exigi-los
          fechava a porta pelo lado de dentro: a mensagem apontava um campo que
@@ -1939,6 +2095,20 @@ aplicarCadastroLocalizado(c);
               var cursoVal        = document.getElementById('curso').value.trim();
               var periodoVal      = document.getElementById('periodoReferencia').value.trim();
 
+              /* O RECIBO MOSTRAVA UM CURSO QUE NÃO ERA DE NINGUÉM — 22/09/2026,
+                 apontado pelo seu print: "Curso: Fundamental 1 — ENSINO_MEDIO",
+                 com dois dependentes registrados logo abaixo. As duas linhas
+                 acima leem os campos do BENEFICIÁRIO ÚNICO, que no caminho dos
+                 dependentes estão escondidos e guardam o que tiver sobrado de
+                 uma digitação anterior. O resultado era um par curso/modalidade
+                 que não correspondia a nenhuma das solicitações — e a pessoa
+                 conferindo o recibo não tem como saber disso.
+
+                 Agora: no caminho dos dependentes o cabeçalho não fala de curso
+                 nenhum; cada dependente traz o seu, na lista de baixo. */
+              var ehDependentes = paraQuemAtual === 'DEPENDENTES';
+              var qtdDeps       = (depsValidados || []).length;
+
               var protBox = document.getElementById('protocoloBox');
               var protNum = document.getElementById('protocoloNum');
               var protSub = document.getElementById('protocoloSub');
@@ -1953,25 +2123,17 @@ aplicarCadastroLocalizado(c);
 
               var subHtml =
                 '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">👤</span>' +
-                    '<span style="color:var(--muted);">Solicitante:</span>' +
-                    '<strong>' + nomeSolicitante + '</strong>' +
-                  '</div>' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">📚</span>' +
-                    '<span style="color:var(--muted);">Curso:</span>' +
-                    '<strong>' + cursoVal + ' — ' + modalidadeVal + '</strong>' +
-                  '</div>' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">📅</span>' +
-                    '<span style="color:var(--muted);">Período:</span>' +
-                    '<strong>' + periodoVal + '</strong>' +
-                  '</div>' +
+                  reciboLinha('👤', 'Solicitante', nomeSolicitante) +
+                  (ehDependentes
+                    ? reciboLinha('👪', 'Dependentes', qtdDeps + (qtdDeps === 1 ? ' dependente' : ' dependentes'))
+                    : reciboLinha('📚', 'Curso', cursoVal + ' — ' + rotuloModalidade(modalidadeVal))) +
+                  reciboLinha('📅', 'Período', periodoVal) +
                   '<div style="margin-top:6px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.6;' +
                     (isSindicalizado
                       ? 'background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#6ee7b7;">' +
-                        '✅ Solicitação <strong>registrada com sucesso</strong>. A análise costuma sair em até <strong>5 dias úteis</strong> — você será avisado por e-mail.'
+                        (ehDependentes
+                          ? '✅ <strong>' + qtdDeps + (qtdDeps === 1 ? ' solicitação registrada' : ' solicitações registradas') + '</strong>, uma para cada dependente. A análise costuma sair em até <strong>5 dias úteis</strong> — você será avisado por e-mail.'
+                          : '✅ Solicitação <strong>registrada com sucesso</strong>. A análise costuma sair em até <strong>5 dias úteis</strong> — você será avisado por e-mail.')
                       /* O TEXTO ANTERIOR SOAVA RECUSA, e a regra é o oposto.
                          Ele dizia "cadastro identificado como Não Associado"
                          e mandava comparecer — sem nunca dizer que a pessoa
@@ -1998,9 +2160,23 @@ aplicarCadastroLocalizado(c);
                   res.resultados.length + ' solicitações registradas</div>' +
                   res.resultados.map(function (r) {
                     var cor = r.ok ? 'var(--ok-txt)' : '#b45309';
+                    /* CADA DEPENDENTE COM O CURSO DELE. Sem isto a lista traz
+                       só nome e protocolo, e quem confere não consegue ver se
+                       o curso do Guilherme não foi parar na linha do Bernardo
+                       — que é exatamente o tipo de troca que ninguém percebe
+                       na hora e ninguém consegue reconstruir depois. */
+                    var dep = (depsValidados || []).filter(function (d) {
+                      return String(d.nomeBeneficiario || '').trim() === String(r.nome || '').trim();
+                    })[0];
+                    var curso = dep
+                      ? [dep.curso, rotuloModalidade(dep.modalidade)].filter(Boolean).join(' — ')
+                      : '';
                     return '<div style="display:flex;justify-content:space-between;gap:12px;' +
                       'padding:7px 0;font-size:13px;border-bottom:1px solid var(--border);">' +
-                      '<span style="font-weight:700;">' + (r.nome || '—') + '</span>' +
+                      '<span style="font-weight:700;">' + (r.nome || '—') +
+                      (curso ? '<span style="display:block;font-weight:500;font-size:12px;' +
+                               'color:var(--muted);margin-top:2px;">' + curso + '</span>' : '') +
+                      '</span>' +
                       '<span style="color:' + cor + ';font-weight:700;white-space:nowrap;">' +
                       (r.ok ? (r.protocolo || '') + (r.percentual ? ' · ' + r.percentual + '%' : '')
                             : 'em análise') +
@@ -2173,8 +2349,20 @@ function limparFormulario(confirmar) {
       document.getElementById('nomeDocPessoal').textContent = f ? '✔ ' + f.name : '';
     });
 
-    document.getElementById('dataNascimentoBeneficiario').addEventListener('change', function() { validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
-    document.getElementById('modalidade').addEventListener('change', function() { ajustarCamposVoucher(); validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
+    document.getElementById('dataNascimentoBeneficiario').addEventListener('change', function() {
+      aplicarSugestaoModalidade(this, document.getElementById('modalidade'),
+                                document.getElementById('avisoModalidade'));
+      validarIdadeModalidade(); autoSave(); atualizarProgresso();
+    });
+    document.getElementById('modalidade').addEventListener('change', function() {
+      /* A PESSOA MANDA. A partir do primeiro toque dela, a sugestão se cala —
+         campo que se reescreve sozinho depois de preenchido é o jeito mais
+         rápido de perder a confiança de quem digita. */
+      this.dataset.tocado = '1';
+      var aviso = document.getElementById('avisoModalidade');
+      if (aviso) aviso.classList.remove('visivel');
+      ajustarCamposVoucher(); validarIdadeModalidade(); autoSave(); atualizarProgresso();
+    });
     document.getElementById('tipoBeneficiario').addEventListener('change', function() {
       ajustarCamposVoucher();
       if (String(this.value || '').toUpperCase() === 'TITULAR') {

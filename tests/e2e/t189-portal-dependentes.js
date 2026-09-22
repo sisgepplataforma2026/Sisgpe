@@ -260,6 +260,12 @@ b.passo("5. cada documento chega na solicitação do SEU dependente");
   b.ok(campo("boxDocPessoalTitular").classList.contains("hidden"),
     "o documento pessoal DO TITULAR sai de cena: quem manda é o do cartão");
 
+  /* O LIXO DOS CAMPOS ESCONDIDOS, de propósito: é exatamente o que sobra
+     quando alguém preenche o caminho do titular e depois troca para
+     dependentes. Ele não pode aparecer no recibo. */
+  campo("curso").value = "Fundamental 1";
+  campo("modalidade").value = "ENSINO_MEDIO";
+
   clicar(campo("btnSalvar"));
   await tela.assentar(200);
 
@@ -278,6 +284,33 @@ b.passo("5. cada documento chega na solicitação do SEU dependente");
     "o comprovante de vínculo do associado vai em todas — é dele que ele é");
   b.ok(enviado && String(enviado.periodoReferencia).trim() === "2030/1",
     "e o período, que vale para o envio inteiro, saiu de fora dos campos que somem");
+
+  /* ── 7. O RECIBO ───────────────────────────────────────────────────────── */
+  b.passo("7. o recibo não inventa um curso que não é de ninguém");
+  /* DEFEITO REAL, do seu print de 22/09/2026: "Curso: Fundamental 1 —
+     ENSINO_MEDIO" no topo, e dois dependentes registrados logo abaixo. O
+     cabeçalho lia os campos do beneficiário único, escondidos no caminho dos
+     dependentes e cheios do que sobrou de uma digitação anterior. */
+  var recibo = campo("protocoloSub").innerHTML;
+
+  b.ok(!/Fundamental 1/.test(recibo),
+    "o curso do campo escondido não vai para o recibo", recibo.slice(0, 400));
+  b.ok(!/ENSINO_MEDIO/.test(recibo),
+    "nem a modalidade dele — nenhuma das duas era de um dependente real");
+  b.ok(/Dependentes/.test(recibo),
+    "no lugar entra a contagem: quantas solicitações foram registradas");
+
+  b.passo("e cada dependente aparece com o curso DELE");
+  b.ok(/ANA MARIA/.test(recibo) && /BRUNO/.test(recibo) && /CLARA/.test(recibo),
+    "os três nomes estão na lista");
+  b.ok(/6 ANO/.test(recibo) && /8 ANO/.test(recibo) && /9 ANO/.test(recibo),
+    "com o curso de cada um ao lado do nome", recibo.slice(0, 800));
+
+  b.passo("a modalidade é mostrada por extenso, não pelo valor do banco");
+  b.igual(win.rotuloModalidade("ENSINO_FUNDAMENTAL"), "Ensino Fundamental",
+    "ENSINO_FUNDAMENTAL vira 'Ensino Fundamental'");
+  b.ok(/Ensino Fundamental/.test(recibo),
+    "e é assim que sai no recibo — quem lê não conhece o nome da coluna");
 
   b.naoTestavel("o desenho dos cartões na tela",
   "jsdom não aplica CSS — roteiro manual: abrir o portal, escolher " +
