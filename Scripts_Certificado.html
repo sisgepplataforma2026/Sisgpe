@@ -1765,9 +1765,42 @@ function cert_abrirModal(s){
   // Documentos
   var docsEl=g('cmi-docs');
   if(docsEl){
+    /* CADA ANEXO DIZ DE QUEM É — 22/09/2026, seu pedido: "tem que aparecer a
+       documentação do titular junto do dependente".
+
+       Os dois documentos JÁ estavam aqui: numa solicitação de dependente, o
+       contracheque é o do associado (é o vínculo dele que comprova o direito)
+       e o documento pessoal é o da criança. O que faltava era dizer isso. Sem
+       o nome, quem analisa abre os dois para descobrir de quem é cada um — e,
+       pior, pode concluir que o documento do titular não foi enviado e pedir
+       complementação de algo que está ali. */
+    var ehOutro = certEhOutroBeneficiario(s);
+    var nomeTit = String(s.nome||'').trim();
+    var nomeBen = String(s.nomeBeneficiario||'').trim() || nomeTit;
+
+    function chipDoc(link, icone, titulo, dono){
+      return '<a href="'+cert_escHtml(link)+'" target="_blank" '
+        + 'style="display:inline-flex;flex-direction:column;gap:1px;font-size:12px;'
+        + 'font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;'
+        + 'border-radius:7px;padding:5px 11px;text-decoration:none;margin-right:8px;">'
+        + '<span>'+icone+' '+cert_escHtml(titulo)+'</span>'
+        + (dono ? '<span style="font-weight:500;font-size:10.5px;color:#3b6bb8;">'
+                  + cert_escHtml(dono) + '</span>' : '')
+        + '</a>';
+    }
+
     var dh='';
-    if(s.linkContracheque) dh+='<a href="'+cert_escHtml(s.linkContracheque)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">📄 Contracheque</a>';
-    if(s.linkDocPessoal)   dh+='<a href="'+cert_escHtml(s.linkDocPessoal)+'"  target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:7px;padding:4px 11px;text-decoration:none;">🪪 Doc. Pessoal</a>';
+    /* O CONTRACHEQUE É SEMPRE DO TITULAR — é o vínculo empregatício dele que
+       dá direito ao benefício, seja a bolsa para ele ou para o filho. */
+    if(s.linkContracheque)
+      dh += chipDoc(s.linkContracheque, '📄', 'Contracheque do titular',
+                    ehOutro ? nomeTit : '');
+    /* O DOCUMENTO PESSOAL É DE QUEM RECEBE — na solicitação do dependente, é o
+       da criança, e é por ele que se confere a idade e a ordem do filho. */
+    if(s.linkDocPessoal)
+      dh += chipDoc(s.linkDocPessoal, '🪪',
+                    ehOutro ? 'Documento do dependente' : 'Documento com CPF',
+                    ehOutro ? nomeBen : '');
     if(!dh) dh='<span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>';
     docsEl.innerHTML=dh;
   }

@@ -65,7 +65,9 @@ gravar("Voucher_Solicitacoes", {
   EMAIL: "w@exemplo.com", ESCOLA_SELECIONADA: "UVV - VILA VELHA",
   CURSO: "2 ano", MODALIDADE: "ENSINO_MEDIO",
   PERIODO_REFERENCIA: "2027/1", PERCENTUAL_APLICADO: "100",
-  STATUS_SOLICITACAO: "PENDENTE", SITUACAO_SINDICAL: "ASSOCIADO"
+  STATUS_SOLICITACAO: "PENDENTE", SITUACAO_SINDICAL: "ASSOCIADO",
+  LINK_CONTRACHEQUE: "https://drive.exemplo/contracheque-wanderson",
+  LINK_DOC_PESSOAL: "https://drive.exemplo/doc-bernardo"
 });
 /* A CONTRAPROVA: a bolsa do próprio associado. Se a etiqueta saísse em toda
    linha, ela não informaria nada. */
@@ -76,7 +78,9 @@ gravar("Voucher_Solicitacoes", {
   EMAIL: "w@exemplo.com", ESCOLA_SELECIONADA: "UVV - VILA VELHA",
   CURSO: "Pedagogia", MODALIDADE: "GRADUACAO",
   PERIODO_REFERENCIA: "2027/1", PERCENTUAL_APLICADO: "70",
-  STATUS_SOLICITACAO: "PENDENTE", SITUACAO_SINDICAL: "ASSOCIADO"
+  STATUS_SOLICITACAO: "PENDENTE", SITUACAO_SINDICAL: "ASSOCIADO",
+  LINK_CONTRACHEQUE: "https://drive.exemplo/contracheque-titular",
+  LINK_DOC_PESSOAL: "https://drive.exemplo/doc-titular"
 });
 
 /* ═══ 1. O backend entrega os dois nomes ═══════════════════════════════════
@@ -189,6 +193,50 @@ if (!dom.jsdomDisponivel()) {
   await t.assentar(400);
   visiveis = Array.from(doc.getElementById("certTbody").querySelectorAll("tr"));
   b.igual(visiveis.length, 3, "buscar pelo titular continua trazendo as três");
+
+  /* ── 7. O MODAL ────────────────────────────────────────────────────────── */
+  b.passo("7. no detalhe, cada anexo diz de quem é");
+  /* "Tem que aparecer a documentação do titular junto do dependente" — você,
+     22/09/2026. Os dois anexos já estavam na solicitação do dependente: o
+     contracheque é do associado e o documento pessoal é da criança. O que
+     faltava era dizer isso — sem o nome, quem analisa abre os dois para
+     descobrir de quem é cada um, ou conclui que o do titular não veio e pede
+     complementação de algo que está ali. */
+  t.win.certAbrirSolicitacao(dep2);
+  await t.assentar(60);
+
+  var docs = doc.getElementById("cmi-docs");
+  var txtDocs = docs.textContent.replace(/\s+/g, " ").trim();
+
+  b.ok(/Contracheque do titular/.test(txtDocs),
+    "o contracheque aparece identificado como do titular", txtDocs);
+  b.ok(txtDocs.indexOf(TITULAR) > -1,
+    "com o nome do associado — é o vínculo dele que dá o direito");
+  b.ok(/Documento do dependente/.test(txtDocs),
+    "e o documento pessoal, como do dependente", txtDocs);
+  b.ok(/BERNARDO SIMOURA CASTELO/.test(txtDocs),
+    "com o nome da criança, que é de quem ele é");
+
+  b.passo("e os dois links continuam abrindo o arquivo certo");
+  var links = Array.from(docs.querySelectorAll("a")).map(function (a) {
+    return a.getAttribute("href");
+  });
+  b.igual(links.length, 2, "os dois anexos estão lá");
+  b.ok(links.indexOf("https://drive.exemplo/contracheque-wanderson") > -1,
+    "o link do contracheque é o gravado na solicitação", links.join(" | "));
+  b.ok(links.indexOf("https://drive.exemplo/doc-bernardo") > -1,
+    "e o do documento do dependente também");
+
+  b.passo("na bolsa do próprio associado não se inventa dono");
+  /* CONTRAPROVA: repetir "do titular / WANDERSON" numa solicitação em que só
+     existe uma pessoa seria ruído — e ruído que some quando importa. */
+  t.win.certAbrirSolicitacao(tit);
+  await t.assentar(60);
+  var txtTit = doc.getElementById("cmi-docs").textContent.replace(/\s+/g, " ").trim();
+  b.ok(!/Documento do dependente/.test(txtTit),
+    "o documento pessoal não é chamado de 'do dependente'", txtTit);
+  b.ok(/Documento com CPF/.test(txtTit),
+    "e sim pelo que ele é", txtTit);
 
   b.naoTestavel("a aparência da etiqueta e da linha do titular",
     "jsdom não aplica CSS — roteiro: abrir o painel de Bolsas e conferir que o " +
