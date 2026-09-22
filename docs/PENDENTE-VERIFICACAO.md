@@ -6018,3 +6018,24 @@ verdes na suíte (t189 §7, t193), e as duas dependem de você conferir no ar.
 O **72 é o que motivou tudo**: no seu print, duas linhas iguais davam a
 impressão de dois vouchers no mesmo CPF, e a regra é um por CPF. Enquanto não
 for conferido no ar, o veredito é **"não testado"** pela REGRA Nº -1.
+
+## 🔴 Complementação e nomes de arquivo — 22/09/2026
+
+| | O que conferir | Onde |
+|---|---|---|
+| 74 | 🔴 "Solicitar Complementação" abre a lista de documentos em vez de enviar direto | painel de Bolsas |
+| 75 | 🔴 o e-mail que chega ao associado traz os documentos em lista, e NÃO traz a observação interna do sistema | caixa do associado |
+| 76 | 🔴 o anexo salvo no Drive traz a data no nome | pasta do Drive |
+| 77 | 🔴 o voucher emitido para dependente sai como "NOME (dependente de TITULAR)" | pasta do Drive |
+| 78 | 🔴 a aba `Voucher_Emitidos` ganhou NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO, e elas vêm preenchidas | planilha |
+| 79 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um | painel de Bolsas |
+
+O **75 é o que motivou tudo**: o e-mail saía com "Solicitação enquadrada por
+ordem do filho. | Escola não localizada no cadastro de escolas." — anotação
+interna da análise — como se fosse o pedido de documento.
+
+**Aberto, e não é bug desta entrega:** depois de pedir complementação, a lista
+ficou em "Em Análise" sem nenhuma solicitação, embora o backend grave
+`ANALISE` (conferido no emulador). Suspeita: corrida entre recarregar a lista
+e aplicar o filtro, no `setTimeout` de 450 ms. Precisa ser reproduzido com a
+tela montada antes de mexer.

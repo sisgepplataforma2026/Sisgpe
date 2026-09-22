@@ -88,37 +88,101 @@ function atualizarStatusProtocolo_(protocolo, status, responsavel, observacao) {
  * indeferimento. A trava fica aqui, no backend, e não só na tela: tela é
  * conveniência, servidor é regra.
  */
-function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
+/**
+ * PEDIR COMPLEMENTAÇÃO DIZENDO O QUE FALTA.
+ *
+ * O DEFEITO QUE ORIGINOU ESTA VERSÃO — 22/09/2026, você: "essa complementação
+ * eu deveria informar quais documentos estariam pendentes" e, logo depois,
+ * "mas o sistema encaminhou direto! Não entendi".
+ *
+ * A trava de "escreva o que está faltando" existia e não pegou, porque o
+ * campo de observação NÃO ESTAVA VAZIO: ele já vinha preenchido pelo próprio
+ * sistema — "Solicitação enquadrada por ordem do filho. | Escola não
+ * localizada no cadastro de escolas." Era uma anotação interna da análise, e
+ * foi ela que saiu no e-mail do associado como se fosse o pedido de
+ * documento. Ou seja: a pessoa recebeu uma mensagem que não nomeia documento
+ * nenhum, e o clique passou pela trava sem esforço.
+ *
+ * A CORREÇÃO É SEPARAR AS DUAS COISAS. `obs` volta a ser o que o nome diz —
+ * observação interna da análise, que fica na planilha. O que vai para o
+ * associado é `pedido`, montado na tela a partir de uma lista de documentos
+ * marcados mais um detalhe livre. Sem nenhum documento marcado e sem detalhe,
+ * não se envia nada.
+ *
+ * @param {Object} pedido  { documentos: string[], detalhe: string }
+ */
+function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao, pedido) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
 
     const observacao = String(obs || "").trim();
-    if (!observacao) {
+
+    const documentos = (pedido && Array.isArray(pedido.documentos) ? pedido.documentos : [])
+      .map(function (d) { return String(d || "").trim(); })
+      .filter(function (d) { return d !== ""; });
+    const detalhe = String((pedido && pedido.detalhe) || "").trim();
+
+    /* O TEXTO DO E-MAIL SAI DAQUI, e só daqui.
+     *
+     * A DISTINÇÃO ENTRE "NÃO MANDOU PEDIDO" E "MANDOU PEDIDO VAZIO" É O
+     * CONSERTO. Escrever este trecho com um único `else` que cai na
+     * observação reproduzia o defeito inteiro: a tela mandaria o pedido vazio
+     * (ninguém marcou nada), o código acharia que era uma chamada antiga e
+     * enviaria a anotação interna para o associado — de novo. Foi assim que
+     * o teste pegou, e a primeira versão desta função tinha exatamente isso.
+     *
+     * Chamada SEM o quarto argumento é código antigo (um script, uma tela
+     * anterior) e ainda pode usar a observação. Chamada COM pedido vazio é a
+     * tela nova dizendo "não marcaram nada" — e aí não se envia. */
+    const pedidoVeio = !!pedido && typeof pedido === "object";
+    let textoAssociado = "";
+    if (documentos.length || detalhe) {
+      textoAssociado = documentos.join("\n");
+      if (detalhe) textoAssociado += (textoAssociado ? "\n" : "") + detalhe;
+    } else if (!pedidoVeio) {
+      textoAssociado = observacao;
+    }
+
+    if (!String(textoAssociado || "").trim()) {
       return {
         ok: false,
-        mensagem: "Escreva o que está faltando — esse texto vai no e-mail para o associado."
+        mensagem: "Diga o que está faltando — marque os documentos ou escreva o que o associado precisa enviar. Este texto vai no e-mail para ele."
       };
     }
 
     const usuario = obterUsuarioAtualVoucher_();
 
-    atualizarStatusSolicitacao_(item, "ANALISE", observacao);
-    atualizarStatusProtocolo_(protocolo, "ANALISE", usuario, observacao);
+    /* A OBSERVAÇÃO GRAVADA É A INTERNA, quando existe. O que foi pedido ao
+       associado tem coluna própria — misturar os dois é o que produziu o
+       e-mail errado. */
+    atualizarStatusSolicitacao_(item, "ANALISE", observacao || textoAssociado, {
+      DOCUMENTOS_PENDENTES: documentos.join(" | ") + (detalhe ? (documentos.length ? " | " : "") + detalhe : ""),
+      DATA_COMPLEMENTACAO: new Date()
+    });
+    atualizarStatusProtocolo_(protocolo, "ANALISE", usuario, textoAssociado);
 
     registrarHistoricoVoucher_(
       item.registro.ID_SOLICITACAO,
       item.registro.CPF_SOLICITANTE,
       "COMPLEMENTACAO_SOLICITADA",
       usuario,
-      observacao,
+      /* O histórico guarda o que foi PEDIDO — é por ele que se confere, meses
+         depois, se o que chegou é o que se pediu. */
+      textoAssociado,
       protocolo
     );
 
-    enviarEmailComplementacaoVoucher_(item.registro, protocolo, observacao);
+    enviarEmailComplementacaoVoucher_(item.registro, protocolo, textoAssociado, documentos);
 
-    return { ok: true, mensagem: "Complementação solicitada com sucesso." };
+    return {
+      ok: true,
+      mensagem: documentos.length
+        ? "Complementação solicitada — " + documentos.length +
+          (documentos.length === 1 ? " documento pedido." : " documentos pedidos.")
+        : "Complementação solicitada com sucesso."
+    };
 
   } catch (e) {
     return { ok: false, mensagem: "Erro ao solicitar complementação: " + e.message };
@@ -459,7 +523,7 @@ function indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao) {
 
 /* ================= E-MAILS ADMIN ================= */
 
-function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
+function enviarEmailComplementacaoVoucher_(reg, protocolo, obs, documentos) {
   try {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
@@ -470,15 +534,49 @@ function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
       htmlBody:
         voucherEmailHtml_("Solicitação de complementação",
         sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
-        "<p>Para dar continuidade à sua solicitação de bolsa, precisamos do seguinte:</p>" +
+        /* DE QUEM É A BOLSA, quando não é do próprio associado. Quem tem três
+         * filhos recebe três mensagens parecidas, e sem o nome não sabe a
+         * qual delas o documento pedido pertence. */
+        (function () {
+          const benef = valorSeguroVoucher_(reg.NOME_BENEFICIARIO);
+          const tit = valorSeguroVoucher_(reg.NOME_SOLICITANTE);
+          return benef && String(benef).toUpperCase() !== String(tit).toUpperCase()
+            ? "<p>Para dar continuidade à solicitação de bolsa de <strong>" +
+              escHtmlVoucher_(benef) + "</strong>, precisamos do seguinte:</p>"
+            : "<p>Para dar continuidade à sua solicitação de bolsa, precisamos do seguinte:</p>";
+        })() +
         /* O QUE FALTA VEM ANTES DO PROTOCOLO e em destaque. Na versão
          * anterior o pedido aparecia depois do número, num bloco cinza sem
          * título — e quem lê no celular via primeiro um código e depois uma
          * frase administrativa. O documento pedido é a única informação que
          * essa mensagem precisa entregar. */
+        /* LISTA, NÃO PARÁGRAFO — 22/09/2026. Quando são três documentos, um
+         * parágrafo corrido faz a pessoa mandar o primeiro e esquecer os
+         * outros dois; e aí ela recebe uma segunda cobrança e conclui que o
+         * sindicato é desorganizado. Cada documento numa linha própria é o
+         * que faz a conferência ser possível do lado de lá. */
         "<div style='margin:14px 0;padding:14px 16px;background:#fffbeb;border:1px solid #fcd34d;" +
         "border-left:4px solid #d97706;border-radius:8px;font-size:14.5px;color:#92400e;'>" +
-        escHtmlVoucher_(obs) + "</div>" +
+        (Array.isArray(documentos) && documentos.length
+          ? "<ul style='margin:0;padding-left:20px;'>" +
+            documentos.map(function (d) {
+              return "<li style='margin:3px 0;'>" + escHtmlVoucher_(d) + "</li>";
+            }).join("") +
+            "</ul>" +
+            /* O detalhe livre vem depois da lista, separado: ele costuma ser
+               uma explicação ("o contracheque precisa ser de agosto"), não um
+               item a mais. */
+            (function () {
+              const extra = String(obs || "").split("\n")
+                .filter(function (linha) { return documentos.indexOf(linha) === -1; })
+                .join(" ").trim();
+              return extra
+                ? "<div style='margin-top:10px;padding-top:10px;border-top:1px solid #fcd34d;'>" +
+                  escHtmlVoucher_(extra) + "</div>"
+                : "";
+            })()
+          : escHtmlVoucher_(obs)) +
+        "</div>" +
         "<p style='font-size:13px;color:#475569;'>Basta responder a este e-mail com o documento anexado, " +
         "ou falar com a Secretaria se tiver dúvida sobre o que enviar.</p>" +
         "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
@@ -671,8 +769,12 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
 
 /* ================= ALIASES COMPATIBILIDADE ================= */
 
-function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao) {
-  return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao);
+function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao, pedido) {
+  /* O QUARTO ARGUMENTO PRECISA ATRAVESSAR — mesma armadilha do apelido de
+     aprovação logo abaixo: esquecer o repasse aqui faria a lista de
+     documentos sumir no caminho e o e-mail voltar a sair sem dizer o que
+     falta, sem erro nenhum aparecer. */
+  return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao, pedido);
 }
 
 /* A tela de Bolsas chama pelos nomes CertBolsa — mesma convenção dos demais. */

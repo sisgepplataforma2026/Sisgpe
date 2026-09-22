@@ -546,7 +546,21 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * como coluna, e não apenas como texto na observação, para a pergunta
          * "quantas exceções foram autorizadas e quais" ter resposta por
          * filtro. O que sai da regra é o que mais precisa ser encontrável. */
-        "EXCECAO_DUPLICIDADE"
+        "EXCECAO_DUPLICIDADE",
+        /* O QUE FOI PEDIDO NA COMPLEMENTAÇÃO — 22/09/2026.
+         *
+         * "Essa complementação eu deveria informar quais documentos estariam
+         * pendentes" — o usuário, depois de clicar no botão e ver a
+         * solicitação seguir sem que ninguém dissesse o que falta.
+         *
+         * Fica em COLUNA, e não só no texto da observação, por duas razões:
+         * quando o associado responder, a Secretaria precisa conferir item a
+         * item o que foi pedido; e "quantas complementações pediram
+         * contracheque" só tem resposta por filtro se o dado for estruturado.
+         * A lista vai separada por " | ", que é o mesmo separador já usado nas
+         * observações automáticas do módulo. */
+        "DOCUMENTOS_PENDENTES",
+        "DATA_COMPLEMENTACAO"
   ];
 }
 

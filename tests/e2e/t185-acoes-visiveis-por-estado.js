@@ -154,8 +154,15 @@ b.ok(/cert_carregarLista\(\);/.test(semCom), "e a lista do painel se recarrega")
 /* COMPLEMENTAÇÃO É A ÚNICA COM DESVIO, porque é a única que não encerra o
    registro: fica uma pendência esperando documento. O card "Em Análise" é
    rotulado "Complementação solicitada" — é para lá que a fila vai. */
-b.ok(/labelBtn === 'certBtnComplementar'/.test(semCom),
+/* O BOTÃO MUDOU DE NOME EM 22/09/2026 e a asserção acompanha: "Solicitar
+   Complementação" deixou de enviar e passou a ABRIR o pedido (a lista de
+   documentos que falta). Quem envia agora é `certCompEnviar`, e é o destino
+   DELE que precisa ser o desvio. Ver solicitarComplementacaoVoucher. */
+b.ok(/labelBtn === 'certCompEnviar'/.test(semCom),
   "complementação tem um caminho próprio");
+b.ok(/certCompAbrir\(\)/.test(semCom),
+  "e o botão da fileira abre o pedido em vez de enviar direto",
+  "era daí que saía o e-mail com a observação interna do sistema");
 b.ok(/certFiltrarPorStatus\('ANALISE'\)/.test(semCom),
   "e ele leva à fila de Em Análise, que é a de complementação solicitada");
 

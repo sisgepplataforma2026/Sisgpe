@@ -597,6 +597,47 @@
         </div>
       </div>
 
+      <!-- PEDIR COMPLEMENTAÇÃO DIZENDO O QUE FALTA — 22/09/2026.
+
+           "Essa complementação eu deveria informar quais documentos estariam
+           pendentes" e "mas o sistema encaminhou direto! Não entendi" — o
+           usuário, nesta ordem, no mesmo dia.
+
+           O que acontecia: o botão usava o campo OBSERVAÇÃO como texto do
+           e-mail, e esse campo já vinha preenchido pelo próprio sistema
+           ("Solicitação enquadrada por ordem do filho. | Escola não
+           localizada..."). A trava só recusava campo VAZIO, então o clique
+           passava — e aquela anotação interna saía no e-mail do associado
+           como se fosse o pedido de documento.
+
+           Este bloco separa as duas coisas: a observação volta a ser interna,
+           e o que vai para o associado é a lista marcada aqui. -->
+      <div id="certCompBox" style="display:none;margin-top:14px;padding:14px 16px;border-radius:12px;
+           background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #d97706;">
+        <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:4px;">
+          O que está faltando?
+        </div>
+        <div style="font-size:11.5px;color:#a16207;margin-bottom:10px;">
+          Marque os documentos que o associado precisa enviar. Esta lista vai no e-mail — a observação acima não vai.
+        </div>
+        <div id="certCompLista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+        <input type="text" id="certCompDetalhe" placeholder="Outro documento, ou um detalhe (ex.: o contracheque precisa ser de agosto)"
+          style="width:100%;height:36px;border-radius:9px;border:1.5px solid #fcd34d;padding:0 12px;
+                 font-family:'Plus Jakarta Sans',sans-serif;font-size:12.5px;outline:none;background:#fff;">
+        <!-- A PRÉVIA EXISTE PORQUE O TEXTO VAI PARA FORA. Quem escreve para o
+             associado precisa ver o que ele vai ler, antes de mandar. -->
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+                    color:#a16207;margin:12px 0 4px;">Prévia do e-mail</div>
+        <div id="certCompPrevia" style="font-size:12.5px;color:#78350f;background:#fff;
+             border:1px solid #fde68a;border-radius:9px;padding:10px 12px;line-height:1.55;min-height:38px;">
+          Nenhum documento marcado ainda.
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certCompCancelar">Cancelar</button>
+          <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certCompEnviar">📨 Enviar pedido</button>
+        </div>
+      </div>
+
       <!-- Ações de status -->
       <div id="certModalAcoes" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
         <!-- CONFIRMAR CADASTRO — 16/09/2026.
@@ -1708,6 +1749,10 @@ window.certIrPag=function(pg){
 
 // ── Modal
 function cert_abrirModal(s){
+  /* O pedido de complementação não sobrevive à troca de solicitação: deixar o
+     box aberto faria a lista marcada para o Bernardo aparecer no registro do
+     Guilherme, e ela seria enviada assim. */
+  certCompEsconder();
   _solAtual=s;
   var st=String(s.status||'').toUpperCase();
   if(g('certModalTitulo')) g('certModalTitulo').textContent='Solicitação de Bolsa';
@@ -1887,12 +1932,123 @@ function cert_abrirModal(s){
 }
 
 function cert_fecharModal(){
+  certCompEsconder();
   var overlay=g('certModalOverlay');
   if(overlay){overlay.style.display='none';overlay.classList.remove('ativo');}
   _solAtual=null;
 }
 
 // ── Ações
+/* ══════════════════════════════════════════════════════════════════════
+   PEDIDO DE COMPLEMENTAÇÃO — a lista do que falta
+
+   Por que uma lista marcável e não um campo de texto: quem analisa trinta
+   solicitações por dia digita "falta o contracheque" de trinta jeitos
+   diferentes, e depois ninguém consegue responder "quantas complementações
+   pediram contracheque". Marcado, o dado é o mesmo sempre — e o e-mail sai
+   com cada documento numa linha, que é o que faz a pessoa do outro lado
+   conseguir conferir o que já mandou.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* OS ITENS MUDAM CONFORME O CASO. Numa bolsa de dependente, pedir "documento
+   do dependente" faz sentido; numa do próprio associado, seria pedir um
+   documento de alguém que não existe. Oferecer o item errado é convidar o
+   clique errado. */
+function certCompItens(s){
+  var itens = [
+    'Contracheque do titular (o mais recente)',
+    'Declaração de vínculo da escola (para quem não tem contracheque)',
+    'Documento com CPF do titular'
+  ];
+  if(certEhOutroBeneficiario(s)){
+    var nome = String(s.nomeBeneficiario||'').trim();
+    itens.push('Documento do dependente' + (nome ? ' (' + nome + ')' : '') + ', com CPF e data de nascimento');
+  }
+  itens.push('Comprovante de matrícula na instituição de ensino');
+  itens.push('Declaração de escolaridade ou histórico');
+  return itens;
+}
+
+function certCompAbrir(){
+  if(!_solAtual){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
+  var lista = g('certCompLista');
+  if(lista){
+    lista.innerHTML = certCompItens(_solAtual).map(function(txt,i){
+      return '<label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;'
+        + 'color:#78350f;cursor:pointer;line-height:1.45;">'
+        + '<input type="checkbox" class="cert-comp-item" data-txt="'+cert_escHtml(txt)+'" '
+        + 'id="certCompItem'+i+'" style="margin-top:2px;">'
+        + '<span>'+cert_escHtml(txt)+'</span></label>';
+    }).join('');
+    Array.prototype.forEach.call(lista.querySelectorAll('.cert-comp-item'), function(el){
+      el.addEventListener('change', certCompPrevia);
+    });
+  }
+  if(g('certCompDetalhe')) g('certCompDetalhe').value = '';
+  certCompPrevia();
+  if(g('certCompBox')) g('certCompBox').style.display = '';
+  /* As ações somem enquanto o pedido está aberto: aprovar no meio de escrever
+     uma complementação é o clique errado mais fácil de dar. */
+  if(g('certModalAcoes')){
+    _certCompAcoesAntes = g('certModalAcoes').style.display;
+    g('certModalAcoes').style.display = 'none';
+  }
+}
+
+/* O DISPLAY DAS AÇÕES É RESTAURADO, NÃO CHUTADO. cert_abrirModal decide se a
+   fileira aparece conforme o estado da solicitação — devolver 'flex' na mão
+   traria os botões de volta numa solicitação já emitida, onde eles não devem
+   existir. */
+var _certCompAcoesAntes = null;
+
+function certCompFechar(){
+  if(g('certCompBox')) g('certCompBox').style.display = 'none';
+  if(g('certModalAcoes') && _certCompAcoesAntes !== null){
+    g('certModalAcoes').style.display = _certCompAcoesAntes;
+  }
+  _certCompAcoesAntes = null;
+}
+
+/* Só esconde, sem restaurar: usado quando o modal abre ou fecha, onde quem
+   manda no display das ações é cert_abrirModal. */
+function certCompEsconder(){
+  if(g('certCompBox')) g('certCompBox').style.display = 'none';
+  _certCompAcoesAntes = null;
+}
+
+function certCompPedido(){
+  var marcados = [];
+  Array.prototype.forEach.call(document.querySelectorAll('#certCompLista .cert-comp-item'), function(el){
+    if(el.checked) marcados.push(el.getAttribute('data-txt')||'');
+  });
+  return {
+    documentos: marcados,
+    detalhe: g('certCompDetalhe') ? String(g('certCompDetalhe').value||'').trim() : ''
+  };
+}
+
+/* A PRÉVIA MOSTRA O QUE O ASSOCIADO VAI LER. Texto que sai do sindicato para
+   fora não deveria ser enviado sem alguém ter visto como ele chega. */
+function certCompPrevia(){
+  var el = g('certCompPrevia');
+  if(!el) return;
+  var p = certCompPedido();
+  if(!p.documentos.length && !p.detalhe){
+    el.innerHTML = 'Nenhum documento marcado ainda.';
+    return;
+  }
+  var quem = _solAtual && certEhOutroBeneficiario(_solAtual)
+    ? 'à solicitação de bolsa de <strong>' + cert_escHtml(String(_solAtual.nomeBeneficiario||'').trim()) + '</strong>'
+    : 'à sua solicitação de bolsa';
+  el.innerHTML = 'Para dar continuidade ' + quem + ', precisamos do seguinte:'
+    + (p.documentos.length
+        ? '<ul style="margin:6px 0 0;padding-left:18px;">'
+          + p.documentos.map(function(d){ return '<li>'+cert_escHtml(d)+'</li>'; }).join('')
+          + '</ul>'
+        : '')
+    + (p.detalhe ? '<div style="margin-top:6px;">'+cert_escHtml(p.detalhe)+'</div>' : '');
+}
+
 function acao(funcaoGas,labelBtn,labelMsg,extra){
   if(!_solAtual){cert_msg('Nenhuma solicitação selecionada.','warn');return;}
   var obs=g('certModalObs')?String(g('certModalObs').value||'').trim():'';
@@ -1940,7 +2096,7 @@ function acao(funcaoGas,labelBtn,labelMsg,extra){
        *
        * Depois de cert_carregarLista(), porque filtrar antes de a lista
        * chegar filtraria a lista velha. */
-      if(labelBtn === 'certBtnComplementar'){
+      if(labelBtn === 'certCompEnviar'){
         setTimeout(function(){
           if(typeof window.certFiltrarPorStatus === 'function'){
             window.certFiltrarPorStatus('ANALISE');
@@ -3877,24 +4033,28 @@ function initInterno(){
     acao('confirmarCadastroCertBolsa','certBtnConfirmarCadastro','Cadastro confirmado — foi para a fila de análise');
   });
 
+  /* O BOTÃO NÃO ENVIA MAIS: ELE ABRE O PEDIDO — 22/09/2026.
+   *
+   * Antes ele mandava direto, usando o campo de observação como texto do
+   * e-mail. Como esse campo já vinha preenchido pelo sistema, a trava de
+   * "campo vazio" não pegava e a anotação interna saía para o associado. Ver
+   * o cabeçalho de solicitarComplementacaoVoucher. */
   if(g('certBtnComplementar')) g('certBtnComplementar').addEventListener('click',function(){
-    /* DIZER O QUE FALTA É OBRIGATÓRIO — 17/09/2026.
-     *
-     * Este texto vai INTEIRO para o e-mail do associado. Sem ele, saía
-     * "Precisamos de complementação... Complementação solicitada pela
-     * análise administrativa" — que não nomeia um documento sequer. A pessoa
-     * recebia e ligava para perguntar o que mandar.
-     *
-     * A trava de verdade está no backend; esta aqui existe para o erro
-     * aparecer no campo que a pessoa acabou de deixar em branco, e não numa
-     * mensagem depois da ida ao servidor. */
-    var obs = g('certModalObs') ? String(g('certModalObs').value||'').trim() : '';
-    if(!obs){
-      cert_msg('Escreva o que está faltando — esse texto vai no e-mail para o associado.','warn');
-      if(g('certModalObs')) g('certModalObs').focus();
+    certCompAbrir();
+  });
+  if(g('certCompCancelar')) g('certCompCancelar').addEventListener('click',certCompFechar);
+  if(g('certCompDetalhe'))  g('certCompDetalhe').addEventListener('input',certCompPrevia);
+  if(g('certCompEnviar'))   g('certCompEnviar').addEventListener('click',function(){
+    var pedido = certCompPedido();
+    /* A TRAVA DE VERDADE ESTÁ NO BACKEND; esta existe para o aviso aparecer
+       ao lado do que a pessoa acabou de não preencher, e não depois da ida ao
+       servidor. */
+    if(!pedido.documentos.length && !pedido.detalhe){
+      cert_msg('Marque ao menos um documento, ou escreva o que falta.','warn');
+      if(g('certCompDetalhe')) g('certCompDetalhe').focus();
       return;
     }
-    acao('solicitarComplementacaoCertBolsa','certBtnComplementar','Complementação solicitada');
+    acao('solicitarComplementacaoCertBolsa','certCompEnviar','Complementação solicitada', pedido);
   });
 
   if(g('certBtnIndeferir')) g('certBtnIndeferir').addEventListener('click',function(){
