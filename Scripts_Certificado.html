@@ -193,6 +193,8 @@
    de renovação — os dois dizem "esta linha tem uma particularidade", não
    "esta linha tem problema". O alerta (#d97706) fica reservado para o que
    trava, como o "sem período". */
+.cert-tag-parentesco { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; margin-left: 6px; vertical-align: middle; }
+.cert-titular-linha { font-size: 11px; color: #94a3b8; }
 .cert-tag-presencial { display: inline-block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; background: #fdf6e3; color: #8a6d1f; border: 1px solid #e8d9a8; margin-left: 6px; vertical-align: middle; }
 
 /* FAIXA DO ATENDIMENTO PRESENCIAL, dentro do modal de nova solicitação.
@@ -421,7 +423,7 @@
           <thead>
             <tr>
               <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
-              <th>Protocolo</th><th>Solicitante</th><th>Escola</th>
+              <th>Protocolo</th><th>Beneficiário</th><th>Escola</th>
               <th>Modalidade</th><th>Curso</th><th>Período</th>
               <th>Status</th><th>Data</th><th style="text-align:center;">Ações</th>
             </tr>
@@ -433,7 +435,7 @@
             <tr class="cert-linha-filtros">
               <th></th>
               <th><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="filtrar"></th>
-              <th><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="nome ou CPF"></th>
+              <th><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="beneficiário, titular ou CPF"></th>
               <th><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="filtrar"></th>
               <th>
                 <select class="cert-filtro-col" id="certFiltroModalidade">
@@ -1350,7 +1352,10 @@ function cert_aplicarFiltros(){
        formatado ("085.381.047-80"), e quem digita "08538104780" sem pontos
        não achava nada. Ninguém decora se cadastrou com ponto. */
     if(quem){
-      var alvoQuem = normTxt([s.nome, s.cpf].join(' '));
+      /* A BUSCA PRECISA ACHAR PELOS DOIS NOMES. A coluna mostra o
+         beneficiário; quem digita "Guilherme" espera achar a bolsa dele, e
+         quem digita o nome do pai espera achar as dos filhos. */
+      var alvoQuem = normTxt([s.nomeBeneficiario, s.nome, s.cpf].join(' '));
       var soDigitos = String(quem).replace(/\D/g, '');
       var cpfDigitos = String(s.cpf || '').replace(/\D/g, '');
       var achouQuem = alvoQuem.indexOf(quem) > -1 ||
@@ -1366,7 +1371,7 @@ function cert_aplicarFiltros(){
       if(ate && d > ate) return false;
     }
     if(busca){
-      var txt = normTxt([s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
+      var txt = normTxt([s.nomeBeneficiario,s.nome,s.cpf,s.protocolo,s.escola,s.curso,s.periodoReferencia].join(' '));
       /* Mesma história da busca por solicitante: o CPF chega pontuado, e quem
          digita só os números precisa achar. Exige 3 dígitos para não fazer
          "2026" do período casar com qualquer CPF que contenha 2026. */
@@ -1502,6 +1507,39 @@ function badgeStatus(s){
   return '<span class="cert-badge '+(cls[st]||'badge-pendente')+'">'+(ico[st]||'•')+' '+cert_escHtml(s||'—')+'</span>';
 }
 
+/* ── QUEM É O BENEFICIÁRIO DA LINHA ──────────────────────────────────────
+   Uma solicitação tem duas pessoas: o ASSOCIADO, que tem o direito e assina,
+   e o BENEFICIÁRIO, que estuda. Na maioria dos casos são a mesma; quando o
+   pedido é para um dependente, não são — e a lista precisa dizer qual é qual.
+   Sem isso três filhos do mesmo associado viram três linhas idênticas, e quem
+   olha conclui que alguém tirou três vouchers no próprio CPF. */
+function certBeneficiarioNome(s){
+  var benef = String((s && s.nomeBeneficiario) || '').trim();
+  return benef || String((s && s.nome) || '') || '—';
+}
+
+function certEhOutroBeneficiario(s){
+  var benef = String((s && s.nomeBeneficiario) || '').trim();
+  var tit   = String((s && s.nome) || '').trim();
+  if(!benef) return false;
+  return benef.toUpperCase() !== tit.toUpperCase();
+}
+
+/* A etiqueta responde "por que esse nome está aqui?". No titular ela não
+   aparece: seria ruído na maioria das linhas, e o nome já é o dele. */
+function certBeneficiarioEtiqueta(s){
+  if(!certEhOutroBeneficiario(s)) return '';
+  var rot = {
+    FILHO: 'filho(a)', ENTEADO: 'enteado(a)', CONJUGE: 'cônjuge',
+    COMPANHEIRO: 'companheiro(a)', TITULAR: ''
+  };
+  var tipo = String((s && (s.tipoBeneficiario || s.parentesco)) || '').toUpperCase();
+  var texto = rot[tipo];
+  if(texto === undefined) texto = 'dependente';   /* tipo novo que ainda não conheço */
+  if(!texto) texto = 'dependente';                /* diz TITULAR mas o nome é outro */
+  return '<span class="cert-tag-parentesco">'+cert_escHtml(texto)+'</span>';
+}
+
 // ── Tabela
 function cert_renderTabela(){
   var tbody=g('certTbody'), sub=g('certTabelaSub');
@@ -1529,7 +1567,19 @@ function cert_renderTabela(){
          engano no lugar do botão vizinho — e o vizinho emite documento. */
       +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
       +'<td><strong style="font-size:12px;color:#002f6c;">'+cert_escHtml(s.protocolo||'—')+'</strong></td>'
-      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'+cert_escHtml(s.nome||'—')
+      /* QUEM ESTUDA VEM PRIMEIRO; O TITULAR VEM LOGO ABAIXO — 22/09/2026.
+         Seu print mostrou duas linhas iguais, "WANDERSON NASCIMENTO CASTELO"
+         nas duas, com o mesmo CPF: dava a impressão de dois vouchers para o
+         mesmo associado, o que a regra não permite (um por CPF). Eram duas
+         solicitações de DEPENDENTES diferentes — o Guilherme e o Bernardo —
+         e a coluna mostrava o pai nas duas, porque é ele o solicitante.
+         Agora o nome grande é o do beneficiário, com a etiqueta do parentesco
+         ao lado, e o titular aparece em cinza embaixo, junto do CPF. A conta
+         de "um por CPF" continua sendo do titular; o que muda é que dá para
+         ver de quem é cada bolsa sem abrir a solicitação. */
+      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'
+        +cert_escHtml(certBeneficiarioNome(s))
+        +certBeneficiarioEtiqueta(s)
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
            antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
            omissão — dizer isso de uma bolsa já renovada seria inventar. */
@@ -1545,7 +1595,11 @@ function cert_renderTabela(){
         +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
             ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">presencial</span>':'')
         +'</div>'
-        +'<div style="font-size:11px;color:#94a3b8;">'+cert_escHtml(s.cpf||'')+'</div></td>'
+        +'<div class="cert-titular-linha">'
+          + (certEhOutroBeneficiario(s)
+              ? 'Titular: ' + cert_escHtml(s.nome||'—') + (s.cpf ? ' · ' + cert_escHtml(s.cpf) : '')
+              : cert_escHtml(s.cpf||''))
+          +'</div></td>'
       +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.escola||'—')+'</td>'
       +'<td style="font-size:11.5px;">'+cert_escHtml(s.nivel||s.modalidade||'—')+'</td>'
       +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.curso||'—')+'</td>'
