@@ -346,6 +346,27 @@ const vinculoDeps = (amb.driveFiles || []).filter(f => !/DOCUMENTO_PESSOAL/.test
 b.ok(vinculoDeps.length > 0 && vinculoDeps.every(f => !/ - (ANA|BRUNO|CLARA) - /.test(f.name)),
   "e o comprovante de vínculo não trocou de dono junto");
 
+/* A DATA NO NOME DO ARQUIVO — 22/09/2026, seu pedido: "inclui a data tb".
+   Todos os anexos caem na MESMA pasta do Drive. Sem data não dá para
+   responder "o que chegou esta semana?", nem separar o contracheque deste
+   semestre do que a mesma pessoa mandou no semestre passado — mesma pessoa,
+   mesmo tipo, mesmo CPF, nomes praticamente iguais. */
+b.passo("cada arquivo leva a data no nome");
+const hojeISO = new Date().toISOString().slice(0, 10);
+const todosDocs = (amb.driveFiles || []).filter(f => /^Voucher - /.test(f.name));
+b.ok(todosDocs.length > 0, "há documentos no Drive para conferir",
+  todosDocs.length + " arquivo(s)");
+b.ok(todosDocs.every(f => f.name.indexOf(" - " + hojeISO + " - ") > -1),
+  "todos trazem a data do envio, em yyyy-MM-dd",
+  todosDocs.map(f => f.name).slice(0, 3).join(" | "));
+/* ISO, NÃO dd/MM/yyyy: a barra é separador de pasta e o Drive a recusa — e o
+   formato ISO é o único que ordena certo quando alguém ordena por nome. */
+b.ok(todosDocs.every(f => !/\d{2}\/\d{2}\/\d{4}/.test(f.name)),
+  "sem barra no nome, que o Drive recusaria");
+b.ok(todosDocs.every(f => !/ -  - /.test(f.name)),
+  "e sem separador vazio sobrando quando algum pedaço não existe",
+  todosDocs.map(f => f.name).slice(0, 3).join(" | "));
+
 b.passo("UM e-mail para o associado, com todos os dependentes");
 /* "E enviado para o e-mail do solicitante todos os dependentes." — você,
    21/09/2026. Antes saía um e-mail POR dependente: três filhos, três

@@ -614,7 +614,28 @@ function setupVoucherModuleFase1() {
         "CODIGO_VALIDACAO",
         "LINK_ARQUIVO",
         "PERCENTUAL",
-        "USUARIO"
+        "USUARIO",
+        /* PARA QUEM FOI O VOUCHER, E DE QUANDO ERA O PEDIDO — 22/09/2026,
+           pedido do usuário: "tem que salvar a data da solicitação, e colocar
+           a informação para quem".
+
+           A aba guardava só o NOME_SOLICITANTE, que numa bolsa de dependente é
+           o pai. Olhando o histórico de emissões não havia como saber se o
+           voucher saiu para o Guilherme ou para o Bernardo — e o CPF é o mesmo
+           nas duas linhas. Sem o nome do beneficiário, o registro de emissão
+           não responde a pergunta para a qual ele existe.
+
+           A DATA_SOLICITACAO é outra coisa que a DATA_EMISSAO: uma diz quando
+           o associado pediu, a outra quando a secretaria emitiu. A distância
+           entre as duas é o prazo de atendimento, e sem guardar as duas não há
+           como medi-lo.
+
+           Entram no FIM da lista de propósito: ensureHeaders_ acrescenta
+           coluna que falta sem tocar nas que existem, então a aba em produção
+           ganha as três sem nenhuma linha antiga mudar de lugar. */
+        "NOME_BENEFICIARIO",
+        "TIPO_BENEFICIARIO",
+        "DATA_SOLICITACAO"
       ]
     },
     {
@@ -1263,14 +1284,36 @@ function salvarDocumentoVoucher_(idSolicitacao, cpf, arquivo, tipoDocumento, obs
     const pasta = obterPastaVoucherDocumentos_();
     const nomeOriginal = sanitizarNomeArquivoVoucher_(arquivo.nome || (tipoDocumento + ".bin"));
     const nomePessoa = sanitizarNomeArquivoVoucher_(nomeSolicitante || cpf);
+    /* A DATA ENTRA NO NOME — 22/09/2026, seu pedido: "inclui a data tb".
+     *
+     * Todos os anexos de todas as bolsas caem na MESMA pasta do Drive, e o
+     * nome do arquivo era a única coisa que os separava: pessoa, tipo, CPF e
+     * o ID da solicitação. O ID ninguém decora, e sem data não dava para
+     * responder "o que chegou esta semana?" nem distinguir o contracheque
+     * deste semestre do que a mesma pessoa mandou no semestre passado —
+     * mesma pessoa, mesmo tipo, mesmo CPF, nomes praticamente iguais.
+     *
+     * yyyy-MM-dd, não dd/MM/yyyy: a barra é separador de pasta e o Drive a
+     * recusa, e o formato ISO ordena certo quando alguém ordena por nome.
+     * O fuso é o do script, o mesmo das outras datas do módulo. */
+    let dataArquivo = "";
+    try {
+      dataArquivo = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+    } catch (eData) {
+      /* Nunca deixar a falta da data impedir a gravação do documento: o
+         arquivo do associado vale muito mais que o rótulo dele. */
+      dataArquivo = "";
+    }
+
     const nomeFinal = [
       "Voucher",
       nomePessoa,
       String(tipoDocumento || "").toUpperCase(),
+      dataArquivo,
       cpf,
       idSolicitacao,
       nomeOriginal
-    ].join(" - ");
+    ].filter(function (p) { return String(p || "").trim() !== ""; }).join(" - ");
 
     const bytes = Utilities.base64Decode(arquivo.base64);
     const blob = Utilities.newBlob(bytes, arquivo.tipo || MimeType.PDF, nomeFinal);

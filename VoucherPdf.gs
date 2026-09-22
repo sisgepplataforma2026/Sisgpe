@@ -224,9 +224,29 @@ if (voucherExistente) {
      * quem procura "os de setembro" acha tudo junto. */
     const dataArquivo = Utilities.formatDate(
       new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+    /* O NOME DO ARQUIVO DIZ PARA QUEM O VOUCHER FOI EMITIDO — 22/09/2026,
+     * pedido do usuário: "colocar a informação para quem — ex: voucher
+     * emitido para o dependente (nome + data)".
+     *
+     * Saía com o NOME_SOLICITANTE, que numa bolsa de dependente é o pai. Dois
+     * filhos do mesmo associado produziam dois PDFs com o mesmo nome de
+     * pessoa, diferentes só pelo protocolo — e quem procura na pasta o
+     * voucher do Bernardo não tem como saber qual é. Agora o nome grande é o
+     * de quem recebe, com o titular ao lado para não perder de quem é o
+     * direito. */
+    const nomeBenefArquivo = String(reg.NOME_BENEFICIARIO || "").trim();
+    const nomeTitularArquivo = String(reg.NOME_SOLICITANTE || "").trim();
+    const ehDependenteArquivo =
+      !!nomeBenefArquivo &&
+      nomeBenefArquivo.toUpperCase() !== nomeTitularArquivo.toUpperCase();
+    const paraQuemArquivo = ehDependenteArquivo
+      ? nomeBenefArquivo + " (dependente de " + nomeTitularArquivo + ")"
+      : nomeTitularArquivo;
+
     const pdfVoucher = salvarHtmlComoPdfVoucher_(
       htmlVoucher,
-      dataArquivo + " - Voucher Bolsa - " + protocolo + " - " + reg.NOME_SOLICITANTE
+      dataArquivo + " - Voucher Bolsa - " + protocolo + " - " + paraQuemArquivo
     );
 
     let linkOficio = "";
@@ -235,9 +255,11 @@ if (voucherExistente) {
     if (opcoes.enviarRhEscola === true) {
       etapa = "gerar o ofício da escola";
       const htmlOficio = gerarHtmlOficioEscolaVoucher_(dadosDoc);
+      /* O ofício vai para a escola do ALUNO, então é o nome dele que importa
+         aqui — quem recebe o arquivo não conhece o titular. */
       const pdfOficio = salvarHtmlComoPdfVoucher_(
         htmlOficio,
-        "Oficio Escola - " + protocolo + " - " + reg.NOME_SOLICITANTE
+        dataArquivo + " - Oficio Escola - " + protocolo + " - " + paraQuemArquivo
       );
 
       linkOficio = pdfOficio.url;
@@ -429,20 +451,37 @@ function registrarEmissaoVoucher_(reg, dados) {
 
   if (!sh) return;
 
-  sh.appendRow([
-    gerarIdPadrao_("EMI"),
-    new Date(),
-    dados.protocolo || "",
-    dados.idSolicitacao || "",
-    reg.NOME_SOLICITANTE || "",
-    reg.CPF_SOLICITANTE || "",
-    reg.ESCOLA_SELECIONADA || "",
-    dados.tipoDocumento || "CERTIFICADO",
-    dados.codigo || "",
-    dados.linkArquivo || "",
-    dados.percentual || "",
-    dados.usuario || obterUsuarioAtualVoucher_()
-  ]);
+  /* ESCRITA POR NOME DE COLUNA, não por posição — 22/09/2026.
+     O appendRow posicional que estava aqui só funciona enquanto a ordem do
+     cabeçalho nunca mudar. Como a aba acabou de ganhar três colunas novas e
+     em produção elas entram NO FIM (ensureHeaders_ não reordena nada), uma
+     planilha com ordem diferente da canônica gravaria tudo torto e em
+     silêncio: a escola no lugar do CPF, o link no lugar do percentual. */
+  const headers = obterHeaders_(sh).map(function (h) { return String(h || "").trim(); });
+  const valores = {
+    ID_EMISSAO: gerarIdPadrao_("EMI"),
+    DATA_EMISSAO: new Date(),
+    PROTOCOLO: dados.protocolo || "",
+    ID_SOLICITACAO: dados.idSolicitacao || "",
+    NOME_SOLICITANTE: reg.NOME_SOLICITANTE || "",
+    CPF: reg.CPF_SOLICITANTE || "",
+    ESCOLA: reg.ESCOLA_SELECIONADA || "",
+    TIPO_DOCUMENTO: dados.tipoDocumento || "CERTIFICADO",
+    CODIGO_VALIDACAO: dados.codigo || "",
+    LINK_ARQUIVO: dados.linkArquivo || "",
+    PERCENTUAL: dados.percentual || "",
+    USUARIO: dados.usuario || obterUsuarioAtualVoucher_(),
+    /* Quando a bolsa é do próprio associado, beneficiário e solicitante são a
+       mesma pessoa — e a coluna repete o nome em vez de ficar vazia. Vazio
+       aqui seria lido como "não informado", que é diferente de "é ele mesmo". */
+    NOME_BENEFICIARIO: reg.NOME_BENEFICIARIO || reg.NOME_SOLICITANTE || "",
+    TIPO_BENEFICIARIO: reg.TIPO_BENEFICIARIO || "",
+    DATA_SOLICITACAO: reg.DATA_SOLICITACAO || ""
+  };
+
+  sh.appendRow(headers.map(function (h) {
+    return valores[h] !== undefined ? valores[h] : "";
+  }));
 }
 
 /**
