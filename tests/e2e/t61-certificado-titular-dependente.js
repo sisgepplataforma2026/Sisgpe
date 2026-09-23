@@ -234,16 +234,16 @@ function comModalidade(mod, curso) {
  ["ENSINO_FUNDAMENTAL", "6ª série"],
  ["ENSINO_MEDIO", "3º ano"]].forEach(function (par) {
   const t = comModalidade(par[0], par[1]);
-  b.ok(t.indexOf("do Curso/Ensino de " + par[1]) > -1,
-    par[0] + " sai com o que foi pedido: 'do Curso/Ensino de " + par[1] + "'",
+  b.ok(t.indexOf("do Curso/Ensino " + par[1]) > -1,
+    par[0] + " sai com o que foi pedido: 'do Curso/Ensino " + par[1] + "'",
     (t.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
-  b.ok(t.indexOf("do Curso/Ensino de " + par[0].replace(/_/g, " ")) === -1,
+  b.ok(t.indexOf("do Curso/Ensino " + par[0].replace(/_/g, " ")) === -1,
     "e não repete o nome da modalidade");
 });
 
 /* RESERVA: linha antiga sem curso preenchido não perde a oração inteira. */
 const semCurso = comModalidade("EDUCACAO_INFANTIL", "");
-b.ok(semCurso.indexOf("do Curso/Ensino de EDUCAÇÃO INFANTIL") > -1,
+b.ok(semCurso.indexOf("do Curso/Ensino EDUCAÇÃO INFANTIL") > -1,
   "sem curso digitado, a modalidade ocupa o lugar — melhor que a oração sumir",
   (semCurso.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
 

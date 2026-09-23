@@ -869,9 +869,16 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
      A modalidade fica como reserva, para a linha antiga em que o curso não
      foi preenchido: melhor "Curso/Ensino de EDUCAÇÃO INFANTIL" do que a
-     oração sumir de um certificado. */
+     oração sumir de um certificado.
+
+     SEM O "DE" — 23/09/2026, sua segunda correção: "tira esse de". Com o
+     que a pessoa escreve ali ("Infantil", "6ª série", "3º ano"), o "de"
+     sobra: "do Curso/Ensino de 6ª série" tropeça na leitura, enquanto "do
+     Curso/Ensino 6ª série" lê direto. Na graduação o "de" fica, porque lá o
+     que vem depois é nome de curso ("do Curso de Biomedicina"), como no
+     papel. */
   const objetoBolsa = nomeBasico
-    ? " do Curso/Ensino de <strong>" +
+    ? " do Curso/Ensino <strong>" +
       escHtmlVoucher_(String(curso || "").trim() || nomeBasico) + "</strong>"
     : frag(" do Curso de ", curso);
 
