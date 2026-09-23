@@ -859,8 +859,20 @@ function gerarHtmlDocumentoVoucher_(dados) {
      acompanha o "semestralidade/anuidade" que o papel já usa.
 
      Da graduação para cima continua "do Curso de", com o curso digitado. */
+  /* O QUE VAI ESCRITO É O QUE A PESSOA PEDIU — 23/09/2026, sua correção:
+     "Curso/Ensino: o que ele solicitar. Ex: Curso/Ensino: Infantil".
+
+     A primeira versão imprimia o nome da modalidade ("Curso/Ensino de ENSINO
+     FUNDAMENTAL"), que é redundante e não é o que o associado escreveu. Quem
+     pede bolsa para o filho escreve "Infantil", "6ª série", "3º ano" — e é
+     isso que a escola precisa ler para conferir a matrícula.
+
+     A modalidade fica como reserva, para a linha antiga em que o curso não
+     foi preenchido: melhor "Curso/Ensino de EDUCAÇÃO INFANTIL" do que a
+     oração sumir de um certificado. */
   const objetoBolsa = nomeBasico
-    ? " do Curso/Ensino de <strong>" + escHtmlVoucher_(nomeBasico) + "</strong>"
+    ? " do Curso/Ensino de <strong>" +
+      escHtmlVoucher_(String(curso || "").trim() || nomeBasico) + "</strong>"
     : frag(" do Curso de ", curso);
 
   const beneficioExtenso =

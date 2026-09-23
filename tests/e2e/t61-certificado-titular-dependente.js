@@ -225,15 +225,27 @@ function comModalidade(mod, curso) {
            ESCOLA_FANTASIA: "MONTE ALVO" }
   })));
 }
-[["CRECHE", "CRECHE"],
- ["EDUCACAO_INFANTIL", "EDUCAÇÃO INFANTIL"],
- ["ENSINO_FUNDAMENTAL", "ENSINO FUNDAMENTAL"],
- ["ENSINO_MEDIO", "ENSINO MÉDIO"]].forEach(function (par) {
-  const t = comModalidade(par[0], "3 SERIE");
+/* O QUE SAI ESCRITO É O QUE A PESSOA PEDIU, não o nome da modalidade —
+   23/09/2026: "Curso/Ensino: o que ele solicitar. Ex: Curso/Ensino:
+   Infantil". Quem pede bolsa para o filho escreve "Infantil", "6ª série",
+   "3º ano", e é isso que a escola confere contra a matrícula. */
+[["CRECHE", "Maternal II"],
+ ["EDUCACAO_INFANTIL", "Infantil"],
+ ["ENSINO_FUNDAMENTAL", "6ª série"],
+ ["ENSINO_MEDIO", "3º ano"]].forEach(function (par) {
+  const t = comModalidade(par[0], par[1]);
   b.ok(t.indexOf("do Curso/Ensino de " + par[1]) > -1,
-    par[0] + " sai como 'do Curso/Ensino de " + par[1] + "'",
+    par[0] + " sai com o que foi pedido: 'do Curso/Ensino de " + par[1] + "'",
     (t.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+  b.ok(t.indexOf("do Curso/Ensino de " + par[0].replace(/_/g, " ")) === -1,
+    "e não repete o nome da modalidade");
 });
+
+/* RESERVA: linha antiga sem curso preenchido não perde a oração inteira. */
+const semCurso = comModalidade("EDUCACAO_INFANTIL", "");
+b.ok(semCurso.indexOf("do Curso/Ensino de EDUCAÇÃO INFANTIL") > -1,
+  "sem curso digitado, a modalidade ocupa o lugar — melhor que a oração sumir",
+  (semCurso.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
 
 /* CONTRAPROVA: da graduação para cima continua "do Curso de", com o curso
    que a pessoa digitou — é o que o modelo do dependente traz. */
