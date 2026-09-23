@@ -57,6 +57,19 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 110 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um |
+| 109 | 🔴 `Voucher_Emitidos` com NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO preenchidos |
+| 108 | 🔴 o voucher de dependente sai como "NOME (dependente de TITULAR)" |
+| 107 | 🔴 o anexo salvo no Drive traz a data no nome |
+| 106 | 🔴 o e-mail de complementação lista os documentos e NÃO traz a observação interna |
+| 105 | 🔴 "Solicitar Complementação" abre a lista em vez de enviar direto |
+| 104 | 🔴 buscar pelo nome do dependente acha a bolsa dele |
+| 103 | 🔴 a lista do painel mostra o beneficiário, a etiqueta e o titular embaixo |
+| 102 | 🔴 a modalidade sai por extenso no recibo do portal |
+| 101 | 🔴 o recibo de dependentes não mostra curso que não é de ninguém |
+| 95 a 100 | 🔴 Cartões de ingresso — o app da bilheteria lendo, a tela, a importação, o lote, o papel |
+| 91 a 94 | 🔴 Cartão com o QR da Blueticket — o app lendo em papel, com pouca luz, e a planilha |
+| 87 a 90 | 🔴 Bolsas, seção de dependentes — seletor, cartões, três protocolos, nome no Drive |
 | 86 | 🟡 NA HOMOLOGAÇÃO (146) — Declaração de Diretor; falta configurar a pasta e emitir uma |
 | 85 | 🔴 NA PRODUÇÃO (711) — anexar no reenvio, e a virada de lote que duplicava |
 | 84 | 🟡 NA PRODUÇÃO (710) — o laço reconciliar↔re-condenar; falta ver ele parar |
@@ -5937,18 +5950,47 @@ com mais de X minutos e os apague, ou pelo menos os liste. **Aguarda decisão
 do usuário** — não faço por conta própria porque apagar rascunho é
 irreversível, e a caixa tem rascunhos legítimos dele, escritos à mão.
 
+## ⚠️ RENUMERAÇÃO DE 23/09/2026 — os itens daqui para baixo mudaram de número
+
+Os blocos abaixo, criados entre 17 e 22/09/2026, nasceram numerados de **56 a
+79** — e esses números **já estavam em uso** pela lista canônica do índice lá
+em cima, que vai até 86. Havia dois itens 64, dois itens 75, dois 77. Foi o
+usuário quem esbarrou nisso, perguntando o que era o item 79: a pergunta não
+tinha resposta única.
+
+Isso não é detalhe de organização. A cobrança depende do número: ele diz
+"o 77 já testei" e eu marco o item errado como verificado — justamente o
+oposto do que este arquivo existe para fazer.
+
+**Todos foram deslocados em +31**, para 87 a 110, que estavam livres. A
+correspondência, para nenhuma conversa anterior ficar órfã:
+
+| Era | Virou | | Era | Virou | | Era | Virou |
+|---|---|---|---|---|---|---|---|
+| 56 | 87 | | 64 | 95 | | 72 | 103 |
+| 57 | 88 | | 65 | 96 | | 73 | 104 |
+| 58 | 89 | | 66 | 97 | | 74 | 105 |
+| 59 | 90 | | 67 | 98 | | 75 | 106 |
+| 60 | 91 | | 68 | 99 | | 76 | 107 |
+| 61 | 92 | | 69 | 100 | | 77 | 108 |
+| 62 | 93 | | 70 | 101 | | 78 | 109 |
+| 63 | 94 | | 71 | 102 | | 79 | 110 |
+
+**Regra daqui para frente:** item novo começa no maior número já usado no
+arquivo inteiro, mais um — nunca no maior número da última seção.
+
 ## 🔴 Bolsas — a seção de dependentes (17/09/2026)
 
 Publicado na homologação e na produção em 17/09. O que só o navegador prova:
 
 | | O que conferir | Onde |
 |---|---|---|
-| 56 | 🔴 o seletor "para quem é a bolsa" aparece e troca de caminho | portal público |
-| 57 | 🔴 os cartões aparecem empilhados e legíveis (jsdom não aplica CSS) | portal público |
-| 58 | 🔴 um envio com três dependentes devolve três protocolos na tela | portal público |
-| 59 | 🔴 na pasta do Drive, o documento pessoal sai com o nome do DEPENDENTE | Drive |
+| 87 | 🔴 o seletor "para quem é a bolsa" aparece e troca de caminho | portal público |
+| 88 | 🔴 os cartões aparecem empilhados e legíveis (jsdom não aplica CSS) | portal público |
+| 89 | 🔴 um envio com três dependentes devolve três protocolos na tela | portal público |
+| 90 | 🔴 na pasta do Drive, o documento pessoal sai com o nome do DEPENDENTE | Drive |
 
-O 59 é a correção de hoje: o arquivo saía como
+O 90 é a correção de hoje: o arquivo saía como
 `Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf`, com o documento
 certo e o nome do pai no rótulo. O emulador confirma o nome montado; quem a
 Secretaria abre de verdade é a pasta.
@@ -5957,21 +5999,21 @@ Secretaria abre de verdade é a pasta.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 60 | 🔴 **o aplicativo da Blueticket lê o cartão do SISGEP** | app da Blueticket |
-| 61 | 🔴 lê também com o cartão impresso em papel | idem |
-| 62 | 🔴 lê com pouca luz e com a tela do celular escura | idem |
-| 63 | 🔴 o Blueticket exporta planilha com número + nome? | painel da Blueticket |
+| 91 | 🔴 **o aplicativo da Blueticket lê o cartão do SISGEP** | app da Blueticket |
+| 92 | 🔴 lê também com o cartão impresso em papel | idem |
+| 93 | 🔴 lê com pouca luz e com a tela do celular escura | idem |
+| 94 | 🔴 o Blueticket exporta planilha com número + nome? | painel da Blueticket |
 
-O 60 é o item que sustenta o módulo inteiro. Já está provado daqui que o QR
+O 91 é o item que sustenta o módulo inteiro. Já está provado daqui que o QR
 do nosso cartão carrega **exatamente** o número da Blueticket (t190) — o que
-nenhum teste meu alcança é o aparelho deles lendo. Enquanto o 60 estiver
+nenhum teste meu alcança é o aparelho deles lendo. Enquanto o 91 estiver
 aberto, o veredito do módulo é **"não testado"**, por mais verde que a suíte
 esteja.
 
 Amostra enviada em 18/09 com o número real 76902432. Ele disse que não
 conseguiria testar nesse dia — cobrar depois, sem insistir.
 
-O 63 decide o desenho da tela de importação: com planilha, o casamento
+O 94 decide o desenho da tela de importação: com planilha, o casamento
 número→nome é automático; sem ela, a pessoa vincula pelo CPF, ingresso a
 ingresso. A tela nasce aceitando os dois caminhos, então isso não bloqueia
 nada — só muda quanto trabalho a secretaria tem.
@@ -5983,19 +6025,19 @@ ainda não.**
 
 | | O que conferir | Onde |
 |---|---|---|
-| 64 | 🔴 **o app da bilheteria lê o cartão gerado pelo SISGEP** | app da bilheteria |
-| 65 | 🔴 a tela abre e salva os dados do evento | homologação |
-| 66 | 🔴 colar a planilha traz número e nome, e a fila nasce PRONTO | homologação |
-| 67 | 🔴 arrastar os PDFs lê os números certos | homologação |
-| 68 | 🔴 gerar em lote produz os PDFs e os links abrem | homologação/Drive |
-| 69 | 🔴 o cartão impresso fica legível, e o QR lê no papel | impressora |
+| 95 | 🔴 **o app da bilheteria lê o cartão gerado pelo SISGEP** | app da bilheteria |
+| 96 | 🔴 a tela abre e salva os dados do evento | homologação |
+| 97 | 🔴 colar a planilha traz número e nome, e a fila nasce PRONTO | homologação |
+| 98 | 🔴 arrastar os PDFs lê os números certos | homologação |
+| 99 | 🔴 gerar em lote produz os PDFs e os links abrem | homologação/Drive |
+| 100 | 🔴 o cartão impresso fica legível, e o QR lê no papel | impressora |
 
-O **64 decide o módulo**: se o app não ler, todo o resto não serve, e é
+O **95 decide o módulo**: se o app não ler, todo o resto não serve, e é
 melhor descobrir agora. Enquanto ele estiver aberto, o veredito do módulo
 inteiro é **"não testado"** pela REGRA Nº -1, por mais verde que a suíte
 esteja (hoje 193 arquivos, 7267 asserções).
 
-O 67 tem um detalhe que só o navegador mostra: a leitura do QR dentro do PDF
+O 98 tem um detalhe que só o navegador mostra: a leitura do QR dentro do PDF
 depende do navegador, e quando ela não roda a tela usa só o nome do arquivo.
 Conferir se o aviso de divergência aparece quando deveria.
 
@@ -6010,12 +6052,12 @@ verdes na suíte (t189 §7, t193), e as duas dependem de você conferir no ar.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 70 | 🔴 recibo de dependentes sem o "Curso: Fundamental 1 — ENSINO_MEDIO" — no lugar, a contagem e o curso de cada dependente na linha dele | portal público |
-| 71 | 🔴 a modalidade sai por extenso ("Ensino Fundamental"), nunca com o valor do banco | portal público |
-| 72 | 🔴 a lista do painel mostra o nome do beneficiário em destaque, a etiqueta "filho(a)" e "Titular: NOME · CPF" embaixo | painel de Bolsas |
-| 73 | 🔴 buscar pelo nome do dependente acha a bolsa dele | painel de Bolsas |
+| 101 | 🔴 recibo de dependentes sem o "Curso: Fundamental 1 — ENSINO_MEDIO" — no lugar, a contagem e o curso de cada dependente na linha dele | portal público |
+| 102 | 🔴 a modalidade sai por extenso ("Ensino Fundamental"), nunca com o valor do banco | portal público |
+| 103 | 🔴 a lista do painel mostra o nome do beneficiário em destaque, a etiqueta "filho(a)" e "Titular: NOME · CPF" embaixo | painel de Bolsas |
+| 104 | 🔴 buscar pelo nome do dependente acha a bolsa dele | painel de Bolsas |
 
-O **72 é o que motivou tudo**: no seu print, duas linhas iguais davam a
+O **103 é o que motivou tudo**: no seu print, duas linhas iguais davam a
 impressão de dois vouchers no mesmo CPF, e a regra é um por CPF. Enquanto não
 for conferido no ar, o veredito é **"não testado"** pela REGRA Nº -1.
 
@@ -6023,14 +6065,14 @@ for conferido no ar, o veredito é **"não testado"** pela REGRA Nº -1.
 
 | | O que conferir | Onde |
 |---|---|---|
-| 74 | 🔴 "Solicitar Complementação" abre a lista de documentos em vez de enviar direto | painel de Bolsas |
-| 75 | 🔴 o e-mail que chega ao associado traz os documentos em lista, e NÃO traz a observação interna do sistema | caixa do associado |
-| 76 | 🔴 o anexo salvo no Drive traz a data no nome | pasta do Drive |
-| 77 | 🔴 o voucher emitido para dependente sai como "NOME (dependente de TITULAR)" | pasta do Drive |
-| 78 | 🔴 a aba `Voucher_Emitidos` ganhou NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO, e elas vêm preenchidas | planilha |
-| 79 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um | painel de Bolsas |
+| 105 | 🔴 "Solicitar Complementação" abre a lista de documentos em vez de enviar direto | painel de Bolsas |
+| 106 | 🔴 o e-mail que chega ao associado traz os documentos em lista, e NÃO traz a observação interna do sistema | caixa do associado |
+| 107 | 🔴 o anexo salvo no Drive traz a data no nome | pasta do Drive |
+| 108 | 🔴 o voucher emitido para dependente sai como "NOME (dependente de TITULAR)" | pasta do Drive |
+| 109 | 🔴 a aba `Voucher_Emitidos` ganhou NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO, e elas vêm preenchidas | planilha |
+| 110 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um | painel de Bolsas |
 
-O **75 é o que motivou tudo**: o e-mail saía com "Solicitação enquadrada por
+O **106 é o que motivou tudo**: o e-mail saía com "Solicitação enquadrada por
 ordem do filho. | Escola não localizada no cadastro de escolas." — anotação
 interna da análise — como se fosse o pedido de documento.
 
