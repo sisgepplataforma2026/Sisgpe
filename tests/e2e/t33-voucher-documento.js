@@ -173,8 +173,14 @@ b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário"
  * "documento que eu achei bonito". */
 b.ok(/CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS/.test(html), "o título é o do papel");
 b.ok(/SINEPE/.test(html), "cita o convênio com o SINEPE-ES");
-b.ok(/dependente de <strong>Fulano de Tal<\/strong>/.test(html),
-  "beneficiário diferente do titular ganha a oração 'dependente de'");
+/* CAIXA ALTA NOS DOIS NOMES — 23/09/2026, "padronizar - caixa alta". O
+   titular vinha da base de Associados (maiúsculas) e o beneficiário do que a
+   pessoa digitou no portal (caixa mista): os dois padrões apareciam na mesma
+   frase do certificado. A caixa é do DOCUMENTO; o que está gravado na
+   solicitação não muda. */
+b.ok(/dependente de <strong>FULANO DE TAL<\/strong>/.test(html),
+  "beneficiário diferente do titular ganha a oração 'dependente de', em caixa alta",
+  (html.match(/dependente de <strong>[^<]*/) || ["(não achou)"])[0]);
 /* SEMPRE "SEMESTRE LETIVO" — 23/09/2026. Os dois certificados reais do
    sindicato escrevem "referente ao semestre letivo de X", inclusive o cuja
    bolsa é de educação infantil e cujo período é só "2026". "Ano letivo" não

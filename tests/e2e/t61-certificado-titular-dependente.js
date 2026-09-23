@@ -257,6 +257,80 @@ b.ok(superior.indexOf("Curso/Ensino") === -1,
   "e sem o 'Curso/Ensino', que é só do ensino básico");
 
 /* ═══════════════════════════════════════════════════════════
+   3d. O CNPJ e a mantenedora, buscados na hora de emitir
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, você olhando a prévia do Bernardo: "tem ajustar". A frase
+   pulava de "empregado da instituição UVV - VILA VELHA" direto para
+   "encontra-se", sem a mantenedora e sem o CNPJ — porque aquela solicitação
+   foi gravada com "Escola não localizada no cadastro de escolas".
+
+   O dado é copiado para a solicitação na entrada, mas ali ele é uma foto do
+   cadastro NAQUELE dia: escola cadastrada ou corrigida depois nunca chegava
+   ao certificado, e o documento saía incompleto para sempre.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5d");
+const ssT61 = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+let shEsc = ssT61.getSheetByName("Escolas");
+if (!shEsc) {
+  shEsc = ssT61.insertSheet("Escolas");
+  shEsc.appendRow(["NomeEscola", "Unidade", "CNPJ", "Municipio"]);
+}
+shEsc.appendRow(["DAMASIO CAMPANA EDUCACAO LTDA", "MONTE ALVO", "56169513000185", "Vitória"]);
+
+function semCnpjNaSolicitacao() {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           /* A solicitação guarda só o nome da escola — sem CNPJ, como a do
+              Bernardo em produção. */
+           ESCOLA_SELECIONADA: "DAMASIO CAMPANA EDUCACAO LTDA",
+           MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+           PERIODO_REFERENCIA: "2026" }
+  })));
+}
+const completado = semCnpjNaSolicitacao();
+b.ok(completado.indexOf("56.169.513/0001-85") > -1,
+  "o CNPJ é buscado no cadastro de Escolas e sai formatado no certificado",
+  (completado.match(/instituição[^.]*/) || ["(não achou)"])[0]);
+b.ok(completado.indexOf("inscrita no CNPJ: sob nº") > -1,
+  "com a oração inteira, como no papel");
+
+/* CONTRAPROVA: o que JÁ está gravado na solicitação não é sobrescrito. O
+   certificado de uma bolsa não pode mudar porque alguém editou o cadastro da
+   escola depois. */
+const jaGravado = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+  reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+         NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+         TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+         ESCOLA_SELECIONADA: "DAMASIO CAMPANA EDUCACAO LTDA",
+         CNPJ_ESCOLA: "01936248000121",
+         MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+         PERIODO_REFERENCIA: "2026" }
+})));
+b.ok(jaGravado.indexOf("01.936.248/0001-21") > -1,
+  "o CNPJ gravado na solicitação continua valendo",
+  (jaGravado.match(/CNPJ[^,]*/) || ["(não achou)"])[0]);
+b.ok(jaGravado.indexOf("56.169.513/0001-85") === -1,
+  "e o do cadastro NÃO o sobrescreve — o certificado de uma bolsa não muda sozinho");
+
+/* Escola que não está no cadastro continua sem a oração, em vez de imprimir
+   "CNPJ: sob nº —" num documento oficial. */
+const semCadastro = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+  reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+         NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+         TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+         ESCOLA_SELECIONADA: "ESCOLA QUE NAO EXISTE NO CADASTRO",
+         MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+         PERIODO_REFERENCIA: "2026" }
+})));
+b.ok(semCadastro.indexOf("CNPJ") === -1,
+  "sem cadastro, a oração do CNPJ some — melhor que imprimir um traço");
+b.ok(semCadastro.indexOf("ESCOLA QUE NAO EXISTE NO CADASTRO") > -1,
+  "e o nome que a pessoa informou continua no documento");
+
+/* ═══════════════════════════════════════════════════════════
    4. O que é IGUAL nos dois, e tem que continuar igual
    ═══════════════════════════════════════════════════════════ */
 b.passo("6");

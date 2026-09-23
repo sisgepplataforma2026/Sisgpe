@@ -616,8 +616,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const percentual = Number(dados.percentual || 70);
   const percentualExtenso = percentualPorExtensoVoucher_(percentual);
 
-  const nomeSolicitante = reg.NOME_SOLICITANTE || "";
-  const beneficiario = reg.NOME_BENEFICIARIO || nomeSolicitante;
+  /* NOME EM CAIXA ALTA, nos dois — 23/09/2026, "padronizar - caixa alta".
+     Na prévia o titular saiu "WANDERSON NASCIMENTO CASTELO" e o dependente
+     "Bernardo Simoura Castelo", na mesma frase: um veio da base de
+     Associados, o outro foi digitado no portal. Dois padrões no mesmo
+     documento denunciam a origem do dado, e os dois papéis do sindicato
+     trazem os nomes em caixa alta. A caixa é do DOCUMENTO, não do cadastro:
+     o que está gravado na solicitação não muda. */
+  const nomeSolicitante = String(reg.NOME_SOLICITANTE || "").toUpperCase();
+  const beneficiario = String(reg.NOME_BENEFICIARIO || "").toUpperCase() || nomeSolicitante;
   const tipoBenef = String(reg.TIPO_BENEFICIARIO || "").toUpperCase();
   /* Dependente é qualquer beneficiário que não seja o próprio titular — e a
    * comparação de nome cobre o caso de a coluna vir vazia em linha antiga. */
@@ -646,10 +653,43 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * lugar da instituição e a oração "mantida pela" desaparece — repetir o
    * mesmo nome duas vezes na mesma frase é pior que omitir. */
   const fantasia = String(reg.ESCOLA_FANTASIA || "").trim();
-  const razaoSocial = String(reg.ESCOLA_SELECIONADA || reg.INSTITUICAO_ENSINO || "").trim();
+  let razaoSocial = String(reg.ESCOLA_SELECIONADA || reg.INSTITUICAO_ENSINO || "").trim();
+  let cnpjBruto = String(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "").trim();
+
+  /* O CNPJ E A MANTENEDORA SÃO BUSCADOS DE NOVO NA HORA DE EMITIR —
+     23/09/2026, você olhando a prévia do Bernardo: "tem ajustar".
+     
+     O papel traz "empregado da instituição MONTE ALVO, mantida pela DAMASIO
+     CAMPANA EDUCAÇÃO LTDA, inscrita no CNPJ: sob nº 56.169.513/0001-85
+     encontra-se...". Na prévia a frase pulava da instituição direto para
+     "encontra-se": a solicitação do Bernardo foi gravada com a observação
+     "Escola não localizada no cadastro de escolas", e sem o cadastro não há
+     CNPJ nem razão social para imprimir.
+
+     O dado é copiado para a solicitação na entrada, mas ali ele é uma foto
+     do cadastro NAQUELE dia. Escola cadastrada depois — ou corrigida depois —
+     nunca chegava ao certificado, e o documento saía incompleto para sempre.
+     Agora, quando falta, procura-se de novo no cadastro de Escolas na hora de
+     emitir. Achou, completa; não achou, as orações somem como antes.
+
+     NUNCA SOBRESCREVE o que já está gravado: se a solicitação tem CNPJ, é
+     ele que vale. O certificado de uma bolsa não pode mudar porque alguém
+     editou o cadastro da escola depois. */
+  if ((!cnpjBruto || !razaoSocial) && typeof buscarEscolaPorNome_ === "function") {
+    try {
+      const doCadastro = buscarEscolaPorNome_(razaoSocial || fantasia);
+      if (doCadastro) {
+        if (!cnpjBruto) cnpjBruto = String(doCadastro.cnpj || "").trim();
+        if (!razaoSocial) razaoSocial = String(doCadastro.escola || "").trim();
+      }
+    } catch (eEsc) {
+      Logger.log("escola do certificado: " + eEsc.message);
+    }
+  }
+
   const instituicaoTexto = fantasia || razaoSocial;
   const mantenedora = (fantasia && razaoSocial && fantasia !== razaoSocial) ? razaoSocial : "";
-  const cnpj = formatarCnpj_(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "");
+  const cnpj = formatarCnpj_(cnpjBruto);
 
   /* O período é escrito DIFERENTE nos dois papéis, e a diferença não é
    * estilo — é como a frase se encaixa:
