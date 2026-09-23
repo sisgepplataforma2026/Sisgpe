@@ -1182,10 +1182,44 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
 
 /* ================= ESCOLAS ================= */
 
+/**
+ * A ABA DO CADASTRO DE ESCOLAS — e por que ela precisa de um resolvedor.
+ *
+ * 23/09/2026, você: "acho que deve buscar da aba Controle". Estava certo, e
+ * isso explica um sintoma que eu vinha atribuindo a dado faltando.
+ *
+ * Na planilha de produção o cadastro das escolas vive na aba **Controle**,
+ * com as colunas "Escola (Razão Social)", "CNPJ", "Unidade" e "Cidade" — os
+ * mesmos nomes que este módulo já procura. Só que ele procurava só numa aba
+ * chamada "Escolas". Quando ela não existe, a busca devolve vazio SEMPRE: a
+ * solicitação nasce sem CNPJ, a observação recebe "Escola não localizada no
+ * cadastro de escolas" e o certificado sai sem a mantenedora e sem o CNPJ —
+ * sem erro em lugar nenhum, porque "não achei" é resposta válida.
+ *
+ * Outros módulos do sistema já caíam para "Controle" (TaxaAssistencial,
+ * BuscaEscola, RelatoriosOficios). O de Bolsas ficou de fora, e ninguém
+ * percebeu porque a falha é silenciosa.
+ *
+ * A ordem tenta os nomes mais específicos primeiro e só então o Controle,
+ * que é a aba de registro geral: onde existir uma aba dedicada, ela ganha.
+ */
+function abaEscolasVoucher_(ss) {
+  const nomes = ["Escolas", "ESCOLAS", "escolas"];
+  for (let i = 0; i < nomes.length; i++) {
+    const sh = ss.getSheetByName(nomes[i]);
+    if (sh) return sh;
+  }
+  /* PLANILHA_REGISTRO é "Controle" (SistemaConfig.gs). Referenciado por
+     typeof para o módulo não depender da ordem de carga dos arquivos. */
+  const registro = (typeof PLANILHA_REGISTRO !== "undefined" && PLANILHA_REGISTRO)
+    ? PLANILHA_REGISTRO : "Controle";
+  return ss.getSheetByName(registro) || null;
+}
+
 function buscarEscolaPorNome_(nomeEscola) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Escolas");
+    const sh = abaEscolasVoucher_(ss);
 
     if (!sh || !nomeEscola) {
       return {
@@ -1267,7 +1301,7 @@ function buscarEscolaPorNome_(nomeEscola) {
 
 function listarEscolasVoucher_() {
   const ss = SpreadsheetApp.openById(PLANILHA_ID);
-  const sh = ss.getSheetByName("Escolas");
+  const sh = abaEscolasVoucher_(ss);
 
   if (!sh || sh.getLastRow() < 2) return [];
 

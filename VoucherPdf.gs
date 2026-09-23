@@ -1357,7 +1357,11 @@ function enviarVoucherEscola_(reg, dados) {
 function buscarEmailRhEscolaVoucher_(nomeEscola, cnpj) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Escolas");
+    /* Mesma aba do resto do módulo — ver abaEscolasVoucher_. Aqui o efeito de
+       procurar na aba errada é o e-mail do RH da escola não ser achado, e o
+       ofício não sair. */
+    const sh = (typeof abaEscolasVoucher_ === "function")
+      ? abaEscolasVoucher_(ss) : ss.getSheetByName("Escolas");
 
     if (!sh || sh.getLastRow() < 2) return "";
 
