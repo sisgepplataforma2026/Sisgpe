@@ -1216,6 +1216,53 @@ function abaEscolasVoucher_(ss) {
   return ss.getSheetByName(registro) || null;
 }
 
+/**
+ * ACHA A COLUNA PELO NOME, TOLERANDO COMO ELA FOI DIGITADA.
+ *
+ * 23/09/2026. A busca de escola procurava a coluna por nome EXATO
+ * (`headers.indexOf("Escola (Razão Social)")`). Isso quebra com qualquer
+ * diferença que ninguém enxerga numa planilha: caixa alta ("ESCOLA"), til
+ * faltando ("Razao Social"), um espaço a mais, ou o rótulo escrito de forma
+ * um pouco diferente.
+ *
+ * E quebra do pior jeito: a coluna não é encontrada, a função devolve vazio
+ * para TODA escola, e nada indica erro — "não achei" é resposta válida. O
+ * sintoma aparece três passos adiante, num certificado sem CNPJ.
+ *
+ * A comparação agora é sem acento, sem caixa e por conteúdo, na ordem em que
+ * os nomes forem passados — o primeiro que casar ganha, então o chamador
+ * continua controlando a precedência. É a mesma tolerância que
+ * TaxaAssistencial.gs já usa neste sistema.
+ */
+function acharColunaVoucher_(headers, nomes) {
+  const norm = (typeof normalizarTextoVoucher_ === "function")
+    ? normalizarTextoVoucher_
+    : function (t) { return String(t || "").trim().toLowerCase(); };
+
+  const cab = (headers || []).map(function (h) { return norm(h); });
+
+  /* Primeiro a igualdade exata (já normalizada): "Escola" não deve casar com
+     "Escola (Razão Social)" quando as duas colunas existem. */
+  for (let i = 0; i < nomes.length; i++) {
+    const alvo = norm(nomes[i]);
+    if (!alvo) continue;
+    const pos = cab.indexOf(alvo);
+    if (pos > -1) return pos;
+  }
+
+  /* Só então o conteúdo parcial, para "ESCOLA (RAZAO SOCIAL)" achar
+     "Escola (Razão Social)" e variações de pontuação. */
+  for (let i = 0; i < nomes.length; i++) {
+    const alvo = norm(nomes[i]);
+    if (!alvo) continue;
+    for (let j = 0; j < cab.length; j++) {
+      if (cab[j] && (cab[j].indexOf(alvo) > -1 || alvo.indexOf(cab[j]) > -1)) return j;
+    }
+  }
+
+  return -1;
+}
+
 function buscarEscolaPorNome_(nomeEscola) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -1245,12 +1292,9 @@ function buscarEscolaPorNome_(nomeEscola) {
       return String(h).trim();
     });
 
+    /* Tolerante a caixa, acento e pontuação — ver acharColunaVoucher_. */
     function findCol() {
-      for (let i = 0; i < arguments.length; i++) {
-        const idx = headers.indexOf(arguments[i]);
-        if (idx > -1) return idx;
-      }
-      return -1;
+      return acharColunaVoucher_(headers, Array.prototype.slice.call(arguments));
     }
 
     const idxUnidade = findCol("Unidade", "CodigoInterno", "Campus");
@@ -1269,18 +1313,78 @@ function buscarEscolaPorNome_(nomeEscola) {
 
     const busca = normalizarTextoVoucher_(nomeEscola);
 
+    function montar(linha) {
+      return {
+        escola:  String(linha[idxEscola] || "").trim(),
+        unidade: idxUnidade > -1 ? String(linha[idxUnidade] || "") : "",
+        cnpj:    idxCnpj > -1 ? String(linha[idxCnpj] || "") : "",
+        cidade:  idxCidade > -1 ? String(linha[idxCidade] || "") : ""
+      };
+    }
+
+    /* PRIMEIRA PASSADA: igualdade ou um nome contido no outro. É o que já
+       existia, e resolve a maioria. */
     for (let i = 1; i < dados.length; i++) {
       const nome = normalizarTextoVoucher_(dados[i][idxEscola]);
+      if (!nome) continue;
 
       if (nome === busca || nome.indexOf(busca) > -1 || busca.indexOf(nome) > -1) {
-        return {
-          escola:  String(dados[i][idxEscola] || "").trim(),
-          unidade: idxUnidade > -1 ? String(dados[i][idxUnidade] || "") : "",
-          cnpj:    idxCnpj > -1 ? String(dados[i][idxCnpj] || "") : "",
-          cidade:  idxCidade > -1 ? String(dados[i][idxCidade] || "") : ""
-        };
+        return montar(dados[i]);
       }
     }
+
+    /* SEGUNDA PASSADA: AS MESMAS PALAVRAS, EM OUTRA ORDEM — 23/09/2026.
+     *
+     * ESTE É O DEFEITO DO CASO DO BERNARDO, e ele só apareceu com a aba real
+     * na mão. A solicitação guarda "UVV - VILA VELHA"; a aba Escolas guarda
+     * "Sociedade Educacao e Gestao de Excelencia I Vila Velha S.a - UVV".
+     * Nenhum dos dois está contido no outro — a sigla está no fim de um e no
+     * começo do outro —, então a busca devolvia vazio, a solicitação nascia
+     * sem CNPJ, e o certificado saía sem a mantenedora e sem o CNPJ. Sem erro
+     * nenhum: "não achei" é resposta válida.
+     *
+     * A regra aqui é conservadora de propósito: TODAS as palavras do que foi
+     * digitado precisam aparecer no nome cadastrado. "UVV VILA VELHA" acha a
+     * UVV; não acha a "Canadian School Vila Velha", que não tem "uvv".
+     * Palavras de até duas letras e conectores ficam de fora porque não
+     * distinguem nada ("de", "da", "e", "i", "s", "a").
+     *
+     * Quando mais de uma linha satisfaz, ganha a de nome MAIS CURTO: ela é a
+     * que tem menos palavra sobrando, ou seja, a mais específica para o que
+     * se procurou. */
+    const CONECTORES = { "de": 1, "da": 1, "do": 1, "das": 1, "dos": 1,
+                         "e": 1, "em": 1, "ltda": 1, "sa": 1, "s": 1, "a": 1,
+                         "me": 1, "epp": 1, "eireli": 1 };
+
+    function palavras(txt) {
+      return String(txt || "").split(/[^a-z0-9]+/)
+        .filter(function (t) { return t.length > 2 && !CONECTORES[t]; });
+    }
+
+    const tokensBusca = palavras(busca);
+    let melhor = null;
+    let melhorTam = Infinity;
+
+    if (tokensBusca.length) {
+      for (let i = 1; i < dados.length; i++) {
+        const nome = normalizarTextoVoucher_(dados[i][idxEscola]);
+        if (!nome) continue;
+
+        const tokensNome = palavras(nome);
+        if (!tokensNome.length) continue;
+
+        const cabem = tokensBusca.every(function (t) {
+          return tokensNome.indexOf(t) > -1;
+        });
+
+        if (cabem && nome.length < melhorTam) {
+          melhor = dados[i];
+          melhorTam = nome.length;
+        }
+      }
+    }
+
+    if (melhor) return montar(melhor);
 
     return {
       unidade: "",
@@ -1310,12 +1414,9 @@ function listarEscolasVoucher_() {
     return String(h).trim();
   });
 
+  /* Tolerante a caixa, acento e pontuação — ver acharColunaVoucher_. */
   function findCol() {
-    for (let i = 0; i < arguments.length; i++) {
-      const idx = headers.indexOf(arguments[i]);
-      if (idx > -1) return idx;
-    }
-    return -1;
+    return acharColunaVoucher_(headers, Array.prototype.slice.call(arguments));
   }
 
   const idxEscola  = findCol("NomeEscola", "Escola (Razão Social)", "Escola");

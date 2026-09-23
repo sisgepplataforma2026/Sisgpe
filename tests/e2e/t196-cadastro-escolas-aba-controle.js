@@ -106,6 +106,96 @@ b.igual(String(daAbaDedicada.cnpj || "").replace(/\D/g, ""), "01936248000121",
 b.igual(String(daAbaDedicada.unidade || ""), "OUTRA UNIDADE",
   "e todos os campos vêm dela, não misturados");
 
+b.passo("5. o cabeçalho é achado mesmo escrito de outro jeito");
+/* 23/09/2026. A busca procurava a coluna por nome EXATO. Qualquer diferença
+   que ninguém enxerga numa planilha — caixa alta, til faltando, um espaço a
+   mais — fazia a coluna não ser encontrada, e a função devolvia vazio para
+   TODA escola, sem erro nenhum. O sintoma só aparecia três passos adiante,
+   num certificado sem CNPJ. */
+const CABS = [
+  ["ESCOLA (RAZÃO SOCIAL)", "caixa alta"],
+  ["Escola (Razao Social)", "sem o til"],
+  ["escola  (razão   social)", "espaços a mais"],
+  ["NomeEscola", "o outro nome aceito"]
+];
+CABS.forEach(function (par, i) {
+  const nomeAba = "Esc" + i;
+  const sh = ss.insertSheet(nomeAba);
+  sh.appendRow([par[0], "Unidade", "CNPJ", "Municipio"]);
+  sh.appendRow(["ESCOLA DE TESTE " + i, "UNID", "11222333000181", "Vitória"]);
+
+  const cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const pos = g.acharColunaVoucher_(cab, ["NomeEscola", "Escola (Razão Social)", "Escola"]);
+  b.igual(pos, 0, "cabeçalho com " + par[1] + " é encontrado", par[0]);
+});
+
+/* CONTRAPROVA: a precedência do chamador continua valendo. Quando as duas
+   colunas existem, "Escola (Razão Social)" não pode ser atropelada por
+   "Escola" só porque uma contém a outra. */
+const cabDuplo = ["Escola", "Escola (Razão Social)", "CNPJ"];
+b.igual(g.acharColunaVoucher_(cabDuplo, ["NomeEscola", "Escola (Razão Social)", "Escola"]), 1,
+  "com as duas colunas, vale a ordem que o chamador pediu",
+  JSON.stringify(cabDuplo));
+
+b.igual(g.acharColunaVoucher_(["A", "B"], ["CNPJ"]), -1,
+  "e coluna que não existe continua devolvendo -1");
+
+/* ═══════════════════════════════════════════════════════════
+   6. AS MESMAS PALAVRAS, EM OUTRA ORDEM — o caso do Bernardo
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, com a aba Escolas da produção na mão. A solicitação guarda
+   "UVV - VILA VELHA"; a aba guarda "Sociedade Educacao e Gestao de
+   Excelencia I Vila Velha S.a - UVV". Nenhum dos dois está contido no
+   outro — a sigla está no fim de um e no começo do outro —, então a busca
+   devolvia vazio e o certificado saía sem a mantenedora e sem o CNPJ.
+
+   As linhas abaixo são as REAIS da planilha, copiadas do que o usuário
+   mandou: é o dado que reproduz o defeito, não um exemplo inventado.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("6. o nome digitado acha a escola mesmo em outra ordem");
+
+const shEsc2 = ss.getSheetByName("Escolas");
+shEsc2.appendRow(["Sociedade Educacao e Gestao de Excelencia I Vila Velha S.a - UVV",
+                  "625", "37745762000127", "Vila Velha"]);
+/* Vizinha perigosa: também é "Vila Velha", e NÃO pode ser confundida. */
+shEsc2.appendRow(["CANADIAN SCHOOL VILA VELHA LTDA", "62", "29376862000103", "Vila Velha"]);
+
+const uvv = g.buscarEscolaPorNome_("UVV - VILA VELHA");
+b.igual(String(uvv.cnpj || "").replace(/\D/g, ""), "37745762000127",
+  "\"UVV - VILA VELHA\" acha a UVV, com o CNPJ dela",
+  JSON.stringify(uvv));
+b.ok(/UVV/.test(String(uvv.escola || "")),
+  "e devolve a razão social completa do cadastro", String(uvv.escola || ""));
+
+/* CONTRAPROVA, e é a que impede o conserto de virar um defeito pior: a
+   busca não pode cair em qualquer escola que também seja de Vila Velha. */
+const canadian = g.buscarEscolaPorNome_("CANADIAN SCHOOL VILA VELHA");
+b.igual(String(canadian.cnpj || "").replace(/\D/g, ""), "29376862000103",
+  "a Canadian continua achando a si mesma", JSON.stringify(canadian));
+const soCidade = g.buscarEscolaPorNome_("VILA VELHA");
+b.ok(String(soCidade.cnpj || "") === "" ||
+     /CANADIAN|UVV/.test(String(soCidade.escola || "")),
+  "e buscar só pela cidade não inventa vínculo com uma escola específica",
+  JSON.stringify(soCidade));
+
+b.passo("e o certificado do dependente sai completo");
+const htmlUvv = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-2026-480404", codigo: "VAL-2", percentual: 100,
+  dataEmissao: new Date(2026, 8, 23),
+  reg: {
+    NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO",
+    NOME_BENEFICIARIO: "BERNARDO SIMOURA CASTELO",
+    TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "11144477735",
+    ESCOLA_SELECIONADA: "UVV - VILA VELHA",
+    MODALIDADE: "ENSINO_FUNDAMENTAL", CURSO: "6 série",
+    PERIODO_REFERENCIA: "2027/1"
+  }
+});
+b.ok(htmlUvv.indexOf("37.745.762/0001-27") > -1,
+  "o CNPJ da UVV aparece no certificado — era o que faltava na sua prévia",
+  (htmlUvv.match(/instituição[^.]*/) || ["(não achou)"])[0]);
+
 b.naoTestavel("quais abas existem na planilha de produção",
   "o conector do Drive não lê o conteúdo dessa planilha de forma confiável — " +
   "roteiro: abrir a SISGEP - ATIVA e conferir se há uma aba 'Escolas' além da 'Controle'");
