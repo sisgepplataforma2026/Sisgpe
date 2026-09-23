@@ -227,6 +227,16 @@ function salvarCadastroESolicitacaoVoucher(payload) {
     setCol("LINK_CONTRACHEQUE", linkContracheque ? linkContracheque.linkArquivo : "");
     setCol("LINK_DOC_PESSOAL", linkDocPessoal ? linkDocPessoal.linkArquivo : "");
 
+    /* O SEXO DO ASSOCIADO É GRAVADO AQUI, na entrada, e não buscado na hora
+       de emitir. O certificado flexiona "portador/portadora" com ele
+       (23/09/2026), e a ficha de sindicalização de onde ele vem pode ser
+       corrigida, arquivada ou simplesmente não existir — o certificado
+       reemitido daqui a um ano precisa sair igual ao de hoje. Vazio é
+       resposta legítima: o texto usa a forma neutra. */
+    setCol("SEXO_SOLICITANTE", (typeof sexoAssociadoVoucher_ === "function"
+      ? sexoAssociadoVoucher_(cpf, payload.sexo)
+      : ""));
+
     setCol("STATUS_SOLICITACAO", statusSolicitacao);
     setCol("CANAL_ENTRADA", "PORTAL");
     setCol("USUARIO_CADASTRO", usuario);

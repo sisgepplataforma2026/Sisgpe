@@ -156,8 +156,14 @@ b.ok(String(html).indexOf(">8538104780<") === -1 &&
    nenhum. A oração composta que havia aqui ("portador da carteira de
    identidade nº ... e inscrito no CPF sob o nº ...") não existe no
    documento do sindicato. */
-b.ok(/portador do CPF nº/.test(html),
-  "com a construção dos modelos: 'portador do CPF nº'");
+/* SEM SABER O SEXO, A FORMA É NEUTRA — 23/09/2026, "flexibiliza no sexo".
+   Os modelos escrevem "portadora" para a associada e "portador" para o
+   associado; sem o dado, "portador(a)" é melhor do que tratar uma associada
+   no masculino num papel que leva o nome dela. A flexão em si se mede no
+   t61, que tem os três casos. */
+b.ok(/portador\(a\) do CPF nº/.test(html),
+  "com a construção dos modelos e a forma neutra, já que o sexo não foi informado",
+  (html.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
 b.ok(!/carteira de identidade/.test(html),
   "e sem a oração do RG, que os modelos não têm");
 
@@ -211,7 +217,7 @@ b.passo("13. Oração sem dado não vira 'campo vazio' no documento");
  * não dizer nada: parece erro de emissão para quem recebe. */
 b.ok(!/carteira de identidade/.test(htmlTitular),
   "sem RG, a oração inteira desaparece");
-b.ok(!/portador do CPF/.test(htmlTitular),
+b.ok(!/do CPF nº/.test(htmlTitular),
   "e sem CPF, a do CPF também — cada oração some sozinha");
 
 b.passo("14. O RG digitado na emissão fica guardado na linha");

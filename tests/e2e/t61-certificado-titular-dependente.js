@@ -163,13 +163,86 @@ b.passo("5");
    RG em lugar nenhum. O que este passo mede continua sendo o mesmo e é o que
    importa: o documento é do TITULAR, e a oração vem logo depois do nome
    dele, não do nome da criança. */
-b.ok(/dependente de ATILA[^,]*, portador do CPF nº/.test(dependente),
+b.ok(/dependente de ATILA[^,]*, portador\(a\) do CPF nº/.test(dependente),
   "a identificação vem logo depois do nome do titular, não do da criança",
   "a ordem das orações é o que diz de quem é o documento");
 b.ok(!/carteira de identidade/.test(dependente),
   "e o RG não aparece — os modelos não o citam");
 b.ok(dependente.indexOf("empregado da instituição MULTIVIX") > -1,
   "o vínculo de emprego também é o do titular");
+
+/* ═══════════════════════════════════════════════════════════
+   3b. "Portador" ou "portadora", conforme o associado
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, pedido do usuário: "flexibiliza no sexo". Os dois modelos
+   reais flexionam — "portadora do CPF nº" no da associada, "portador" no
+   do associado. Sem o dado, a forma neutra: tratar uma associada no
+   masculino num papel que leva o nome dela é pior, e deduzir pelo primeiro
+   nome erra com qualquer "Darci" sem ninguém perceber.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5b");
+function comSexo(sexo) {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           SEXO_SOLICITANTE: sexo, CURSO: "Biomedicina",
+           MODALIDADE: "GRADUACAO", PERIODO_REFERENCIA: "2026/2",
+           ESCOLA_FANTASIA: "MONTE ALVO" }
+  })));
+}
+const comF = comSexo("F"), comM = comSexo("M"), semSexo = comSexo("");
+
+b.ok(/portadora do CPF nº/.test(comF),
+  "associada mulher: 'portadora do CPF nº'",
+  (comF.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+b.ok(!/portador do CPF/.test(comF) && !/portador\(a\)/.test(comF),
+  "sem o masculino nem a forma neutra sobrando na mesma frase");
+b.ok(/portador do CPF nº/.test(comM),
+  "associado homem: 'portador do CPF nº'",
+  (comM.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+b.ok(/portador\(a\) do CPF nº/.test(semSexo),
+  "sexo não informado: forma neutra, nunca um chute",
+  (semSexo.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+
+/* ═══════════════════════════════════════════════════════════
+   3c. "Curso/Ensino" da creche ao ensino médio
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026: "de ensino infantil a ensino médio - colocar curso/ensino".
+   Criança de educação infantil não está matriculada num "curso"; e usar só
+   o nome da modalidade obrigava o artigo a mudar com a palavra ("da
+   Creche", "do Ensino Fundamental"), concordância a mais para errar.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5c");
+function comModalidade(mod, curso) {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           MODALIDADE: mod, CURSO: curso, PERIODO_REFERENCIA: "2026",
+           ESCOLA_FANTASIA: "MONTE ALVO" }
+  })));
+}
+[["CRECHE", "CRECHE"],
+ ["EDUCACAO_INFANTIL", "EDUCAÇÃO INFANTIL"],
+ ["ENSINO_FUNDAMENTAL", "ENSINO FUNDAMENTAL"],
+ ["ENSINO_MEDIO", "ENSINO MÉDIO"]].forEach(function (par) {
+  const t = comModalidade(par[0], "3 SERIE");
+  b.ok(t.indexOf("do Curso/Ensino de " + par[1]) > -1,
+    par[0] + " sai como 'do Curso/Ensino de " + par[1] + "'",
+    (t.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+});
+
+/* CONTRAPROVA: da graduação para cima continua "do Curso de", com o curso
+   que a pessoa digitou — é o que o modelo do dependente traz. */
+const superior = comModalidade("GRADUACAO", "Biomedicina");
+b.ok(superior.indexOf("do Curso de Biomedicina") > -1,
+  "graduação continua 'do Curso de Biomedicina', com o curso digitado",
+  (superior.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+b.ok(superior.indexOf("Curso/Ensino") === -1,
+  "e sem o 'Curso/Ensino', que é só do ensino básico");
 
 /* ═══════════════════════════════════════════════════════════
    4. O que é IGUAL nos dois, e tem que continuar igual

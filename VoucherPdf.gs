@@ -801,8 +801,23 @@ function gerarHtmlDocumentoVoucher_(dados) {
 
      Cada oração some quando o dado dela não existe: "portador do CPF nº —"
      num documento oficial é pior que não dizer nada. */
+  /* "PORTADOR" OU "PORTADORA", conforme o associado — 23/09/2026,
+     "flexibiliza no sexo". Os dois modelos flexionam: "portadora do CPF nº"
+     no da associada, "portador" no do associado.
+
+     Quando o sexo não se sabe, sai "portador(a)". Não é bonito, e é melhor
+     do que tratar uma associada no masculino num papel que leva o nome dela;
+     e é melhor do que adivinhar pelo primeiro nome, que erra com qualquer
+     "Darci" e sem ninguém perceber. */
+  const sexoTitular = (typeof sexoAssociadoVoucher_ === "function")
+    ? sexoAssociadoVoucher_(reg.CPF_SOLICITANTE, reg.SEXO_SOLICITANTE)
+    : "";
+  const portador = sexoTitular === "F" ? "portadora"
+                 : sexoTitular === "M" ? "portador"
+                 : "portador(a)";
+
   const identificacaoTitular =
-    (cpf ? ", portador do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
+    (cpf ? ", " + portador + " do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
     (cnpj ? ", inscrita no CNPJ: sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
@@ -825,13 +840,28 @@ function gerarHtmlDocumentoVoucher_(dados) {
      escola vai ler. O papel traz "da EDUCAÇÃO INFANTIL" — feminino porque a
      palavra é feminina, não porque a regra seja "da". */
   const MODALIDADES_BASICO = {
-    CRECHE:             " da <strong>CRECHE</strong>",
-    EDUCACAO_INFANTIL:  " da <strong>EDUCAÇÃO INFANTIL</strong>",
-    ENSINO_FUNDAMENTAL: " do <strong>ENSINO FUNDAMENTAL</strong>",
-    ENSINO_MEDIO:       " do <strong>ENSINO MÉDIO</strong>"
+    CRECHE:             "CRECHE",
+    EDUCACAO_INFANTIL:  "EDUCAÇÃO INFANTIL",
+    ENSINO_FUNDAMENTAL: "ENSINO FUNDAMENTAL",
+    ENSINO_MEDIO:       "ENSINO MÉDIO"
   };
   const modalidadeReg = String(reg.MODALIDADE || reg.NIVEL || "").toUpperCase().trim();
-  const objetoBolsa = MODALIDADES_BASICO[modalidadeReg] || frag(" do Curso de ", curso);
+  const nomeBasico = MODALIDADES_BASICO[modalidadeReg] || "";
+  /* "CURSO/ENSINO" DA CRECHE AO ENSINO MÉDIO — 23/09/2026, você: "de ensino
+     infantil a ensino médio - colocar curso/ensino".
+
+     Criança de educação infantil não está matriculada num "curso", e
+     escrever "do Curso de Educação Infantil" soa como faculdade; mas
+     "semestralidade da Educação Infantil" obrigava o artigo a mudar com a
+     palavra ("do Ensino Fundamental", "da Creche") — uma concordância a
+     mais para errar num documento que a escola lê. "Do Curso/Ensino de X"
+     resolve os dois: serve para qualquer modalidade do ensino básico e
+     acompanha o "semestralidade/anuidade" que o papel já usa.
+
+     Da graduação para cima continua "do Curso de", com o curso digitado. */
+  const objetoBolsa = nomeBasico
+    ? " do Curso/Ensino de <strong>" + escHtmlVoucher_(nomeBasico) + "</strong>"
+    : frag(" do Curso de ", curso);
 
   const beneficioExtenso =
     "<strong>" + escHtmlVoucher_(percentual) + "% (" +

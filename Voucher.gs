@@ -341,6 +341,51 @@ function dataExtensoVoucher_(data) {
     ".";
 }
 
+/**
+ * O SEXO DO ASSOCIADO, para o certificado flexionar "portador/portadora".
+ *
+ * Ordem de busca, da mais confiável para a menos: o que já está gravado na
+ * própria solicitação, depois a ficha de sindicalização daquele CPF. Nunca
+ * se deduz do nome — "Darci", "Valdeci" e mil outros não dizem nada, e errar
+ * o gênero de alguém num documento oficial com o nome da pessoa é pior do
+ * que a forma neutra.
+ *
+ * @return {string} "M", "F" ou "" quando não se sabe.
+ */
+function sexoAssociadoVoucher_(cpf, jaGravado) {
+  var direto = String(jaGravado || "").trim().toUpperCase().charAt(0);
+  if (direto === "M" || direto === "F") return direto;
+
+  var doc = String(cpf || "").replace(/\D/g, "");
+  if (!doc) return "";
+
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var aba = ss.getSheetByName(typeof SINDICALIZACAO_ABA !== "undefined"
+      ? SINDICALIZACAO_ABA : "SISGEP_Sindicalizacao");
+    if (!aba || aba.getLastRow() < 2) return "";
+
+    var cab = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+      .map(function (c) { return String(c || "").trim(); });
+    var iCpf = cab.indexOf("CPF");
+    var iSexo = cab.indexOf("SEXO");
+    if (iCpf < 0 || iSexo < 0) return "";
+
+    var linhas = aba.getRange(2, 1, aba.getLastRow() - 1, aba.getLastColumn()).getValues();
+    for (var i = 0; i < linhas.length; i++) {
+      if (String(linhas[i][iCpf] || "").replace(/\D/g, "") === doc) {
+        var v = String(linhas[i][iSexo] || "").trim().toUpperCase().charAt(0);
+        if (v === "M" || v === "F") return v;
+      }
+    }
+  } catch (e) {
+    /* Ficha inacessível não impede a emissão: o texto cai na forma neutra. */
+    Logger.log("sexoAssociadoVoucher_: " + e.message);
+  }
+
+  return "";
+}
+
 function escHtmlVoucher_(t) {
   return String(t || "")
     .replace(/&/g,"&amp;")
@@ -564,7 +609,20 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * A lista vai separada por " | ", que é o mesmo separador já usado nas
          * observações automáticas do módulo. */
         "DOCUMENTOS_PENDENTES",
-        "DATA_COMPLEMENTACAO"
+        "DATA_COMPLEMENTACAO",
+        /* O SEXO DO TITULAR, e ele existe por causa de uma palavra do
+         * certificado — 23/09/2026, "flexibiliza no sexo".
+         *
+         * Os dois modelos do sindicato escrevem "portadora do CPF nº" quando
+         * a associada é mulher e "portador" quando é homem. Sem este dado o
+         * documento trataria toda associada no masculino, num papel que leva
+         * o nome dela e vai para a escola.
+         *
+         * Guardado NA SOLICITAÇÃO, e não buscado na hora de emitir: a ficha
+         * de sindicalização pode ser corrigida, arquivada ou não existir, e o
+         * certificado reemitido daqui a um ano tem que sair igual ao de hoje.
+         * Vazio é resposta legítima — aí o texto usa a forma neutra. */
+        "SEXO_SOLICITANTE"
   ];
 }
 
