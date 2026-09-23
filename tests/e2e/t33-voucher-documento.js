@@ -151,8 +151,15 @@ b.ok(String(html).indexOf("085.381.047-80") > -1,
 b.ok(String(html).indexOf(">8538104780<") === -1 &&
      String(html).indexOf(" 8538104780") === -1,
   "e o número cru de 10 dígitos não aparece em lugar nenhum");
-b.ok(/inscrito no CPF sob o nº/.test(html),
-  "com a mesma construção que o documento usa para o CNPJ");
+/* A CONSTRUÇÃO MUDOU EM 23/09/2026, com os dois modelos marcados na mão:
+   os papéis identificam por "portador do CPF nº" e não citam RG em lugar
+   nenhum. A oração composta que havia aqui ("portador da carteira de
+   identidade nº ... e inscrito no CPF sob o nº ...") não existe no
+   documento do sindicato. */
+b.ok(/portador do CPF nº/.test(html),
+  "com a construção dos modelos: 'portador do CPF nº'");
+b.ok(!/carteira de identidade/.test(html),
+  "e sem a oração do RG, que os modelos não têm");
 
 b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário");
 /* O PDF que o sindicato emite, mandado pelo usuário em 13/08/2026. As frases
@@ -162,8 +169,16 @@ b.ok(/CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS/.test(html), "o título �
 b.ok(/SINEPE/.test(html), "cita o convênio com o SINEPE-ES");
 b.ok(/dependente de <strong>Fulano de Tal<\/strong>/.test(html),
   "beneficiário diferente do titular ganha a oração 'dependente de'");
-b.ok(/ano letivo de 2026\/2/.test(html),
-  "e bolsa ANUAL diz 'ano letivo', não 'semestre letivo'");
+/* SEMPRE "SEMESTRE LETIVO" — 23/09/2026. Os dois certificados reais do
+   sindicato escrevem "referente ao semestre letivo de X", inclusive o cuja
+   bolsa é de educação infantil e cujo período é só "2026". "Ano letivo" não
+   aparece em nenhum deles: o código escolhia entre as duas formas pelo
+   REGIME da regra da convenção e produzia "ano letivo de 2027/1" — um ano
+   descrito com um semestre, na mesma linha. */
+b.ok(/semestre letivo de 2026\/2/.test(html),
+  "o dependente diz sempre 'semestre letivo', como nos dois modelos");
+b.ok(!/ano letivo/.test(html),
+  "e nunca 'ano letivo', que não existe nos papéis");
 
 const htmlTitular = g.gerarHtmlDocumentoVoucher_({
   protocolo: "BOLSA-2026-000002", codigo: "T2", percentual: 50,
@@ -177,10 +192,14 @@ b.ok(!/dependente de/.test(htmlTitular),
 /* O papel do TITULAR escreve o período mais curto que o do dependente:
    "do Curso de X semestre 2026/1", sem o "letivo de". Confirmado nos dois
    modelos que o usuário mandou em 18/08/2026 — ver t61. */
-b.ok(/semestre 2026\/1/.test(htmlTitular),
-  "e o titular semestral diz 'semestre 2026/1', como no papel dele");
-b.ok(!/semestre letivo de 2026\/1/.test(htmlTitular),
-  "sem o 'letivo de', que é a forma do papel do dependente");
+/* O PAPEL DO TITULAR NÃO TRAZ PERÍODO — 23/09/2026, no modelo que o usuário
+   marcou "Titular": ele termina em "...escolar do Curso de ADMINISTRAÇÃO."
+   O código acrescentava "semestre 2026/1" ali, texto que o papel não tem. */
+b.ok(!/semestre 2026\/1/.test(htmlTitular) && !/semestre letivo/.test(htmlTitular),
+  "o certificado do titular não imprime período nenhum",
+  (htmlTitular.match(/escolar[^<]*/) || ["(não achou)"])[0]);
+b.ok(/do Curso de <strong>Direito<\/strong>\./.test(htmlTitular),
+  "ele termina no curso, com ponto — como o modelo");
 b.ok(/instituição <strong>MULTIVIX<\/strong>/.test(htmlTitular),
   "a instituição é o NOME FANTASIA");
 b.ok(/mantida pela <strong>EMBRAE S\/A<\/strong>/.test(htmlTitular),
@@ -192,7 +211,7 @@ b.passo("13. Oração sem dado não vira 'campo vazio' no documento");
  * não dizer nada: parece erro de emissão para quem recebe. */
 b.ok(!/carteira de identidade/.test(htmlTitular),
   "sem RG, a oração inteira desaparece");
-b.ok(!/inscrito no CPF/.test(htmlTitular),
+b.ok(!/portador do CPF/.test(htmlTitular),
   "e sem CPF, a do CPF também — cada oração some sozinha");
 
 b.passo("14. O RG digitado na emissão fica guardado na linha");

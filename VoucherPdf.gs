@@ -659,9 +659,27 @@ function gerarHtmlDocumentoVoucher_(dados) {
    *                  letivo de 2026/2, após verificação..."
    *
    * Nos dois casos, bolsa anual não tem semestre — daí o par ano/semestre. */
-  const ehAnual = regime.indexOf("ANUAL") > -1;
-  const rotuloPeriodo = (ehAnual ? "ano letivo de " : "semestre letivo de ") + periodo;
-  const rotuloPeriodoTitular = (ehAnual ? "ano " : "semestre ") + periodo;
+  /* O PERÍODO É ESCRITO COMO NO PAPEL — 23/09/2026, com os dois modelos
+   * marcados pelo usuário na mão ("considera esse arquivo do titular como
+   * modelo" / "esse é do dependente").
+   *
+   * DOIS FATOS QUE OS MODELOS DECIDEM, e que o código vinha errando:
+   *
+   * 1. O certificado do DEPENDENTE diz sempre "referente ao semestre letivo
+   *    de X" — nos dois papéis reais, inclusive naquele cujo período é só
+   *    "2026", sem semestre. Não existe "ano letivo" em nenhum deles. O
+   *    código escolhia entre "ano" e "semestre" pelo REGIME da regra da
+   *    convenção, e saía "ano letivo de 2027/1": descrevia como ano um
+   *    período que ele mesmo escrevia como semestre, na mesma linha.
+   *
+   * 2. O certificado do TITULAR NÃO TRAZ PERÍODO NENHUM. Ele termina em
+   *    "...escolar do Curso de ADMINISTRAÇÃO." O código acrescentava
+   *    "semestre 2026/1" ali, texto que o papel não tem.
+   *
+   * O regime continua existindo e continua importando — é ele que decide se
+   * a bolsa ocupa a vaga do ano ou do semestre na contagem do teto por
+   * associado. O que ele não decide é esta frase. */
+  const rotuloPeriodo = "semestre letivo de " + periodo;
 
   /* SEM CHAMAR O GERADOR DE QR, já que o QR não é mais impresso.
    *
@@ -764,39 +782,82 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * Cada oração some quando o dado dela não existe: sem RG não se escreve
    * "portador da carteira de identidade nº —", que é pior que não dizer. */
 
-  /* A identificação do TITULAR — RG, CPF, instituição, mantenedora, CNPJ.
-     É idêntica nos dois modelos, e é por isso que fica separada: o que
-     muda entre titular e dependente é o texto ao redor dela. */
+  /* A IDENTIFICAÇÃO DO TITULAR, palavra por palavra como nos dois modelos
+     de 23/09/2026. Ela é a mesma nos dois papéis; o que muda é o texto ao
+     redor dela.
+
+     O QUE MUDOU AQUI, e cada ponto sai de um dos modelos:
+
+     - "portador do CPF nº" no lugar de "portador da carteira de identidade
+       nº ... e inscrito no CPF sob o nº". OS DOIS MODELOS IDENTIFICAM POR
+       CPF, e nenhum deles cita RG. Isso também tira da emissão a digitação
+       do RG, que era obrigatória para o documento sair completo.
+     - "inscrita no CNPJ: sob nº", COM o dois-pontos. Em 18/08/2026 eu tinha
+       tratado o dois-pontos como erro de digitação do papel e o usuário
+       concordou em removê-lo; em 23/09 ele mandou o contrário, com os
+       modelos na mão: "a parte fixa do texto tem que ser idêntica a essa que
+       te passei na foto". Idêntico é idêntico — inclusive na pontuação que
+       eu acharia errada.
+
+     Cada oração some quando o dado dela não existe: "portador do CPF nº —"
+     num documento oficial é pior que não dizer nada. */
   const identificacaoTitular =
-    frag(", portador da carteira de identidade nº ", rg) +
-    /* "e inscrito no CPF sob o nº" — a mesma construção que o documento já
-     * usa para o CNPJ da mantenedora, para as duas identificações lerem
-     * igual. Some inteira quando não há CPF, como as outras orações. */
-    (cpf ? " e inscrito no CPF sob o nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
+    (cpf ? ", portador do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
-    (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
+    (cnpj ? ", inscrita no CNPJ: sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
+
+  /* "DO CURSO DE BIOMEDICINA" OU "DA EDUCAÇÃO INFANTIL" — os dois modelos
+     escrevem o objeto da bolsa de formas diferentes, e a diferença é o tipo
+     de ensino:
+
+       graduação ....... "semestralidade DO CURSO DE Biomedicina"
+       ed. básica ...... "semestralidade DA EDUCAÇÃO INFANTIL"
+
+     Faz sentido fora do papel também: criança de educação infantil não está
+     matriculada num "curso", e escrever "do Curso de Educação Infantil"
+     soaria como faculdade. Quando a modalidade é do ensino básico, o nome da
+     modalidade ocupa o lugar do curso; nas demais, vale o curso digitado.
+
+     Sem curso e sem modalidade, a oração inteira some — como as outras. */
+  /* O ARTIGO VAI JUNTO DE CADA MODALIDADE, e não é detalhe: "semestralidade
+     DA Ensino Fundamental" sai errado em português, num documento que a
+     escola vai ler. O papel traz "da EDUCAÇÃO INFANTIL" — feminino porque a
+     palavra é feminina, não porque a regra seja "da". */
+  const MODALIDADES_BASICO = {
+    CRECHE:             " da <strong>CRECHE</strong>",
+    EDUCACAO_INFANTIL:  " da <strong>EDUCAÇÃO INFANTIL</strong>",
+    ENSINO_FUNDAMENTAL: " do <strong>ENSINO FUNDAMENTAL</strong>",
+    ENSINO_MEDIO:       " do <strong>ENSINO MÉDIO</strong>"
+  };
+  const modalidadeReg = String(reg.MODALIDADE || reg.NIVEL || "").toUpperCase().trim();
+  const objetoBolsa = MODALIDADES_BASICO[modalidadeReg] || frag(" do Curso de ", curso);
 
   const beneficioExtenso =
     "<strong>" + escHtmlVoucher_(percentual) + "% (" +
     escHtmlVoucher_(percentualExtenso) + ")</strong>";
 
   const corpo = ehDependente
-    ? /* ── DEPENDENTE ── */
-      "O Sindicato dos Educadores Técnico - Administrativos em Estabelecimentos de Ensino " +
+    ? /* ── DEPENDENTE ──
+         Transcrito do modelo de 23/09/2026. Sem vírgula depois do nome do
+         beneficiário: o papel escreve "ANA CECILIA MARQUES VELTEN dependente
+         de JOANA...". */
+      "O Sindicato dos Educadores Técnico – Administrativos em Estabelecimentos de Ensino " +
       "Particular no Estado do Espírito Santo – <strong>SINDEDUCAÇÃO-ES</strong>, nos termos " +
       "do convênio firmado com o Sindicato das Empresas Particulares de Ensino do Estado do " +
       "Espírito Santo – <strong>SINEPE – ES</strong>, certifica que " +
       "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
-      ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" +
+      " dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" +
       identificacaoTitular +
       " encontra-se regularmente habilitado ao benefício de " + beneficioExtenso +
       " de desconto sobre a matrícula, rematrícula e semestralidade" +
-      frag(" do Curso de ", curso) +
+      objetoBolsa +
       (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
       ", após verificação do atendimento aos requisitos exigidos para a concessão do benefício."
 
-    : /* ── TITULAR ── */
+    : /* ── TITULAR ──
+         Transcrito do modelo marcado "Titular" em 23/09/2026. Termina no
+         curso: este papel NÃO traz período. */
       "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
       "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
       "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
@@ -808,8 +869,7 @@ function gerarHtmlDocumentoVoucher_(dados) {
       ", atende aos requisitos estabelecidos para a concessão do benefício de " +
       beneficioExtenso +
       " de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
-      frag(" do Curso de ", curso) +
-      (periodo ? " " + escHtmlVoucher_(rotuloPeriodoTitular) : "") +
+      objetoBolsa +
       ".";
 
   /* O segundo parágrafo também é diferente nos dois papéis. O do
@@ -982,7 +1042,8 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<div class='assinatura'>" +
     (assinaturaImg ? "<img src='" + escHtmlVoucher_(assinaturaImg) + "'>" : "") +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
-    "<div class='cargo'>Presidente – <em>SindEducação-ES</em></div>" +
+    /* "SindEducação/ES", com barra — é assim nos dois modelos de 23/09. */
+    "<div class='cargo'>Presidente – <em>SindEducação/ES</em></div>" +
     "</div>" +
     "</div>" +
 

@@ -62,6 +62,10 @@ const titular = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
   rg: "213.360.487-19",
   reg: {
     NOME_SOLICITANTE: "NATHALIA BATISTA DOS SANTOS",
+    /* CPF DE TESTE, não o do papel: os modelos trazem o CPF de pessoas
+       reais, e ele não tem por que viver num arquivo de teste. O que
+       importa medir é a oração, não o número. */
+    CPF_SOLICITANTE: "11144477735",
     TIPO_BENEFICIARIO: "TITULAR",
     CURSO: "BIOMEDICINA", PERIODO_REFERENCIA: "2026/2",
     ESCOLA_FANTASIA: "MULTIVIX – VITÓRIA",
@@ -75,6 +79,7 @@ const dependente = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
   reg: {
     NOME_SOLICITANTE: "ATILA HENRIQUE DE OLIVEIRA GONÇALVES",
     NOME_BENEFICIARIO: "ISABELA CRISTINA MICAELLA DOS ANJOS PEREIRA",
+    CPF_SOLICITANTE: "52998224725",
     TIPO_BENEFICIARIO: "DEPENDENTE",
     CURSO: "Biomedicina", PERIODO_REFERENCIA: "2026/2",
     ESCOLA_FANTASIA: "MULTIVIX – VITÓRIA",
@@ -93,8 +98,11 @@ b.ok(titular.indexOf("atende aos requisitos estabelecidos para a concessão") > 
   "com o verbo 'atende aos requisitos estabelecidos'");
 b.ok(titular.indexOf("semestralidade/anuidade escolar") > -1,
   "e o desconto sobre 'semestralidade/anuidade escolar'");
-b.ok(titular.indexOf("do Curso de BIOMEDICINA semestre 2026/2") > -1,
-  "o período escrito como no papel: 'Curso de X semestre 2026/2'",
+/* O PAPEL DO TITULAR TERMINA NO CURSO — 23/09/2026, no modelo marcado
+   "Titular": "...escolar do Curso de ADMINISTRAÇÃO." Não há período nenhum
+   nessa frase, e o que havia aqui era texto que o papel não tem. */
+b.ok(/do Curso de BIOMEDICINA\s*\./.test(titular),
+  "o titular termina no curso, sem período — como no modelo",
   (titular.match(/do Curso de [^.]*/) || ["(não achou)"])[0]);
 b.ok(titular.indexOf("A presente certificação destina-se à comprovação") > -1,
   "e o fecho do titular");
@@ -150,11 +158,16 @@ b.ok(dependente.indexOf("A presente certificação") === -1,
    Identificar a criança por documento não diria nada à faculdade.
    ═══════════════════════════════════════════════════════════ */
 b.passo("5");
-b.ok(dependente.indexOf("2.288.609/SPTC-ES") > -1,
-  "o RG que aparece no do dependente é o do titular");
-b.ok(/dependente de ATILA[^,]*, portador da carteira de identidade/.test(dependente),
-  "e vem logo depois do nome do titular, não do nome da criança",
+/* A IDENTIFICAÇÃO PASSOU A SER PELO CPF — 23/09/2026. Os dois modelos que o
+   usuário marcou identificam o titular por "portador do CPF nº" e não citam
+   RG em lugar nenhum. O que este passo mede continua sendo o mesmo e é o que
+   importa: o documento é do TITULAR, e a oração vem logo depois do nome
+   dele, não do nome da criança. */
+b.ok(/dependente de ATILA[^,]*, portador do CPF nº/.test(dependente),
+  "a identificação vem logo depois do nome do titular, não do da criança",
   "a ordem das orações é o que diz de quem é o documento");
+b.ok(!/carteira de identidade/.test(dependente),
+  "e o RG não aparece — os modelos não o citam");
 b.ok(dependente.indexOf("empregado da instituição MULTIVIX") > -1,
   "o vínculo de emprego também é o do titular");
 
@@ -170,9 +183,15 @@ b.passo("6");
     "o percentual por extenso no " + nome);
   b.ok(t.indexOf("01.936.248/0001-21") > -1,
     "o CNPJ formatado no " + nome);
-  b.ok(t.indexOf("CNPJ: sob") === -1,
-    "sem os dois-pontos do original no " + nome,
-    "decisão do usuário em 18/08/2026: erro de digitação do papel não se reproduz");
+  /* O DOIS-PONTOS VOLTOU — 23/09/2026. Em 18/08 eu o tratei como erro de
+     digitação do papel e o usuário concordou em removê-lo; agora ele mandou
+     o contrário, com os dois modelos na mão: "a parte fixa do texto tem que
+     ser idêntica a essa que te passei na foto". Idêntico é idêntico,
+     inclusive na pontuação que eu acharia errada — e os dois papéis trazem
+     "inscrita no CNPJ: sob nº". */
+  b.ok(t.indexOf("CNPJ: sob") > -1,
+    "com os dois-pontos do original no " + nome,
+    "os modelos de 23/09/2026 trazem 'inscrita no CNPJ: sob nº'");
   b.ok(t.indexOf("Leonil Dias da Silva") > -1,
     "e quem assina o " + nome + " é o presidente");
 });
