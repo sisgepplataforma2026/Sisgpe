@@ -1188,14 +1188,21 @@ function gerarHtmlDocumentoVoucher_(dados) {
      * manter e documentar em vez de remover. O que muda aqui é só o que é
      * impresso.
      *
-     * O código de validação continua no papel, em texto — que é o que a
-     * instituição usaria para conferir por telefone de qualquer forma. */
-    "<div class='valida-box'>" +
-    "<div class='valida'>" +
-    (codigo ? "Código " + escHtmlVoucher_(codigo) + "<br>" : "") +
-    (protocolo ? escHtmlVoucher_(protocolo) : "") +
-    "</div>" +
-    "</div>" +
+     * E O CÓDIGO TAMBÉM SAIU DO PAPEL — 23/09/2026, você, com o certificado
+     * emitido na mão: "pode tirar isso". Era o bloco cinza no rodapé, com
+     * "Código VAL-…" e o número do protocolo.
+     *
+     * Faz sentido: os dois modelos do sindicato não trazem nada disso, e o
+     * que o código serviria para validar é uma página pública que não existe.
+     * Num documento que vai para a instituição de ensino, um código que não
+     * valida nada é ruído com aparência de segurança.
+     *
+     * O QUE NÃO MUDA, e é o que permite tirar sem perder nada: o código
+     * CONTINUA sendo gerado e gravado — em `Voucher_Emitidos`, no histórico
+     * e no protocolo. Quem precisar conferir uma emissão acha pelo painel.
+     * O que deixou de existir é a impressão dele. A classe `.valida-box`
+     * fica no CSS: ela não atrapalha e volta a servir no dia em que a
+     * página de validação existir. */
     "</div>" +
 
     "</div>" +

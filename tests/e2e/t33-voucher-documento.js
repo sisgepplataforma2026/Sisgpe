@@ -450,10 +450,14 @@ const comQr = g.gerarHtmlDocumentoVoucher_({
   reg: { NOME_SOLICITANTE: "Fulano de Tal" }
 });
 b.ok(!/class='valida-qr'/.test(comQr), "o QR NÃO está mais no documento");
-b.ok(comQr.indexOf("ZZZZ-9999") > -1, "e o código de validação continua impresso");
-b.ok(comQr.indexOf("BOLSA-QR") > -1, "junto do protocolo");
-b.ok(/Código ZZZZ-9999/.test(comQr), "e o código de validação também");
-b.ok(/BOLSA-QR/.test(comQr), "com o protocolo embaixo");
+/* E NEM O CÓDIGO EM TEXTO — 23/09/2026, "pode tirar isso". Ver o cabeçalho
+   do bloco em gerarHtmlDocumentoVoucher_: o código continua gravado em
+   Voucher_Emitidos e no histórico; o que saiu foi a impressão. */
+b.ok(comQr.indexOf("ZZZZ-9999") === -1, "e o código de validação não é impresso");
+b.ok(comQr.slice(comQr.indexOf("<body")).indexOf("BOLSA-QR") === -1,
+  "nem o protocolo no corpo do documento — no <title> ele fica, que é o nome do arquivo");
+b.ok(comQr.indexOf("<div class='valida-box'>") === -1,
+  "o bloco cinza do rodapé não é mais desenhado");
 
 /* ══════════════════════════════════════════════════════════════════════
    A REDAÇÃO É A DO PAPEL

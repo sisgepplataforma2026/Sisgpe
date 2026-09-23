@@ -103,11 +103,33 @@ b.ok(html.length > 5000, "e veio com o documento inteiro", html.length + " chars
 b.ok(html.indexOf("valida-qr") === -1, "nenhuma imagem de QR no documento");
 b.ok(html.indexOf("quickchart.io") === -1, "e nenhuma chamada ao gerador de QR");
 
-/* O QUE FICA NO LUGAR: o código em texto, que é o que a instituição usaria
-   para conferir por telefone de qualquer forma. */
-b.ok(/C[óo]digo VAL-/.test(html) || html.indexOf("VAL-") > -1,
-  "o código de validação continua impresso, em texto");
-b.ok(html.indexOf(protocolo) > -1, "e o protocolo também");
+/* E O CÓDIGO TAMBÉM SAIU — 23/09/2026, você com o certificado emitido na
+   mão: "pode tirar isso". Era o bloco cinza do rodapé, com "Código VAL-…" e
+   o protocolo. Os dois modelos do sindicato não trazem nada disso, e o que
+   esse código validaria é uma página pública que não existe: num documento
+   oficial, é ruído com aparência de segurança.
+
+   O CÓDIGO CONTINUA SENDO GERADO E GRAVADO — a asserção logo abaixo prova
+   isso. O que acabou foi a impressão dele. */
+b.ok(html.indexOf("Código VAL-") === -1,
+  "o código de validação NÃO é mais impresso",
+  (html.match(/C[óo]digo[^<]{0,30}/) || ["(não achou)"])[0]);
+/* Mede o BLOCO, não a classe: `.valida-box` continua no CSS de propósito,
+   para voltar a servir no dia em que a página de validação existir. */
+b.ok(html.indexOf("<div class='valida-box'>") === -1,
+  "e o bloco do rodapé não é mais desenhado");
+/* O protocolo sai do CORPO do documento. No <title> ele fica — é o nome da
+   aba e do arquivo, não texto impresso na folha. */
+const corpoDoc = html.slice(html.indexOf("<body"));
+b.ok(corpoDoc.indexOf(protocolo) === -1,
+  "o protocolo também sai do papel — ele vive no painel, não no documento",
+  (corpoDoc.match(new RegExp("[^>]{0,40}" + protocolo)) || ["(não achou)"])[0]);
+
+/* A CONTRAPROVA que impede isto de virar perda de dado: a emissão continua
+   devolvendo o código, e é ele que vai para Voucher_Emitidos e o histórico. */
+b.ok(!!(emissao && emissao.codigoValidacao),
+  "a emissão continua gerando o código de validação",
+  (emissao && emissao.codigoValidacao) || "(vazio)");
 
 b.passo("4. A emissão não vai mais à internet buscar imagem de QR");
 /* Era o custo escondido: um UrlFetch por bolsa emitida, com tempo de espera e
