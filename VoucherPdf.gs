@@ -675,12 +675,29 @@ function gerarHtmlDocumentoVoucher_(dados) {
      NUNCA SOBRESCREVE o que já está gravado: se a solicitação tem CNPJ, é
      ele que vale. O certificado de uma bolsa não pode mudar porque alguém
      editou o cadastro da escola depois. */
-  if ((!cnpjBruto || !razaoSocial) && typeof buscarEscolaPorNome_ === "function") {
+  /* O PAR VEM INTEIRO, DE UMA FONTE SÓ — 23/09/2026, você: "tem que sair o
+     CNPJ correto, a razão social correta da escola em si".
+
+     Sem CNPJ gravado, a solicitação guarda o que a pessoa DIGITOU no portal
+     ("UVV - VILA VELHA"), que é apelido, não razão social. Completar só o
+     CNPJ pelo cadastro deixaria o documento com o nome de um lugar e o CNPJ
+     de um registro — parecendo conferido, e não sendo. Por isso, quando o
+     cadastro é consultado, ele fornece NOME E CNPJ JUNTOS, do mesmo
+     registro; o apelido digitado sai do texto.
+
+     E não se mistura ao contrário: se a solicitação já tem CNPJ, é ela que
+     manda, inteira. O certificado de uma bolsa não pode mudar porque alguém
+     editou o cadastro da escola depois. */
+  if (!cnpjBruto && typeof buscarEscolaPorNome_ === "function") {
     try {
       const doCadastro = buscarEscolaPorNome_(razaoSocial || fantasia);
-      if (doCadastro) {
-        if (!cnpjBruto) cnpjBruto = String(doCadastro.cnpj || "").trim();
-        if (!razaoSocial) razaoSocial = String(doCadastro.escola || "").trim();
+      const cnpjCadastro = doCadastro ? String(doCadastro.cnpj || "").trim() : "";
+      const nomeCadastro = doCadastro ? String(doCadastro.escola || "").trim() : "";
+      if (cnpjCadastro && nomeCadastro) {
+        cnpjBruto = cnpjCadastro;
+        razaoSocial = nomeCadastro;
+      } else if (nomeCadastro && !razaoSocial) {
+        razaoSocial = nomeCadastro;
       }
     } catch (eEsc) {
       Logger.log("escola do certificado: " + eEsc.message);

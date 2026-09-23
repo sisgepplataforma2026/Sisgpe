@@ -196,6 +196,44 @@ b.ok(htmlUvv.indexOf("37.745.762/0001-27") > -1,
   "o CNPJ da UVV aparece no certificado — era o que faltava na sua prévia",
   (htmlUvv.match(/instituição[^.]*/) || ["(não achou)"])[0]);
 
+/* ═══════════════════════════════════════════════════════════
+   7. O nome impresso é a RAZÃO SOCIAL, não o apelido digitado
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, você: "tem que sair o CNPJ correto, a razão social correta da
+   escola em si". Sem CNPJ gravado, a solicitação guarda o que a pessoa
+   DIGITOU no portal — "UVV - VILA VELHA" —, que é apelido. Completar só o
+   CNPJ pelo cadastro deixaria o documento com o nome de um lugar e o CNPJ de
+   um registro: parecendo conferido, e não sendo.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("7. o par nome+CNPJ vem inteiro de uma fonte só");
+b.ok(htmlUvv.indexOf("Sociedade Educacao e Gestao de Excelencia I Vila Velha S.a - UVV") > -1,
+  "a razão social do cadastro é o que sai impresso",
+  (htmlUvv.match(/instituição[^.]*/) || ["(não achou)"])[0]);
+b.ok(htmlUvv.indexOf(">UVV - VILA VELHA<") === -1,
+  "e o apelido digitado no portal não aparece no documento");
+
+/* CONTRAPROVA: com CNPJ gravado, manda a solicitação — inteira. O
+   certificado de uma bolsa não muda porque editaram o cadastro depois. */
+const comCnpjProprio = g.gerarHtmlDocumentoVoucher_({
+  protocolo: "BOLSA-2026-000009", codigo: "VAL-3", percentual: 100,
+  dataEmissao: new Date(2026, 8, 23),
+  reg: {
+    NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO",
+    NOME_BENEFICIARIO: "BERNARDO SIMOURA CASTELO",
+    TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "11144477735",
+    ESCOLA_SELECIONADA: "UVV - VILA VELHA", CNPJ_ESCOLA: "11222333000181",
+    MODALIDADE: "ENSINO_FUNDAMENTAL", CURSO: "6 série",
+    PERIODO_REFERENCIA: "2027/1"
+  }
+});
+b.ok(comCnpjProprio.indexOf("11.222.333/0001-81") > -1,
+  "o CNPJ gravado continua valendo");
+b.ok(comCnpjProprio.indexOf("37.745.762/0001-27") === -1,
+  "e o do cadastro não entra por cima dele");
+b.ok(comCnpjProprio.indexOf("UVV - VILA VELHA") > -1,
+  "com o nome que veio junto dele — nome e CNPJ nunca de fontes diferentes");
+
 b.naoTestavel("quais abas existem na planilha de produção",
   "o conector do Drive não lê o conteúdo dessa planilha de forma confiável — " +
   "roteiro: abrir a SISGEP - ATIVA e conferir se há uma aba 'Escolas' além da 'Controle'");
