@@ -6103,7 +6103,7 @@ sugestões e nenhum nome.
 | | O que conferir | Onde |
 |---|---|---|
 | 111 | 🔴 digitar o nome da escola responde rápido, e a segunda busca em diante é imediata | nova solicitação manual de bolsa |
-| 112 | 🔴 o NOME da escola aparece na sugestão, legível, com o CNPJ pontuado ao lado, na mesma linha | nova solicitação manual de bolsa |
+| 112 | ✅ **conferido por você em 24/09/2026**, com print: nome legível à esquerda, CNPJ pontuado à direita | nova solicitação manual de bolsa |
 | 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar | nova solicitação manual de bolsa |
 | 114 | 🔴 clicar na sugestão continua preenchendo escola, CNPJ e cidade | nova solicitação manual de bolsa |
 | 115 | 🔴 **editar uma escola e procurá-la em seguida traz o dado NOVO** — o cache agora dura 6 horas | cadastro de Escolas → busca |
@@ -6125,3 +6125,28 @@ chama `listarEscolasCadastro_interno_` não é a bolsa, são esses três.
 **Não testado e fora do alcance do emulador:** a lentidão em si. O ganho foi
 medido em células lidas, que é o que custa no Apps Script — não em segundos
 no navegador do sindicato. Quem diz se melhorou é você, digitando.
+
+### O 112 conferido — e o que o print dele mostrou de quebra
+
+Sua busca por "UVV" trouxe, entre as três sugestões:
+
+```
+Ucl – Ensino Superior Unificado Centro Leste          02.598.162/0005-22
+Ucl – Ensino Superior Unificado Centro Leste LTDA     02.598.162/0001-07
+```
+
+Mesma escola, mesma raiz de CNPJ, **estabelecimentos diferentes** — `/0005` e
+`/0001`. Enquanto o CNPJ ficava na segunda linha e o nome estava invisível, as
+duas apareciam como linhas idênticas: quem atendesse escolheria a primeira, e
+o certificado sairia com o CNPJ do estabelecimento errado. Ninguém releria
+depois, porque o campo já estaria preenchido.
+
+Não é tarefa nem bug — é nota de operação: quando duas sugestões tiverem a
+mesma raiz de CNPJ, a matriz é a terminada em `/0001`.
+
+**Correcao de registro, 24/09/2026:** as publicações #172 (homologação) e #91
+(produção) que eu anunciei como feitas rodaram em modo `conferir`, que testa e
+faz backup mas **não escreve no Apps Script**. Os dois workflows começam nesse
+modo de propósito. As publicações de verdade são a **#173** e a **#92**, com
+`modo: publicar`. Disparo sem `modo` explicito não publica nada, por mais que
+o run termine em verde.
