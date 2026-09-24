@@ -610,6 +610,14 @@ function voucherBuscarEscola(termo, tokenSessao) {
           cnpj: String(e.cnpjLimpo || e.cnpj || e.CNPJ || "").replace(/\D/g, ""),
           cidade: String(e.cidade || e.municipio || e.Cidade || "").trim(),
           uf: String(e.uf || e.UF || "").trim(),
+          /* O E-MAIL VAI JUNTO, e não é para preencher a escola — ela nem tem
+           * campo de e-mail na tela. É para o botão "mesma da escola" da
+           * instituição de ensino ter o que copiar sem uma segunda ida ao
+           * servidor: a professora que dá aula na faculdade e estuda nessa
+           * mesma faculdade é caso comum, e hoje ela é digitada duas vezes.
+           * O cadastro de Escolas já tem esse e-mail; pedir de novo a quem
+           * atende é fazer a pessoa buscar o que o sistema sabe. */
+          email: String(e.email || e.Email || e["E-mail (principal)"] || "").trim(),
           escolaId: String(e.EscolaID || e.escolaId || (typeof ESC_COL_ID !== "undefined" ? e[ESC_COL_ID] : "") || "").trim()
         };
       })

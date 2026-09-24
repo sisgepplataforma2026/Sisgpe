@@ -4,7 +4,20 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 const TOKEN_FIN = b.logar(g, "rogerio");           // sem módulo Benefícios
-const dias = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+
+// Datas do formulário são datas civis (AAAA-MM-DD), não instantes UTC.
+// Usar toISOString() aqui fazia o teste mudar de dia conforme o fuso do runner.
+const dataCivil = d => {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+};
+const dias = n => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return dataCivil(d);
+};
 
 function criarReserva(cpf, pessoas, diasEntrada, diasSaida) {
   const r = g.solicitarReservaParqueChina({
@@ -39,7 +52,7 @@ b.ok(link.texto.indexOf("501") > 0 && link.texto.indexOf(ID) > 0, "a mensagem tr
 const T = link.url.split("&t=")[1];
 
 b.passo("3. A rota existe em Code.gs");
-const code = require("fs").readFileSync("/home/user/Sisgpe/Code.gs", "utf8");
+const code = require("fs").readFileSync(require("path").resolve(__dirname, "..", "..", "Code.gs"), "utf8");
 b.ok(code.indexOf('p.portal === "chinapark-hospedes"') > 0, "Code.gs atende a rota chinapark-hospedes");
 
 b.passo("4. O solicitante abre o link (sem login)");
@@ -125,4 +138,3 @@ b.ok(negado && negado.ok === false, "quem não tem o módulo Benefícios não ge
 b.naoTestavel("PDF do ofício de autorização com os nomes coletados", "depende de template do Google Docs");
 
 b.resumo();
-process.exit(0);

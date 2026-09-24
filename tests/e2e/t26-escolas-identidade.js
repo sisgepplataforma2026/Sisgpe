@@ -45,7 +45,7 @@ function zerarTudo() {
   const sh = ss.insertSheet("Escolas");
   sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]);
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   return sh;
 }
 function linhaCrua(nome, cnpj, extras) {
@@ -616,7 +616,7 @@ function montarBaseSuja() {
   sh = ss.insertSheet("Escolas");
   limparBackupsSan();
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   sh.getRange(1, 1, 1, CAB_S.length).setValues([CAB_S]);
   // A linha quebrada do padrão dominante da base real.
   sh.appendRow(["Escola Suja", "11.222.333/0001-81", "(27) 3333-1111", "",

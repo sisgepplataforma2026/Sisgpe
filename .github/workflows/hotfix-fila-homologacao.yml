@@ -1,0 +1,342 @@
+name: Hotfix seletivo Fila Oficios - HML
+
+on:
+  push:
+    branches:
+      - integracao/sisgep-homologacao
+    paths:
+      - scripts/hotfix-fila-envio-agora.js
+      - tests/e2e/t57-envio-fila-id-unico.js
+      - .github/workflows/hotfix-fila-homologacao.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hotfix-fila-hml
+  cancel-in-progress: false
+
+jobs:
+  hotfix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout da branch de homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: integracao/sisgep-homologacao
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Aplicar hotfix no backend e na tela
+        run: node scripts/hotfix-fila-envio-agora.js
+
+      - name: Validar alteracao esperada
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'function enviarOficioDaFilaAgora(numero, tokenSessao, filaId)' FilaOficios.gs
+          grep -q 'var filaIdBuscado = String(filaId || "").trim();' FilaOficios.gs
+          grep -q 'var colId.*headerMap\["ID"\]' FilaOficios.gs
+          grep -q 'lockEnvioAgora.tryLock(15000)' FilaOficios.gs
+          grep -q 'var filaId = dadosGerados.filaId || "";' OficiosScripts.html
+          grep -q 'function enviarEmailOficioAgora(numero, filaId)' OficiosScripts.html
+          grep -q 'enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "")' OficiosScripts.html
+          git --no-pager diff --check -- FilaOficios.gs OficiosScripts.html
+          git --no-pager diff -- FilaOficios.gs OficiosScripts.html
+
+      - name: Instalar dependencias de teste
+        run: npm ci || npm install
+
+      - name: Preparar caminho legado dos testes
+        shell: bash
+        run: |
+          sudo mkdir -p /home/user
+          sudo rm -rf /home/user/Sisgpe
+          sudo ln -s "$GITHUB_WORKSPACE" /home/user/Sisgpe
+
+      - name: Testar anexos e envio existente
+        run: node tests/e2e/t56-envio-anexa-ficha.js
+
+      - name: Testar numero duplicado com filaId
+        run: node tests/e2e/t57-envio-fila-id-unico.js
+
+      - name: Registrar hotfix na branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- FilaOficios.gs OficiosScripts.html; then
+            echo 'Arquivos ja estavam ajustados.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add FilaOficios.gs OficiosScripts.html
+          git commit -m 'fix: enviar oficio pelo id unico da fila'
+          git push origin HEAD:integracao/sisgep-homologacao
+
+      # VERSAO FIXA DO CLASP — NAO TROCAR PARA "latest" SEM MEDIR.
+      #
+      # `npm install -g @google/clasp` traz a mais nova, que hoje e a 3.3.0.
+      # Este workflow foi escrito quando a corrente era 2.x, e o clasp 3
+      # mudou o esquema de configuracao. Sintoma medido em 20/08/2026, no
+      # passo `clasp pull` do run 32374268020:
+      #
+      #     Request contains an invalid argument.
+      #
+      # Nao e credencial invalida: a autenticacao FUNCIONOU e quem recusou
+      # foi a API do Google, por receber um pedido montado com o esquema
+      # errado. Um pipeline que instala "a mais nova" quebra sozinho num
+      # dia em que ninguem mexeu em nada — foi o que aconteceu aqui.
+      #
+      # A versao precisa combinar com a que gerou o ~/.clasprc.json guardado
+      # no segredo: o formato do arquivo de credencial mudou entre a 2 e a 3.
+      # Para conferir na maquina de quem fez o login:  clasp -v
+      - name: Instalar clasp
+        run: |
+          npm install -g @google/clasp@3.3.0
+          echo "clasp instalado: $(clasp --version 2>&1 | head -1)"
+
+      - name: Validar credenciais e alvo de homologacao
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          CLASP_JSON_HOMOLOG: ${{ secrets.CLASP_JSON_HOMOLOG }}
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+        run: |
+          set -euo pipefail
+          test -n "$CLASPRC_JSON"
+          test -n "$CLASP_JSON_HOMOLOG"
+          test -n "$DEPLOY_ID"
+          mkdir -p "$HOME"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+          # A CREDENCIAL PRECISA SER JSON, E NAO SO "NAO-VAZIA".
+          #
+          # Em 20/08/2026 o segredo CLASPRC_JSON guardava o COMANDO do
+          # PowerShell em vez da saida dele — comecava com "Get-Content".
+          # O `test -n` acima passou (texto nao-vazio e nao-vazio), e o erro
+          # so apareceu tres passos adiante, dentro do clasp pull:
+          #
+          #     Unexpected token 'G', "Get-Conten"... is not valid JSON
+          #
+          # Quem le isso nao pensa em segredo mal colado. Resultado: o
+          # pipeline reprovou varias vezes seguidas sem que a causa
+          # aparecesse. A checagem abaixo nomeia o problema no passo certo.
+          #
+          # Nada do conteudo e impresso — so o diagnostico. Credencial em
+          # log de CI e credencial vazada.
+          node -e 'JSON.parse(require("fs").readFileSync(process.env.HOME + "/.clasprc.json", "utf8"))' 2>/dev/null || {
+            echo '::error::CLASPRC_JSON existe mas NAO e JSON valido.' >&2
+            echo '::error::Sintoma tipico: foi colado o COMANDO (ex.: Get-Content ...) em vez do CONTEUDO do arquivo.' >&2
+            echo '::error::Corrija em Settings > Secrets and variables > Actions > CLASPRC_JSON.' >&2
+            echo '::error::No Windows: Get-Content "$HOME\.clasprc.json" -Raw | Set-Clipboard  e cole. O valor certo comeca com {' >&2
+            exit 1
+          }
+          mkdir -p /tmp/sisgep-hml
+          printf '%s' "$CLASP_JSON_HOMOLOG" > /tmp/sisgep-hml/.clasp.json
+
+          # O CLASP 3 SALVA COMO .js; ESTE PROJETO USA .gs.
+          #
+          # Medido em 20/08/2026: o pull trouxe 206 arquivos, todos com
+          # extensao .js (VoucherSolicitacao.js, VoucherValidacao.js...), e o
+          # passo seguinte quebrou em `cp: cannot stat 'FilaOficios.gs'`.
+          # A v2 gravava .gs. E mudanca de comportamento entre as versoes.
+          #
+          # `fileExtension` no .clasp.json e a forma documentada de pedir a
+          # extensao. Fica AQUI, e nao dentro do segredo, para o segredo
+          # continuar sendo so a identidade do projeto — quem mexe nele e o
+          # usuario, e nao se pede a ele que carregue detalhe de ferramenta.
+          node -e 'const fs=require("fs");const p="/tmp/sisgep-hml/.clasp.json";const j=JSON.parse(fs.readFileSync(p,"utf8"));j.fileExtension="gs";fs.writeFileSync(p,JSON.stringify(j));console.log("fileExtension=gs adicionado ao .clasp.json");' 
+          node -e 'const fs=require("fs"); const j=JSON.parse(fs.readFileSync("/tmp/sisgep-hml/.clasp.json","utf8")); if(j.scriptId!=="1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR") { console.error("Alvo bloqueado: Script ID nao e o da Homologacao."); process.exit(1); }'
+          if [ "$DEPLOY_ID" != 'AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA' ]; then
+            echo 'Alvo bloqueado: Deployment ID nao e o da Homologacao.' >&2
+            exit 1
+          fi
+
+      - name: Puxar estado atual da Homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+
+          # DIAGNOSTICO ANTES DA FALHA, NAO DEPOIS.
+          #
+          # Este passo ja derrubou o pipeline quatro vezes com tres erros
+          # DIFERENTES, e a cada vez foi preciso um run inteiro so para
+          # descobrir o proximo. As linhas abaixo imprimem o que se precisa
+          # saber ANTES do comando falhar. Nenhum valor sensivel sai daqui:
+          # so nomes de chave e tamanhos.
+          echo "--- clasp: $(clasp --version 2>&1 | head -1)"
+          echo "--- chaves do .clasp.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(".clasp.json","utf8"))).join(", "))')"
+          echo "--- chaves do ~/.clasprc.json: $(node -e 'console.log(Object.keys(JSON.parse(require("fs").readFileSync(process.env.HOME+"/.clasprc.json","utf8"))).join(", "))')"
+
+          # RENOVAR O TOKEN NOS MESMOS, PORQUE O CLASP 3.3.0 NAO RENOVA.
+          #
+          # MEDIDO em 20/08/2026, e nao suposto:
+          #
+          #   expiry_date do segredo ... 19/08 20:13  (vencido)
+          #   chamada direta a API ..... HTTP 401 UNAUTHENTICATED
+          #   renovacao no endpoint .... HTTP 200, token novo, 3599s
+          #
+          # Ou seja: a credencial do segredo esta PERFEITA. O refresh_token
+          # funciona. Quem falha e o clasp 3.3.0, que sai com o access_token
+          # vencido em vez de renova-lo.
+          #
+          # Como a renovacao comprovadamente funciona, este passo a faz e
+          # reescreve o ~/.clasprc.json com um token fresco ANTES de chamar
+          # o clasp. O clasp entao nao precisa renovar nada.
+          #
+          # EFEITO COLATERAL BOM: o segredo deixa de ter validade pratica.
+          # Antes, o access_token guardado nele vencia em uma hora; agora so
+          # o refresh_token importa, e esse dura ate ser revogado.
+          #
+          # Nenhum token e impresso. So o codigo HTTP e, em caso de erro, os
+          # campos `error` e `error_description`.
+          echo "--- renovando o token antes de chamar o clasp:"
+          node > /tmp/body 2>/dev/null <<'JS'
+          const fs = require("fs");
+          const rc = JSON.parse(fs.readFileSync(process.env.HOME + "/.clasprc.json", "utf8"));
+          const chave = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = chave ? rc.tokens[chave] : (rc.token || {});
+          process.stdout.write(
+            "client_id=" + encodeURIComponent(t.client_id || "") +
+            "&client_secret=" + encodeURIComponent(t.client_secret || "") +
+            "&refresh_token=" + encodeURIComponent(t.refresh_token || "") +
+            "&grant_type=refresh_token");
+          JS
+          curl -s -o /tmp/novo.json -w "HTTP %{http_code}\n" \
+            -X POST -d @/tmp/body https://oauth2.googleapis.com/token
+
+          node <<'JS'
+          const fs = require("fs");
+          const r = JSON.parse(fs.readFileSync("/tmp/novo.json", "utf8"));
+          if (r.error) {
+            console.error("::error::Falha ao renovar o token: " + r.error +
+              " — " + (r.error_description || "sem descricao"));
+            console.error("::error::Se for invalid_grant, o refresh_token foi revogado:" +
+              " rode `clasp login` de novo e atualize o segredo CLASPRC_JSON.");
+            process.exit(1);
+          }
+          const caminho = process.env.HOME + "/.clasprc.json";
+          const rc = JSON.parse(fs.readFileSync(caminho, "utf8"));
+          const chave = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const alvo = chave ? rc.tokens[chave] : rc.token;
+          alvo.access_token = r.access_token;
+          alvo.expiry_date = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+          if (r.id_token) alvo.id_token = r.id_token;
+          fs.writeFileSync(caminho, JSON.stringify(rc));
+          console.log("token renovado; validade ate " + new Date(alvo.expiry_date).toISOString());
+          JS
+          rm -f /tmp/body /tmp/novo.json
+
+          # A MEDICAO QUE SEPARA "CLASP" DE "PROJETO".
+          #
+          # A chamada direta rodava ANTES da renovacao, com o token vencido,
+          # e so conseguia devolver 401 — informacao inutil. Agora ela roda
+          # DEPOIS, com token fresco, contra o mesmo scriptId que o clasp
+          # usa. O resultado decide tudo:
+          #
+          #   HTTP 200 -> credencial, permissao e scriptId estao corretos.
+          #               O defeito e do clasp 3.3.0 montando o pedido, e a
+          #               saida e trocar o clasp por chamada direta.
+          #   HTTP 400 -> o problema e o projeto ou o acesso a ele, e nenhum
+          #               ajuste de cliente resolve.
+          #
+          # Nenhum token e impresso; do corpo saem so `status` e `message`.
+          echo "--- chamada direta COM O TOKEN NOVO:"
+          node -e 'const fs=require("fs");const rc=JSON.parse(fs.readFileSync(process.env.HOME+"/.clasprc.json","utf8"));const k=rc.tokens?(rc.tokens.default?"default":Object.keys(rc.tokens)[0]):null;const t=k?rc.tokens[k]:(rc.token||{});fs.writeFileSync("/tmp/tk",t.access_token||"");fs.writeFileSync("/tmp/sid",JSON.parse(fs.readFileSync(".clasp.json","utf8")).scriptId||"");'
+          curl -s -o /tmp/resp.json -w "HTTP %{http_code}\n" \
+            -H "Authorization: Bearer $(cat /tmp/tk)" \
+            "https://script.googleapis.com/v1/projects/$(cat /tmp/sid)/content" || true
+          node -e 'try{const j=JSON.parse(require("fs").readFileSync("/tmp/resp.json","utf8"));if(j.error){console.log("status:",j.error.status);console.log("message:",j.error.message);}else{console.log("FUNCIONOU — o projeto respondeu com",(j.files||[]).length,"arquivos");console.log("VEREDITO: credencial e scriptId corretos; o defeito e do clasp.");}}catch(x){console.log("resposta nao-JSON");}' || true
+          rm -f /tmp/tk /tmp/sid /tmp/resp.json
+
+          clasp pull
+
+          # REDE DE SEGURANCA. Se o `fileExtension` acima nao surtir efeito
+          # numa versao futura do clasp, os arquivos ainda chegam como .js e
+          # tudo daqui para baixo quebra por nome. Renomear e deterministico
+          # e nao custa nada: no Apps Script, .gs e .js sao o mesmo arquivo
+          # de servidor, e este repositorio usa .gs.
+          # `ls *.js` SAI COM ERRO QUANDO NAO ACHA NADA — e nao achar nada e
+          # justamente o caso BOM. Com `set -euo pipefail`, esse "nao achei"
+          # derruba o passo inteiro: foi o que aconteceu no run 32376950132,
+          # que morreu com exit code 2 logo depois de baixar os 206 arquivos
+          # corretamente. Rede de seguranca que derruba o que deveria
+          # proteger e pior que rede nenhuma.
+          #
+          # `find` devolve lista vazia e status 0. Sem armadilha.
+          n=$(find . -maxdepth 1 -name '*.js' | wc -l)
+          if [ "$n" -gt 0 ]; then
+            echo "clasp trouxe $n arquivo(s) .js — renomeando para .gs"
+            for f in *.js; do mv -- "$f" "${f%.js}.gs"; done
+          else
+            echo "arquivos ja vieram como .gs"
+          fi
+          echo "conferindo o alvo do hotfix:"
+          ls -1 FilaOficios.gs OficiosScripts.html
+
+          cp FilaOficios.gs FilaOficios.gs.antes-hotfix
+          cp OficiosScripts.html OficiosScripts.html.antes-hotfix
+
+      - name: Substituir somente os dois arquivos do hotfix
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$GITHUB_WORKSPACE/FilaOficios.gs" /tmp/sisgep-hml/FilaOficios.gs
+          cp "$GITHUB_WORKSPACE/OficiosScripts.html" /tmp/sisgep-hml/OficiosScripts.html
+          grep -q 'function enviarOficioDaFilaAgora(numero, tokenSessao, filaId)' /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'var filaIdBuscado = String(filaId || "").trim();' /tmp/sisgep-hml/FilaOficios.gs
+          grep -q 'function enviarEmailOficioAgora(numero, filaId)' /tmp/sisgep-hml/OficiosScripts.html
+          grep -q 'enviarOficioDaFilaAgora(numero, SISGEP_TOKEN_SESSAO, filaId || "")' /tmp/sisgep-hml/OficiosScripts.html
+          echo '--- diff FilaOficios.gs ---'
+          diff -u /tmp/sisgep-hml/FilaOficios.gs.antes-hotfix /tmp/sisgep-hml/FilaOficios.gs || true
+          echo '--- diff OficiosScripts.html ---'
+          diff -u /tmp/sisgep-hml/OficiosScripts.html.antes-hotfix /tmp/sisgep-hml/OficiosScripts.html || true
+          rm /tmp/sisgep-hml/*.antes-hotfix
+
+      - name: Enviar estado preservado para Apps Script - HML
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+          clasp push --force
+
+      - name: Criar versao e publicar Web App de HML
+        id: versao
+        shell: bash
+        env:
+          DEPLOY_ID: ${{ secrets.CLASP_DEPLOYMENT_ID_HOMOLOG }}
+        run: |
+          set -euo pipefail
+          cd /tmp/sisgep-hml
+          clasp version "hml-fila-id-${GITHUB_SHA::7}" | tee /tmp/saida-versao.txt
+          NUM=$(grep -oE '[0-9]+' /tmp/saida-versao.txt | tail -1)
+          test -n "$NUM"
+          clasp deploy --deploymentId "$DEPLOY_ID" --versionNumber "$NUM" --description "hml-fila-id-${GITHUB_SHA::7}"
+          clasp deployments | tee /tmp/deployments.txt
+          grep -q "$DEPLOY_ID" /tmp/deployments.txt
+          echo "numero=$NUM" >> "$GITHUB_OUTPUT"
+          echo "Homologacao publicada na versao $NUM."
+
+      - name: Registrar comprovante de publicacao
+        shell: bash
+        env:
+          VERSAO: ${{ steps.versao.outputs.numero }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin integracao/sisgep-homologacao
+          mkdir -p .github
+          printf '{\n  "status": "ok",\n  "ambiente": "homologacao",\n  "versao": "%s",\n  "scriptId": "1S_LckCVMJy0dza6tlw5w9Vq7ZqJ9RzxsrYoPMR1zI65rKXC-JgvDUSVR",\n  "deploymentId": "AKfycbzOfoQ4y2yc7oM9hiz2ATvB6YztGEMDjgO1FiezQ0schgqcOJnJgROzCC3sEeV6h4n0ZA",\n  "publicadoEmUtc": "%s"\n}\n' "$VERSAO" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/hml-hotfix-fila-status.json
+          git add .github/hml-hotfix-fila-status.json
+          git commit -m "ci: registrar deploy HML fila v${VERSAO}" || true
+          git push origin HEAD:integracao/sisgep-homologacao

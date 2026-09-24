@@ -7,19 +7,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
+    /* PALETA DO SISGEP — 16/09/2026.
+
+       "O link público está fora do padrão do SISGEP" e "não pode cada módulo
+       ter um padrão diferente" — o usuário.
+
+       Este portal usava família própria: azul-céu, violeta e rosa, num tema
+       escuro. O Design System do projeto é navy/azul/dourado, e o formulário
+       público da Festa (CompassoInscricaoPublica.html) já o segue à risca —
+       é o modelo que o usuário mandou copiar.
+
+       OS TOKENS FORAM TROCADOS, NÃO A ESTRUTURA. O arquivo já centralizava
+       tudo em variáveis, então repaginar é mudar valor — não reescrever 67 KB
+       de formulário que funciona e recebe solicitação real. "Não posso
+       estragar o que funciona."
+
+       O ALTERNADOR DE TEMA CONTINUA, e o escuro também foi alinhado: quem já
+       escolheu escuro guarda a preferência e não é jogado no claro sem
+       pedir. O que muda é o PADRÃO de quem chega pela primeira vez. */
     :root {
-      --navy:     #08101f;
-      --blue-deep:#0b1220;
-      --blue-mid: #0f1b30;
-      --blue-act: #2563eb;
-      --cyan:     #0ea5e9;
-      --accent:   #8b5cf6;
-      --accent-lt:#ec4899;
-      --white:    #f8fafc;
-      --muted:    #94a3b8;
-      --border:   rgba(148,163,184,.13);
-      --surface:  rgba(255,255,255,.04);
-      --surface-h:rgba(255,255,255,.07);
+      --navy:     #f4f7fb;   /* fundo da página, como na Festa */
+      --blue-deep:#ffffff;   /* superfície dos cards */
+      --blue-mid: #e8eef7;
+      --blue-act: #1565C0;   /* interativo do Design System */
+      --cyan:     #002f6c;   /* navy2 — era azul-céu */
+      --accent:   #001f4d;   /* navy — era violeta */
+      --accent-lt:#C9A84C;   /* dourado institucional — era rosa */
+      --white:    #111827;   /* texto sobre fundo claro */
+      --muted:    #6b7385;
+      --border:   #d8e0ea;
+      --surface:  rgba(0,31,77,.03);
+      --surface-h:rgba(0,31,77,.06);
       --err-bg:   #fff0f0;
       --err-bdr:  #fca5a5;
       --err-txt:  #991b1b;
@@ -31,19 +49,39 @@
       --warn-txt: #92400e;
     }
 
+    /* O claro agora É o :root. Este bloco fica porque o alternador grava
+       data-theme="light" no localStorage, e quem já escolheu claro continua
+       com ele — sem isto, o atributo salvo apontaria para regra inexistente. */
     [data-theme="light"] {
-      --navy:     #f8fafc;
+      --navy:     #f4f7fb;
       --blue-deep:#ffffff;
-      --blue-mid: #e2e8f0;
-      --blue-act: #2563eb;
-      --cyan:     #0ea5e9;
-      --accent:   #8b5cf6;
-      --accent-lt:#ec4899;
-      --white:    #1e293b;
-      --muted:    #64748b;
-      --border:   rgba(0,0,0,.1);
-      --surface:  rgba(0,0,0,.02);
-      --surface-h:rgba(0,0,0,.05);
+      --blue-mid: #e8eef7;
+      --blue-act: #1565C0;
+      --cyan:     #002f6c;
+      --accent:   #001f4d;
+      --accent-lt:#C9A84C;
+      --white:    #111827;
+      --muted:    #6b7385;
+      --border:   #d8e0ea;
+      --surface:  rgba(0,31,77,.03);
+      --surface-h:rgba(0,31,77,.06);
+    }
+
+    /* ESCURO ALINHADO À MESMA FAMÍLIA: navy profundo em vez do quase-preto,
+       e os acentos saindo de azul-céu/violeta/rosa para azul e dourado. */
+    [data-theme="dark"] {
+      --navy:     #001228;
+      --blue-deep:#001f4d;
+      --blue-mid: #002f6c;
+      --blue-act: #4f93e0;
+      --cyan:     #7db4ea;
+      --accent:   #C9A84C;
+      --accent-lt:#f0c843;
+      --white:    #f4f7fb;
+      --muted:    #a8b4c6;
+      --border:   rgba(201,168,76,.22);
+      --surface:  rgba(255,255,255,.05);
+      --surface-h:rgba(255,255,255,.09);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -99,12 +137,34 @@
 
     .wrap { position:relative; z-index:1; max-width:880px; margin:0 auto; animation:fadeUp .6s ease both; }
 
-    .portal-header { text-align:center; margin-bottom:36px; margin-top:40px; }
-    .portal-eyebrow { display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--cyan); margin-bottom:14px; }
-    .portal-eyebrow::before, .portal-eyebrow::after { content:''; width:28px; height:1px; background:rgba(14,165,233,.4); }
-    .portal-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(28px,5vw,42px); font-weight:700; line-height:1.1; margin-bottom:10px; }
-    .gold-bar { width:42px; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent-lt),transparent); border-radius:2px; margin:0 auto 14px; }
-    .portal-sub { font-size:14px; font-weight:300; color:var(--muted); line-height:1.7; }
+    /* CABEÇALHO NO PADRÃO DO SISGEP — 16/09/2026.
+
+       "Esse layout não é padrão SISGEP" — o usuário, depois da troca de
+       paleta. Ele estava certo, e a paleta era só metade: o portal usava um
+       título centralizado solto sobre o fundo, enquanto TODO documento e toda
+       tela do sistema abrem com o bloco NAVY — o formulário da Festa
+       (`.topo`), o cabeçalho de módulo (`.of-modulo-header`), o e-mail do
+       ofício, o PDF do certificado. Trocar as cores sem trocar a forma deixa
+       a página parecida, não igual.
+
+       Agora é o mesmo bloco: gradiente navy→navy2, texto branco, filete
+       dourado, cantos de 16px. É o que a pessoa já viu no e-mail que a
+       trouxe até aqui. */
+    .portal-header { background:linear-gradient(135deg,var(--accent),var(--cyan)); color:#fff; border-radius:16px; padding:26px 24px; margin:28px 0 20px; }
+    /* O LOGO FICA ACIMA DA TARJA, centralizado com ela. Altura fixa e largura
+       automática: a arte pode vir em qualquer proporção, e travar a largura
+       espremeria o brasão. */
+    .portal-logo { display:none; height:54px; width:auto; margin:0 auto 14px; }
+    .portal-logo.visivel { display:block; }
+    .portal-eyebrow { display:inline-block; background:rgba(255,255,255,.16); border-radius:999px; padding:5px 14px; font-size:11.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#fff; margin-bottom:12px; }
+    .portal-eyebrow::before, .portal-eyebrow::after { content:none; }
+    .portal-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(24px,4.4vw,32px); font-weight:800; line-height:1.15; margin-bottom:10px; color:#fff; letter-spacing:-.01em; }
+    .gold-bar { width:56px; height:3px; background:linear-gradient(90deg,var(--accent-lt),#f0c843,var(--accent-lt)); border-radius:2px; margin:0 0 12px; }
+    .portal-sub { font-size:14.5px; font-weight:500; color:rgba(255,255,255,.88); line-height:1.6; }
+
+    /* O bloco navy já é escuro nos dois temas — no escuro ele ficaria igual
+       ao fundo, então ganha borda dourada para não sumir. */
+    [data-theme="dark"] .portal-header { border:1px solid rgba(201,168,76,.3); }
 
     .msg-box { border-radius:14px; font-size:14px; font-weight:500; line-height:1.6; margin-bottom:24px; overflow:hidden; }
     .msg-box:empty { display:none; }
@@ -113,7 +173,12 @@
     .msg-box.warn { background:var(--warn-bg); border:1px solid var(--warn-bdr); color:var(--warn-txt); padding:14px 18px; animation:slideDown .25s ease both; }
     .msg-box.info { background:rgba(14,165,233,.08); border:1px solid rgba(14,165,233,.22); color:#7dd3fc; padding:14px 18px; animation:slideDown .25s ease both; }
 
-    .secao { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px 30px; margin-bottom:20px; backdrop-filter:blur(12px); box-shadow:0 8px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06); transition:background .3s,border-color .3s; }
+    /* CARD BRANCO SOBRE FUNDO CLARO, como o da Festa. Com `var(--surface)`
+       (3% de navy) o card ficava quase invisível contra o fundo #f4f7fb — a
+       superfície translúcida fazia sentido no tema escuro anterior. A sombra
+       também baixou: 18% de preto é peso de tema escuro. */
+    .secao { background:var(--blue-deep); border:1.5px solid var(--border); border-radius:16px; padding:28px 30px; margin-bottom:20px; box-shadow:0 2px 10px rgba(16,24,40,.06); transition:background .3s,border-color .3s; }
+    [data-theme="dark"] .secao { box-shadow:0 8px 32px rgba(0,0,0,.28); }
     .secao-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
     .secao-num { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--blue-act),var(--cyan)); font-size:12px; font-weight:700; flex-shrink:0; box-shadow:0 4px 12px rgba(14,165,233,.25); }
     .secao-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:20px; font-weight:700; color:var(--white); }
@@ -126,7 +191,7 @@
     .field.required label::after { content:' *'; color:#f87171; font-weight:700; margin-left:2px; }
 
     .field input, .field select {
-      height:48px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+      height:48px; background:var(--blue-deep); border:1.5px solid var(--border);
       border-radius:11px; padding:0 14px; font-family:'Plus Jakarta Sans',sans-serif; font-size:14px;
       color:var(--white); outline:none; transition:background .2s,border-color .2s,box-shadow .2s; appearance:none;
     }
@@ -135,17 +200,17 @@
     .field select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238fa3bc' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; cursor:pointer; }
     .field select option { background:#0b1220; color:var(--white); }
     [data-theme="light"] .field select option { background:#ffffff; color:#1e293b; }
-    .field input::placeholder { color:rgba(255,255,255,.22); }
+    .field input::placeholder { color:var(--muted); opacity:.7; }
     [data-theme="light"] .field input::placeholder { color:rgba(0,0,0,.3); }
-    .field input:focus, .field select:focus { background:rgba(255,255,255,.09); border-color:rgba(14,165,233,.55); box-shadow:0 0 0 4px rgba(14,165,233,.1); }
+    .field input:focus, .field select:focus { background:var(--blue-deep); border-color:var(--blue-act); box-shadow:0 0 0 4px rgba(21,101,192,.14); }
     [data-theme="light"] .field input:focus, [data-theme="light"] .field select:focus { background:rgba(0,0,0,.05); }
 
     /* ── Upload ── */
     .upload-area {
-      border: 1.5px dashed rgba(255,255,255,.18);
+      border: 1.5px dashed var(--border);
       border-radius: 11px;
       padding: 16px 14px;
-      background: rgba(255,255,255,.03);
+      background: var(--surface);
       cursor: pointer;
       transition: border-color .2s, background .2s;
       text-align: center;
@@ -175,14 +240,28 @@
     .btn-primary { background:linear-gradient(135deg,var(--blue-act),var(--cyan)); color:var(--white); box-shadow:0 10px 28px rgba(14,165,233,.22); }
     .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 16px 36px rgba(14,165,233,.3); }
     .btn-secondary { background:var(--surface-h); border:1px solid var(--border); color:var(--muted); }
-    .btn-secondary:hover:not(:disabled) { background:rgba(255,255,255,.1); color:var(--white); }
+    .btn-secondary:hover:not(:disabled) { background:var(--surface-h); color:var(--white); }
 
-    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:var(--white); border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
+    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.45); border-top-color:var(--white); border-radius:50%; animation:spin .7s linear infinite; display:none; flex-shrink:0; }
 
-    .protocolo-box { display:none; background:rgba(52,211,153,.08); border:1px solid rgba(52,211,153,.25); border-radius:16px; padding:22px 24px; margin-top:20px; animation:slideDown .3s ease both; }
+    /* A CAIXA DEIXA DE GRITAR O PROTOCOLO — 16/09/2026.
+
+       O usuário tomou essa decisão na Festa em 09/09: "não é protocolo e sim
+       uma mensagem simples de inscrição realizada". O motivo está no
+       cabeçalho do EventosInscricaoPublica.gs — o formulário é usado por
+       gente com pouca prática, e um código em destaque faz a pessoa achar que
+       precisa fazer alguma coisa com ele. E ela não precisa: o protocolo já
+       chega por e-mail, e continua gravado para a equipe.
+
+       COM UMA EXCEÇÃO QUE A REGRA DA FESTA NÃO PREVIA. Para quem NÃO é
+       associado o atendimento é presencial, e a própria mensagem manda
+       guardar o protocolo e levá-lo à sede. Aí ele é acionável, e some seria
+       tirar da pessoa o que ela precisa. O número aparece só nesse caso —
+       ver `protNum.style.display` no envio. */
+    .protocolo-box { display:none; background:#e9f7f1; border:1.5px solid #86efac; border-left:4px solid #0f8a5f; border-radius:14px; padding:20px 22px; margin-top:20px; animation:slideDown .3s ease both; }
     .protocolo-box.visible { display:block; }
-    .protocolo-num { font-family:'Plus Jakarta Sans',sans-serif; font-size:28px; font-weight:700; color:#34d399; letter-spacing:.04em; margin-bottom:6px; }
-    .protocolo-sub { font-size:13px; color:rgba(255,255,255,.55); line-height:1.6; margin-bottom:12px; }
+    .protocolo-num { font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:800; color:#065f46; letter-spacing:.04em; margin-bottom:6px; }
+    .protocolo-sub { font-size:13.5px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
     .protocolo-acoes { display:flex; gap:10px; margin-top:12px; }
     .protocolo-acoes .btn { flex:1; height:42px; font-size:13px; }
     .protocolo-countdown { font-size:12px; font-weight:600; color:#fbbf24; text-align:center; margin-top:12px; padding:8px; background:rgba(251,191,36,.1); border-radius:8px; }
@@ -203,8 +282,8 @@
 
     /* ── Dependentes ── */
     .dep-card {
-      background: rgba(255,255,255,.03);
-      border: 1px solid rgba(255,255,255,.12);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
       border-radius: 14px;
       padding: 18px;
       margin-bottom: 14px;
@@ -234,16 +313,43 @@
       transition: background .15s;
     }
     .btn-remove-dep:hover { background: rgba(239,68,68,.28); }
+    /* O NÚMERO DO DEPENDENTE, como o do trabalhador no ofício: quem preenche
+       três cartões precisa saber em qual está sem contar de cima. */
+    .dep-num {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:24px; height:24px; border-radius:50%;
+      background:var(--accent); color:#fff;
+      font-size:12px; font-weight:800; margin-right:9px;
+    }
+    /* O aviso de idade mora DENTRO do cartão, colado no campo que o causou —
+       um aviso no topo da página não diria de qual dependente se trata. */
+    .dep-aviso {
+      display:none; margin-top:10px; padding:10px 13px; border-radius:9px;
+      background:var(--warn-bg); border:1px solid var(--warn-bdr);
+      color:#92400e; font-size:12.5px; line-height:1.55;
+    }
+    .dep-aviso.visivel { display:block; }
+    .dep-doc {
+      margin-top:14px; padding:13px 15px; border-radius:10px;
+      background:var(--surface); border:1px dashed var(--border);
+    }
+    .dep-doc label {
+      font-size:11px; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px;
+    }
+    .dep-doc-nome { font-size:12px; color:var(--ok-txt); font-weight:700; margin-top:7px; }
     .btn-add-dep {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       height: 44px;
       padding: 0 20px;
-      border: 1.5px dashed rgba(14,165,233,.4);
+      /* Estes rgba(14,165,233) eram o azul-céu da paleta antiga, cravados
+         fora dos tokens — por isso escaparam da repaginação de 16/09. */
+      border: 1.5px dashed rgba(21,101,192,.45);
       border-radius: 11px;
-      background: rgba(14,165,233,.05);
-      color: var(--cyan);
+      background: rgba(21,101,192,.05);
+      color: var(--blue-act);
       font-family: 'Plus Jakarta Sans', sans-serif;
       font-size: 13px;
       font-weight: 600;
@@ -253,8 +359,21 @@
       justify-content: center;
       margin-top: 4px;
     }
-    .btn-add-dep:hover { background: rgba(14,165,233,.12); border-color: rgba(14,165,233,.7); }
+    .btn-add-dep:hover { background: rgba(21,101,192,.12); border-color: rgba(21,101,192,.7); }
     .btn-add-dep:disabled { opacity: .4; cursor: not-allowed; }
+    /* OS DOIS BOTÕES DE ESCOLHA. Botão e não select: são duas opções, e uma
+       lista de dois itens esconde metade da pergunta atrás de um clique. */
+    .btn-escolha {
+      flex:1; min-width:180px; height:46px; padding:0 18px;
+      border:1.5px solid var(--border); border-radius:11px;
+      background:var(--blue-deep); color:var(--white);
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:13.5px; font-weight:700;
+      cursor:pointer; transition:all .18s;
+    }
+    .btn-escolha:hover { border-color:var(--blue-act); }
+    .btn-escolha.ativo {
+      background:var(--accent); border-color:var(--accent); color:#fff;
+    }
   </style>
 </head>
 <body>
@@ -280,8 +399,9 @@
   <div class="wrap">
     <a href="#" onclick="history.back();return false;" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--cyan);text-decoration:none;margin-bottom:18px;">‹ Voltar</a>
     <div class="portal-header">
-      <div class="portal-eyebrow">SindEducação-ES · SISGEP</div>
-      <h1 class="portal-title">Portal de Solicitação<br>de Voucher</h1>
+      <img id="portalLogo" class="portal-logo" alt="SindEducação-ES">
+      <div class="portal-eyebrow">SindEducação-ES</div>
+      <h1 class="portal-title">Portal de Solicitação de Voucher</h1>
       <div class="gold-bar"></div>
       <p class="portal-sub">Cadastro, atualização e solicitação de voucher de bolsa</p>
     </div>
@@ -297,11 +417,11 @@
       <div class="grid2">
         <div class="field required">
           <label for="cpf">CPF</label>
-          <input type="text" id="cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
+          <input type="text" id="cpf" autocomplete="off" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
         </div>
         <div class="field required">
           <label for="dataNascimento">Data de nascimento</label>
-          <input type="date" id="dataNascimento">
+          <input type="date" id="dataNascimento" autocomplete="off">
         </div>
       </div>
       <div class="acoes" style="margin-top:20px;">
@@ -312,6 +432,27 @@
       </div>
     </div>
 
+    <!-- POR QUE TODO CAMPO PESSOAL DESTA PÁGINA TEM autocomplete="off"
+         — 16/09/2026, achado pelo usuário.
+
+         O print mostrava o campo CPF abrindo uma lista com QUATRO CPFs de
+         outras pessoas. Não era vazamento do sistema: é o histórico de
+         formulário do navegador, que guarda o que foi digitado naquele campo
+         e oferece para quem digitar depois.
+
+         No computador dele não é problema — é o dele. Mas ESTE ENDEREÇO É
+         PÚBLICO e vai para o associado. Num computador compartilhado (a
+         secretaria de uma escola, o da recepção, um emprestado), o próximo
+         associado veria CPF, nome, telefone, e-mail e endereço de quem
+         preencheu antes. Dado pessoal de terceiro na tela de quem não tem
+         nada a ver com ele.
+
+         `autocomplete="off"` desliga o histórico de formulário. NÃO é trava
+         absoluta: um gerenciador de senhas instalado pelo usuário pode
+         ignorar, e nada aqui apaga o que o navegador JÁ guardou antes desta
+         correção — isso só sai limpando os dados de navegação. Vale para o
+         que for digitado daqui em diante. -->
+
     <!-- SEÇÃO 2 — Cadastro / Atualização -->
     <div class="secao">
       <div class="secao-header">
@@ -321,45 +462,63 @@
       <div class="grid2">
         <div class="field required">
           <label for="nome">Nome completo</label>
-          <input type="text" id="nome" placeholder="Nome completo">
+          <input type="text" id="nome" autocomplete="off" placeholder="Nome completo">
         </div>
         <div class="field">
           <label for="telefone">Telefone</label>
-          <input type="text" id="telefone" placeholder="(27) 99999-9999" maxlength="15" inputmode="numeric">
+          <input type="text" id="telefone" autocomplete="off" placeholder="(27) 99999-9999" maxlength="15" inputmode="numeric">
         </div>
         <div class="field">
           <label for="email">E-mail</label>
-          <input type="email" id="email" placeholder="seu@email.com">
+          <input type="email" id="email" autocomplete="off" placeholder="seu@email.com">
         </div>
         <div class="field">
           <label for="cep">CEP</label>
-          <input type="text" id="cep" placeholder="00000-000" maxlength="9" inputmode="numeric">
+          <input type="text" id="cep" autocomplete="off" placeholder="00000-000" maxlength="9" inputmode="numeric">
         </div>
         <div class="field">
           <label for="endereco">Endereço</label>
-          <input type="text" id="endereco" placeholder="Rua, número, bairro, cidade">
+          <input type="text" id="endereco" autocomplete="off" placeholder="Rua, número, bairro, cidade">
         </div>
-      <div class="field required">
-  <label for="escolaAtual">Escola atual</label>
-  <select id="escolaAtual">
-    <option value="">Selecione...</option>
-  </select>
-</div>
+      <!-- ESCOLA: DIGITA E BUSCA; NÃO ACHOU, O QUE FOI DIGITADO VALE.
+           Pedido do usuário em 16/09/2026: "Ele deve buscar a escola e se
+           não encontrar deve digitar o nome da escola".
 
-<div class="field hidden" id="boxOutraEscola">
-  <label for="outraEscola">Nome da escola</label>
-  <input
-    type="text"
-    id="outraEscola"
-    placeholder="Digite o nome completo da escola">
-</div>
+           Antes eram DOIS campos: uma lista com as 679 escolas cadastradas
+           mais uma opção "🏫 Outra escola não listada" que, ao ser escolhida,
+           revelava um segundo campo de texto. Rolar 679 linhas não é buscar,
+           e quem não achava a escola tinha de descobrir sozinho que a saída
+           era a última opção da lista.
+
+           Agora é um campo só: digita, a lista filtra junto (datalist nativo,
+           sem biblioteca), e o que ficar escrito é o nome da escola — esteja
+           ela cadastrada ou não. O backend já sabe lidar com escola fora do
+           cadastro: grava ESCOLA_NAO_CADASTRADA e a análise confere. -->
+      <div class="field required">
+        <label for="escolaAtual">Escola atual</label>
+        <input
+          type="text"
+          id="escolaAtual"
+          list="listaEscolas"
+          autocomplete="off"
+          placeholder="Digite para buscar — ou escreva o nome da escola">
+        <datalist id="listaEscolas"></datalist>
+        <span class="field-help">Não encontrou na lista? Escreva o nome completo da escola.</span>
+      </div>
         <div class="field">
           <label for="cargoFuncao">Cargo / Função</label>
-          <input type="text" id="cargoFuncao" placeholder="Ex.: Professor">
+          <input type="text" id="cargoFuncao" autocomplete="off" placeholder="Ex.: Professor">
         </div>
-        <div class="field">
+        <div class="field hidden">
+          <!-- SITUAÇÃO DO VÍNCULO SAIU DA TELA — 16/09/2026, "pode tirar".
+               O campo continua no HTML, OCULTO, de propósito: sete pontos do
+               arquivo leem `getElementById('situacaoVinculo').value`, e
+               removê-lo faria todos estourarem. Oculto ele devolve "", que é
+               o que `valorSeguroVoucher_` já trata — e o cadastro que JÁ tem
+               a informação não a perde, porque continua sendo carregado aqui
+               e regravado igual. -->
           <label for="situacaoVinculo">Situação do vínculo</label>
-          <input type="text" id="situacaoVinculo" placeholder="Ex.: ATIVO">
+          <input type="text" id="situacaoVinculo" autocomplete="off" placeholder="Ex.: ATIVO">
         </div>
         <div class="field required">
           <label for="situacaoSindicalDeclarada">Situação sindical declarada</label>
@@ -378,30 +537,69 @@
         <div class="secao-num">3</div>
         <div class="secao-title">Solicitação</div>
       </div>
-      <div class="grid2">
-        <div class="field required">
+
+      <!-- PARA QUEM É A BOLSA — a primeira pergunta, antes de qualquer campo.
+           "Quando a solicitação é para o associado, só tem que aparecer os
+           dados do associado, somente. Tem que ter um seletor. Se é para o
+           dependente, tem que aparecer os dados do dependente." — você,
+           16/09/2026.
+
+           Sem esta pergunta, quem pede para um filho preenche campos de
+           titular e descobre no fim que era outro caminho. -->
+      <div class="field" style="margin-bottom:20px;">
+        <label>Para quem é a bolsa?</label>
+        <div id="paraQuem" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn-escolha" data-alvo="TITULAR">Para mim</button>
+          <button type="button" class="btn-escolha" data-alvo="DEPENDENTES">Para meus dependentes</button>
+        </div>
+      </div>
+
+      <div class="grid2" id="camposTitular">
+        <div class="field required" id="boxTipoBeneficiario">
           <label for="tipoBeneficiario">Tipo de beneficiário</label>
           <select id="tipoBeneficiario"></select>
         </div>
 
-        <div class="field" id="boxParentesco">
+        <!-- PARENTESCO SAIU DA TELA — 17/09/2026, apontado pelo usuário:
+             "se dependente for filho o parentesco não deveria aparecer".
+
+             Ele está certo, e vale mais do que parece: as duas listas eram
+             quase a mesma. Tipo de beneficiário oferece Titular, Cônjuge,
+             Filho(a) e Enteado(a); parentesco oferecia Titular, Cônjuge,
+             Companheiro(a), Filho(a) e Enteado(a). Escolher "Filho(a)" no
+             primeiro e ter de escolher "Filho(a)" de novo no segundo é pedir
+             que a pessoa repita o que acabou de dizer — e abre a chance de
+             ela dizer coisa diferente nos dois, que foi exatamente o defeito
+             de ontem: tipo "Filho(a)" com parentesco preso em "Titular".
+
+             CONFERIDO ANTES DE ESCONDER: PARENTESCO não entra em documento
+             nenhum. É gravado na planilha e lido pela memória de instituições
+             — nada mais. E `obterParentescoFinal()` já derivava do tipo
+             quando o campo estava vazio, então o valor continua sendo
+             gravado, agora sempre coerente com o tipo.
+
+             FICA NO DOM, escondido, e não é removido: sete pontos deste
+             arquivo leem `getElementById('parentesco')`, e tirá-lo do
+             documento transformaria cada um deles num erro de JavaScript que
+             derruba a página inteira (REGRA Nº 0). -->
+        <div class="field" id="boxParentesco" hidden style="display:none;">
           <label for="parentesco">Parentesco</label>
           <select id="parentesco"></select>
         </div>
 
         <div class="field" id="boxNomeBeneficiario">
           <label for="nomeBeneficiario">Nome do beneficiário</label>
-          <input type="text" id="nomeBeneficiario" placeholder="Nome completo do beneficiário">
+          <input type="text" id="nomeBeneficiario" autocomplete="off" placeholder="Nome completo do beneficiário">
         </div>
 
-        <div class="field required">
+        <div class="field required" id="boxDataNascBeneficiario">
           <label for="dataNascimentoBeneficiario">Data de nascimento do beneficiário</label>
-          <input type="date" id="dataNascimentoBeneficiario">
+          <input type="date" id="dataNascimentoBeneficiario" autocomplete="off">
         </div>
 
-        <div class="field">
+        <div class="field" id="boxTitularAssociado">
           <label for="nomeTitularAssociado">Nome do titular associado</label>
-          <input type="text" id="nomeTitularAssociado" placeholder="Nome do titular">
+          <input type="text" id="nomeTitularAssociado" autocomplete="off" placeholder="Nome do titular">
         </div>
 
         <div class="field hidden" id="boxEnteado">
@@ -415,11 +613,12 @@
         <div class="field required">
           <label for="modalidade">Modalidade</label>
           <select id="modalidade"></select>
+          <span class="field-help sugestao" id="avisoModalidade"></span>
         </div>
 
         <div class="field required">
           <label for="curso">Curso</label>
-          <input type="text" id="curso" placeholder="Nome do curso">
+          <input type="text" id="curso" autocomplete="off" placeholder="Nome do curso">
         </div>
 
         <div class="field hidden" id="boxAreaCurso">
@@ -437,22 +636,51 @@
           </select>
         </div>
 
+      </div>
+
+      <!-- O PERÍODO VALE PARA O ENVIO INTEIRO, não para um beneficiário.
+           Ele morava dentro de `camposTitular`, que some no caminho dos
+           dependentes — e aí o envio era recusado por um campo obrigatório
+           que a pessoa não tinha como ver nem preencher. -->
+      <div class="grid2" id="camposComuns">
         <div class="field required">
           <label for="periodoReferencia">Período de referência</label>
-          <input type="text" id="periodoReferencia" placeholder="Ex.: 2026 ou 2026/1">
+          <input type="text" id="periodoReferencia" autocomplete="off" placeholder="Ex.: 2026 ou 2026/1">
         </div>
       </div>
     </div>
 
-    <!-- SEÇÃO 3b — Dependentes (até 3 filhos) -->
+    <!-- SEÇÃO 3b — DEPENDENTES, ATÉ TRÊS NUM ENVIO SÓ
+         ═══════════════════════════════════════════════════════════════════
+         Esta seção existia no HTML desde sempre e NUNCA FUNCIONOU: era casca
+         vazia, sem uma linha de JavaScript. Nada preenchia a lista, nada
+         escutava o botão, e ela nascia escondida e nunca aparecia. O backend
+         aceitava três dependentes e ninguém mandava. Você apontou isso três
+         vezes em dois dias — "onde eu adiciono outros filhos", "aqui não tem
+         a opção", "faltou dos dependentes" — e está certo em todas.
+
+         A LÓGICA É A DO OFÍCIO, como você pediu: cartões repetíveis, com `+`
+         dentro de cada um para inserir o próximo, `✕` para remover, e
+         renumeração automática. O que vem de lá junto é a lição que o
+         cabeçalho do ofício registra: o arquivo anexado mora NO ELEMENTO
+         (`card._arquivo`), não numa variável de closure — senão remover um
+         anexo não atualiza a fila e o próximo ressuscita o apagado.
+
+         UM ENVIO, TRÊS PROTOCOLOS. O backend cria uma solicitação por
+         dependente, cada uma com o seu número. É o certo: a Secretaria pode
+         aprovar a de um e pedir documento de outro sem travar as demais.
+         ═══════════════════════════════════════════════════════════════════ -->
     <div class="secao" id="secaoDependentes" style="display:none;">
       <div class="secao-header">
         <div class="secao-num">3b</div>
         <div class="secao-title">Dependentes</div>
       </div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
-        Informe os dados de cada filho(a) beneficiário. Você pode adicionar até <strong style="color:var(--white);">3 dependentes</strong>.<br>
-        Anexe a declaração de matrícula de cada um individualmente.
+        Informe os dados de cada beneficiário. Você pode pedir para até
+        <strong style="color:var(--white);">3 dependentes</strong> de uma vez —
+        cada um recebe o seu protocolo.<br>
+        O contracheque você anexa uma vez só, na seção de documentos; o
+        <strong style="color:var(--white);">documento de cada dependente</strong> vai no cartão dele.
       </p>
 
       <div id="listaDependentes"></div>
@@ -460,40 +688,54 @@
       <button type="button" class="btn-add-dep" id="btnAdicionarDependente">
         ➕ Adicionar dependente
       </button>
+      <div id="depLimite" style="display:none;font-size:12.5px;color:var(--muted);margin-top:10px;text-align:center;">
+        Três é o máximo que a convenção permite por associado no mesmo período.
+      </div>
     </div>
 
     <!-- SEÇÃO 4 — Documentos -->
     <div class="secao">
+      <!-- "TEM QUE ESTAR VISÍVEL QUE A DOCUMENTAÇÃO AQUI É DO TITULAR" — você,
+           22/09/2026. Estava escrito, mas em letra miúda debaixo do título:
+           quem chega nesta seção depois de cadastrar três filhos lê
+           "Documentos Obrigatórios" e anexa o documento da criança. Agora o
+           dono aparece no TÍTULO e numa tarja, que é onde o olho passa. -->
       <div class="secao-header">
         <div class="secao-num">4</div>
-        <div class="secao-title">Documentos Obrigatórios</div>
+        <div class="secao-title">Documentos do titular</div>
+        <span class="tarja-dono">DO ASSOCIADO</span>
       </div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.65;">
-        Anexe os documentos do <strong style="color:var(--white);">titular</strong> abaixo.<br>
+        São os documentos de <strong style="color:var(--white);">quem é associado</strong> —
+        não os do dependente. Os documentos de cada dependente vão no cartão dele, acima.<br>
         Formatos aceitos: <strong style="color:var(--white);">PDF, JPG ou PNG</strong> — máx. 5MB por arquivo.
       </p>
       <div class="grid2">
 
         <div class="field required">
-          <label>Comprovante de vínculo empregatício</label>
+          <label>Comprovante de vínculo com a escola</label>
           <div class="upload-area" id="areaContracheque">
             <input type="file" id="contracheque" accept=".pdf,.jpg,.jpeg,.png">
             <div class="upload-ico">📄</div>
-            <div class="upload-txt">Último contracheque<br><span style="font-weight:400;opacity:.7;">ou Declaração do RH (funcionário recém-contratado)</span></div>
+            <div class="upload-txt">Último contracheque<br><span style="font-weight:400;opacity:.7;">ou declaração da escola, para quem entrou há pouco</span></div>
             <div class="upload-nome" id="nomeContracheque"></div>
           </div>
-          <span class="field-help">Se não possuir contracheque, anexe declaração do RH informando a contratação recente</span>
+          <span class="field-help">Quem está há pouco tempo na escola e ainda não tem contracheque
+            pode anexar a <strong>declaração da escola informando o vínculo</strong>.</span>
         </div>
 
-        <div class="field required">
-          <label>Documento pessoal</label>
+        <div class="field required" id="boxDocPessoalTitular">
+          <label>Documento com CPF</label>
           <div class="upload-area" id="areaDocPessoal">
             <input type="file" id="docPessoal" accept=".pdf,.jpg,.jpeg,.png">
             <div class="upload-ico">🪪</div>
-            <div class="upload-txt">CNH ou documento oficial com foto</div>
+            <div class="upload-txt">Documento do titular que mostre o CPF</div>
             <div class="upload-nome" id="nomeDocPessoal"></div>
           </div>
-          <span class="field-help">CNH, RG, ou outro documento oficial com foto</span>
+          <!-- O QUE IMPORTA AQUI É O CPF, não a foto: é por ele que a
+               Secretaria confere o cadastro do associado. Pedir "documento com
+               foto" fazia gente anexar RG antigo sem CPF, que não serve. -->
+          <span class="field-help">RG com CPF, CNH, ou o próprio comprovante de CPF.</span>
         </div>
 
       </div>
@@ -508,12 +750,24 @@
     </div>
 
     <div class="protocolo-box" id="protocoloBox">
-      <div style="font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px;">Protocolo gerado</div>
+      <div id="protocoloRotulo" style="font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Protocolo gerado</div>
+      <div id="protocoloTitulo" style="font-size:16px;font-weight:800;color:#065f46;margin-bottom:6px;">✅ Solicitação registrada</div>
       <div class="protocolo-num" id="protocoloNum">—</div>
       <div class="protocolo-sub" id="protocoloSub"></div>
-      <div class="protocolo-acoes">
+      <!-- O encerramento fica ESCONDIDO até alguém clicar em Fechar. -->
+      <div id="protocoloEncerrado" style="display:none;margin:4px 0 14px;padding:14px 16px;border-radius:10px;background:rgba(15,138,95,.08);border:1px solid rgba(15,138,95,.25);">
+        <div style="font-size:14.5px;font-weight:800;color:#0f8a5f;margin-bottom:4px;">✅ Solicitação concluída</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+          Pode fechar esta aba. O protocolo acima fica registrado e você será
+          avisado por e-mail quando a análise terminar.
+        </div>
+      </div>
+
+      <div class="protocolo-acoes" id="protocoloAcoesBox">
         <button class="btn btn-secondary" onclick="copiarProtocolo()"><span>📋 Copiar</span></button>
         <button class="btn btn-secondary" onclick="imprimirProtocolo()"><span>🖨️ Imprimir</span></button>
+        <button class="btn btn-secondary" onclick="portalNovaSolicitacao()"><span>➕ Fazer nova solicitação</span></button>
+        <button class="btn btn-secondary" onclick="portalEncerrar()"><span>✕ Fechar</span></button>
       </div>
       <div class="protocolo-countdown" id="protocoloCountdown" style="display:none;"></div>
     </div>
@@ -536,7 +790,10 @@
     }
 
     function restaurarTema() {
-      var savedTheme = getSafeLocalStorageItem('theme') || 'dark';
+      /* CLARO POR PADRÃO — 16/09/2026. O formulário público da Festa é claro,
+         e é o modelo do projeto. Quem já tinha escolhido escuro mantém: a
+         preferência gravada vem antes do padrão. */
+      var savedTheme = getSafeLocalStorageItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
       document.getElementById('themeIcon').textContent = savedTheme === 'light' ? '☀️' : '🌙';
     }
@@ -584,28 +841,48 @@ function atualizarProgresso() {
     'periodoReferencia'
   ];
 
+  /* OS DOIS ANEXOS SÃO OBRIGATÓRIOS E NÃO ENTRAVAM NA CONTA — 16/09/2026.
+     "Esse 100% preenchido não está sendo real" — o usuário, com o formulário
+     marcando 100% e os documentos ainda não enviados. Barra que diz "pronto"
+     antes de estar pronta é pior do que barra nenhuma: ela promete que o
+     botão vai funcionar, e ele não vai. */
+  var camposArquivo = ['contracheque', 'docPessoal'];
+
   var preenchidos = 0;
+  var total = 0;
+
+  /* CAMPO OCULTO NÃO CONTA, nem como preenchido nem como pendente. Vários
+     somem conforme a escolha — ordem do filho para o titular, dados de
+     dependente para quem pede para si mesmo —, e alguns são preenchidos por
+     baixo pelo próprio sistema. Contá-los inflava o percentual com respostas
+     que a pessoa nunca deu. */
+  function visivel(el) {
+    if (!el) return false;
+    var caixa = el.closest ? el.closest('.field') : null;
+    if (caixa && caixa.classList.contains('hidden')) return false;
+    return !!(el.offsetParent || el.getClientRects().length);
+  }
 
   camposObrigatorios.forEach(function(id) {
     var el = document.getElementById(id);
-    if (!el) return;
+    if (!el || !visivel(el)) return;
+    total++;
 
     var valor = String(el.value || '').trim();
-
-    if (id === 'escolaAtual' && valor === '__OUTRA_ESCOLA__') {
-      var outra = document.getElementById('outraEscola');
-      if (outra && String(outra.value || '').trim()) {
-        preenchidos++;
-      }
-      return;
-    }
 
     if (valor) {
       preenchidos++;
     }
   });
 
-  var percentual = Math.round((preenchidos / camposObrigatorios.length) * 100);
+  camposArquivo.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el || !visivel(el)) return;
+    total++;
+    if (el.files && el.files.length) preenchidos++;
+  });
+
+  var percentual = total ? Math.round((preenchidos / total) * 100) : 0;
 
   document.getElementById('progressFill').style.width = percentual + '%';
   document.getElementById('progressText').textContent = percentual + '% preenchido';
@@ -623,10 +900,7 @@ function atualizarProgresso() {
             email: document.getElementById('email').value,
             cep: document.getElementById('cep').value,
             endereco: document.getElementById('endereco').value,
-   escolaAtual:
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
-    ? document.getElementById('outraEscola').value.trim()
-    : document.getElementById('escolaAtual').value,
+            escolaAtual: document.getElementById('escolaAtual').value.trim(),
             cargoFuncao: document.getElementById('cargoFuncao').value,
             situacaoVinculo: document.getElementById('situacaoVinculo').value,
             situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
@@ -676,19 +950,6 @@ function atualizarProgresso() {
 
       });
 
-      // Escola personalizada
-      if (
-        dados.escolaAtual &&
-        !Array.from(document.getElementById('escolaAtual').options)
-          .some(op => op.value === dados.escolaAtual)
-      ) {
-
-        document.getElementById('escolaAtual').value = '__OUTRA_ESCOLA__';
-        document.getElementById('outraEscola').value = dados.escolaAtual;
-        document.getElementById('boxOutraEscola').classList.remove('hidden');
-
-      }
-
       ajustarCamposVoucher();
       validarIdadeModalidade();
       atualizarProgresso();
@@ -729,6 +990,486 @@ function atualizarProgresso() {
 
     function imprimirProtocolo() { window.print(); }
 
+    /* SÓ O RECIBO FICA NA TELA — 16/09/2026.
+     *
+     * O usuário mandou a tela de sucesso como estava: o card verde
+     * "Solicitação registrada" aparecia EMBAIXO do formulário inteiro, com
+     * todos os campos ainda preenchidos e o botão "Salvar solicitação" ainda
+     * ali, clicável. "Essa parte deve somente aparecer sem os cards
+     * anteriores".
+     *
+     * Não é só estética. Formulário preenchido com botão de salvar ativo,
+     * logo abaixo de um protocolo já emitido, é convite para a pessoa clicar
+     * de novo achando que não salvou — e mandar a mesma solicitação duas
+     * vezes. Some tudo, fica o recibo.
+     *
+     * Esconde por CLASSE, não por id: as seções do formulário não têm id, e
+     * inventar cinco ids só para escondê-los criaria cinco coisas novas para
+     * alguém esquecer de atualizar quando a próxima seção nascer. */
+    function portalSoRecibo(ligado) {
+      var alvos = document.querySelectorAll('.secao, .acoes');
+      for (var i = 0; i < alvos.length; i++) {
+        var el = alvos[i];
+        if (ligado) {
+          /* GUARDA O QUE ESTAVA, em vez de devolver '' para todo mundo na
+             volta. Sem isto a seção 3b (Dependentes), que nasce escondida,
+             REAPARECERIA ao clicar em "Fazer nova solicitação" — e ela é
+             casca vazia hoje, sem nenhum campo dentro. Foi um defeito que
+             este próprio bloco criou, achado ao conferir o que faltava no
+             módulo. */
+          if (el.dataset.displayAntes === undefined) {
+            el.dataset.displayAntes = el.style.display || '';
+          }
+          el.style.display = 'none';
+        } else {
+          el.style.display = el.dataset.displayAntes || '';
+          delete el.dataset.displayAntes;
+        }
+      }
+    }
+
+    /* FECHAR — pedido do usuário em 16/09/2026, vendo a tela de recibo.
+     *
+     * `window.close()` só funciona em aba que o próprio script abriu, e esta
+     * foi aberta por um link. O navegador recusa em silêncio — e botão que
+     * não faz nada é pior do que botão nenhum. Então ele tenta fechar e, ao
+     * ver que a janela continua de pé, mostra o encerramento: a confirmação
+     * de que acabou, com o protocolo ainda à vista para quem não anotou.
+     *
+     * NÃO limpa o rascunho nem o protocolo da tela de propósito: a pessoa
+     * pode estar fechando justamente para tirar um print. */
+    function portalEncerrar() {
+      var acoes = document.getElementById('protocoloAcoesBox');
+      var fim = document.getElementById('protocoloEncerrado');
+      if (fim) fim.style.display = '';
+      if (acoes) acoes.style.display = 'none';
+
+      try { window.close(); } catch (e) {}
+      /* Se ainda estamos aqui, o navegador recusou — e a mensagem acima já
+         está na tela dizendo o que fazer. */
+    }
+
+    /* A VOLTA. Sem isto, a única saída da tela de recibo seria recarregar a
+     * página — e quem tem três dependentes faz três pedidos seguidos. */
+    function portalNovaSolicitacao() {
+      var box = document.getElementById('protocoloBox');
+      if (box) box.classList.remove('visible');
+      /* Desfaz o encerramento: sem isto, quem fechasse e depois quisesse um
+         segundo pedido voltaria para um formulário com a despedida em cima. */
+      var fim = document.getElementById('protocoloEncerrado');
+      if (fim) fim.style.display = 'none';
+      var acoes = document.getElementById('protocoloAcoesBox');
+      if (acoes) acoes.style.display = '';
+      portalSoRecibo(false);
+      if (typeof limparFormulario === 'function') limparFormulario();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       DEPENDENTES — CARTÕES REPETÍVEIS, NA LÓGICA DO OFÍCIO
+
+       "Parecido com é feito hoje para adicionar trabalhador em ofício" —
+       você, 16/09/2026. O que vem de lá: cartão montado em innerHTML, `+`
+       dentro de cada um para inserir o próximo, `✕` para remover,
+       renumeração automática, e o payload lido do DOM na hora do envio.
+
+       E A LIÇÃO QUE O OFÍCIO REGISTRA NO CABEÇALHO DELE: o arquivo mora NO
+       ELEMENTO (`card._arquivo`), não numa variável de closure. Enquanto
+       morou na closure, remover um anexo não atualizava a fila e o anexo
+       seguinte ressuscitava o apagado — "o pior tipo de defeito num anexo,
+       porque o documento sai com uma ficha que a pessoa jurava ter tirado".
+       ══════════════════════════════════════════════════════════════════ */
+    var DEP_MAX = 3;
+    var depContador = 0;
+
+    function depCartoes() {
+      return Array.prototype.slice.call(
+        document.querySelectorAll('#listaDependentes .dep-card'));
+    }
+
+    function depRenumerar() {
+      depCartoes().forEach(function (card, i) {
+        var num = card.querySelector('.dep-num');
+        var tit = card.querySelector('.dep-titulo-txt');
+        if (num) num.textContent = i + 1;
+        if (tit) tit.textContent = 'Dependente ' + (i + 1);
+      });
+      var btn = document.getElementById('btnAdicionarDependente');
+      var avisoLimite = document.getElementById('depLimite');
+      var cheio = depCartoes().length >= DEP_MAX;
+      if (btn) btn.style.display = cheio ? 'none' : '';
+      if (avisoLimite) avisoLimite.style.display = cheio ? '' : 'none';
+    }
+
+    /* O AVISO DE IDADE VIVE DENTRO DO CARTÃO, colado no campo que o causou.
+       No topo da página ele não diria de QUAL dependente se trata — e com
+       três cartões abertos isso é a diferença entre corrigir e adivinhar. */
+    function depConferirIdade(card) {
+      var dataEl = card.querySelector('.dep-nascimento');
+      var modEl  = card.querySelector('.dep-modalidade');
+      var aviso  = card.querySelector('.dep-aviso');
+      if (!dataEl || !aviso) return;
+
+      var partes = String(dataEl.value || '').split('-');
+      if (partes.length !== 3) { aviso.classList.remove('visivel'); return; }
+
+      var nasc = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+      var hoje = new Date();
+      var idade = hoje.getFullYear() - nasc.getFullYear();
+      if (hoje.getMonth() < nasc.getMonth() ||
+         (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+
+      /* O limite de 24 é da convenção e vale para filho e enteado, em
+         qualquer curso. Avisa e deixa seguir: a Secretaria decide. */
+      if (idade > 24) {
+        aviso.innerHTML = '⚠️ <strong>' + idade + ' anos</strong> — a convenção prevê o ' +
+          'benefício para dependentes de até 24 anos. Pode enviar assim mesmo: ' +
+          'a Secretaria analisa e responde pelo SISGEP.';
+        aviso.classList.add('visivel');
+        return;
+      }
+
+      /* A faixa por curso é só conferência de digitação — nunca recusa. */
+      var faixas = {
+        'CRECHE':{min:0,max:3,nome:'Creche'},
+        'EDUCACAO_INFANTIL':{min:4,max:5,nome:'Educação Infantil'},
+        'ENSINO_FUNDAMENTAL':{min:6,max:14,nome:'Ensino Fundamental'},
+        'ENSINO_MEDIO':{min:15,max:17,nome:'Ensino Médio'},
+        'PRE_VESTIBULAR':{min:16,max:30,nome:'Pré-Vestibular'},
+        'TECNICO':{min:15,max:25,nome:'Técnico'},
+        'GRADUACAO':{min:17,max:35,nome:'Graduação'},
+        'POS_GRADUACAO':{min:21,max:50,nome:'Pós-Graduação'}
+      };
+      var f = modEl ? faixas[String(modEl.value || '').toUpperCase()] : null;
+      if (f && (idade < f.min || idade > f.max)) {
+        aviso.innerHTML = '⚠️ <strong>' + idade + ' anos</strong> para ' + f.nome +
+          ' está fora do previsto (' + f.min + '–' + f.max + '). Confira a data; ' +
+          'se estiver certa, pode enviar.';
+        aviso.classList.add('visivel');
+        return;
+      }
+      aviso.classList.remove('visivel');
+    }
+
+    /* O RECIBO FALA A LÍNGUA DA PESSOA, NÃO A DO BANCO DE DADOS.
+       "ENSINO_MEDIO" é o valor que o sistema grava; quem lê o recibo espera
+       "Ensino Médio". A lista de modalidades já vem do backend com os dois
+       lados (value/label) — é só usar o que já está ali. O trecho entre
+       parênteses ("(6–14 anos)") é ajuda de preenchimento do formulário e sai
+       do recibo: ali a idade já foi informada. */
+    function rotuloModalidade(valor) {
+      var achado = (INIT.modalidades || []).filter(function (m) { return m.value === valor; })[0];
+      if (!achado) return valor || '';
+      return String(achado.label).replace(/\s*\([^)]*\)\s*$/, '');
+    }
+
+    function reciboLinha(icone, rotulo, valor) {
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
+        '<span style="font-size:16px;">' + icone + '</span>' +
+        '<span style="color:var(--muted);">' + rotulo + ':</span>' +
+        '<strong>' + valor + '</strong>' +
+        '</div>';
+    }
+
+    function depOpcoes(lista, vazio) {
+      return '<option value="">' + (vazio || 'Selecione...') + '</option>' +
+        (lista || []).map(function (i) {
+          return '<option value="' + i.value + '">' + i.label + '</option>';
+        }).join('');
+    }
+
+    function depCriarCartao() {
+      depContador++;
+      var card = document.createElement('div');
+      card.className = 'dep-card';
+
+      card.innerHTML =
+        '<div class="dep-card-titulo">' +
+          '<span><span class="dep-num">' + depContador + '</span>' +
+          '<span class="dep-titulo-txt">Dependente ' + depContador + '</span></span>' +
+          '<span style="display:flex;gap:7px;">' +
+            '<button type="button" class="btn-remove-dep dep-add" title="Adicionar outro depois deste">+</button>' +
+            '<button type="button" class="btn-remove-dep dep-remove" title="Remover">✕</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="grid2">' +
+          '<div class="field required"><label>Nome do dependente</label>' +
+            '<input type="text" class="dep-nome" autocomplete="off" placeholder="Nome completo"></div>' +
+          '<div class="field required"><label>Data de nascimento</label>' +
+            '<input type="date" class="dep-nascimento" autocomplete="off"></div>' +
+          '<div class="field required"><label>Parentesco</label>' +
+            '<select class="dep-tipo">' + depOpcoes([
+              { value:'FILHO',   label:'Filho(a)' },
+              { value:'ENTEADO', label:'Enteado(a)' }
+            ]) + '</select></div>' +
+          '<div class="field required"><label>Ordem do filho</label>' +
+            '<select class="dep-ordem">' + depOpcoes([
+              { value:'1', label:'1º filho' },
+              { value:'2', label:'2º filho' },
+              { value:'3', label:'3º filho' }
+            ]) + '</select></div>' +
+          '<div class="field required"><label>Modalidade</label>' +
+            '<select class="dep-modalidade">' + depOpcoes(INIT.modalidades) + '</select>' +
+            '<span class="field-help sugestao dep-sugestao"></span></div>' +
+          '<div class="field required"><label>Curso / série</label>' +
+            '<input type="text" class="dep-curso" autocomplete="off" placeholder="Ex.: 6º ano, Direito"></div>' +
+          '<div class="field dep-box-area hidden"><label>Área do curso</label>' +
+            '<select class="dep-area">' + depOpcoes(INIT.areas) + '</select></div>' +
+        '</div>' +
+        '<div class="dep-aviso"></div>' +
+        '<div class="dep-doc">' +
+          '<label>Documento do dependente *</label>' +
+          '<input type="file" class="dep-arquivo" accept=".pdf,.jpg,.jpeg,.png">' +
+          '<div class="dep-doc-nome"></div>' +
+          '<span style="font-size:11.5px;color:var(--muted);">Certidão de nascimento, RG ou documento com foto.</span>' +
+        '</div>';
+
+      /* O ARQUIVO MORA NO ELEMENTO — ver o cabeçalho desta seção. */
+      card._arquivo = null;
+
+      card.querySelector('.dep-add').onclick = function () {
+        if (depCartoes().length >= DEP_MAX) return;
+        var novo = depCriarCartao();
+        card.parentNode.insertBefore(novo, card.nextSibling);
+        depRenumerar(); atualizarProgresso();
+      };
+      card.querySelector('.dep-remove').onclick = function () {
+        card.remove();
+        if (!depCartoes().length) depAdicionar();
+        depRenumerar(); atualizarProgresso();
+      };
+
+      /* A ÁREA DO CURSO só existe para graduação — é ela que decide 70/60/50.
+         Em creche não há área, e o campo vazio pediria resposta impossível. */
+      var mod = card.querySelector('.dep-modalidade');
+      mod.onchange = function () {
+        /* Escolheu, a sugestão se cala — o mesmo trato do beneficiário único. */
+        mod.dataset.tocado = '1';
+        var sug = card.querySelector('.dep-sugestao');
+        if (sug) sug.classList.remove('visivel');
+        var ehGrad = String(mod.value || '').toUpperCase() === 'GRADUACAO';
+        card.querySelector('.dep-box-area').classList.toggle('hidden', !ehGrad);
+        depConferirIdade(card);
+        atualizarProgresso();
+      };
+      card.querySelector('.dep-nascimento').oninput = function () {
+        /* A SUGESTÃO VALE PARA CADA CARTÃO, com a idade daquele dependente.
+           Um titular com três filhos de idades diferentes teria de escolher
+           três modalidades na mão; aqui cada cartão já nasce com a sua. */
+        aplicarSugestaoModalidade(this, mod, card.querySelector('.dep-sugestao'));
+        depConferirIdade(card); atualizarProgresso();
+      };
+      card.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () {
+          el.classList.remove('invalid'); atualizarProgresso();
+        });
+        el.addEventListener('change', function () {
+          el.classList.remove('invalid'); atualizarProgresso();
+        });
+      });
+
+      var arq = card.querySelector('.dep-arquivo');
+      arq.onchange = function () {
+        var f = arq.files && arq.files[0];
+        card._arquivo = f || null;
+        card.querySelector('.dep-doc-nome').textContent = f ? '✓ ' + f.name : '';
+        arq.classList.remove('invalid');
+        atualizarProgresso();
+      };
+
+      return card;
+    }
+
+    function depAdicionar() {
+      if (depCartoes().length >= DEP_MAX) return;
+      document.getElementById('listaDependentes').appendChild(depCriarCartao());
+      depRenumerar(); atualizarProgresso();
+    }
+
+    /* O PAYLOAD SAI DO DOM na hora do envio, como em getTrabalhadoresPayload.
+       Ler do DOM em vez de manter um espelho em memória evita que os dois
+       discordem — e quem discorda em silêncio é o espelho. */
+    function depPayload() {
+      return depCartoes().map(function (card, i) {
+        function v(sel) {
+          var el = card.querySelector(sel);
+          return el ? String(el.value || '').trim() : '';
+        }
+        return {
+          ordem: i + 1,
+          nomeBeneficiario: v('.dep-nome'),
+          dataNascimentoBeneficiario: v('.dep-nascimento'),
+          tipoBeneficiario: v('.dep-tipo') || 'FILHO',
+          parentesco: v('.dep-tipo') || 'FILHO',
+          ordemFilho: v('.dep-ordem'),
+          modalidade: v('.dep-modalidade'),
+          curso: v('.dep-curso'),
+          areaCurso: v('.dep-area'),
+          _arquivo: card._arquivo || null,
+          _card: card
+        };
+      });
+    }
+
+    /* ORDEM REPETIDA É ERRO DE DIGITAÇÃO, e barra antes de gravar: dois "1º
+       filho" produziriam dois certificados de 100% para a mesma posição, e o
+       segundo não teria como ser desfeito sem cancelar o voucher emitido. O
+       backend também barra — esta é a checagem que avisa antes da viagem. */
+    function depValidar() {
+      var deps = depPayload();
+      if (!deps.length) {
+        showMsg('❌ Adicione ao menos um dependente.', 'erro');
+        return null;
+      }
+
+      var ordens = {};
+      for (var i = 0; i < deps.length; i++) {
+        var d = deps[i], card = d._card;
+        function marcar(sel, msg) {
+          var el = card.querySelector(sel);
+          if (el) { el.classList.add('invalid'); el.focus(); }
+          showMsg('❌ Dependente ' + (i + 1) + ': ' + msg, 'erro');
+        }
+        if (!d.nomeBeneficiario)            { marcar('.dep-nome', 'informe o nome.'); return null; }
+        if (!d.dataNascimentoBeneficiario)  { marcar('.dep-nascimento', 'informe a data de nascimento.'); return null; }
+        if (!d.ordemFilho)                  { marcar('.dep-ordem', 'informe a ordem do filho.'); return null; }
+        if (!d.modalidade)                  { marcar('.dep-modalidade', 'escolha a modalidade.'); return null; }
+        if (!d.curso)                       { marcar('.dep-curso', 'informe o curso ou a série.'); return null; }
+        if (String(d.modalidade).toUpperCase() === 'GRADUACAO' && !d.areaCurso) {
+          marcar('.dep-area', 'escolha a área do curso — é ela que define o percentual.'); return null;
+        }
+        if (!d._arquivo)                    { marcar('.dep-arquivo', 'anexe o documento dele.'); return null; }
+        if (ordens[d.ordemFilho]) {
+          marcar('.dep-ordem', 'dois dependentes foram informados como ' +
+                 d.ordemFilho + 'º filho. Cada ordem só aparece uma vez.');
+          return null;
+        }
+        ordens[d.ordemFilho] = true;
+      }
+      return deps;
+    }
+
+    /* PARA QUEM É A BOLSA — o seletor que abre um caminho e fecha o outro. */
+    var paraQuemAtual = 'TITULAR';
+    function paraQuemEscolher(alvo) {
+      paraQuemAtual = alvo === 'DEPENDENTES' ? 'DEPENDENTES' : 'TITULAR';
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('#paraQuem .btn-escolha'), function (b) {
+          b.classList.toggle('ativo', b.getAttribute('data-alvo') === paraQuemAtual);
+        });
+
+      var ehDep = paraQuemAtual === 'DEPENDENTES';
+      var campos = document.getElementById('camposTitular');
+      var secDep = document.getElementById('secaoDependentes');
+      if (campos) campos.style.display = ehDep ? 'none' : '';
+      if (secDep) secDep.style.display = ehDep ? '' : 'none';
+
+      /* O DOCUMENTO PESSOAL DO TITULAR SAI DE CENA no caminho dos
+         dependentes: cada cartão traz o documento do seu, e é esse que o
+         backend grava em cada solicitação. Pedir o do titular ali seria pedir
+         um arquivo que não vai a lugar nenhum — e ainda contaria como campo
+         obrigatório na barra de progresso. O contracheque continua: ele
+         comprova o vínculo do associado, e vale para todas. */
+      var boxDoc = document.getElementById('boxDocPessoalTitular');
+      if (boxDoc) boxDoc.classList.toggle('hidden', ehDep);
+
+      /* O tipo de beneficiário sai de cena no caminho do titular — quem
+         responde isso é o seletor "para quem é a bolsa". */
+      var boxTipo = document.getElementById('boxTipoBeneficiario');
+      if (boxTipo) boxTipo.classList.add('hidden');
+
+      /* Para o titular, o beneficiário É ele — ajustarCamposVoucher já sabe
+         fazer isso, e chamá-lo aqui evita duas lógicas para a mesma coisa. */
+      if (!ehDep) {
+        /* "PARA MIM" IMPÕE O TITULAR — 22/09/2026.
+           Seu print mostrou o defeito: "Para mim" marcado e a tela dizendo
+           "Filho(a)", com o nome de outra pessoa e "1º filho". A linha aqui
+           só ajustava o tipo QUANDO ELE ESTAVA VAZIO, então quem tivesse
+           escolhido Filho(a) antes de trocar para "Para mim" levava a escolha
+           antiga junto — e a solicitação ia ao servidor dizendo duas coisas
+           contrárias sobre a mesma pessoa.
+
+           E O CAMPO SOME. O seletor lá em cima já perguntou para quem é a
+           bolsa; repetir a pergunta logo abaixo é convidar a resposta
+           divergente. Pergunta feita duas vezes é pergunta que um dia vem com
+           duas respostas. */
+        var tipo = document.getElementById('tipoBeneficiario');
+        if (tipo) tipo.value = 'TITULAR';
+        if (typeof ajustarCamposVoucher === 'function') ajustarCamposVoucher();
+      } else if (!depCartoes().length) {
+        depAdicionar();
+      }
+      atualizarProgresso();
+    }
+
+    /* ══ A MODALIDADE SUGERIDA PELA IDADE — 22/09/2026 ═══════════════════════
+       "Pela idade dos dependentes eles poderiam limitar a modalidade,
+       correto?" — você. A resposta é SUGERIR, não limitar, e a diferença não
+       é de estilo.
+
+       Em 17/09 medimos que a tela RECUSAVA cinco casos que a convenção
+       aprova: filho de 16 no Fundamental (repetiu), de 19 no Médio (voltou a
+       estudar), de 13 no Técnico, de 10 no Médio (adiantado), criança de 4 no
+       Fundamental. Você concluiu que a idade não interfere, e a recusa virou
+       aviso.
+
+       Se o MENU escondesse as modalidades fora da faixa, o mesmo defeito
+       voltaria pela porta dos fundos — e pior: antes a pessoa via a mensagem;
+       escondendo, ela simplesmente não acha a opção e não entende por quê.
+
+       Então: o campo nasce preenchido com o mais provável, a lista continua
+       inteira, e a origem fica à vista (REGRA Nº 0.6 — sugerir com a origem
+       visível, nunca impor em silêncio).
+
+       E NUNCA SOBRESCREVE ESCOLHA DA PESSOA: se ela já mexeu na modalidade, a
+       sugestão se cala. Campo que se reescreve sozinho depois de preenchido é
+       o jeito mais rápido de perder a confiança de quem digita. */
+    function idadeEmAnos(dataStr) {
+      var partes = String(dataStr || '').split('-');
+      if (partes.length !== 3) return null;
+      var nasc = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+      if (isNaN(nasc.getTime())) return null;
+      var hoje = new Date();
+      var idade = hoje.getFullYear() - nasc.getFullYear();
+      if (hoje.getMonth() < nasc.getMonth() ||
+         (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+      return idade;
+    }
+
+    function modalidadeSugerida(idade) {
+      if (idade === null || idade < 0) return '';
+      if (idade <= 3)  return 'CRECHE';
+      if (idade <= 5)  return 'EDUCACAO_INFANTIL';
+      if (idade <= 14) return 'ENSINO_FUNDAMENTAL';
+      if (idade <= 17) return 'ENSINO_MEDIO';
+      if (idade === 18) return 'PRE_VESTIBULAR';
+      return 'GRADUACAO';
+    }
+
+    /** Aplica a sugestão a um par (campo de data, campo de modalidade). */
+    function aplicarSugestaoModalidade(elData, elModalidade, elAviso) {
+      if (!elData || !elModalidade) return;
+      if (elModalidade.dataset.tocado === '1') return;   /* a pessoa já escolheu */
+
+      var idade = idadeEmAnos(elData.value);
+      var sugerida = modalidadeSugerida(idade);
+      if (!sugerida) return;
+
+      /* Só sugere o que existe no menu: o menu vem do servidor e pode mudar. */
+      if (!elModalidade.querySelector('option[value="' + sugerida + '"]')) return;
+
+      elModalidade.value = sugerida;
+      if (elAviso) {
+        var rotulo = elModalidade.options[elModalidade.selectedIndex].textContent;
+        elAviso.textContent = 'Sugerido pela idade (' + idade +
+          (idade === 1 ? ' ano' : ' anos') + '): ' + rotulo + '. Pode trocar.';
+        elAviso.classList.add('visivel');
+      }
+      if (typeof ajustarCamposVoucher === 'function') ajustarCamposVoucher();
+      if (typeof atualizarProgresso === 'function') atualizarProgresso();
+    }
+
     function validarIdadeModalidade() {
       var dataNascStr = document.getElementById('dataNascimentoBeneficiario').value;
       var modalidade = document.getElementById('modalidade').value;
@@ -744,32 +1485,111 @@ function atualizarProgresso() {
         'EDUCACAO_INFANTIL':{'min':4,'max':5,'nome':'Educação Infantil'},
         'ENSINO_FUNDAMENTAL':{'min':6,'max':14,'nome':'Ensino Fundamental'},
         'ENSINO_MEDIO':{'min':15,'max':17,'nome':'Ensino Médio'},
+        'PRE_VESTIBULAR':{'min':16,'max':30,'nome':'Pré-Vestibular'},
         'TECNICO':{'min':15,'max':25,'nome':'Técnico'},
         'GRADUACAO':{'min':17,'max':35,'nome':'Graduação'},
         'POS_GRADUACAO':{'min':21,'max':50,'nome':'Pós-Graduação'}
       };
 
-      // Regra especial: filho em Graduação/Pós — máximo 24 anos para iniciar
       var tipoBenef = document.getElementById('tipoBeneficiario') ? String(document.getElementById('tipoBeneficiario').value||'').toUpperCase() : '';
-      var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
-      if(isFilho && (modalidade === 'GRADUACAO' || modalidade === 'POS_GRADUACAO')){
-        if(idade > 24){
-          showMsg('⚠️ Filho com mais de 24 anos não é elegível para bolsa em Graduação ou Pós-graduação. Limite de idade para iniciar o curso: 24 anos.','erro');
-          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
-          return false;
-        } else {
-          document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
-          return true;
-        }
+
+      /* TITULAR NÃO TEM REGRA DE IDADE. NENHUMA.
+       *
+       * Achado pelo usuário em 16/09/2026, testando com o próprio cadastro:
+       * associado de 45 anos pedindo Pós-Graduação levava
+       * "⚠️ Idade incompatível! Para Graduação, a idade deve estar entre 17 e
+       * 35 anos" — e o formulário travava. Ele foi direto ao ponto: "Para
+       * titular não tem regra de idade".
+       *
+       * A tabela de faixas abaixo existe para PEGAR ERRO DE DIGITAÇÃO em
+       * dependente (criança de 2 anos matriculada no Ensino Médio é dedo
+       * errado, não caso raro). Para o associado, ela não tem base nenhuma:
+       * a convenção limita idade só para filho e enteado, e o limite é 24.
+       * Ver calcularRegraVoucherConvencao_ em Voucher.gs — o backend nunca
+       * barrou o titular por idade; quem barrava era esta tela.
+       *
+       * Por isso a saída é aqui em cima, antes de qualquer faixa: o titular
+       * não passa nem pela regra dos 24 nem pela tabela por modalidade. */
+      /* TITULAR E CÔNJUGE NÃO TÊM REGRA DE IDADE. NENHUMA.
+       *
+       * O titular saiu daqui em 16/09, quando você pediu Pós aos 45 e levou
+       * "idade incompatível". O CÔNJUGE continuou caindo na tabela de faixas,
+       * e em 17/09 você disse: "esposo, esposa não tem limite de idade".
+       *
+       * MEDIDO ANTES DE CORRIGIR, e o defeito era real: cônjuge de 45 anos
+       * passava em Pós-Graduação (faixa 21–50) e era BARRADO em Graduação
+       * (17–35) e em Técnico (15–25). A pessoa não fazia ideia do porquê — a
+       * mensagem falava de idade, não de parentesco.
+       *
+       * A convenção limita idade só para FILHO e ENTEADO, e o limite é 24.
+       * Para os outros dois a tabela de faixas não tem base nenhuma: ela
+       * existe para pegar erro de digitação em dependente criança, e adulto
+       * não tem série esperada. */
+      if (tipoBenef === 'TITULAR' || tipoBenef === 'CONJUGE' ||
+          tipoBenef === 'ESPOSO'  || tipoBenef === 'ESPOSA') {
+        document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
+        return true;
       }
+
+      /* O LIMITE DE 24 ANOS VALE PARA TODA MODALIDADE — 17/09/2026.
+       *
+       * "Mas para dependentes somente até 24 anos" — você, e com razão: esta
+       * checagem só rodava para Graduação e Pós. Para ensino básico, técnico
+       * e pré-vestibular ela nem era consultada — caía direto na tabela de
+       * faixas abaixo, e um filho de 26 no pré-vestibular (faixa 16–30)
+       * passava sem que ninguém avisasse nada.
+       *
+       * O limite é da CONVENÇÃO e não depende do curso. A tabela de faixas
+       * abaixo é outra coisa: ela existe para pegar erro de digitação
+       * (criança de 2 anos no Ensino Médio é dedo errado), e por isso vem
+       * depois, não antes.
+       *
+       * AVISA E DEIXA SEGUIR, em vez de travar. É a sua decisão de
+       * 16/09/2026: "ele pode preencher o cadastro, tudo normalmente; quando
+       * chegar para a Marcelha fazer validação, o sistema automaticamente tem
+       * que informar". O backend grava BLOQUEADA_POR_REGRA e a solicitação vai
+       * para a fila de quem analisa — travar aqui faria o sindicato perder o
+       * registro de que a pessoa procurou. */
+      var isFilho = tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' &&
+                    tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA';
+      if(isFilho && idade > 24){
+        showMsg('⚠️ <strong>' + idade + ' anos</strong> — a convenção prevê o benefício para ' +
+                'dependentes de até 24 anos. Você pode enviar assim mesmo: a Secretaria ' +
+                'analisa o caso e responde pelo SISGEP.', 'warn');
+        document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
+        return true;
+      }
+      /* A FAIXA POR MODALIDADE AVISA, E NÃO BARRA MAIS — 17/09/2026.
+       *
+       * "A idade não interfere" — você. E a medição deu razão: a tela estava
+       * recusando cinco casos que a convenção APROVA.
+       *
+       *   filho de 16 no Fundamental (repetiu) ...... tela barrava, regra dá 100%
+       *   filho de 19 no Médio (voltou a estudar) ... tela barrava, regra dá 100%
+       *   filho de 13 no Técnico .................... tela barrava, regra dá 100%
+       *   filho de 10 no Médio (adiantado) .......... tela barrava, regra dá 100%
+       *   criança de 4 no Fundamental ............... tela barrava, regra dá 100%
+       *
+       * Esta tabela NÃO ESTÁ NA CONVENÇÃO. Alguém a escreveu como apoio e ela
+       * virou regra por acidente — a mesma coisa que barrava o titular em Pós
+       * aos 45 e o cônjuge em Graduação. Três vezes o mesmo erro: uma tela
+       * inventando limite que o sindicato não tem.
+       *
+       * POR QUE NÃO SAIU DE VEZ: ela ainda pega dedo errado. Ano de
+       * nascimento digitado com um dígito trocado vira criança de 2 anos no
+       * Ensino Médio, e é bom alguém ver isso antes do envio — não depois, no
+       * voucher emitido. Avisar cobre o erro de digitação sem recusar o caso
+       * raro, que é o lado certo de errar.
+       *
+       * O único limite que BARRA é o de 24 anos do filho e do enteado, acima
+       * — e mesmo ele avisa e deixa seguir, porque a Secretaria decide. */
       var limite = limites[modalidade];
-      if (limite) {
-        if (idade < limite.min || idade > limite.max) {
-          showMsg('⚠️ Idade incompatível! Para ' + limite.nome + ', a idade deve estar entre ' + limite.min + ' e ' + limite.max + ' anos. Idade atual: ' + idade + ' anos.', 'erro');
-          document.getElementById('dataNascimentoBeneficiario').classList.add('invalid');
-          return false;
-        } else { document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid'); }
+      if (limite && (idade < limite.min || idade > limite.max)) {
+        showMsg('⚠️ <strong>' + idade + ' anos</strong> para ' + limite.nome + ' está fora do ' +
+                'previsto (' + limite.min + '–' + limite.max + '). Confira a data de nascimento; ' +
+                'se estiver certa, pode enviar assim mesmo.', 'warn');
       }
+      document.getElementById('dataNascimentoBeneficiario').classList.remove('invalid');
       return true;
     }
 
@@ -785,78 +1605,29 @@ function atualizarProgresso() {
       });
     }
 function preencherEscolas() {
-  var el = document.getElementById('escolaAtual');
+  var lista = document.getElementById('listaEscolas');
+  if (!lista) return;
 
-  el.innerHTML = '<option value="">Selecione...</option>';
+  lista.innerHTML = '';
 
+  /* A CIDADE VAI NO `label`, NUNCA NO `value`.
+     No datalist, o `value` é o que entra no campo quando a pessoa escolhe —
+     se a cidade fosse junto, a escola chegaria ao backend como
+     "UVV — Vila Velha" e nunca casaria com o cadastro. O `label` aparece na
+     sugestão e serve para distinguir duas escolas de mesmo nome. */
   (INIT.escolas || []).forEach(function(item) {
     var op = document.createElement('option');
     op.value = item.escola;
-    op.textContent = item.escola + (item.cidade ? ' — ' + item.cidade : '');
-    el.appendChild(op);
+    if (item.cidade) op.label = item.escola + ' — ' + item.cidade;
+    lista.appendChild(op);
   });
-
-  // Opção especial
-  var outra = document.createElement('option');
-  outra.value = '__OUTRA_ESCOLA__';
-  outra.textContent = '🏫 Outra escola não listada';
-  el.appendChild(outra);
 }
 function preencherEscolaAtual(valorEscola) {
-
-  var escola = String(valorEscola || '').trim();
-
-  var select = document.getElementById('escolaAtual');
-  var outra = document.getElementById('outraEscola');
-  var boxOutra = document.getElementById('boxOutraEscola');
-
-  if (!select) return;
-
-  if (!escola) {
-
-    select.value = '';
-
-    if (outra) {
-      outra.value = '';
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.add('hidden');
-    }
-
-    return;
-  }
-
-  var existeNaLista = Array.from(select.options).some(function(op) {
-    return String(op.value || '').trim() === escola;
-  });
-
-  if (existeNaLista) {
-
-    select.value = escola;
-
-    if (outra) {
-      outra.value = '';
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.add('hidden');
-    }
-
-  } else {
-
-    select.value = '__OUTRA_ESCOLA__';
-
-    if (outra) {
-      outra.value = escola;
-    }
-
-    if (boxOutra) {
-      boxOutra.classList.remove('hidden');
-    }
-
-  }
-
+  /* Um campo só, então não há mais o que decidir: o que veio do cadastro é o
+     que aparece escrito. Antes esta função precisava descobrir se a escola
+     estava ou não na lista para escolher ENTRE DOIS CAMPOS. */
+  var el = document.getElementById('escolaAtual');
+  if (el) el.value = String(valorEscola || '').trim();
 }
 function ajustarCamposVoucher() {
   var modalidade = document.getElementById('modalidade').value;
@@ -884,7 +1655,13 @@ function ajustarCamposVoucher() {
     'POS_GRADUACAO'
   ];
 
-  boxOrdem.classList.toggle('hidden', modalidadesFilho.indexOf(modalidade) === -1);
+  /* ORDEM DO FILHO NÃO SE APLICA AO TITULAR — 16/09/2026.
+     "Se for para ele mesmo (titular) não precisa da ordem do filho" — o
+     usuário. A condição olhava só a MODALIDADE, então quem pedia para si
+     mesmo numa pós-graduação via um "Ordem do filho: Selecione..." sem filho
+     nenhum na história. Campo que não se aplica é pergunta sem resposta. */
+  boxOrdem.classList.toggle('hidden',
+    modalidadesFilho.indexOf(modalidade) === -1 || tipoBeneficiario.toUpperCase() === 'TITULAR');
 
   var tipo = String(tipoBeneficiario || '').toUpperCase();
   var ehTitular = tipo === 'TITULAR';
@@ -892,6 +1669,31 @@ function ajustarCamposVoucher() {
 
   boxEnteado.classList.toggle('hidden', !ehEnteado);
   boxParentesco.classList.toggle('hidden', ehTitular);
+
+  /* PARA O TITULAR, OS CAMPOS DE DEPENDENTE SOMEM — 16/09/2026.
+
+     "Se a solicitação for para ele mesmo não precisa ter campo de
+     dependentes" — você, e estava certo por um motivo mais forte do que
+     poluição visual: a data de nascimento do BENEFICIÁRIO é obrigatória e
+     ficava visível, então quem pedia para si mesmo tinha de digitar a própria
+     data de nascimento DUAS VEZES. Os outros dois (nome do beneficiário e
+     nome do titular) ficavam preenchidos com o próprio nome e travados —
+     campo cinza que repete o que a pessoa acabou de escrever é trabalho
+     inventado.
+
+     ESCONDER NÃO É DEIXAR VAZIO. O servidor exige os três
+     (validarPayloadPortalVoucher_), e sumir sem preencher trocaria um campo
+     chato por uma recusa no envio. Por isso eles continuam sendo preenchidos
+     aqui — só deixam de ser mostrados. */
+  var boxNomeBenef   = document.getElementById('boxNomeBeneficiario');
+  var boxDataBenef   = document.getElementById('boxDataNascBeneficiario');
+  var boxTitularAss  = document.getElementById('boxTitularAssociado');
+  var dataBenef      = document.getElementById('dataNascimentoBeneficiario');
+  var dataSolicita   = document.getElementById('dataNascimento');
+
+  if (boxNomeBenef)  boxNomeBenef.classList.toggle('hidden', ehTitular);
+  if (boxDataBenef)  boxDataBenef.classList.toggle('hidden', ehTitular);
+  if (boxTitularAss) boxTitularAss.classList.toggle('hidden', ehTitular);
 
   if (ehTitular) {
     if (nomeBenef) {
@@ -902,6 +1704,14 @@ function ajustarCamposVoucher() {
     if (titular) {
       titular.value = nome.value.trim();
       titular.readOnly = true;
+    }
+
+    /* A data do beneficiário passa a ser a do solicitante — é a mesma pessoa.
+       Só sobrescreve quando há origem: sem isto, um campo vazio apagaria uma
+       data que a pessoa já tinha digitado antes de trocar o tipo. */
+    if (dataBenef && dataSolicita && dataSolicita.value) {
+      dataBenef.value = dataSolicita.value;
+      dataBenef.classList.remove('invalid');
     }
 
     if (parentesco) {
@@ -918,6 +1728,15 @@ function ajustarCamposVoucher() {
     if (titular) {
       titular.value = nome.value.trim();
       titular.readOnly = false;
+    }
+
+    /* O PARENTESCO ACOMPANHA O TIPO, sempre — 17/09/2026.
+       Antes ele só era LIMPO ao sair de titular, e o resto dependia de a
+       pessoa escolher de novo. Agora é o tipo que manda: escolheu Filho(a),
+       o parentesco é FILHO. Sem campo para divergir, não há como divergir —
+       que era o defeito de ontem (tipo "Filho(a)" com parentesco "Titular"). */
+    if (parentesco) {
+      parentesco.value = tipo;
     }
   }
 }
@@ -941,7 +1760,7 @@ function ajustarCamposVoucher() {
       var modalidade = String(document.getElementById('modalidade').value || '').toUpperCase();
       var tipoBenef  = String(document.getElementById('tipoBeneficiario').value || '').toUpperCase();
 
-      if (['EDUCACAO_INFANTIL','CRECHE','ENSINO_FUNDAMENTAL','ENSINO_MEDIO','TECNICO','GRADUACAO','POS_GRADUACAO'].indexOf(modalidade) > -1 && !document.getElementById('ordemFilho').value) {
+      if (['EDUCACAO_INFANTIL','CRECHE','ENSINO_FUNDAMENTAL','ENSINO_MEDIO','PRE_VESTIBULAR','TECNICO','GRADUACAO','POS_GRADUACAO'].indexOf(modalidade) > -1 && !document.getElementById('ordemFilho').value) {
         if(tipoBenef && tipoBenef !== 'TITULAR' && tipoBenef !== 'CONJUGE' && tipoBenef !== 'ESPOSO' && tipoBenef !== 'ESPOSA'){
           showMsg('❌ Informe a ordem do filho para a modalidade selecionada.', 'erro');
           document.getElementById('ordemFilho').classList.add('invalid');
@@ -964,6 +1783,41 @@ function ajustarCamposVoucher() {
     }
 
     // ── Ler arquivo em base64 ──
+    /* Lê um File direto, e não o input. Os cartões de dependente guardam o
+       File no elemento (`card._arquivo`), não num input que ainda exista —
+       remover um cartão tira o input do documento, e ler dele depois disso
+       devolveria vazio em silêncio. */
+    function lerFileBase64(file, callback) {
+      if (!file) { callback(null); return; }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        callback({ nome: file.name, tipo: file.type, tamanho: file.size,
+                   base64: e.target.result.split(',')[1] });
+      };
+      reader.onerror = function () { callback(null); };
+      reader.readAsDataURL(file);
+    }
+
+    /* Lê os documentos dos dependentes EM SÉRIE e só então segue. Em paralelo
+       a ordem de chegada não é garantida, e o documento da Ana poderia ser
+       gravado na solicitação do Bruno — erro que ninguém percebe até a escola
+       receber o documento de outra criança. */
+    function lerDocsDependentes(deps, callback) {
+      var prontos = [];
+      (function proximo(i) {
+        if (i >= deps.length) { callback(prontos); return; }
+        lerFileBase64(deps[i]._arquivo, function (arq) {
+          var d = {};
+          Object.keys(deps[i]).forEach(function (k) {
+            if (k !== '_arquivo' && k !== '_card') d[k] = deps[i][k];
+          });
+          d.docPessoal = arq;
+          prontos.push(d);
+          proximo(i + 1);
+        });
+      })(0);
+    }
+
     function lerArquivoBase64(inputEl, callback) {
       if (!inputEl || !inputEl.files || !inputEl.files[0]) { callback(null); return; }
       var file = inputEl.files[0];
@@ -1027,6 +1881,13 @@ function aplicarCadastroLocalizado(cadastro) {
         if (lblS) lblS.textContent = 'Salvar solicitação';
       }
 
+      /* Recomeça do zero: sem isto, um erro da tentativa anterior sobrevive a
+         uma busca que deu certo. */
+      ['cpf', 'dataNascimento'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('invalid');
+      });
+
       var cpfVal = document.getElementById('cpf').value.replace(/\D/g, '');
       var dataNasc = document.getElementById('dataNascimento').value;
       if (!cpfVal || cpfVal.length !== 11) { showMsg('❌ Informe um CPF válido.', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
@@ -1081,26 +1942,66 @@ aplicarCadastroLocalizado(c);
       if (!validarCPF(cpfVal)) { showMsg('❌ CPF inválido!', 'erro'); document.getElementById('cpf').classList.add('invalid'); return; }
       if (!document.getElementById('dataNascimento').value) { showMsg('❌ Informe a data de nascimento.', 'erro'); document.getElementById('dataNascimento').classList.add('invalid'); return; }
       if (!document.getElementById('nome').value.trim()) { showMsg('❌ Informe o nome completo.', 'erro'); document.getElementById('nome').classList.add('invalid'); return; }
-      if (!document.getElementById('escolaAtual').value) { showMsg('❌ Selecione a escola.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
-      if (
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__' &&
-  !document.getElementById('outraEscola').value.trim()
-) {
-  showMsg('❌ Informe o nome da escola.', 'erro');
-  document.getElementById('outraEscola').classList.add('invalid');
-  return;
-}
+      if (!document.getElementById('escolaAtual').value.trim()) { showMsg('❌ Informe a escola — busque na lista ou escreva o nome.', 'erro'); document.getElementById('escolaAtual').classList.add('invalid'); return; }
       if (!document.getElementById('situacaoSindicalDeclarada').value) { showMsg('❌ Informe a situação sindical.', 'erro'); document.getElementById('situacaoSindicalDeclarada').classList.add('invalid'); return; }
-      if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
-      if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
-      if (!document.getElementById('modalidade').value) { showMsg('❌ Selecione a modalidade.', 'erro'); document.getElementById('modalidade').classList.add('invalid'); return; }
-      if (!document.getElementById('curso').value.trim()) { showMsg('❌ Informe o nome do curso.', 'erro'); document.getElementById('curso').classList.add('invalid'); return; }
       if (!document.getElementById('periodoReferencia').value.trim()) { showMsg('❌ Informe o período de referência.', 'erro'); document.getElementById('periodoReferencia').classList.add('invalid'); return; }
 
+      /* OS ANEXOS OBRIGATÓRIOS PASSAM A SER EXIGIDOS DE VERDADE — 22/09/2026.
+         "Se preenchi tudo, por que somente 86%?" — você, e a conta estava
+         certa: faltava o comprovante de vínculo. O que estava errado era o
+         resto: a BARRA contava o contracheque como obrigatório e o BOTÃO
+         deixava enviar sem ele. Regra que só existe num dos dois lugares
+         ensina a ignorar o lugar onde ela existe — e a solicitação chegava à
+         Secretaria sem a prova do vínculo, para ser cobrada depois por
+         e-mail, com a pessoa já tendo ido embora da tela.
+
+         O documento do titular só é exigido quando está VISÍVEL: no caminho
+         dos dependentes ele sai de cena, porque quem manda em cada
+         solicitação é o documento do dependente. */
+      var elContracheque = document.getElementById('contracheque');
+      if (!elContracheque.files || !elContracheque.files.length) {
+        showMsg('❌ Anexe o comprovante de vínculo com a escola — o último contracheque, ' +
+                'ou a declaração da escola para quem entrou há pouco.', 'erro');
+        elContracheque.classList.add('invalid');
+        document.getElementById('areaContracheque').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      var boxDocTit = document.getElementById('boxDocPessoalTitular');
+      var elDocPessoal = document.getElementById('docPessoal');
+      if (boxDocTit && !boxDocTit.classList.contains('hidden') &&
+          (!elDocPessoal.files || !elDocPessoal.files.length)) {
+        showMsg('❌ Anexe um documento do titular que mostre o CPF.', 'erro');
+        elDocPessoal.classList.add('invalid');
+        document.getElementById('areaDocPessoal').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      /* OS CAMPOS DO BENEFICIÁRIO ÚNICO SÓ SÃO EXIGIDOS NO CAMINHO DO
+         TITULAR. No caminho dos dependentes eles estão escondidos, e exigi-los
+         fechava a porta pelo lado de dentro: a mensagem apontava um campo que
+         a pessoa não via na tela, sem nada a fazer a respeito. */
+      if (paraQuemAtual !== 'DEPENDENTES') {
+        if (!document.getElementById('tipoBeneficiario').value) { showMsg('❌ Selecione o tipo de beneficiário.', 'erro'); document.getElementById('tipoBeneficiario').classList.add('invalid'); return; }
+        if (!document.getElementById('dataNascimentoBeneficiario').value) { showMsg('❌ Informe a data de nascimento do beneficiário.', 'erro'); document.getElementById('dataNascimentoBeneficiario').classList.add('invalid'); return; }
+        if (!document.getElementById('modalidade').value) { showMsg('❌ Selecione a modalidade.', 'erro'); document.getElementById('modalidade').classList.add('invalid'); return; }
+        if (!document.getElementById('curso').value.trim()) { showMsg('❌ Informe o nome do curso.', 'erro'); document.getElementById('curso').classList.add('invalid'); return; }
+      }
+
+      /* OS DOIS CAMINHOS SE SEPARAM AQUI. Para dependentes, os campos do
+         beneficiário único não existem — quem valida é depValidar(), cartão
+         por cartão, e o erro aponta o cartão certo. */
+      var depsValidados = null;
+      if (paraQuemAtual === 'DEPENDENTES') {
+        depsValidados = depValidar();
+        if (!depsValidados) return;
+      } else {
+        var nomeBeneficiarioFinal2 = obterNomeBeneficiarioFinal();
+        if (!nomeBeneficiarioFinal2) { showMsg('❌ Informe o nome do beneficiário.', 'erro'); document.getElementById('nomeBeneficiario').classList.add('invalid'); return; }
+        if (!validarCamposCondicionais()) return;
+        if (!validarIdadeModalidade()) return;
+      }
       var nomeBeneficiarioFinal = obterNomeBeneficiarioFinal();
-      if (!nomeBeneficiarioFinal) { showMsg('❌ Informe o nome do beneficiário.', 'erro'); document.getElementById('nomeBeneficiario').classList.add('invalid'); return; }
-      if (!validarCamposCondicionais()) return;
-      if (!validarIdadeModalidade()) return;
 
       setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', true, 'Enviando...', 'Salvar solicitação');
       showMsg('💾 Registrando solicitação...', 'info');
@@ -1117,10 +2018,7 @@ aplicarCadastroLocalizado(c);
             email: document.getElementById('email').value.trim(),
             cep: document.getElementById('cep').value.trim(),
             endereco: document.getElementById('endereco').value.trim(),
-escolaAtual:
-  document.getElementById('escolaAtual').value === '__OUTRA_ESCOLA__'
-    ? document.getElementById('outraEscola').value.trim()
-    : document.getElementById('escolaAtual').value,
+            escolaAtual: document.getElementById('escolaAtual').value.trim(),
             cargoFuncao: document.getElementById('cargoFuncao').value.trim(),
             situacaoVinculo: document.getElementById('situacaoVinculo').value.trim(),
             situacaoSindicalDeclarada: document.getElementById('situacaoSindicalDeclarada').value,
@@ -1139,6 +2037,33 @@ escolaAtual:
             docPessoal: arqDocPessoal
           };
 
+          /* PARA DEPENDENTES O BACKEND JÁ SABE O CAMINHO:
+             `salvarCadastroESolicitacaoVoucher` desvia sozinho quando acha
+             `payload.dependentes`, criando uma solicitação por dependente,
+             cada uma com o seu protocolo.
+
+             Os documentos são lidos EM SÉRIE (ver lerDocsDependentes): em
+             paralelo a ordem de chegada não é garantida, e o documento da Ana
+             poderia ser gravado na solicitação do Bruno — erro que ninguém
+             percebe até a escola receber o documento de outra criança.
+
+             E o docPessoal do TITULAR sai do payload: quem manda em cada
+             solicitação é o do dependente. Deixá-lo faria o backend gravar o
+             documento do pai como se fosse o da criança. */
+          if (paraQuemAtual === 'DEPENDENTES' && depsValidados) {
+            lerDocsDependentes(depsValidados, function (deps) {
+              payload.dependentes = deps;
+              delete payload.docPessoal;
+              chamarSalvarVoucher(payload);
+            });
+            return;
+          }
+
+          chamarSalvarVoucher(payload);
+        });
+      });
+
+      function chamarSalvarVoucher(payload) {
           google.script.run
            .withSuccessHandler(function(res) {
               setLoading('btnSalvar', 'spinnerSalvar', 'labelSalvar', false, 'Enviando...', 'Salvar solicitação');
@@ -1170,33 +2095,45 @@ escolaAtual:
               var cursoVal        = document.getElementById('curso').value.trim();
               var periodoVal      = document.getElementById('periodoReferencia').value.trim();
 
+              /* O RECIBO MOSTRAVA UM CURSO QUE NÃO ERA DE NINGUÉM — 22/09/2026,
+                 apontado pelo seu print: "Curso: Fundamental 1 — ENSINO_MEDIO",
+                 com dois dependentes registrados logo abaixo. As duas linhas
+                 acima leem os campos do BENEFICIÁRIO ÚNICO, que no caminho dos
+                 dependentes estão escondidos e guardam o que tiver sobrado de
+                 uma digitação anterior. O resultado era um par curso/modalidade
+                 que não correspondia a nenhuma das solicitações — e a pessoa
+                 conferindo o recibo não tem como saber disso.
+
+                 Agora: no caminho dos dependentes o cabeçalho não fala de curso
+                 nenhum; cada dependente traz o seu, na lista de baixo. */
+              var ehDependentes = paraQuemAtual === 'DEPENDENTES';
+              var qtdDeps       = (depsValidados || []).length;
+
               var protBox = document.getElementById('protocoloBox');
               var protNum = document.getElementById('protocoloNum');
               var protSub = document.getElementById('protocoloSub');
 
+              /* Ver a nota em `.protocolo-box`: o número só é mostrado a quem
+                 precisa levá-lo à sede. Quem recebe por e-mail não precisa
+                 decorar nem anotar nada — o protocolo vai na mensagem. */
               protNum.textContent = numProtocolo || '—';
+              protNum.style.display = isSindicalizado ? 'none' : 'block';
+              var protRot = document.getElementById('protocoloRotulo');
+              if (protRot) protRot.style.display = isSindicalizado ? 'none' : 'block';
 
               var subHtml =
                 '<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">👤</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Solicitante:</span>' +
-                    '<strong>' + nomeSolicitante + '</strong>' +
-                  '</div>' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">📚</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Curso:</span>' +
-                    '<strong>' + cursoVal + ' — ' + modalidadeVal + '</strong>' +
-                  '</div>' +
-                  '<div style="display:flex;align-items:center;gap:8px;font-size:13px;">' +
-                    '<span style="font-size:16px;">📅</span>' +
-                    '<span style="color:rgba(255,255,255,.55);">Período:</span>' +
-                    '<strong>' + periodoVal + '</strong>' +
-                  '</div>' +
+                  reciboLinha('👤', 'Solicitante', nomeSolicitante) +
+                  (ehDependentes
+                    ? reciboLinha('👪', 'Dependentes', qtdDeps + (qtdDeps === 1 ? ' dependente' : ' dependentes'))
+                    : reciboLinha('📚', 'Curso', cursoVal + ' — ' + rotuloModalidade(modalidadeVal))) +
+                  reciboLinha('📅', 'Período', periodoVal) +
                   '<div style="margin-top:6px;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.6;' +
                     (isSindicalizado
                       ? 'background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:#6ee7b7;">' +
-                        '✅ Solicitação <strong>registrada com sucesso</strong>. Nossa equipe irá analisar seus documentos em até <strong>15 dias úteis</strong>. Você será notificado por e-mail.'
+                        (ehDependentes
+                          ? '✅ <strong>' + qtdDeps + (qtdDeps === 1 ? ' solicitação registrada' : ' solicitações registradas') + '</strong>, uma para cada dependente. A análise costuma sair em até <strong>5 dias úteis</strong> — você será avisado por e-mail.'
+                          : '✅ Solicitação <strong>registrada com sucesso</strong>. A análise costuma sair em até <strong>5 dias úteis</strong> — você será avisado por e-mail.')
                       /* O TEXTO ANTERIOR SOAVA RECUSA, e a regra é o oposto.
                          Ele dizia "cadastro identificado como Não Associado"
                          e mandava comparecer — sem nunca dizer que a pessoa
@@ -1209,16 +2146,58 @@ escolaAtual:
                   '</div>' +
                 '</div>';
 
+              /* TRÊS DEPENDENTES, TRÊS PROTOCOLOS — e a tela precisa mostrar
+                 os três. O backend devolve `resultados`, um por dependente,
+                 com nome, protocolo, percentual e status.
+
+                 Sem isto a pessoa veria UM protocolo e iria embora achando
+                 que os outros dois não entraram. */
+              if (res.resultados && res.resultados.length > 1) {
+                subHtml +=
+                  '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">' +
+                  '<div style="font-size:12px;font-weight:800;letter-spacing:.12em;' +
+                  'text-transform:uppercase;color:var(--muted);margin-bottom:10px;">' +
+                  res.resultados.length + ' solicitações registradas</div>' +
+                  res.resultados.map(function (r) {
+                    var cor = r.ok ? 'var(--ok-txt)' : '#b45309';
+                    /* CADA DEPENDENTE COM O CURSO DELE. Sem isto a lista traz
+                       só nome e protocolo, e quem confere não consegue ver se
+                       o curso do Guilherme não foi parar na linha do Bernardo
+                       — que é exatamente o tipo de troca que ninguém percebe
+                       na hora e ninguém consegue reconstruir depois. */
+                    var dep = (depsValidados || []).filter(function (d) {
+                      return String(d.nomeBeneficiario || '').trim() === String(r.nome || '').trim();
+                    })[0];
+                    var curso = dep
+                      ? [dep.curso, rotuloModalidade(dep.modalidade)].filter(Boolean).join(' — ')
+                      : '';
+                    return '<div style="display:flex;justify-content:space-between;gap:12px;' +
+                      'padding:7px 0;font-size:13px;border-bottom:1px solid var(--border);">' +
+                      '<span style="font-weight:700;">' + (r.nome || '—') +
+                      (curso ? '<span style="display:block;font-weight:500;font-size:12px;' +
+                               'color:var(--muted);margin-top:2px;">' + curso + '</span>' : '') +
+                      '</span>' +
+                      '<span style="color:' + cor + ';font-weight:700;white-space:nowrap;">' +
+                      (r.ok ? (r.protocolo || '') + (r.percentual ? ' · ' + r.percentual + '%' : '')
+                            : 'em análise') +
+                      '</span></div>';
+                  }).join('') +
+                  '</div>';
+              }
+
               protSub.innerHTML = subHtml;
 
               showMsg(
-                '✅ <strong>Solicitação registrada!</strong> Protocolo: <strong style="letter-spacing:.04em;">' + numProtocolo + '</strong>' +
-                (isSindicalizado ? ' — você receberá um e-mail de confirmação.' : ' — compareça à sede em até 15 dias úteis.'),
+                isSindicalizado
+                  ? '✅ <strong>Solicitação registrada!</strong> Você vai receber um e-mail de confirmação com os detalhes.'
+                  : '✅ <strong>Solicitação registrada!</strong> Protocolo: <strong style="letter-spacing:.04em;">' +
+                    numProtocolo + '</strong> — compareça à sede em até 15 dias úteis.',
                 'ok'
               );
 
               protBox.classList.add('visible');
-              protBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              portalSoRecibo(true);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
               removeSafeLocalStorageItem('voucher_rascunho');
 
               // Não some automaticamente — usuário decide quando limpar
@@ -1229,8 +2208,7 @@ escolaAtual:
               showMsg('❌ Erro ao salvar solicitação: ' + ((err && err.message) || err), 'erro');
             })
             .salvarCadastroESolicitacaoVoucher(payload);
-        });
-      });
+      }
     }
 
 function limparFormulario(confirmar) {
@@ -1262,8 +2240,7 @@ function limparFormulario(confirmar) {
     'dataNascimentoBeneficiario',
     'nomeTitularAssociado',
     'curso',
-    'periodoReferencia',
-    'outraEscola'
+    'periodoReferencia'
   ];
 
   ids.forEach(function(id) {
@@ -1278,7 +2255,6 @@ function limparFormulario(confirmar) {
   });
 
   [
-    'escolaAtual',
     'situacaoSindicalDeclarada',
     'tipoBeneficiario',
     'parentesco',
@@ -1302,21 +2278,6 @@ function limparFormulario(confirmar) {
 
   if (campoSindical) {
     campoSindical.disabled = false;
-  }
-
-  // Oculta campo de escola personalizada
-  var boxOutra = document.getElementById('boxOutraEscola');
-
-  if (boxOutra) {
-    boxOutra.classList.add('hidden');
-  }
-
-  // Limpa escola personalizada
-  var outraEscola = document.getElementById('outraEscola');
-
-  if (outraEscola) {
-    outraEscola.value = '';
-    outraEscola.classList.remove('invalid');
   }
 
   // Uploads
@@ -1388,8 +2349,20 @@ function limparFormulario(confirmar) {
       document.getElementById('nomeDocPessoal').textContent = f ? '✔ ' + f.name : '';
     });
 
-    document.getElementById('dataNascimentoBeneficiario').addEventListener('change', function() { validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
-    document.getElementById('modalidade').addEventListener('change', function() { ajustarCamposVoucher(); validarIdadeModalidade(); autoSave(); atualizarProgresso(); });
+    document.getElementById('dataNascimentoBeneficiario').addEventListener('change', function() {
+      aplicarSugestaoModalidade(this, document.getElementById('modalidade'),
+                                document.getElementById('avisoModalidade'));
+      validarIdadeModalidade(); autoSave(); atualizarProgresso();
+    });
+    document.getElementById('modalidade').addEventListener('change', function() {
+      /* A PESSOA MANDA. A partir do primeiro toque dela, a sugestão se cala —
+         campo que se reescreve sozinho depois de preenchido é o jeito mais
+         rápido de perder a confiança de quem digita. */
+      this.dataset.tocado = '1';
+      var aviso = document.getElementById('avisoModalidade');
+      if (aviso) aviso.classList.remove('visivel');
+      ajustarCamposVoucher(); validarIdadeModalidade(); autoSave(); atualizarProgresso();
+    });
     document.getElementById('tipoBeneficiario').addEventListener('change', function() {
       ajustarCamposVoucher();
       if (String(this.value || '').toUpperCase() === 'TITULAR') {
@@ -1413,7 +2386,6 @@ function limparFormulario(confirmar) {
   'cep',
   'endereco',
   'escolaAtual',
-  'outraEscola',
   'cargoFuncao',
   'situacaoVinculo',
   'situacaoSindicalDeclarada',
@@ -1446,34 +2418,75 @@ camposAutoSave.forEach(function(id) {
   });
 });
 
-document.getElementById('escolaAtual').addEventListener('change', function() {
-  var boxOutra = document.getElementById('boxOutraEscola');
-  var outra = document.getElementById('outraEscola');
-
-  if (this.value === '__OUTRA_ESCOLA__') {
-    if (boxOutra) boxOutra.classList.remove('hidden');
-    if (outra) outra.focus();
-  } else {
-    if (boxOutra) boxOutra.classList.add('hidden');
-
-    if (outra) {
-      outra.value = '';
-      outra.classList.remove('invalid');
-    }
-  }
-
+/* Digitar no campo conta para a barra de progresso e para o rascunho — antes
+   isto dependia do evento `change` do select, que só disparava ao escolher. */
+document.getElementById('escolaAtual').addEventListener('input', function() {
+  this.classList.remove('invalid');
   autoSave();
   atualizarProgresso();
 });
     document.getElementById('btnIdentificar').addEventListener('click', identificar);
     document.getElementById('btnSalvar').addEventListener('click', salvarTudo);
+
+    /* OS DOIS BOTÕES DE "PARA QUEM É A BOLSA" e o de adicionar dependente.
+       Sem estas três linhas a seção 3b continua sendo casca — foi exatamente
+       assim que ela ficou parada: o HTML existia e ninguém o ligava. */
+    Array.prototype.forEach.call(
+      document.querySelectorAll('#paraQuem .btn-escolha'), function (b) {
+        b.addEventListener('click', function () {
+          paraQuemEscolher(b.getAttribute('data-alvo'));
+        });
+      });
+    var btnAddDep = document.getElementById('btnAdicionarDependente');
+    if (btnAddDep) btnAddDep.addEventListener('click', depAdicionar);
+
+    /* Começa em "para mim", que é o caso mais comum — e deixa o estado da
+       tela coerente desde o primeiro segundo, em vez de esperar um clique. */
+    paraQuemEscolher('TITULAR');
     document.getElementById('btnLimpar').addEventListener('click', function() { limparFormulario(true); });
+
+    /* O CAMPO LIMPA O PRÓPRIO ERRO — 16/09/2026.
+
+       Defeito visto pelo usuário no ambiente publicado: cadastro localizado,
+       data de nascimento preenchida, e o campo continuava com a borda
+       vermelha. A classe `invalid` era ADICIONADA quando o campo estava vazio
+       no clique, e só removida numa varredura que roda noutro momento — então
+       quem clicava com o campo vazio, preenchia e buscava de novo com sucesso
+       ficava olhando um erro que não existia mais.
+
+       Marca de erro que não sabe se apagar é pior do que marca nenhuma: ela
+       ensina a pessoa a desconfiar do vermelho, e aí o vermelho de verdade
+       também é ignorado.
+
+       Um listener só, por delegação: serve para os campos de hoje e para os
+       que forem acrescentados depois. */
+    document.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (el && el.classList && el.classList.contains('invalid') && String(el.value || '').trim()) {
+        el.classList.remove('invalid');
+      }
+    }, true);
+    document.addEventListener('change', function (ev) {
+      var el = ev.target;
+      if (el && el.classList && el.classList.contains('invalid') && String(el.value || '').trim()) {
+        el.classList.remove('invalid');
+      }
+    }, true);
 
     restaurarTema();
 
     google.script.run
       .withSuccessHandler(function(res) {
         INIT = res || INIT;
+
+        /* Só aparece quando a imagem chegou de verdade. Um <img> com src
+           vazio rende o ícone de imagem quebrada, que é pior do que não ter
+           logo nenhum. */
+        var elLogo = document.getElementById('portalLogo');
+        if (elLogo && INIT.logo) {
+          elLogo.src = INIT.logo;
+          elLogo.classList.add('visivel');
+        }
         preencherEscolas();
         preencherSelect('modalidade', INIT.modalidades || []);
         preencherSelect('areaCurso', INIT.areas || []);

@@ -156,6 +156,56 @@ function exigirModulo_(tokenSessao, modulo, exigirAdministrador) {
 }
 
 /**
+ * A mesma trava, para acao que pertence a MAIS DE UM modulo.
+ *
+ * Definida em 01/09/2026, a pedido do usuario, para os itens 52 e 54.2 do
+ * PENDENTE-VERIFICACAO. Nasceu de um problema concreto: quem descobre que o
+ * e-mail de uma escola esta errado esta no modulo DOCUMENTOS, olhando um
+ * oficio que voltou — e a correcao do cadastro estava atras do modulo
+ * SINDICALIZACAO. A pessoa via o problema, sabia o conserto, e dependia de
+ * outra pessoa para aplicar.
+ *
+ * NAO E AFROUXAMENTO. Continua exigindo sessao valida, continua exigindo
+ * administrador quando pedido, e continua exigindo que a pessoa tenha PELO
+ * MENOS UM dos modulos listados. O que muda e so o reconhecimento de que
+ * certas acoes pertencem legitimamente a dois fluxos de trabalho.
+ *
+ * Usar com parcimonia: acao que "pertence a todo mundo" nao pertence a
+ * ninguem. Se a lista passar de dois modulos, provavelmente o desenho e que
+ * esta errado, nao a porta.
+ *
+ * @param {string} tokenSessao
+ * @param {string[]} modulos  lista de chaves; basta ter UMA delas
+ * @param {boolean} exigirAdministrador
+ * @return {object} a sessao, para quem quiser usar
+ */
+function exigirQualquerModulo_(tokenSessao, modulos, exigirAdministrador) {
+  var lista = Array.isArray(modulos) ? modulos : [modulos];
+  var sessao = exigirSessaoDocumentos_(tokenSessao, exigirAdministrador === true);
+
+  for (var i = 0; i < lista.length; i++) {
+    if (sessaoPodeModulo_(sessao, lista[i])) return sessao;
+  }
+
+  var rotulos = lista.map(function (chave) {
+    var rotulo = chave;
+    ACESSO_MODULOS_CATALOGO.forEach(function (m) {
+      if (m.chave === chave) rotulo = m.rotulo;
+    });
+    return rotulo;
+  });
+
+  /* A mensagem diz TODOS os caminhos possiveis, nao so um. Quem le precisa
+     saber qual permissao pedir ao administrador — dizer "falta Documentos"
+     quando Sindicalizacao tambem serviria manda a pessoa pedir a coisa
+     errada. */
+  throw new Error(
+    "Seu usuário não tem acesso a nenhum dos módulos necessários (" +
+    rotulos.join(" ou ") + "). Fale com o administrador do SISGEP."
+  );
+}
+
+/**
  * Porta dupla: sessão do SISGEP OU conta Google com poder de administrador.
  *
  * Existe por causa de uma armadilha do editor do Apps Script: o botão Run

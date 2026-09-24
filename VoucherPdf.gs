@@ -212,9 +212,41 @@ if (voucherExistente) {
     }
 
     etapa = "converter em PDF e salvar na pasta do Drive";
+    /* A DATA ENTRA NO NOME DO ARQUIVO — pedido do usuário em 16/09/2026,
+     * olhando o PDF que chegou por e-mail.
+     *
+     * Vai em AAAA-MM-DD, não em dd/MM/yyyy, por dois motivos: barra não pode
+     * aparecer em nome de arquivo (o sanitizador a trocaria por outra coisa),
+     * e nesse formato a ordenação alfabética da pasta do Drive já fica em
+     * ordem cronológica — que é como se procura um documento emitido.
+     *
+     * Vem PRIMEIRO pela mesma razão: a pasta cresce um voucher por vez, e
+     * quem procura "os de setembro" acha tudo junto. */
+    const dataArquivo = Utilities.formatDate(
+      new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+
+    /* O NOME DO ARQUIVO DIZ PARA QUEM O VOUCHER FOI EMITIDO — 22/09/2026,
+     * pedido do usuário: "colocar a informação para quem — ex: voucher
+     * emitido para o dependente (nome + data)".
+     *
+     * Saía com o NOME_SOLICITANTE, que numa bolsa de dependente é o pai. Dois
+     * filhos do mesmo associado produziam dois PDFs com o mesmo nome de
+     * pessoa, diferentes só pelo protocolo — e quem procura na pasta o
+     * voucher do Bernardo não tem como saber qual é. Agora o nome grande é o
+     * de quem recebe, com o titular ao lado para não perder de quem é o
+     * direito. */
+    const nomeBenefArquivo = String(reg.NOME_BENEFICIARIO || "").trim();
+    const nomeTitularArquivo = String(reg.NOME_SOLICITANTE || "").trim();
+    const ehDependenteArquivo =
+      !!nomeBenefArquivo &&
+      nomeBenefArquivo.toUpperCase() !== nomeTitularArquivo.toUpperCase();
+    const paraQuemArquivo = ehDependenteArquivo
+      ? nomeBenefArquivo + " (dependente de " + nomeTitularArquivo + ")"
+      : nomeTitularArquivo;
+
     const pdfVoucher = salvarHtmlComoPdfVoucher_(
       htmlVoucher,
-      "Voucher Bolsa - " + protocolo + " - " + reg.NOME_SOLICITANTE
+      dataArquivo + " - Voucher Bolsa - " + protocolo + " - " + paraQuemArquivo
     );
 
     let linkOficio = "";
@@ -223,9 +255,11 @@ if (voucherExistente) {
     if (opcoes.enviarRhEscola === true) {
       etapa = "gerar o ofício da escola";
       const htmlOficio = gerarHtmlOficioEscolaVoucher_(dadosDoc);
+      /* O ofício vai para a escola do ALUNO, então é o nome dele que importa
+         aqui — quem recebe o arquivo não conhece o titular. */
       const pdfOficio = salvarHtmlComoPdfVoucher_(
         htmlOficio,
-        "Oficio Escola - " + protocolo + " - " + reg.NOME_SOLICITANTE
+        dataArquivo + " - Oficio Escola - " + protocolo + " - " + paraQuemArquivo
       );
 
       linkOficio = pdfOficio.url;
@@ -401,7 +435,7 @@ function salvarHtmlComoPdfVoucher_(html, nomeArquivo) {
   const file = pasta.createFile(blobPdf);
 
   try {
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(file, "VoucherPdf.gs");
   } catch (e) {}
 
   return {
@@ -417,20 +451,37 @@ function registrarEmissaoVoucher_(reg, dados) {
 
   if (!sh) return;
 
-  sh.appendRow([
-    gerarIdPadrao_("EMI"),
-    new Date(),
-    dados.protocolo || "",
-    dados.idSolicitacao || "",
-    reg.NOME_SOLICITANTE || "",
-    reg.CPF_SOLICITANTE || "",
-    reg.ESCOLA_SELECIONADA || "",
-    dados.tipoDocumento || "CERTIFICADO",
-    dados.codigo || "",
-    dados.linkArquivo || "",
-    dados.percentual || "",
-    dados.usuario || obterUsuarioAtualVoucher_()
-  ]);
+  /* ESCRITA POR NOME DE COLUNA, não por posição — 22/09/2026.
+     O appendRow posicional que estava aqui só funciona enquanto a ordem do
+     cabeçalho nunca mudar. Como a aba acabou de ganhar três colunas novas e
+     em produção elas entram NO FIM (ensureHeaders_ não reordena nada), uma
+     planilha com ordem diferente da canônica gravaria tudo torto e em
+     silêncio: a escola no lugar do CPF, o link no lugar do percentual. */
+  const headers = obterHeaders_(sh).map(function (h) { return String(h || "").trim(); });
+  const valores = {
+    ID_EMISSAO: gerarIdPadrao_("EMI"),
+    DATA_EMISSAO: new Date(),
+    PROTOCOLO: dados.protocolo || "",
+    ID_SOLICITACAO: dados.idSolicitacao || "",
+    NOME_SOLICITANTE: reg.NOME_SOLICITANTE || "",
+    CPF: reg.CPF_SOLICITANTE || "",
+    ESCOLA: reg.ESCOLA_SELECIONADA || "",
+    TIPO_DOCUMENTO: dados.tipoDocumento || "CERTIFICADO",
+    CODIGO_VALIDACAO: dados.codigo || "",
+    LINK_ARQUIVO: dados.linkArquivo || "",
+    PERCENTUAL: dados.percentual || "",
+    USUARIO: dados.usuario || obterUsuarioAtualVoucher_(),
+    /* Quando a bolsa é do próprio associado, beneficiário e solicitante são a
+       mesma pessoa — e a coluna repete o nome em vez de ficar vazia. Vazio
+       aqui seria lido como "não informado", que é diferente de "é ele mesmo". */
+    NOME_BENEFICIARIO: reg.NOME_BENEFICIARIO || reg.NOME_SOLICITANTE || "",
+    TIPO_BENEFICIARIO: reg.TIPO_BENEFICIARIO || "",
+    DATA_SOLICITACAO: reg.DATA_SOLICITACAO || ""
+  };
+
+  sh.appendRow(headers.map(function (h) {
+    return valores[h] !== undefined ? valores[h] : "";
+  }));
 }
 
 /**
@@ -565,8 +616,15 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const percentual = Number(dados.percentual || 70);
   const percentualExtenso = percentualPorExtensoVoucher_(percentual);
 
-  const nomeSolicitante = reg.NOME_SOLICITANTE || "";
-  const beneficiario = reg.NOME_BENEFICIARIO || nomeSolicitante;
+  /* NOME EM CAIXA ALTA, nos dois — 23/09/2026, "padronizar - caixa alta".
+     Na prévia o titular saiu "WANDERSON NASCIMENTO CASTELO" e o dependente
+     "Bernardo Simoura Castelo", na mesma frase: um veio da base de
+     Associados, o outro foi digitado no portal. Dois padrões no mesmo
+     documento denunciam a origem do dado, e os dois papéis do sindicato
+     trazem os nomes em caixa alta. A caixa é do DOCUMENTO, não do cadastro:
+     o que está gravado na solicitação não muda. */
+  const nomeSolicitante = String(reg.NOME_SOLICITANTE || "").toUpperCase();
+  const beneficiario = String(reg.NOME_BENEFICIARIO || "").toUpperCase() || nomeSolicitante;
   const tipoBenef = String(reg.TIPO_BENEFICIARIO || "").toUpperCase();
   /* Dependente é qualquer beneficiário que não seja o próprio titular — e a
    * comparação de nome cobre o caso de a coluna vir vazia em linha antiga. */
@@ -595,17 +653,100 @@ function gerarHtmlDocumentoVoucher_(dados) {
    * lugar da instituição e a oração "mantida pela" desaparece — repetir o
    * mesmo nome duas vezes na mesma frase é pior que omitir. */
   const fantasia = String(reg.ESCOLA_FANTASIA || "").trim();
-  const razaoSocial = String(reg.ESCOLA_SELECIONADA || reg.INSTITUICAO_ENSINO || "").trim();
+  let razaoSocial = String(reg.ESCOLA_SELECIONADA || reg.INSTITUICAO_ENSINO || "").trim();
+  let cnpjBruto = String(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "").trim();
+
+  /* O CNPJ E A MANTENEDORA SÃO BUSCADOS DE NOVO NA HORA DE EMITIR —
+     23/09/2026, você olhando a prévia do Bernardo: "tem ajustar".
+     
+     O papel traz "empregado da instituição MONTE ALVO, mantida pela DAMASIO
+     CAMPANA EDUCAÇÃO LTDA, inscrita no CNPJ: sob nº 56.169.513/0001-85
+     encontra-se...". Na prévia a frase pulava da instituição direto para
+     "encontra-se": a solicitação do Bernardo foi gravada com a observação
+     "Escola não localizada no cadastro de escolas", e sem o cadastro não há
+     CNPJ nem razão social para imprimir.
+
+     O dado é copiado para a solicitação na entrada, mas ali ele é uma foto
+     do cadastro NAQUELE dia. Escola cadastrada depois — ou corrigida depois —
+     nunca chegava ao certificado, e o documento saía incompleto para sempre.
+     Agora, quando falta, procura-se de novo no cadastro de Escolas na hora de
+     emitir. Achou, completa; não achou, as orações somem como antes.
+
+     NUNCA SOBRESCREVE o que já está gravado: se a solicitação tem CNPJ, é
+     ele que vale. O certificado de uma bolsa não pode mudar porque alguém
+     editou o cadastro da escola depois. */
+  /* O PAR VEM INTEIRO, DE UMA FONTE SÓ — 23/09/2026, você: "tem que sair o
+     CNPJ correto, a razão social correta da escola em si".
+
+     Sem CNPJ gravado, a solicitação guarda o que a pessoa DIGITOU no portal
+     ("UVV - VILA VELHA"), que é apelido, não razão social. Completar só o
+     CNPJ pelo cadastro deixaria o documento com o nome de um lugar e o CNPJ
+     de um registro — parecendo conferido, e não sendo. Por isso, quando o
+     cadastro é consultado, ele fornece NOME E CNPJ JUNTOS, do mesmo
+     registro; o apelido digitado sai do texto.
+
+     E não se mistura ao contrário: se a solicitação já tem CNPJ, é ela que
+     manda, inteira. O certificado de uma bolsa não pode mudar porque alguém
+     editou o cadastro da escola depois. */
+  if (!cnpjBruto && typeof buscarEscolaPorNome_ === "function") {
+    try {
+      const doCadastro = buscarEscolaPorNome_(razaoSocial || fantasia);
+      const cnpjCadastro = doCadastro ? String(doCadastro.cnpj || "").trim() : "";
+      const nomeCadastro = doCadastro ? String(doCadastro.escola || "").trim() : "";
+      if (cnpjCadastro && nomeCadastro) {
+        cnpjBruto = cnpjCadastro;
+        razaoSocial = nomeCadastro;
+      } else if (nomeCadastro && !razaoSocial) {
+        razaoSocial = nomeCadastro;
+      }
+    } catch (eEsc) {
+      Logger.log("escola do certificado: " + eEsc.message);
+    }
+  }
+
   const instituicaoTexto = fantasia || razaoSocial;
   const mantenedora = (fantasia && razaoSocial && fantasia !== razaoSocial) ? razaoSocial : "";
-  const cnpj = formatarCnpj_(reg.CNPJ_ESCOLA || reg.CNPJ_INSTITUICAO || "");
+  const cnpj = formatarCnpj_(cnpjBruto);
 
-  /* "semestre letivo de 2026/2" ou "ano letivo de 2026": o documento diz o
-   * que a bolsa é, e bolsa anual não tem semestre. */
-  const rotuloPeriodo = (regime.indexOf("ANUAL") > -1 ? "ano letivo de " : "semestre letivo de ")
-    + periodo;
+  /* O período é escrito DIFERENTE nos dois papéis, e a diferença não é
+   * estilo — é como a frase se encaixa:
+   *
+   *   titular ..... "...do Curso de BIOMEDICINA semestre 2026/2."
+   *   dependente .. "...do Curso de Biomedicina, referente ao semestre
+   *                  letivo de 2026/2, após verificação..."
+   *
+   * Nos dois casos, bolsa anual não tem semestre — daí o par ano/semestre. */
+  /* O PERÍODO É ESCRITO COMO NO PAPEL — 23/09/2026, com os dois modelos
+   * marcados pelo usuário na mão ("considera esse arquivo do titular como
+   * modelo" / "esse é do dependente").
+   *
+   * DOIS FATOS QUE OS MODELOS DECIDEM, e que o código vinha errando:
+   *
+   * 1. O certificado do DEPENDENTE diz sempre "referente ao semestre letivo
+   *    de X" — nos dois papéis reais, inclusive naquele cujo período é só
+   *    "2026", sem semestre. Não existe "ano letivo" em nenhum deles. O
+   *    código escolhia entre "ano" e "semestre" pelo REGIME da regra da
+   *    convenção, e saía "ano letivo de 2027/1": descrevia como ano um
+   *    período que ele mesmo escrevia como semestre, na mesma linha.
+   *
+   * 2. O certificado do TITULAR NÃO TRAZ PERÍODO NENHUM. Ele termina em
+   *    "...escolar do Curso de ADMINISTRAÇÃO." O código acrescentava
+   *    "semestre 2026/1" ali, texto que o papel não tem.
+   *
+   * O regime continua existindo e continua importando — é ele que decide se
+   * a bolsa ocupa a vaga do ano ou do semestre na contagem do teto por
+   * associado. O que ele não decide é esta frase. */
+  const rotuloPeriodo = "semestre letivo de " + periodo;
 
-  const qrCodeUrl = gerarQrCodeVoucherUrl_(codigo);
+  /* SEM CHAMAR O GERADOR DE QR, já que o QR não é mais impresso.
+   *
+   * Isto não é limpeza cosmética: `gerarQrCodeVoucherUrl_` faz um UrlFetch
+   * para quickchart.io a CADA emissão. Mantida a chamada, toda bolsa emitida
+   * pagaria uma ida à internet — com o tempo de espera e a chance de falha —
+   * para produzir uma imagem que o documento descarta.
+   *
+   * A função continua no projeto, pronta, para o dia em que a página pública
+   * de validação existir. Ver o comentário no bloco do rodapé. */
   const assinaturaImg = assinaturaPresidenteVoucher_();
   const logoImg = logoSindicatoVoucher_();
   /* A marca d'água tem imagem PRÓPRIA — a do papel do sindicato, extraída do
@@ -650,57 +791,205 @@ function gerarHtmlDocumentoVoucher_(dados) {
     return valor ? rotulo + "<strong>" + escHtmlVoucher_(valor) + "</strong>" : "";
   }
 
-  /* ── A REDAÇÃO É A DO PAPEL, PALAVRA POR PALAVRA ──────────────────────
+  /* ── SÃO DUAS REDAÇÕES, NÃO UMA ───────────────────────────────────────
    *
-   * Pedido do usuário em 13/08/2026: "texto tem que ser o padrão que te
-   * enviei". A redação abaixo foi EXTRAÍDA do certificado real que o
-   * sindicato emite (GLAUCIA_SOUZA_NRAMOS.pdf), não transcrita de memória
-   * nem parafraseada. A anterior era invenção minha — dizia a mesma coisa
-   * com outras palavras, e "a mesma coisa com outras palavras" num documento
-   * que a escola confere contra o que já recebeu antes é problema, não
-   * estilo.
+   * O usuário mandou, em 18/08/2026, os DOIS certificados que o sindicato
+   * emite hoje — "segue os modelos como devem sair tanto para o titular
+   * quanto o dependente" —, escaneados dos originais assinados.
    *
-   * O que MUDOU em relação ao papel, e por quê:
+   * Até aqui o código tinha UMA redação (a do titular) e injetava nela
+   * ", dependente de FULANO" quando o beneficiário era filho. Está errado:
+   * o papel do dependente não é o do titular com uma oração a mais. Ele
+   * tem fundamento jurídico próprio, verbo próprio e fecho próprio.
    *
-   * - "inscrita no CNPJ: sob nº" → "inscrita no CNPJ sob nº". O dois-pontos
-   *   é erro de digitação do original. Reproduzir erro não é fidelidade.
-   * - O ano da CCT sai de NEGCOL_VIGENCIA, não fixo no texto. O papel de
-   *   referência cita "2025/2026" num documento datado de agosto de 2026 —
-   *   ou seja, cita CCT já vencida (a vigente vai de 01/03/2026 a
-   *   28/02/2027). Amarrando à fonte única, o certificado não envelhece
-   *   sozinho e a troca anual da CCT já o corrige.
+   *   TITULAR ....... "em conformidade com a cláusula de Incentivo ao
+   *                    Aprimoramento prevista na CCT"
+   *                   "ATENDE AOS REQUISITOS ESTABELECIDOS para a concessão"
+   *                   "...e semestralidade/ANUIDADE ESCOLAR do Curso de X
+   *                    semestre 2026/2"
+   *                   fecho: "A presente certificação destina-se..."
    *
-   * O que foi ACRESCENTADO ao padrão, por pedido anterior do usuário:
-   * o CPF (13/08/2026), a oração de dependente (o papel de referência é de
-   * um titular, mas o benefício alcança filho) e o período letivo — que é a
-   * chave do controle "um por pessoa, por curso, por período".
+   *   DEPENDENTE .... "nos termos do CONVÊNIO firmado com o SINEPE-ES"
+   *                   "ENCONTRA-SE REGULARMENTE HABILITADO ao benefício"
+   *                   "...e semestralidade do Curso de X, referente ao
+   *                    semestre letivo de 2026/2, após verificação..."
+   *                   fecho: "O presente certificado destina-se
+   *                    EXCLUSIVAMENTE... pessoal, individual e
+   *                    intransferível..."
    *
-   * É UMA FRASE SÓ, como no papel. Montada por pedaços porque cada oração
-   * some quando o dado dela não existe: sem RG não se escreve "portador da
-   * carteira de identidade nº —", que é pior que não dizer. */
-  const corpo =
-    "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
-    "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
-    "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
-    "Trabalho " + escHtmlVoucher_(cctVigenteVoucher_()) + ", firmada com o " +
-    "<strong>SINEPE – ES</strong> - Sindicato das Empresas Particulares de Ensino do Estado " +
-    "do Espírito Santo, certifica que " +
-    "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
-    (ehDependente ? ", dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" : "") +
-    frag(", portador da carteira de identidade nº ", rg) +
-    /* "e inscrito no CPF sob o nº" — a mesma construção que o documento já
-     * usa para o CNPJ da mantenedora, para as duas identificações lerem
-     * igual. Some inteira quando não há CPF, como as outras orações. */
-    (cpf ? " e inscrito no CPF sob o nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
+   * ATENÇÃO A UMA COISA QUE OS DOIS MODELOS CONFIRMAM: no do dependente, o
+   * RG e o vínculo de emprego são do TITULAR, não da criança. Quem tem
+   * vínculo com a instituição é o associado, e é o vínculo dele que
+   * sustenta o benefício. `rg` e `cpf` já vêm do titular — não trocar.
+   *
+   * O QUE MUDA EM RELAÇÃO AO PAPEL, e por quê (confirmado pelo usuário em
+   * 18/08/2026, pergunta a pergunta):
+   *
+   * - "inscrita no CNPJ: sob nº" → "inscrita no CNPJ sob nº". O
+   *   dois-pontos é erro de digitação do original nos dois modelos.
+   *   Reproduzir erro não é fidelidade.
+   * - O ano da CCT sai de NEGCOL_VIGENCIA, não fixo no texto. O papel cita
+   *   "2025/2026" num documento de agosto de 2026 — CCT já vencida (a
+   *   vigente vai de 01/03/2026 a 28/02/2027). Amarrado à fonte única, o
+   *   certificado não envelhece sozinho.
+   * - O modelo do dependente não traz a linha de local e data; o do
+   *   titular traz. Os DOIS passam a trazer, por decisão dele: documento
+   *   sem data é difícil de conferir depois.
+   *
+   * Cada oração some quando o dado dela não existe: sem RG não se escreve
+   * "portador da carteira de identidade nº —", que é pior que não dizer. */
+
+  /* A IDENTIFICAÇÃO DO TITULAR, palavra por palavra como nos dois modelos
+     de 23/09/2026. Ela é a mesma nos dois papéis; o que muda é o texto ao
+     redor dela.
+
+     O QUE MUDOU AQUI, e cada ponto sai de um dos modelos:
+
+     - "portador do CPF nº" no lugar de "portador da carteira de identidade
+       nº ... e inscrito no CPF sob o nº". OS DOIS MODELOS IDENTIFICAM POR
+       CPF, e nenhum deles cita RG. Isso também tira da emissão a digitação
+       do RG, que era obrigatória para o documento sair completo.
+     - "inscrita no CNPJ: sob nº", COM o dois-pontos. Em 18/08/2026 eu tinha
+       tratado o dois-pontos como erro de digitação do papel e o usuário
+       concordou em removê-lo; em 23/09 ele mandou o contrário, com os
+       modelos na mão: "a parte fixa do texto tem que ser idêntica a essa que
+       te passei na foto". Idêntico é idêntico — inclusive na pontuação que
+       eu acharia errada.
+
+     Cada oração some quando o dado dela não existe: "portador do CPF nº —"
+     num documento oficial é pior que não dizer nada. */
+  /* "PORTADOR" OU "PORTADORA", conforme o associado — 23/09/2026,
+     "flexibiliza no sexo". Os dois modelos flexionam: "portadora do CPF nº"
+     no da associada, "portador" no do associado.
+
+     Quando o sexo não se sabe, sai "portador(a)". Não é bonito, e é melhor
+     do que tratar uma associada no masculino num papel que leva o nome dela;
+     e é melhor do que adivinhar pelo primeiro nome, que erra com qualquer
+     "Darci" e sem ninguém perceber. */
+  const sexoTitular = (typeof sexoAssociadoVoucher_ === "function")
+    ? sexoAssociadoVoucher_(reg.CPF_SOLICITANTE, reg.SEXO_SOLICITANTE)
+    : "";
+  const portador = sexoTitular === "F" ? "portadora"
+                 : sexoTitular === "M" ? "portador"
+                 : "portador(a)";
+
+  const identificacaoTitular =
+    (cpf ? ", " + portador + " do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", empregado da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
-    (cnpj ? ", inscrita no CNPJ sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "") +
-    ", atende aos requisitos estabelecidos para a concessão do benefício de <strong>" +
-    escHtmlVoucher_(percentual) + "% (" + escHtmlVoucher_(percentualExtenso) + ")</strong> " +
-    "de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
-    frag(" do Curso de ", curso) +
-    (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
-    ".";
+    (cnpj ? ", inscrita no CNPJ: sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
+
+  /* "DO CURSO DE BIOMEDICINA" OU "DA EDUCAÇÃO INFANTIL" — os dois modelos
+     escrevem o objeto da bolsa de formas diferentes, e a diferença é o tipo
+     de ensino:
+
+       graduação ....... "semestralidade DO CURSO DE Biomedicina"
+       ed. básica ...... "semestralidade DA EDUCAÇÃO INFANTIL"
+
+     Faz sentido fora do papel também: criança de educação infantil não está
+     matriculada num "curso", e escrever "do Curso de Educação Infantil"
+     soaria como faculdade. Quando a modalidade é do ensino básico, o nome da
+     modalidade ocupa o lugar do curso; nas demais, vale o curso digitado.
+
+     Sem curso e sem modalidade, a oração inteira some — como as outras. */
+  /* O ARTIGO VAI JUNTO DE CADA MODALIDADE, e não é detalhe: "semestralidade
+     DA Ensino Fundamental" sai errado em português, num documento que a
+     escola vai ler. O papel traz "da EDUCAÇÃO INFANTIL" — feminino porque a
+     palavra é feminina, não porque a regra seja "da". */
+  const MODALIDADES_BASICO = {
+    CRECHE:             "CRECHE",
+    EDUCACAO_INFANTIL:  "EDUCAÇÃO INFANTIL",
+    ENSINO_FUNDAMENTAL: "ENSINO FUNDAMENTAL",
+    ENSINO_MEDIO:       "ENSINO MÉDIO"
+  };
+  const modalidadeReg = String(reg.MODALIDADE || reg.NIVEL || "").toUpperCase().trim();
+  const nomeBasico = MODALIDADES_BASICO[modalidadeReg] || "";
+  /* "CURSO/ENSINO" DA CRECHE AO ENSINO MÉDIO — 23/09/2026, você: "de ensino
+     infantil a ensino médio - colocar curso/ensino".
+
+     Criança de educação infantil não está matriculada num "curso", e
+     escrever "do Curso de Educação Infantil" soa como faculdade; mas
+     "semestralidade da Educação Infantil" obrigava o artigo a mudar com a
+     palavra ("do Ensino Fundamental", "da Creche") — uma concordância a
+     mais para errar num documento que a escola lê. "Do Curso/Ensino de X"
+     resolve os dois: serve para qualquer modalidade do ensino básico e
+     acompanha o "semestralidade/anuidade" que o papel já usa.
+
+     Da graduação para cima continua "do Curso de", com o curso digitado. */
+  /* O QUE VAI ESCRITO É O QUE A PESSOA PEDIU — 23/09/2026, sua correção:
+     "Curso/Ensino: o que ele solicitar. Ex: Curso/Ensino: Infantil".
+
+     A primeira versão imprimia o nome da modalidade ("Curso/Ensino de ENSINO
+     FUNDAMENTAL"), que é redundante e não é o que o associado escreveu. Quem
+     pede bolsa para o filho escreve "Infantil", "6ª série", "3º ano" — e é
+     isso que a escola precisa ler para conferir a matrícula.
+
+     A modalidade fica como reserva, para a linha antiga em que o curso não
+     foi preenchido: melhor "Curso/Ensino de EDUCAÇÃO INFANTIL" do que a
+     oração sumir de um certificado.
+
+     SEM O "DE" — 23/09/2026, sua segunda correção: "tira esse de". Com o
+     que a pessoa escreve ali ("Infantil", "6ª série", "3º ano"), o "de"
+     sobra: "do Curso/Ensino de 6ª série" tropeça na leitura, enquanto "do
+     Curso/Ensino 6ª série" lê direto. Na graduação o "de" fica, porque lá o
+     que vem depois é nome de curso ("do Curso de Biomedicina"), como no
+     papel. */
+  const objetoBolsa = nomeBasico
+    ? " do Curso/Ensino <strong>" +
+      escHtmlVoucher_(String(curso || "").trim() || nomeBasico) + "</strong>"
+    : frag(" do Curso de ", curso);
+
+  const beneficioExtenso =
+    "<strong>" + escHtmlVoucher_(percentual) + "% (" +
+    escHtmlVoucher_(percentualExtenso) + ")</strong>";
+
+  const corpo = ehDependente
+    ? /* ── DEPENDENTE ──
+         Transcrito do modelo de 23/09/2026. Sem vírgula depois do nome do
+         beneficiário: o papel escreve "ANA CECILIA MARQUES VELTEN dependente
+         de JOANA...". */
+      "O Sindicato dos Educadores Técnico – Administrativos em Estabelecimentos de Ensino " +
+      "Particular no Estado do Espírito Santo – <strong>SINDEDUCAÇÃO-ES</strong>, nos termos " +
+      "do convênio firmado com o Sindicato das Empresas Particulares de Ensino do Estado do " +
+      "Espírito Santo – <strong>SINEPE – ES</strong>, certifica que " +
+      "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
+      " dependente de <strong>" + escHtmlVoucher_(nomeSolicitante) + "</strong>" +
+      identificacaoTitular +
+      " encontra-se regularmente habilitado ao benefício de " + beneficioExtenso +
+      " de desconto sobre a matrícula, rematrícula e semestralidade" +
+      objetoBolsa +
+      (periodo ? ", referente ao " + escHtmlVoucher_(rotuloPeriodo) : "") +
+      ", após verificação do atendimento aos requisitos exigidos para a concessão do benefício."
+
+    : /* ── TITULAR ──
+         Transcrito do modelo marcado "Titular" em 23/09/2026. Termina no
+         curso: este papel NÃO traz período. */
+      "O <strong>SINDEDUCAÇÃO-ES</strong> - Sindicato dos Educadores Técnico – Administrativos " +
+      "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo, em conformidade " +
+      "com a cláusula de Incentivo ao Aprimoramento prevista na Convenção Coletiva de " +
+      "Trabalho " + escHtmlVoucher_(cctVigenteVoucher_()) + ", firmada com o " +
+      "<strong>SINEPE – ES</strong> - Sindicato das Empresas Particulares de Ensino do Estado " +
+      "do Espírito Santo, certifica que " +
+      "<strong>" + escHtmlVoucher_(beneficiario) + "</strong>" +
+      identificacaoTitular +
+      ", atende aos requisitos estabelecidos para a concessão do benefício de " +
+      beneficioExtenso +
+      " de desconto sobre matrícula, rematrícula e semestralidade/anuidade escolar" +
+      objetoBolsa +
+      ".";
+
+  /* O segundo parágrafo também é diferente nos dois papéis. O do
+     dependente é mais restritivo — "exclusivamente", "pessoal, individual
+     e intransferível" —, e faz sentido: benefício de filho não se
+     transfere para outro filho. */
+  const fecho = ehDependente
+    ? "O presente certificado destina-se exclusivamente à comprovação da habilitação do " +
+      "beneficiário para utilização do benefício acima especificado, sendo pessoal, individual " +
+      "e intransferível, produzindo efeitos enquanto permanecerem atendidas as condições que " +
+      "fundamentaram sua emissão."
+    : "A presente certificação destina-se à comprovação da habilitação do beneficiário ao " +
+      "referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de " +
+      "utilização junto à instituição de ensino acima identificada.";
 
   return (
     "<!DOCTYPE html>" +
@@ -825,7 +1114,6 @@ function gerarHtmlDocumentoVoucher_(dados) {
      * espaço com o que a escola já sabe ler. Discreto no canto do rodapé,
      * flutuando sobre a arte, sem empurrar nada. */
     ".valida{font-size:7pt;color:#64748b;line-height:1.35;margin-top:1mm;}" +
-    ".valida-qr{width:15mm;height:15mm;display:block;margin-left:auto;}" +
     "</style>" +
     "</head>" +
     "<body>" +
@@ -846,17 +1134,21 @@ function gerarHtmlDocumentoVoucher_(dados) {
     "<div class='corpo'>" +
     "<h1>CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS</h1>" +
     "<p>" + corpo + "</p>" +
-    /* Segundo parágrafo, também extraído do papel real. O que estava aqui
-     * antes ("pessoal, individual e intransferível…") era redação minha. */
-    "<p>A presente certificação destina-se à comprovação da habilitação do beneficiário ao " +
-    "referido desconto, nos termos da Convenção Coletiva de Trabalho vigente, para fins de " +
-    "utilização junto à instituição de ensino acima identificada.</p>" +
+    /* Segundo parágrafo, extraído do papel real — e DIFERENTE nos dois
+     * modelos. Ver o bloco que monta `fecho`. */
+    "<p>" + fecho + "</p>" +
 
+    /* A LINHA DE LOCAL E DATA FICA NO FIM DO TEXTO, alinhada à direita,
+     * logo acima da assinatura — como nos dois modelos que o usuário
+     * mandou em 18/08/2026, e como ele reforçou: "a data tem que sair no
+     * final do arquivo igual o modelo enviado". Depois dela só vem quem
+     * assina. */
     "<div class='data-local'>" + escHtmlVoucher_(dataExtenso) + "</div>" +
 
     "<div class='assinatura'>" +
     (assinaturaImg ? "<img src='" + escHtmlVoucher_(assinaturaImg) + "'>" : "") +
     "<div class='pres'>" + escHtmlVoucher_(PRESIDENTE_VOUCHER) + "</div>" +
+    /* "SindEducação/ES", com barra — é assim nos dois modelos de 23/09. */
     "<div class='cargo'>Presidente – <em>SindEducação/ES</em></div>" +
     "</div>" +
     "</div>" +
@@ -868,25 +1160,49 @@ function gerarHtmlDocumentoVoucher_(dados) {
           /* E-mail e site conferidos com o usuário em 13/08/2026:
            * secretaria@sindeducacao.com e www.sindeducacao.com.
            *
-           * ATENÇÃO: a ARTE do rodapé (VOUCHER_RODAPE_B64_) ainda traz
-           * "contato@sindeducacao.com" e "sindeducacao.com" desenhados dentro
-           * do JPEG, e daqui não há como corrigir — imagem não se edita por
-           * código. Enquanto o caminho normal for a arte, é o endereço antigo
-           * que sai impresso. Para corrigir de verdade, é preciso uma nova
-           * imagem de rodapé. */
+           * A RESSALVA QUE ESTAVA AQUI VENCEU — corrigido em 15/09/2026.
+           * Este comentário dizia que a ARTE do rodapé ainda trazia
+           * "contato@sindeducacao.com" desenhado dentro do JPEG e que só uma
+           * imagem nova resolveria. A imagem JÁ FOI trocada: decodificando
+           * VOUCHER_RODAPE_B64_ hoje, lê-se "secretaria@sindeducacao.com".
+           *
+           * Fica o registro porque a nota velha enganava nos dois sentidos:
+           * mandava procurar um defeito que não existe mais e sugeria que o
+           * endereço impresso estivesse errado. */
           "<div class='rod-contatos'>" +
             "(27) 3222-2706<br>(27) 99735-8900<br>www.sindeducacao.com<br>" +
             "secretaria@sindeducacao.com<br>SindEducacaoES<br>sindeducacaoes" +
           "</div>" +
           "<div class='rod-tarja'>Você comerá do fruto do seu trabalho e será feliz e próspero. Salmos 128:2.</div>" +
         "</div>") +
-    "<div class='valida-box'>" +
-    (qrCodeUrl ? "<img class='valida-qr' src='" + escHtmlVoucher_(qrCodeUrl) + "'>" : "") +
-    "<div class='valida'>" +
-    (codigo ? "Código " + escHtmlVoucher_(codigo) + "<br>" : "") +
-    (protocolo ? escHtmlVoucher_(protocolo) : "") +
-    "</div>" +
-    "</div>" +
+    /* O QR CODE SAIU DO DOCUMENTO — pedido do usuário em 16/09/2026.
+     *
+     * E ele estava QUEBRADO, o que só apareceu ao conferir antes de mexer: o
+     * QR apontava para `?page=pub-validar-voucher`, e essa rota NÃO EXISTE no
+     * doGet do Code.gs. Quem apontasse a câmera não chegava a lugar nenhum —
+     * num documento oficial que a instituição de ensino recebe.
+     *
+     * `gerarQrCodeVoucherUrl_` e `validarVoucherPublico` FICAM no projeto, em
+     * vez de serem apagadas junto: a validação por código é uma função que o
+     * sindicato pode querer de volta com a página feita, e a REGRA Nº 1 manda
+     * manter e documentar em vez de remover. O que muda aqui é só o que é
+     * impresso.
+     *
+     * E O CÓDIGO TAMBÉM SAIU DO PAPEL — 23/09/2026, você, com o certificado
+     * emitido na mão: "pode tirar isso". Era o bloco cinza no rodapé, com
+     * "Código VAL-…" e o número do protocolo.
+     *
+     * Faz sentido: os dois modelos do sindicato não trazem nada disso, e o
+     * que o código serviria para validar é uma página pública que não existe.
+     * Num documento que vai para a instituição de ensino, um código que não
+     * valida nada é ruído com aparência de segurança.
+     *
+     * O QUE NÃO MUDA, e é o que permite tirar sem perder nada: o código
+     * CONTINUA sendo gerado e gravado — em `Voucher_Emitidos`, no histórico
+     * e no protocolo. Quem precisar conferir uma emissão acha pelo painel.
+     * O que deixou de existir é a impressão dele. A classe `.valida-box`
+     * fica no CSS: ela não atrapalha e volta a servir no dia em que a
+     * página de validação existir. */
     "</div>" +
 
     "</div>" +
@@ -993,27 +1309,21 @@ function enviarVoucherAssociado_(reg, dados) {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
-      subject: "📄 Voucher de Bolsa emitido — " + dados.protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<div style='background:#002f6c;padding:24px;border-radius:12px 12px 0 0;text-align:center;'>" +
-        "<h1 style='color:#C9A84C;margin:0;font-size:22px;'>SindEducação-ES</h1>" +
-        "</div>" +
-        "<div style='background:#fff;padding:28px;border:1px solid #e2e8f0;border-top:none;'>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+      subject: "Voucher de Bolsa emitido — " + dados.protocolo + " · SindEducação-ES",
+      htmlBody: voucherEmailHtml_("Voucher de Bolsa emitido",
+        "<p>Olá, <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
         "<p>Seu voucher de bolsa foi emitido com sucesso.</p>" +
-        "<div style='background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:16px;margin:20px 0;text-align:center;'>" +
-        "<p style='font-size:11px;color:#64748b;margin-bottom:4px;'>Código de Validação</p>" +
-        "<p style='font-size:20px;font-weight:900;color:#5b21b6;letter-spacing:.08em;'>" + escHtmlVoucher_(dados.codigo) + "</p>" +
+        "<div style='margin:18px 0;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #C9A84C;border-radius:8px;text-align:center;'>" +
+        "<div style='font-size:11px;color:#64748b;letter-spacing:.08em;text-transform:uppercase;'>Código de validação</div>" +
+        "<div style='font-size:22px;font-weight:900;color:#001f4d;letter-spacing:.1em;margin-top:6px;'>" + escHtmlVoucher_(dados.codigo) + "</div>" +
         "</div>" +
         "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(dados.protocolo) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(dados.percentual) + "%</p>" +
-        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#002f6c;font-weight:700;'>📄 Acessar voucher</a></p>" +
-        "<p style='font-size:12px;color:#64748b;'>Apresente este documento à instituição de ensino.</p>" +
-        "</div>" +
-        "</div>"
+        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#1565C0;font-weight:700;'>Acessar o voucher em PDF</a></p>" +
+        "<p style='font-size:12.5px;color:#64748b;'>Apresente este documento à instituição de ensino.</p>" +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
   } catch (e) {
@@ -1037,16 +1347,11 @@ function enviarVoucherEscola_(reg, dados) {
       return;
     }
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: emailEscola,
       cc: "secretaria@sindeducacao.com",
       subject: "Ofício e Voucher de Bolsa — " + dados.protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;'>" +
-        "<div style='background:#002f6c;padding:22px;border-radius:12px 12px 0 0;'>" +
-        "<h2 style='color:#C9A84C;margin:0;font-size:19px;'>Encaminhamento de Voucher de Bolsa</h2>" +
-        "</div>" +
-        "<div style='background:#fff;padding:24px;border:1px solid #e2e8f0;border-top:none;'>" +
+      htmlBody: voucherEmailHtml_("Encaminhamento de Voucher de Bolsa",
         "<p>Prezados(as),</p>" +
         "<p>Encaminhamos voucher de bolsa de estudo emitido pelo SindEducação-ES.</p>" +
         "<p><strong>Associado(a):</strong> " + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</p>" +
@@ -1054,11 +1359,9 @@ function enviarVoucherEscola_(reg, dados) {
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(dados.percentual) + "%</p>" +
         "<p><strong>Código de validação:</strong> " + escHtmlVoucher_(dados.codigo) + "</p>" +
-        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#002f6c;font-weight:700;'>📄 Acessar voucher</a></p>" +
-        (dados.linkOficio ? "<p><a href='" + escHtmlVoucher_(dados.linkOficio) + "' style='color:#002f6c;font-weight:700;'>📨 Acessar ofício</a></p>" : "") +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>" +
-        "</div>"
+        "<p><a href='" + escHtmlVoucher_(dados.linkPdf) + "' style='color:#1565C0;font-weight:700;'>Acessar o voucher</a></p>" +
+        (dados.linkOficio ? "<p><a href='" + escHtmlVoucher_(dados.linkOficio) + "' style='color:#1565C0;font-weight:700;'>Acessar o ofício</a></p>" : "") +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>")
     });
 
     registrarHistoricoVoucher_(
@@ -1078,7 +1381,11 @@ function enviarVoucherEscola_(reg, dados) {
 function buscarEmailRhEscolaVoucher_(nomeEscola, cnpj) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Escolas");
+    /* Mesma aba do resto do módulo — ver abaEscolasVoucher_. Aqui o efeito de
+       procurar na aba errada é o e-mail do RH da escola não ser achado, e o
+       ofício não sair. */
+    const sh = (typeof abaEscolasVoucher_ === "function")
+      ? abaEscolasVoucher_(ss) : ss.getSheetByName("Escolas");
 
     if (!sh || sh.getLastRow() < 2) return "";
 

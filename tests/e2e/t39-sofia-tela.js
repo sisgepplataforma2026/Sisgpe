@@ -29,7 +29,7 @@ if (!d.jsdomDisponivel()) {
   b.fluxo("SOFIA · tela");
   b.naoTestavel("A tela da SOFIA em DOM real", "jsdom não instalado neste ambiente");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 /* A IA encenada. `respostaIA` é trocada a cada caso para simular o que o
@@ -151,6 +151,35 @@ await perguntar("quantos confirmados no mês?");
 b.igual(doc.querySelectorAll(".sofia-fontes").length, 0,
   "sem documento no prompt, a tela não anuncia fonte nenhuma");
 
+b.passo("7b. DOIS documentos na mesma pergunta → DOIS chips");
+/* Era um "🔴 só se confere no ar" do item 19 do PENDENTE-VERIFICACAO, aberto
+   em 13/08. Não precisava: o t38 já provava que fontesDoPrompt_ devolve os
+   dois rótulos quando os dois blocos estão no prompt; o que faltava era a
+   TELA desenhar os dois. É aqui que se prova, e fecha o item por teste em vez
+   de por conferência manual.
+
+   O domínio Geral é o que aceita os dois: uma pergunta que toca convenção E
+   estatuto ao mesmo tempo — piso salarial (CCT) e quórum de assembleia
+   (Estatuto).
+
+   POSIÇÃO IMPORTA. Este passo vem DEPOIS do 7 de propósito: o
+   selecionarDominioSofia_ só limpa a tela quando o domínio MUDA (ChatSISGEP
+   .html:239), e o 7 já deixou o domínio em Geral com a tela limpa. Posto
+   antes, ele anulava a limpeza do 7 e o chip desta pergunta era contado lá.
+   Custou uma reprovação para descobrir. */
+respostaIA = "O piso da cláusula 12 vale, e o quórum do art. 62 é de metade mais um.";
+await perguntar("qual o piso salarial e qual o quórum da assembleia?");
+
+const doisChips = fontes();
+b.igual(doisChips.length, 2, "os dois documentos aparecem, cada um no seu chip",
+  Array.prototype.map.call(doisChips, c => c.textContent.slice(0, 30)).join(" | "));
+
+const textoDois = Array.prototype.map.call(doisChips, c => c.textContent).join(" ");
+b.ok(/CCT/.test(textoDois), "um deles é a CCT");
+b.ok(/Estatuto/i.test(textoDois), "o outro é o Estatuto");
+b.igual(alerta(), null,
+  "e nenhum aviso âmbar — as duas citações têm fonte no prompt");
+
 b.passo("8. Citação sem documento, e sem conserto possível → o aviso âmbar");
 /* ESTE PASSO MUDOU DE SENTIDO EM 13/08, e a mudança é a melhoria.
  *
@@ -232,5 +261,5 @@ b.naoTestavel("A resposta que a IA de fato daria",
   "a chamada à Anthropic é encenada; o que se prova é o que a tela faz com a resposta");
 
 b.resumo();
-process.exit(0);
+process.exit(process.exitCode || 0);
 })();
