@@ -72,7 +72,7 @@ function montarBase() {
   linhas.push(linha("ESC-000099", "Escola Perfeita"));
 
   sh.getRange(2, 1, linhas.length, CABECALHO.length).setValues(linhas);
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
   return sh;
 }

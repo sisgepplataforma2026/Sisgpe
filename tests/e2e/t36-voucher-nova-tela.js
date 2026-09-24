@@ -637,10 +637,17 @@ function el(id) { return doc.getElementById(id); }
     ["ESC-000002", "COLEGIO SAO JOSE", "SAO JOSE", "98765432000188", "Vitoria", "ES"],
     ["ESC-000003", "COLEGIO ANCHIETA", "ANCHIETA", "11222333000144", "Serra", "ES"]
   ]);
-  /* O cadastro de escolas fica 5 min em CacheService — sem limpar, a busca
-   * responderia com a lista de antes desta linha e o teste mediria o cache,
-   * não o código. */
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  /* O cadastro de escolas fica 6 HORAS em CacheService, em fatias — sem
+   * limpar, a busca responderia com a lista de antes desta linha e o teste
+   * mediria o cache, não o código.
+   *
+   * Aqui se limpava a chave pelo nome (`CACHE_KEY_ESCOLAS_CADASTRO_`). Em
+   * 24/09/2026 a lista passou a ser gravada em várias chaves, e remover uma
+   * só deixou de limpar coisa alguma: estes cinco passos reprovaram com dado
+   * da semeadura anterior. Chamar a função de invalidação de verdade é o
+   * certo de qualquer forma — ela é quem sabe onde o cache mora, e é a mesma
+   * que a produção chama ao salvar uma escola. */
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
   try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_); } catch (e) {}
 

@@ -211,9 +211,25 @@
 #certNovaBox .cert-nv-sug { position: relative; }
 #certNovaBox .cert-nv-lista { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 30px rgba(0,20,60,.16); max-height: 190px; overflow-y: auto; z-index: 30; display: none; }
 #certNovaBox .cert-nv-lista.ativo { display: block; }
-#certNovaBox .cert-nv-item { padding: 8px 11px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+/* ITEM DA LISTA DE SUGESTÃO — e por que a cor é declarada aqui.
+   Faltava `color`. O item herdava a cor do que estivesse acima na página, e
+   em produção isso deu texto quase branco no fundo branco: o nome da escola
+   era desenhado e ninguém via. Só a segunda linha aparecia, porque o `small`
+   declarava #64748b — quem atende via "31300858000367 · Vitória/ES" e nenhum
+   nome. Reportado com print em 24/09/2026. Herdar cor dentro de modal é
+   aposta; aqui ela é fixada. */
+#certNovaBox .cert-nv-item { padding: 8px 11px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
 #certNovaBox .cert-nv-item:hover { background: #eff6ff; }
 #certNovaBox .cert-nv-item small { color: #64748b; display: block; font-size: 11px; }
+/* NOME À ESQUERDA, CNPJ À DIREITA, na mesma linha — pedido seu em
+   24/09/2026. O CNPJ é o que desempata escola de nome parecido (a base tem
+   matriz e filial com a mesma razão social), então precisa estar à vista na
+   hora de escolher, não escondido na linha de baixo. Tabular para os
+   números alinharem entre si na vertical. */
+#certNovaBox .cert-nv-item-l1 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+#certNovaBox .cert-nv-item-nome { font-weight: 700; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#certNovaBox .cert-nv-item-cnpj { color: #1565C0; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+#certNovaBox .cert-nv-item-cnpj.vazio { color: #b45309; font-weight: 600; }
 
 /* Modal de ENVIO. z-index acima do modal de análise porque ele abre POR CIMA:
    quem acabou de emitir continua vendo a solicitação atrás, e fechar o envio
@@ -1247,6 +1263,16 @@ var _solAtual    = null;
 function g(id){ return document.getElementById(id); }
 function certToken(){ return (typeof SISGEP_TOKEN_SESSAO!=='undefined') ? SISGEP_TOKEN_SESSAO : ''; }
 function cert_escHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+/* CNPJ com pontuação. Quem confere escola confere por CNPJ pontuado — é
+   assim que ele está no contrato e no papel na mão. Catorze dígitos crus
+   obrigam a contar com o dedo na tela. Número que não tem 14 dígitos volta
+   como veio: pode ser CPF de escola em nome de pessoa física, que a base
+   tem, e mascarar como CNPJ mentiria sobre o que é. */
+function cert_fmtCnpj(v){
+  var d = String(v||'').replace(/\D/g,'');
+  if (d.length !== 14) return String(v||'').trim();
+  return d.slice(0,2)+'.'+d.slice(2,5)+'.'+d.slice(5,8)+'/'+d.slice(8,12)+'-'+d.slice(12);
+}
 function normTxt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim(); }
 
 /* A DATA VINHA CRUA — e foi ela que empurrou a coluna "Ações" para fora.
@@ -3437,13 +3463,41 @@ function nvAplicarEscola(x, origem){
   }
 }
 
+/* UM ITEM DA LISTA DE ESCOLA — nome à esquerda, CNPJ à direita.
+ *
+ * "Tem que buscar por nome de escola e ao lado o CNPJ" — você, 24/09/2026.
+ *
+ * O CNPJ é o que desempata: a base tem matriz e filial com a MESMA razão
+ * social, e tem nome parecido que não é a mesma escola. Quem escolhe da
+ * lista precisa ver o número na hora de clicar — depois não vê mais, porque
+ * o campo fica preenchido, e campo preenchido ninguém relê.
+ *
+ * Escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar, e não com o espaço
+ * em branco: o certificado sai com o CNPJ da escola impresso, então escolher
+ * uma sem número é escolher um certificado incompleto — e isso tem de ser
+ * uma decisão, não uma surpresa na hora de emitir. */
+function nvItemEscolaHtml(x, i){
+  var cnpjTxt = x && x.cnpj ? cert_fmtCnpj(x.cnpj) : 'sem CNPJ';
+  var nome    = String((x && (x.nome || x.fantasia)) || '\u2014');
+  var fant    = String((x && x.fantasia) || '');
+  var linha2  = [fant && fant !== nome ? fant : '',
+                 [x && x.cidade, x && x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+  return '<div class="cert-nv-item" data-i="'+i+'">'
+       + '<div class="cert-nv-item-l1">'
+       +   '<span class="cert-nv-item-nome">'+cert_escHtml(nome)+'</span>'
+       +   '<span class="cert-nv-item-cnpj'+(x && x.cnpj ? '' : ' vazio')+'">'+cert_escHtml(cnpjTxt)+'</span>'
+       + '</div>'
+       + '<small>'+cert_escHtml(linha2||'sem dados adicionais')+'</small></div>';
+}
+
 function nvMostrarListaEscolas(escolas){
   var lista = g('certNvListaEscola');
   if(!lista) return;
-  lista.innerHTML = escolas.map(function(e,i){
-    return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(e.nome||e.fantasia||'—')
-      +'<small>'+cert_escHtml([e.cnpj, e.cidade, e.uf].filter(Boolean).join(' · '))+'</small></div>';
-  }).join('');
+  /* MESMO item da busca manual, de propósito. São duas listas de escola na
+     mesma tela — esta vem do cadastro do associado, a outra de quem digita —
+     e duas aparências diferentes para a mesma coisa fazem quem atende
+     desconfiar de qual das duas é a "certa". Uma função só monta as duas. */
+  lista.innerHTML = escolas.map(nvItemEscolaHtml).join('');
   lista.classList.add('ativo');
   lista.querySelectorAll('.cert-nv-item').forEach(function(it){
     it.addEventListener('click', function(){
@@ -3525,12 +3579,7 @@ function nvBuscarEscola(){
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||!r.ok||!r.escolas.length){ lista.classList.remove('ativo'); return; }
-      lista.innerHTML = r.escolas.map(function(x,i){
-        var linha2=[x.fantasia && x.fantasia!==x.nome ? x.fantasia : '',
-                    x.cnpj, [x.cidade,x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
-        return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(x.nome)
-             + '<small>'+cert_escHtml(linha2||'sem dados adicionais')+'</small></div>';
-      }).join('');
+      lista.innerHTML = r.escolas.map(nvItemEscolaHtml).join('');
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
         it.addEventListener('click',function(){

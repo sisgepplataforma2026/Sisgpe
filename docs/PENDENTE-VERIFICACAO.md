@@ -6081,3 +6081,47 @@ ficou em "Em Análise" sem nenhuma solicitação, embora o backend grave
 `ANALISE` (conferido no emulador). Suspeita: corrida entre recarregar a lista
 e aplicar o filtro, no `setTimeout` de 450 ms. Precisa ser reproduzido com a
 tela montada antes de mexer.
+
+## 🔴 Busca de escola: lentidão e nome invisível — 24/09/2026
+
+Saiu de duas perguntas suas no mesmo dia: *"Esta demorando para buscar a
+escola pela solicitação manual?"* e *"Tem que buscar por nome de escola e ao
+lado o CNPJ"*.
+
+**O que foi achado, medido antes de mexer.** `listarEscolasCadastro_interno_`
+guardava a lista no cache atrás de um `if (json.length < 95000)`. Com 679
+escolas e 43 colunas o JSON dá 1.199.925 bytes — doze vezes o limite. O `if`
+nunca foi verdadeiro: **o cache nunca chegou a ser gravado**. Cada tecla
+digitada relia a planilha inteira. Medido: digitar uma palavra de seis letras
+custava 12 leituras e 175.440 células; passou a custar 2 leituras e 29.240
+células, e da segunda tecla em diante nenhuma.
+
+E o nome da escola era desenhado em cor herdada — quase branco no fundo
+branco. Só a segunda linha aparecia, o que produziu o seu print com três
+sugestões e nenhum nome.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 111 | 🔴 digitar o nome da escola responde rápido, e a segunda busca em diante é imediata | nova solicitação manual de bolsa |
+| 112 | 🔴 o NOME da escola aparece na sugestão, legível, com o CNPJ pontuado ao lado, na mesma linha | nova solicitação manual de bolsa |
+| 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar | nova solicitação manual de bolsa |
+| 114 | 🔴 clicar na sugestão continua preenchendo escola, CNPJ e cidade | nova solicitação manual de bolsa |
+| 115 | 🔴 **editar uma escola e procurá-la em seguida traz o dado NOVO** — o cache agora dura 6 horas | cadastro de Escolas → busca |
+| 116 | 🔴 Ofícios, Central de E-mails e a tela Início continuam listando as escolas certas | os três módulos |
+
+**O 115 é o mais importante desta lista, e é o único risco que a correção
+cria.** O TTL subiu de 5 minutos para 6 horas por decisão sua. Se algum
+caminho de escrita não invalidar o cache, o sintoma será escola editada
+continuando a aparecer com o cadastro antigo por horas. Auditei os caminhos de
+escrita (`Escolas.gs`, `EscolasIdentidade.gs`, `EscolasReceita.gs`,
+`EscolasVinculos.gs`) e todos passam por `invalidarCacheEscolas_()` ou
+`invalidarCacheEscolasInterno_()`, que agora limpam as fatias — mas isso é
+leitura de código, e leitura de código não é teste. **Confirme editando uma
+escola de verdade.**
+
+O 116 está aqui porque a correção mexeu numa função compartilhada: quem mais
+chama `listarEscolasCadastro_interno_` não é a bolsa, são esses três.
+
+**Não testado e fora do alcance do emulador:** a lentidão em si. O ganho foi
+medido em células lidas, que é o que custa no Apps Script — não em segundos
+no navegador do sindicato. Quem diz se melhorou é você, digitando.
