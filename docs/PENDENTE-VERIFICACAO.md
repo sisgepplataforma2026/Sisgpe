@@ -6105,7 +6105,7 @@ sugestões e nenhum nome.
 | 111 | 🔴 digitar o nome da escola responde rápido, e a segunda busca em diante é imediata | nova solicitação manual de bolsa |
 | 112 | ✅ **conferido por você em 24/09/2026**, com print: nome legível à esquerda, CNPJ pontuado à direita | nova solicitação manual de bolsa |
 | 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar | nova solicitação manual de bolsa |
-| 114 | 🔴 clicar na sugestão continua preenchendo escola, CNPJ e cidade | nova solicitação manual de bolsa |
+| 114 | ✅ **conferido por você em 24/09/2026**, com print: escola, CNPJ, cidade e o `ESC-000517` preenchidos | nova solicitação manual de bolsa |
 | 115 | 🔴 **editar uma escola e procurá-la em seguida traz o dado NOVO** — o cache agora dura 6 horas | cadastro de Escolas → busca |
 | 116 | 🔴 Ofícios, Central de E-mails e a tela Início continuam listando as escolas certas | os três módulos |
 
@@ -6150,3 +6150,38 @@ faz backup mas **não escreve no Apps Script**. Os dois workflows começam nesse
 modo de propósito. As publicações de verdade são a **#173** e a **#92**, com
 `modo: publicar`. Disparo sem `modo` explicito não publica nada, por mais que
 o run termine em verde.
+
+## 🔴 Instituição de ensino — automatizada em 24/09/2026
+
+Saiu da sua pergunta *"Instituição onde estuda deveria estar aqui?"* e do
+*"Mas sim automatize"* que veio depois.
+
+**A resposta à pergunta é não, no caso geral.** Onde a pessoa trabalha e onde
+ela estuda são empresas diferentes: o campo "Escola / Empregador" entra no
+texto do certificado (*"empregado da instituição X, inscrita no CNPJ nº…"*), e
+o campo "Instituição de ensino" é o **endereço para onde o certificado é
+enviado**. Preencher um com o outro automaticamente mandaria o documento para
+o lugar errado. O campo em branco naquele print estava correto.
+
+**Mas há um caso em que são a mesma**, e num sindicato de educação ele não é
+raro: quem dá aula na faculdade e faz curso nessa mesma faculdade. Para ele
+existe agora o botão.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 117 | 🔴 o botão "↓ mesma da escola" aparece ao lado de "Instituição de ensino" **depois** de escolher a escola, e não antes | nova solicitação manual |
+| 118 | 🔴 clicar nele copia nome, CNPJ **e e-mail** da escola, com a etiqueta "copiado da escola" ao lado | nova solicitação manual |
+| 119 | 🔴 escola cujo cadastro não tem e-mail avisa "preencha para o certificado chegar" em vez de passar por sucesso | nova solicitação manual |
+| 120 | 🔴 a sugestão de **instituição** passou a mostrar o CNPJ pontuado ao lado do nome, como a de escola | nova solicitação manual |
+| 121 | 🔴 abrir uma solicitação nova depois de outra **não** traz a escola nem o e-mail da anterior | nova solicitação manual |
+
+**O 121 é o que eu conferiria primeiro.** É o modo de falhar mais caro desta
+entrega: se o e-mail guardado da escola sobrevivesse entre dois atendimentos,
+o certificado de um associado iria para a escola de outro. Está coberto no
+t198 e no emulador ele limpa — mas a REGRA Nº -1 vale, e quem confirma é você.
+
+**O que continua não automatizado, de propósito:** a instituição de ensino
+**não** é preenchida sozinha quando é diferente do empregador. O sistema não
+tem como saber onde o filho estuda — isso está no e-mail que a secretaria lê.
+Em renovação ela já vem preenchida do certificado anterior, e isso é anterior
+a esta entrega.

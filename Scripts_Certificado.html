@@ -132,6 +132,11 @@
    onde veio passa impressão de conferido — e ninguém relê. */
 #certNovaBox .cert-nv-org { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 1px 6px; border-radius: 999px; align-self: flex-start; }
 #certNovaBox .cert-nv-org.hist { background: #eff6ff; color: #1565C0; }
+/* BOTÃO DE COPIAR DENTRO DO RÓTULO. Discreto de propósito: é atalho, não
+   caminho principal — na maioria das bolsas a instituição de ensino NÃO é o
+   empregador, e um botão chamativo aqui convidaria ao erro. */
+#certNovaBox .cert-nv-copiar { margin-left: 6px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1565C0; border-radius: 999px; padding: 1px 8px; font-size: 9.5px; font-weight: 800; text-transform: none; letter-spacing: 0; cursor: pointer; font-family: inherit; }
+#certNovaBox .cert-nv-copiar:hover { background: #dbeafe; border-color: #1565C0; }
 #certNovaBox .cert-nv-org.regra { background: #ecfdf5; color: #047857; }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1074,9 +1079,15 @@
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Cidade</label><input class="cert-nv-in" id="certNvCidadeEscola"></div>
       </div>
 
+      <!-- ONDE ESTUDA, e não onde trabalha. O botão de copiar existe para o
+           caso em que as duas são a mesma empresa — quem dá aula na faculdade
+           e estuda nela — e some quando não há escola escolhida, porque aí
+           não teria o que copiar. -->
       <div class="cert-section-title">Onde estuda</div>
       <div class="cert-nv-campo cert-nv-sug" style="margin-bottom:10px;">
-        <label class="cert-nv-lbl">Instituição de ensino <span id="certNvOrgInst"></span></label>
+        <label class="cert-nv-lbl">Instituição de ensino <span id="certNvOrgInst"></span>
+          <button type="button" id="certNvMesmaEscola" class="cert-nv-copiar" style="display:none;">↓ mesma da escola</button>
+        </label>
         <input type="text" class="cert-nv-in" id="certNvInstituicao" autocomplete="off">
         <div class="cert-nv-lista" id="certNvListaInst"></div>
       </div>
@@ -3020,6 +3031,11 @@ function nvLimpar(){
   ['certNvOrgInst','certNvOrgEmailInst','certNvOrgPct','certNvAvisos'].forEach(function(id){
     if(g(id)) g(id).innerHTML='';
   });
+  /* O e-mail guardado da escola e o botão de copiar saem junto. Sem isto, o
+     próximo atendimento abriria com "mesma da escola" à vista e copiaria o
+     e-mail da escola do associado ANTERIOR — e o certificado iria para lá. */
+  if(g('certNvEscola')) g('certNvEscola').setAttribute('data-escola-email','');
+  nvMesmaEscolaAtualizar();
 }
 
 function nvAbrir(){
@@ -3041,7 +3057,8 @@ function nvOrigem(el, origem){
     REGRA_CCT:          ['regra','regra da convenção'],
     REGRA_CCT_RECUSA:   ['recusa','convenção não prevê'],
     PADRAO_DO_CURSO:    ['padrao','padrão do curso'],
-    MEMORIA_INSTITUICAO:['hist','já usada antes']
+    MEMORIA_INSTITUICAO:['hist','já usada antes'],
+    MESMA_ESCOLA:       ['hist','copiado da escola']
   };
   var m = mapa[origem];
   el.innerHTML = m ? '<span class="cert-nv-org '+m[0]+'">'+m[1]+'</span>' : '';
@@ -3461,6 +3478,58 @@ function nvAplicarEscola(x, origem){
         (origem==='CADASTRO'?' · do cadastro':'')+'</span>'
       : '<span class="cert-nv-org padrao">sem id na base</span>';
   }
+  /* O E-MAIL DA ESCOLA NÃO TEM CAMPO NA TELA, e mesmo assim fica guardado:
+     é o botão "mesma da escola" da instituição de ensino que vai usá-lo.
+     Guardado no elemento, e não numa variável solta, pelo mesmo motivo do
+     escolaId logo acima — limpar o formulário limpa isto junto. */
+  if(g('certNvEscola')) g('certNvEscola').setAttribute('data-escola-email', (x && x.email) || '');
+  nvMesmaEscolaAtualizar();
+}
+
+/* "MESMA DA ESCOLA" — o botão que evita digitar a mesma empresa duas vezes.
+ *
+ * "Mas sim automatize" — você, 24/09/2026, depois de perguntar se a
+ * instituição onde estuda deveria aparecer preenchida.
+ *
+ * NÃO deveria, no caso geral: onde a pessoa TRABALHA e onde ela ESTUDA são
+ * empresas diferentes, e o formulário as separou de propósito (ver o
+ * comentário do topo do modal). Mas há um caso em que são a mesma, e ele não
+ * é raro num sindicato de educação: quem dá aula na faculdade e faz curso
+ * nessa mesma faculdade. Hoje essa pessoa é digitada duas vezes.
+ *
+ * O botão COPIA, não amarra: o que ele preenche continua editável, e a
+ * etiqueta ao lado do campo diz de onde veio. Campo preenchido em silêncio
+ * é o que vira erro que ninguém percebe (REGRA Nº 0.6). */
+function nvMesmaEscolaAtualizar(){
+  var btn = g('certNvMesmaEscola');
+  if(!btn) return;
+  var nome = String((g('certNvEscola')||{}).value||'').trim();
+  /* Sem escola escolhida não há o que copiar, e botão que não faz nada é
+     pior que botão ausente: ele promete. */
+  btn.style.display = nome ? '' : 'none';
+}
+
+function nvMesmaEscolaAplicar(){
+  var nome  = String((g('certNvEscola')||{}).value||'').trim();
+  if(!nome){ cert_msg('Escolha a escola/empregador primeiro.','warn'); return; }
+  var cnpj  = String((g('certNvCnpjEscola')||{}).value||'').trim();
+  var email = String((g('certNvEscola')||{}).getAttribute('data-escola-email')||'').trim();
+
+  g('certNvInstituicao').value = nome;
+  if(cnpj)  g('certNvCnpjInst').value  = cnpj;
+  if(email) g('certNvEmailInst').value = email;
+  nvOrigem(g('certNvOrgInst'), 'MESMA_ESCOLA');
+  nvOrigem(g('certNvOrgEmailInst'), email ? 'MESMA_ESCOLA' : '');
+  if(g('certNvListaInst')) g('certNvListaInst').classList.remove('ativo');
+
+  /* O E-MAIL É O QUE DECIDE SE O CERTIFICADO CHEGA. Ele é o endereço para
+     onde o documento vai (VoucherEnvio.gs), então faltar e-mail não pode
+     passar como sucesso só porque o nome e o CNPJ foram copiados. */
+  cert_msg(email
+    ? 'Copiei a escola para a institui\u00e7\u00e3o de ensino \u2014 confira.'
+    : 'Copiei nome e CNPJ. O cadastro da escola n\u00e3o tem e-mail \u2014 preencha para o certificado chegar.',
+    email ? 'ok' : 'warn');
+  nvSalvarHabilitar();
 }
 
 /* UM ITEM DA LISTA DE ESCOLA — nome à esquerda, CNPJ à direita.
@@ -3477,15 +3546,23 @@ function nvAplicarEscola(x, origem){
  * uma sem número é escolher um certificado incompleto — e isso tem de ser
  * uma decisão, não uma surpresa na hora de emitir. */
 function nvItemEscolaHtml(x, i){
-  var cnpjTxt = x && x.cnpj ? cert_fmtCnpj(x.cnpj) : 'sem CNPJ';
-  var nome    = String((x && (x.nome || x.fantasia)) || '\u2014');
-  var fant    = String((x && x.fantasia) || '');
-  var linha2  = [fant && fant !== nome ? fant : '',
-                 [x && x.cidade, x && x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+  var nome   = String((x && (x.nome || x.fantasia)) || '\u2014');
+  var fant   = String((x && x.fantasia) || '');
+  var linha2 = [fant && fant !== nome ? fant : '',
+                [x && x.cidade, x && x.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+  return nvItemSugestaoHtml(nome, x && x.cnpj, linha2, i);
+}
+
+/* O ITEM, CRU — usado pela lista de escola E pela de instituição de ensino.
+ * São duas listas parecidas na mesma tela; duas montagens separadas
+ * divergiriam, e a que ficasse para trás seria a que ninguém olha. */
+function nvItemSugestaoHtml(nome, cnpj, linha2, i){
+  var temCnpj = !!String(cnpj || '').replace(/\D/g,'');
+  var cnpjTxt = temCnpj ? cert_fmtCnpj(cnpj) : 'sem CNPJ';
   return '<div class="cert-nv-item" data-i="'+i+'">'
        + '<div class="cert-nv-item-l1">'
-       +   '<span class="cert-nv-item-nome">'+cert_escHtml(nome)+'</span>'
-       +   '<span class="cert-nv-item-cnpj'+(x && x.cnpj ? '' : ' vazio')+'">'+cert_escHtml(cnpjTxt)+'</span>'
+       +   '<span class="cert-nv-item-nome">'+cert_escHtml(nome||'\u2014')+'</span>'
+       +   '<span class="cert-nv-item-cnpj'+(temCnpj ? '' : ' vazio')+'">'+cert_escHtml(cnpjTxt)+'</span>'
        + '</div>'
        + '<small>'+cert_escHtml(linha2||'sem dados adicionais')+'</small></div>';
 }
@@ -3551,9 +3628,15 @@ function nvBuscarInstituicao(){
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||!r.ok||!r.instituicoes.length){ lista.classList.remove('ativo'); return; }
+      /* MESMO item da escola: nome à esquerda, CNPJ pontuado à direita.
+         Aqui o CNPJ desempata pelo mesmo motivo de lá — a UCL apareceu na
+         busca de escola com dois estabelecimentos de nome idêntico,
+         /0001 e /0005, e quem escolhesse o errado poria o CNPJ errado no
+         certificado. A memória de instituições guarda os dois do mesmo
+         jeito. A segunda linha aqui diz quantas vezes já foi usada, que é
+         o que esta lista tem de diferente. */
       lista.innerHTML = r.instituicoes.map(function(x,i){
-        return '<div class="cert-nv-item" data-i="'+i+'">'+cert_escHtml(x.nome)
-             + '<small>'+cert_escHtml(x.cnpj||'sem CNPJ')+' · usada '+x.vezes+'x</small></div>';
+        return nvItemSugestaoHtml(x.nome, x.cnpj, 'usada '+x.vezes+'x', i);
       }).join('');
       lista.classList.add('ativo');
       lista.querySelectorAll('.cert-nv-item').forEach(function(it){
@@ -4205,6 +4288,11 @@ function initInterno(){
      botoes do modal, e nao num bloco proprio: quem procura "quem escuta o
      clique" olha um lugar so. */
   if(g('certNvBenefAdd')) g('certNvBenefAdd').addEventListener('click', function(){ nvBenefAdicionar(); });
+  if(g('certNvMesmaEscola')) g('certNvMesmaEscola').addEventListener('click', nvMesmaEscolaAplicar);
+  /* O botão some quando a escola é APAGADA, e não só quando é escolhida:
+     copiar o campo vazio preencheria a instituição com nada e marcaria como
+     "copiado da escola", que é mentira com etiqueta. */
+  if(g('certNvEscola')) g('certNvEscola').addEventListener('input', nvMesmaEscolaAtualizar);
   if(g('certNvRenovarBtn')) g('certNvRenovarBtn').addEventListener('click', nvFamiliaRenovar);
   if(g('certCorrGravar')) g('certCorrGravar').addEventListener('click', corrPeriodoGravar);
   if(g('certNvRenovarNao')) g('certNvRenovarNao').addEventListener('click', function(){
