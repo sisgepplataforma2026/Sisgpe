@@ -789,9 +789,35 @@ b.ok(san2.movidos === 0 && depois1 === JSON.stringify(lerAba()),
   "idempotente: a segunda passada move zero",
   "movidos na 2ª = " + san2.movidos);
 
+/* ESTE PASSO MONTA O PRÓPRIO CENÁRIO, e a razão é um defeito de teste que
+   passou despercebido por semanas — achado pelo CI em 30/09/2026.
+
+   Ele checava `san.backup`, criado lá no passo 49. Só que o passo 55, logo
+   acima, chama `montarBaseSuja()`, e essa função chama `limparBackupsSan()`,
+   que APAGA toda aba começando em "BACKUP_ESCOLAS". Ou seja: a asserção
+   afirmava que existia uma aba que o próprio teste tinha acabado de deletar.
+
+   Ela passava por acidente. O nome do backup carrega carimbo de SEGUNDO
+   (`BACKUP_ESCOLAS_SANEAMENTO_20260930_145716`), e as saneadas do passo 55
+   recriavam uma aba com o nome idêntico quando caíam no mesmo segundo — o
+   que acontecia nesta máquina e não no runner do GitHub, mais lento. O teste
+   media o relógio, não o comportamento.
+
+   Agora ele faz a própria saneada e confere o backup DELA. Imune à ordem dos
+   passos e ao segundo em que roda. */
 b.passo("56. E fez backup antes de escrever");
-b.ok(!!san.backup && !!ss.getSheetByName(san.backup),
-  "dá para desfazer", san.backup);
+montarBaseSuja();
+g.escolaSanearPreparar();
+const sanBkp = g.escolaSanearAplicar();
+b.ok(!!sanBkp.backup, "a aplicação informa o nome do backup", sanBkp.backup);
+b.ok(!!sanBkp.backup && !!ss.getSheetByName(sanBkp.backup),
+  "dá para desfazer — a aba existe mesmo", sanBkp.backup);
+/* E ela guarda o estado ANTERIOR, não o já saneado: backup que copia o
+   resultado não desfaz nada. */
+const bkpSh = ss.getSheetByName(sanBkp.backup);
+b.ok(!!bkpSh && bkpSh.getLastRow() > 1,
+  "e tem as linhas de antes da escrita dentro",
+  bkpSh ? (bkpSh.getLastRow() - 1) + " linha(s)" : "aba ausente");
 
 b.passo("57. E entra na trilha de auditoria");
 const trSan = g.auditoriaConsultar({ acao: "SANEAR_BASE" }, ADM).acoes;
