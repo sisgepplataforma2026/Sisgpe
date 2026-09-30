@@ -116,6 +116,21 @@ b.ok(dependente.indexOf("dependente de ATILA HENRIQUE DE OLIVEIRA GONÇALVES") >
   "nomeando de quem ele é dependente");
 b.ok(dependente.indexOf("referente ao semestre letivo de 2026/2") > -1,
   "o período escrito como no papel dele: 'referente ao semestre letivo de'");
+
+/* E O DO TITULAR NÃO TEM ESSA ORAÇÃO — conferido nos dois papéis que você
+   fotografou em 30/09/2026.
+
+   O do dependente (EDUARDO / BRUNA, Darwin) termina "...do PRÉ VESTIBULAR,
+   referente ao semestre letivo de 2026, após verificação...". O do titular
+   (LAYSA, Multivix) termina "...do Curso de GESTÃO DE RECURSOS HUMANOS." e
+   acabou — sem período, sem "após verificação".
+
+   Está aqui porque a ausência PARECE esquecimento: quem ler os dois lado a
+   lado vai querer "completar" o do titular, e isso afastaria o documento do
+   papel que o sindicato usa. A diferença é dos modelos, não do código. */
+b.ok(titular.indexOf("semestre letivo") === -1,
+  "e o do TITULAR não traz o período — o papel dele termina no nome do curso",
+  "conferido na foto do certificado da LAYSA, 30/09/2026");
 b.ok(dependente.indexOf("após verificação do atendimento aos requisitos exigidos") > -1,
   "e a oração de verificação, que só existe no papel do dependente");
 b.ok(dependente.indexOf("pessoal, individual e intransferível") > -1,
@@ -168,8 +183,15 @@ b.ok(/dependente de ATILA[^,]*, portador\(a\) do CPF nº/.test(dependente),
   "a ordem das orações é o que diz de quem é o documento");
 b.ok(!/carteira de identidade/.test(dependente),
   "e o RG não aparece — os modelos não o citam");
-b.ok(dependente.indexOf("empregado da instituição MULTIVIX") > -1,
-  "o vínculo de emprego também é o do titular");
+/* A PALAVRA FLEXIONA, O VÍNCULO NÃO MUDA DE DONO — 30/09/2026.
+   Esta asserção cravava "empregado" no masculino e reprovou quando a palavra
+   passou a flexionar por sexo, a seu pedido. O que ela quer provar continua
+   valendo, e é outra coisa: a oração de emprego é a do TITULAR, não a da
+   criança. Aqui o titular está sem sexo gravado, então sai "empregado(a)" —
+   a mesma forma que o "portador(a)" logo acima. */
+b.ok(/empregado\(a\) da instituição MULTIVIX/.test(dependente),
+  "o vínculo de emprego também é o do titular, e a palavra acompanha o sexo dele",
+  (dependente.match(/portador[^,]*,\s*empregado[^,]*/) || [""])[0]);
 
 /* ═══════════════════════════════════════════════════════════
    3b. "Portador" ou "portadora", conforme o associado

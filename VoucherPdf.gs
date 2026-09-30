@@ -872,10 +872,26 @@ function gerarHtmlDocumentoVoucher_(dados) {
   const portador = sexoTitular === "F" ? "portadora"
                  : sexoTitular === "M" ? "portador"
                  : "portador(a)";
+  /* "EMPREGADA DA INSTITUIÇÃO", pela mesma razão e no mesmo documento —
+     30/09/2026, "1 - flexibiliza com o sexo".
+
+     A correção de 23/09 flexionou só o `portador`, e o resultado era uma
+     frase que se contradizia no meio: "MARCELHA ALINE PINTO GOMES,
+     PORTADORA do CPF nº …, EMPREGADO da instituição UVV". Saiu assim porque
+     a palavra estava cravada no masculino dentro do `frag` — não havia
+     decisão a revisar ali, havia um literal.
+
+     Apareceu ao gerar o texto para conferir contra os papéis do sindicato,
+     a seu pedido, e não por teste: as asserções mediam o `portador` e
+     seguiam em frente. Por isso o t199 passa a medir a frase inteira, e não
+     a palavra que eu lembrei de olhar. */
+  const empregado = sexoTitular === "F" ? "empregada"
+                  : sexoTitular === "M" ? "empregado"
+                  : "empregado(a)";
 
   const identificacaoTitular =
     (cpf ? ", " + portador + " do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
-    frag(", empregado da instituição ", instituicaoTexto) +
+    frag(", " + empregado + " da instituição ", instituicaoTexto) +
     frag(", mantida pela ", mantenedora) +
     (cnpj ? ", inscrita no CNPJ: sob nº <strong>" + escHtmlVoucher_(cnpj) + "</strong>" : "");
 
