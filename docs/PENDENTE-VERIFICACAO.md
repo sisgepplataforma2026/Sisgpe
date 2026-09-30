@@ -57,6 +57,17 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 121 | 🔴 abrir solicitação nova não traz a escola nem o e-mail da anterior |
+| 120 | 🔴 a sugestão de instituição mostra o CNPJ pontuado ao lado do nome |
+| 119 | 🔴 escola sem e-mail avisa em vez de passar por sucesso |
+| 118 | 🔴 "mesma da escola" copia nome, CNPJ e e-mail, com a etiqueta de origem |
+| 117 | 🔴 o botão "mesma da escola" só aparece depois de escolher a escola |
+| 116 | 🔴 Ofícios, Central de E-mails e Início continuam listando as escolas certas |
+| 115 | 🔴 editar uma escola e procurá-la em seguida traz o dado NOVO (cache de 6h) |
+| 114 | ✅ conferido em 24/09 — clicar na sugestão preenche escola, CNPJ e cidade |
+| 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar |
+| 112 | ✅ conferido em 24/09 — nome legível e CNPJ pontuado ao lado |
+| 111 | 🔴 a busca de escola responde rápido da segunda digitação em diante |
 | 110 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um |
 | 109 | 🔴 `Voucher_Emitidos` com NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO preenchidos |
 | 108 | 🔴 o voucher de dependente sai como "NOME (dependente de TITULAR)" |
