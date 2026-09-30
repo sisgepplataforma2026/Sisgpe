@@ -131,6 +131,22 @@ b.ok(dependente.indexOf("referente ao semestre letivo de 2026/2") > -1,
 b.ok(titular.indexOf("semestre letivo") === -1,
   "e o do TITULAR não traz o período — o papel dele termina no nome do curso",
   "conferido na foto do certificado da LAYSA, 30/09/2026");
+
+/* ═══════════════════════════════════════════════════════════
+   A ÚNICA DIVERGÊNCIA DELIBERADA EM RELAÇÃO AO PAPEL
+
+   "Única coisa que muda é a flexibilização" — o usuário, 30/09/2026.
+
+   Os dois modelos reais se contradizem, cada um para um lado: o da LAYSA
+   (mulher) diz "portador … empregada"; o do EDUARDO/BRUNA (titular mulher)
+   diz "portadora … empregado". Cada um flexiona uma palavra e esquece a
+   outra — preenchimento manual, não regra.
+
+   Como não há original correto a copiar, o usuário decidiu que o sistema
+   flexiona AS DUAS. Isto fica travado aqui para que a regra de "texto fixo
+   idêntico ao modelo" não seja usada um dia para reverter a decisão: ela
+   vale para todo o resto, e não para a concordância.
+   ═══════════════════════════════════════════════════════════ */
 b.ok(dependente.indexOf("após verificação do atendimento aos requisitos exigidos") > -1,
   "e a oração de verificação, que só existe no papel do dependente");
 b.ok(dependente.indexOf("pessoal, individual e intransferível") > -1,
@@ -227,6 +243,22 @@ b.ok(/portador do CPF nº/.test(comM),
 b.ok(/portador\(a\) do CPF nº/.test(semSexo),
   "sexo não informado: forma neutra, nunca um chute",
   (semSexo.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+
+/* E AS DUAS PALAVRAS FLEXIONAM, não só o "portador" — 30/09/2026.
+   A correção de 23/09 parou no "portador" e deixou "empregado" cravado no
+   masculino: o papel de uma associada saía "PORTADORA do CPF … EMPREGADO da
+   instituição". Estas asserções medem a ORAÇÃO, e não a palavra — foi medir
+   a palavra que deixou o defeito passar por uma semana. */
+b.ok(/portadora do CPF[^,]*,\s*empregada da institui/.test(comF),
+  "associada: 'portadora … empregada' — as duas concordam na mesma frase",
+  (comF.match(/portadora[^,]*,\s*empregad\S*/) || ["(não achou)"])[0]);
+b.ok(comF.indexOf("empregado da") === -1,
+  "e não sobra nenhum masculino solto no documento dela");
+b.ok(/portador do CPF[^,]*,\s*empregado da institui/.test(comM),
+  "associado: 'portador … empregado'",
+  (comM.match(/portador[^,]*,\s*empregad\S*/) || ["(não achou)"])[0]);
+b.ok(/empregado\(a\) da institui/.test(semSexo),
+  "sexo não informado: 'empregado(a)', do mesmo jeito que o 'portador(a)'");
 
 /* ═══════════════════════════════════════════════════════════
    3c. "Curso/Ensino" da creche ao ensino médio

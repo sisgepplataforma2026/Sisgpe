@@ -889,6 +889,30 @@ function gerarHtmlDocumentoVoucher_(dados) {
                   : sexoTitular === "M" ? "empregado"
                   : "empregado(a)";
 
+  /* ESTA É A ÚNICA COISA EM QUE O DOCUMENTO SE AFASTA DO PAPEL DO SINDICATO.
+   *
+   * "Única coisa que muda é a flexibilização" — o usuário, 30/09/2026,
+   * decidindo depois de ver os dois modelos reais fotografados e o texto
+   * gerado, lado a lado.
+   *
+   * POR QUE A DIVERGÊNCIA EXISTE. Os dois papéis se contradizem entre si, e
+   * cada um para um lado:
+   *
+   *   LAYSA (Multivix), mulher .... "portador  do CPF … empregada da …"
+   *   BRUNA (Darwin),   mulher .... "portadora do CPF … empregado da …"
+   *
+   * Cada modelo flexiona UMA palavra e deixa a outra no masculino. Não é
+   * regra: é preenchimento manual de duas pessoas diferentes, em dias
+   * diferentes. Não há um "original correto" a copiar aqui — copiar um
+   * traria o erro do outro.
+   *
+   * NÃO REVERTER ISTO para "ficar igual ao papel". A regra de que o texto
+   * fixo deve ser idêntico aos modelos (23/09/2026) continua valendo para
+   * TODO O RESTO — inclusive para coisas que parecem erro e não são, como o
+   * "inscrita no CNPJ: sob nº" com dois-pontos e a ausência de "referente ao
+   * semestre letivo" no certificado do titular. A concordância de gênero é a
+   * exceção, e é exceção porque o usuário mandou, sabendo que diverge. */
+
   const identificacaoTitular =
     (cpf ? ", " + portador + " do CPF nº <strong>" + escHtmlVoucher_(cpf) + "</strong>" : "") +
     frag(", " + empregado + " da instituição ", instituicaoTexto) +

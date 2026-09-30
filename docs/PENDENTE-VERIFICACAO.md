@@ -68,6 +68,10 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar |
 | 112 | ✅ conferido em 24/09 — nome legível e CNPJ pontuado ao lado |
 | 111 | 🔴 a busca de escola responde rápido da segunda digitação em diante |
+| 126 | 🔴 registrar um pedido com data de dias atrás e ver o cabeçalho na observação |
+| 125 | 🔴 o modal mostra "Quem fez" com quem registrou e quem aprovou |
+| 124 | 🔴 a "Data do pedido" nasce com hoje e não aceita data futura |
+| 123 | 🔴 certificado de ASSOCIADA sai "portadora … empregada" |
 | 110 | 🔴 os anexos no detalhe da solicitação dizem de quem é cada um |
 | 109 | 🔴 `Voucher_Emitidos` com NOME_BENEFICIARIO, TIPO_BENEFICIARIO e DATA_SOLICITACAO preenchidos |
 | 108 | 🔴 o voucher de dependente sai como "NOME (dependente de TITULAR)" |
@@ -6196,3 +6200,50 @@ t198 e no emulador ele limpa — mas a REGRA Nº -1 vale, e quem confirma é voc
 tem como saber onde o filho estuda — isso está no e-mail que a secretaria lê.
 Em renovação ela já vem preenchida do certificado anterior, e isso é anterior
 a esta entrega.
+
+## 🔴 Data do pedido, quem fez, e a concordância — 30/09/2026
+
+Três pedidos seus no mesmo dia, olhando os dois modais de Bolsas.
+
+**O defeito de fundo da data.** `DATA_SOLICITACAO` recebia o instante da
+gravação — ou seja, quando a secretaria digita, não quando o associado pediu.
+Ela existe desde 22/09 para medir o prazo de atendimento até a emissão; com as
+duas nascendo do mesmo clique, o prazo dava sempre perto de zero. Um número que
+existe e mente é pior que um que falta.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 123 | 🔴 certificado de uma ASSOCIADA sai "portadora … **empregada** da instituição" | PDF emitido |
+| 124 | 🔴 "Data do pedido" nasce com hoje, aceita data para trás e recusa o futuro | nova solicitação manual |
+| 125 | 🔴 o modal de análise mostra **✍️ Quem fez**, com quem registrou e quem aprovou | painel de Bolsas |
+| 126 | 🔴 registrar um pedido com data de dias atrás e ver o cabeçalho na observação | painel de Bolsas |
+
+**O 126 é o que fecha o assunto todo:** o cabeçalho tem que sair com a data do
+pedido, não a de hoje, e com o percentual **concedido**.
+
+### A concordância de gênero — decisão registrada, não pendência
+
+Você fotografou os dois modelos reais e eles **se contradizem**, cada um para
+um lado:
+
+| Papel | Titular | Sai escrito |
+|---|---|---|
+| LAYSA (Multivix) | mulher | "**portador** do CPF … **empregada** da instituição" |
+| EDUARDO / BRUNA (Darwin) | titular mulher | "**portadora** do CPF … **empregado** da instituição" |
+
+Cada um flexiona uma palavra e deixa a outra no masculino — preenchimento
+manual de duas pessoas, em dias diferentes, não uma regra. Como não há
+original correto a copiar, **você decidiu em 30/09/2026 que o sistema flexiona
+as duas**: *"única coisa que muda é a flexibilização"*.
+
+Isso está travado em `VoucherPdf.gs` e no t61, com a razão escrita, para que a
+regra de "texto fixo idêntico ao modelo" não seja usada um dia para reverter a
+decisão. Ela continua valendo para **todo o resto** — inclusive para o que
+parece erro e não é:
+
+- **"inscrita no CNPJ: sob nº"**, com dois-pontos — está nos dois papéis;
+- **o certificado do titular não traz "referente ao semestre letivo de"** — o
+  da LAYSA termina no nome do curso; só o do dependente tem a oração.
+
+Os dois viraram asserção no t61 justamente porque parecem esquecimento e não
+são.
