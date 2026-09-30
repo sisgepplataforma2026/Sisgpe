@@ -93,7 +93,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 81 | ✅ VERIFICADO NO AR — o remetente é a Secretaria, e onde a cópia fica é estrutural |
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
 | 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
-| 78 | 🔴 PRODUÇÃO NA 702 — dois gatilhos precisam ser reinstalados NO EDITOR |
+| 78 | ✅ **FECHADO em 30/09/2026** — os dois gatilhos rodados e conferidos em Acionadores |
 | 77 | 🔴 A cota do Gmail — o monitoramento comia o orçamento do envio de ofício |
 | 76 | 🔴 `getAmbienteAtual` decidia o ambiente pela CAIXA da propriedade — corrigido |
 | 75 | 🔴 O ingresso da festa agora vira arquivo guardado no Drive, com nome nominal |
@@ -834,7 +834,7 @@ sumido. Nesse caso, rode de novo depois de publicar, com a fila zerada.
 
 ---
 
-### 78. 🔴 PRODUÇÃO NA 702 — E DOIS GATILHOS ESPERANDO VOCÊ NO EDITOR
+### 78. ✅ FECHADO — OS DOIS GATILHOS FORAM RODADOS E CONFERIDOS
 
 09/09/2026, 17h31 (14h31 BRT). Publicado nos dois:
 
@@ -863,6 +863,32 @@ volta amanhã.
 
 **O segundo** desliga as 12 rodadas/dia da conferência de recebimento. Fica sem
 substituto até o botão manual existir (ver o item 77).
+
+---
+
+#### ✅ FECHADO EM 30/09/2026 — conferido por você, com print
+
+Você rodou os dois no editor de produção e mandou o painel de Acionadores.
+Não foi por dedução: o estado final foi lido na tela.
+
+| Acionador | Como ficou |
+|---|---|
+| `verificarFalhasEntregaOficios` | **Contador de dias · 3h às 4h** (era "Horas") |
+| `verificarConfirmacoesRecebimento` | **ausente da lista** — removido |
+
+A implantação do primeiro está como **"Teste"**, o que aqui é o certo: ele
+segue o código publicado a cada promoção, em vez de congelar numa versão.
+
+**Um tropeço no caminho, que vale registrar:** a primeira execução foi do
+`instalarTriggerConfirmacoes` — o oposto do pedido —, o que reinstalou por um
+minuto o gatilho de 2 em 2 horas que causou o problema. Corrigido em seguida
+com `removerTriggerConfirmacoes`. Os nomes são parecidos e ficam lado a lado
+no seletor do editor; se algum dia isto for refeito, conferir o log ANTES de
+seguir para o próximo comando.
+
+**O que este item NÃO fecha:** o item 77 continua aberto. Desligar a
+conferência de recebimento deixou essa função sem caminho nenhum — o botão
+manual que você aprovou ainda não existe.
 
 ---
 
@@ -6247,3 +6273,31 @@ parece erro e não é:
 
 Os dois viraram asserção no t61 justamente porque parecem esquecimento e não
 são.
+
+## 🔴 Acionador preso a uma versão antiga — achado em 30/09/2026
+
+Achado ao conferir os Acionadores para fechar o item 78. Dos dez acionadores
+da produção, **nove dizem "Implantação: Teste" e um diz "Versão 688"**:
+
+```
+cob_rotinaDiariaTrigger_     Versão 688
+```
+
+**O que isso significa.** Acionador preso a uma versão executa o retrato
+INTEIRO do projeto naquela versão — não só o arquivo dele. Essa rotina chama
+`listarEscolasCadastro_interno_` da versão 688, sem a correção de cache que
+foi publicada hoje, e nenhuma publicação futura alcança ela. É uma rotina que
+congela no tempo enquanto as outras nove acompanham a produção.
+
+**Por que não é urgente.** `CobrancaRelacaoNominal.gs` não muda desde
+01/09/2026, então o código da própria rotina na 688 deve ser idêntico ao de
+hoje. Ela lê o Gmail às 9h e atualiza status; não envia nada sozinha — disparar
+lembrete é sempre clique humano.
+
+| | O que fazer | Onde |
+|---|---|---|
+| 127 | 🔴 executar `cob_instalarTriggerDiario_publico` e conferir que a Implantação virou "Teste" | editor de produção |
+
+**Atenção ao rodar:** essa função exige `tokenSessao` com o módulo "escolas".
+Rodando direto do editor o argumento vem vazio e ela pode recusar. **Se
+recusar, não force** — me avise que eu vejo o caminho certo.
