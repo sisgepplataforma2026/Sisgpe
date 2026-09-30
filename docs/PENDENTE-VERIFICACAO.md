@@ -6296,8 +6296,23 @@ lembrete é sempre clique humano.
 
 | | O que fazer | Onde |
 |---|---|---|
-| 127 | 🔴 executar `cob_instalarTriggerDiario_publico` e conferir que a Implantação virou "Teste" | editor de produção |
+| 127 | 🟡 **executado em 30/09/2026** pelo botão "Ativar busca diária (9h)" — falta ver a coluna Implantação dizer "Teste" | Acionadores |
 
-**Atenção ao rodar:** essa função exige `tokenSessao` com o módulo "escolas".
-Rodando direto do editor o argumento vem vazio e ela pode recusar. **Se
-recusar, não force** — me avise que eu vejo o caminho certo.
+**Como foi resolvido, em 30/09/2026.** O caminho previsto — editar o
+acionador e trocar a Implantação para "Teste" — **não funcionou**: o seletor
+do editor oferecia apenas `Versão 688`. Acionador que nasceu preso a uma
+versão não é solto pela tela.
+
+O caminho que funcionou foi pelo sistema: **Escolas → 📋 Cobrança de Relação
+Nominal → botão "Ativar busca diária (9h)"**. Ele chama
+`cob_instalarTriggerDiario_publico` COM sessão (a trava exige o módulo
+"escolas", que o editor não satisfaz), apaga o acionador preso e cria um
+novo — e acionador criado por código nasce em "Teste".
+
+Fica registrado porque vale para qualquer acionador preso a uma versão, não
+só este: **pelo editor não sai; pelo botão do sistema, sai.**
+
+**O que falta:** o usuário confirmou ter clicado, mas a coluna Implantação
+ainda não foi lida na tela de Acionadores. Enquanto não for, o veredito é
+"não testado" pela REGRA Nº -1 — o botão pode ter devolvido sucesso e a
+recriação ter caído em outra implantação.
