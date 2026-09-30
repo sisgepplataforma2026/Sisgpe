@@ -94,7 +94,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 80 | 🔴 A cota deixa de condenar o ofício, e nasce o comprovante de envio |
 | 79 | 🔴 PRODUÇÃO NA 705 — a conferência responde pelos 362, e uma conclusão minha CORRIGIDA |
 | 78 | ✅ **FECHADO em 30/09/2026** — os dois gatilhos rodados e conferidos em Acionadores |
-| 77 | 🔴 A cota do Gmail — o monitoramento comia o orçamento do envio de ofício |
+| 77 | 🟡 A cota do Gmail — resolvida; o botão de conferência EXISTE (eu errei ao dizer que não), falta clicar no ar |
 | 76 | 🔴 `getAmbienteAtual` decidia o ambiente pela CAIXA da propriedade — corrigido |
 | 75 | 🔴 O ingresso da festa agora vira arquivo guardado no Drive, com nome nominal |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
@@ -928,19 +928,48 @@ estourou foi o limite de CHAMADAS ao serviço. Medimos um e gastamos os dois.
   verificador caía na busca larga que causou o item 49;
 - "bounce" saiu de tudo que a secretaria lê.
 
-**🔴 O QUE FALTA — e é o buraco que a decisão dele abriu:**
+**🟡 O BOTÃO EXISTE — correção de 30/09/2026**
 
-Ele decidiu que a conferência de recebimento vira **botão**: *"quem envia é
-você, quem confere é você"*. **Esse botão NÃO EXISTE.** A aba `✅ Conferir
-envio` abre a conferência de DESTINATÁRIOS, não fala com o Gmail. Enquanto ele
-não for construído, desligar `removerTriggerConfirmacoes` deixa a conferência
-sem nenhum caminho.
+O texto acima, escrito em 09/09, dizia que o botão de conferência não existia.
+**Estava desatualizado, e eu o repeti duas vezes em 30/09 sem conferir o
+código** — exatamente o erro que a REGRA Nº -1 existe para impedir, cometido
+lendo um documento meu em vez do sistema.
 
-Desenho já aprovado por ele: botão na barra do reenvio em lote, confere só os
-ofícios marcados, e mostra o custo em consultas. **Precisa de nova publicação.**
+O botão foi construído no MESMO dia 09/09, no commit `7414dda` ("Ofícios:
+conferir recebimento vira botão"). Está em `OficiosFormulario.html:690`, na
+barra do Histórico, ao lado do reenvio em lote e do comprovante:
 
-**Não testado:** o reenvio do 407 depois que o limite zerar (amanhã), e se o
-gatilho reinstalado aparece como "Dia" em Acionadores.
+```
+✅  Procura no Gmail a resposta de cada escola. Cada ofício marcado
+    é uma consulta — por isso confere só o que você escolher.
+                            [✅ Conferir recebimento (2)]
+    2 ofício(s) selecionado(s) · custo: 2 consulta(s) ao Gmail
+```
+
+Backend em `MonitoramentoOficios.gs:262` (`conferirRecebimentoOficios`), com
+teto de 60 por clique e a contagem de consultas no retorno.
+
+**Portanto desligar o gatilho em 30/09 NÃO deixou a conferência sem caminho.**
+O caminho manual está no ar desde 09/09.
+
+**O que faltava de verdade era teste da TELA.** O t154 prova o backend por
+execução (60 asserções), mas confere a tela com uma regex — `/id="btnHistConf"/`
+—, que é ler, não testar. O clique nunca tinha sido executado. Coberto agora
+pelo **t200**, 26 asserções: a barra aparecendo e sumindo com a seleção, o
+custo dito antes do clique, os números certos chegando ao servidor, o
+resultado desenhado de volta, o teto explicado na tela, e nenhuma chamada
+saindo sem seleção.
+
+**Não testado:** o reenvio do 407 depois que o limite zerar, e o botão de
+conferência **clicado no ar** — o t200 prova a lógica da tela, não o navegador
+do sindicato nem a busca real no Gmail.
+
+| | O que conferir | Onde |
+|---|---|---|
+| 128 | 🔴 marcar 2 ou 3 ofícios no Histórico, clicar em "✅ Conferir recebimento" e ver o resultado com a contagem de consultas | Ofícios → Histórico |
+
+**O gatilho reinstalado já foi conferido** — ver o item 78, fechado em
+30/09/2026 com o print de Acionadores.
 
 ---
 
