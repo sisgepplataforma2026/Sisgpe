@@ -596,6 +596,26 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * "quantas exceções foram autorizadas e quais" ter resposta por
          * filtro. O que sai da regra é o que mais precisa ser encontrável. */
         "EXCECAO_DUPLICIDADE",
+        /* QUANDO O ASSOCIADO PEDIU × QUANDO A SECRETARIA DIGITOU — 30/09/2026,
+         * pedido seu: "na observação tem que constar a data da solicitação e a
+         * informação".
+         *
+         * Aqui havia UMA data só. `DATA_SOLICITACAO` recebia `new Date()` no
+         * instante da gravação, o que numa solicitação manual é o momento em
+         * que a secretaria transcreve — e não quando o associado pediu. O
+         * pedido chegou por e-mail dias antes.
+         *
+         * Isso não era detalhe de registro: a DATA_SOLICITACAO existe desde
+         * 22/09 para medir o PRAZO DE ATENDIMENTO, a distância até a
+         * DATA_EMISSAO. Com as duas nascendo do mesmo clique, esse prazo dava
+         * sempre perto de zero. O número existia e mentia, que é pior do que
+         * não existir.
+         *
+         * Agora `DATA_SOLICITACAO` é a data do PEDIDO, digitável para trás
+         * pela secretaria, e `DATA_REGISTRO` é o instante da digitação. Quem
+         * digitou já estava em USUARIO_CADASTRO. */
+        "DATA_REGISTRO",
+        "DATA_REGISTRO_TEXTO",
         /* O QUE FOI PEDIDO NA COMPLEMENTAÇÃO — 22/09/2026.
          *
          * "Essa complementação eu deveria informar quais documentos estariam
@@ -1746,6 +1766,40 @@ function listarSolicitacoesVoucher() {
 
     const dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
 
+    /* QUEM EMITIU O CERTIFICADO — 30/09/2026, "controle de quem fez o voucher".
+     *
+     * Quem REGISTROU e quem APROVOU estão na própria linha da solicitação
+     * (USUARIO_CADASTRO e USUARIO_VALIDACAO). Quem EMITIU não: mora em
+     * Voucher_Emitidos, porque a emissão é outro evento — pode haver mais de
+     * uma para o mesmo protocolo, e a reemissão tem autor próprio.
+     *
+     * A aba é lida UMA vez e vira mapa, em vez de uma busca por linha. Com
+     * uma busca por linha, 300 solicitações dariam 300 varreduras da aba de
+     * emissões — e este painel já foi lento por leitura repetida uma vez
+     * nesta semana (o cache das escolas, em 24/09). A última emissão vence:
+     * é a que vale, e é a que o certificado no Drive reflete. */
+    const quemEmitiu = {};
+    try {
+      const shEmi = ss.getSheetByName("Voucher_Emitidos");
+      if (shEmi && shEmi.getLastRow() > 1) {
+        const cabEmi = obterHeaders_(shEmi).map(function (h) { return String(h || "").trim(); });
+        const iProt = cabEmi.indexOf("PROTOCOLO");
+        const iUsu  = cabEmi.indexOf("USUARIO");
+        const iData = cabEmi.indexOf("DATA_EMISSAO");
+        if (iProt > -1) {
+          shEmi.getRange(2, 1, shEmi.getLastRow() - 1, shEmi.getLastColumn()).getValues()
+            .forEach(function (le) {
+              const prot = String(le[iProt] || "").trim();
+              if (!prot) return;
+              quemEmitiu[prot] = {
+                usuario: iUsu  > -1 ? String(le[iUsu] || "").trim() : "",
+                data:    iData > -1 ? le[iData] : ""
+              };
+            });
+        }
+      }
+    } catch (eEmi) { Logger.log("[listarSolicitacoesVoucher] emitidos: " + eEmi); }
+
     function idx() {
       for (let i = 0; i < arguments.length; i++) {
         const nome = String(arguments[i] || "").trim();
@@ -1843,6 +1897,23 @@ function listarSolicitacoesVoucher() {
         status: String(val(l, "STATUS_SOLICITACAO", "STATUS_SOLICITAÇÃO", "STATUS") || "PENDENTE"),
         data: String(dataTexto || formatarDataBrVoucher_(dataSolicitacao) || ""),
         observacao: String(val(l, "OBSERVACOES", "OBSERVAÇÕES", "OBS") || ""),
+
+        /* QUEM FEZ CADA ETAPA — 30/09/2026, pedido seu.
+         *
+         * Os três já eram GRAVADOS; nenhum aparecia na tela. O painel
+         * mostrava o que foi pedido e não mostrava quem atendeu — e "quem
+         * aprovou essa bolsa de 70%?" só tinha resposta abrindo a planilha.
+         *
+         * Vão vazios quando a etapa não aconteceu, e a tela some com a linha:
+         * "Aprovado por —" numa solicitação pendente afirmaria uma aprovação
+         * que não houve. */
+        registradoPor: String(val(l, "USUARIO_CADASTRO", "USUARIO_CRIACAO") || ""),
+        dataRegistro: String(val(l, "DATA_REGISTRO_TEXTO") ||
+                             formatarDataBrVoucher_(val(l, "DATA_REGISTRO")) || ""),
+        aprovadoPor: String(val(l, "USUARIO_VALIDACAO") || ""),
+        dataAprovacao: String(formatarDataBrVoucher_(val(l, "DATA_VALIDACAO")) || ""),
+        emitidoPor: String((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).usuario || ""),
+        dataEmissao: String(formatarDataBrVoucher_(val(l, "DATA_EMISSAO")) || ""),
 
         linkContracheque: String(val(l, "LINK_CONTRACHEQUE", "CONTRACHEQUE", "LINK DOCUMENTO VINCULO") || ""),
         linkDocPessoal: String(val(l, "LINK_DOC_PESSOAL", "DOC_PESSOAL", "DOCUMENTO_PESSOAL") || ""),

@@ -551,7 +551,26 @@
         <div class="cert-info-item"><span class="cert-info-label">Modalidade</span><span class="cert-info-val" id="cmi-modalidade">—</span></div>
         <div class="cert-info-item"><span class="cert-info-label">Curso</span><span class="cert-info-val" id="cmi-curso">—</span></div>
         <div class="cert-info-item"><span class="cert-info-label">Período</span><span class="cert-info-val" id="cmi-periodo">—</span></div>
-        <div class="cert-info-item"><span class="cert-info-label">Data Solicitação</span><span class="cert-info-val" id="cmi-data">—</span></div>
+        <div class="cert-info-item"><span class="cert-info-label">Data do pedido</span><span class="cert-info-val" id="cmi-data">—</span></div>
+      </div>
+
+      <!-- QUEM FEZ CADA ETAPA — 30/09/2026, "controle de quem fez o voucher"
+           e "quando aprovar deve aparecer".
+
+           Os três dados já eram gravados (USUARIO_CADASTRO, USUARIO_VALIDACAO
+           e o USUARIO de Voucher_Emitidos) e nenhum aparecia na tela: "quem
+           aprovou essa bolsa de 70%?" só tinha resposta abrindo a planilha.
+
+           O bloco inteiro some quando nenhuma etapa tem autor, e cada linha
+           some sozinha quando aquela etapa não aconteceu: "Aprovado por —"
+           numa solicitação pendente afirmaria uma aprovação que não houve. -->
+      <div id="cmi-quemBox" style="display:none;">
+        <div class="cert-section-title">✍️ Quem fez</div>
+        <div class="cert-info-grid">
+          <div class="cert-info-item" id="cmi-regBox" style="display:none;"><span class="cert-info-label">Registrado por</span><span class="cert-info-val" id="cmi-registrado">—</span></div>
+          <div class="cert-info-item" id="cmi-aprBox" style="display:none;"><span class="cert-info-label">Aprovado por</span><span class="cert-info-val" id="cmi-aprovado">—</span></div>
+          <div class="cert-info-item" id="cmi-emiBox" style="display:none;"><span class="cert-info-label">Emitido por</span><span class="cert-info-val" id="cmi-emitido">—</span></div>
+        </div>
       </div>
 
       <!-- O PERCENTUAL PRECISA SER CONFERIDO ANTES DO ENVIO — 16/09/2026.
@@ -1051,6 +1070,16 @@
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do associado</label><input class="cert-nv-in" id="certNvNome"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">E-mail</label><input class="cert-nv-in" id="certNvEmail"></div>
         <div class="cert-nv-campo"><label class="cert-nv-lbl">Telefone</label><input class="cert-nv-in" id="certNvTelefone"></div>
+        <!-- QUANDO O ASSOCIADO PEDIU, que não é quando a secretaria digita.
+             O pedido chega por e-mail e é transcrito dias depois; até
+             30/09/2026 a data gravada era a do clique, e o prazo de
+             atendimento (pedido → emissão) dava sempre perto de zero.
+             Nasce com hoje porque na maioria das vezes está certo, e o `max`
+             impede data no futuro — que é erro de digitação, sempre. -->
+        <div class="cert-nv-campo">
+          <label class="cert-nv-lbl">Data do pedido <span id="certNvOrgDataPedido"></span></label>
+          <input type="date" class="cert-nv-in" id="certNvDataPedido">
+        </div>
         <!-- SÓ ASSOCIADO TEM DIREITO. O campo fica aqui em cima, junto de
              quem pede, porque é a primeira coisa que decide se vale a pena
              preencher o resto: escolher "não associado" zera o percentual e
@@ -1794,7 +1823,52 @@ function cert_abrirModal(s){
   var st=String(s.status||'').toUpperCase();
   if(g('certModalTitulo')) g('certModalTitulo').textContent='Solicitação de Bolsa';
   if(g('certModalSub'))    g('certModalSub').textContent=s.protocolo||'';
-  function set(id,val){var el=g(id);if(el)el.textContent=val||'—';}
+  /* AS TRÊS LINHAS DE "QUEM FEZ" — 30/09/2026.
+ *
+ * Cada etapa aparece SÓ se tiver autor. A regra não é estética: solicitação
+ * pendente mostrando "Aprovado por —" afirma uma aprovação que não houve, e
+ * quem bate o olho não lê o travessão, lê o rótulo.
+ *
+ * A data acompanha o nome quando existe, porque "aprovado por Marcela" sem
+ * quando não responde "isso foi antes ou depois de o associado mandar o
+ * documento que faltava?".
+ *
+ * O e-mail vira primeiro nome na leitura, e não na gravação: a coluna guarda
+ * o e-mail inteiro, que é o que serve para conferência. */
+function certQuemFez(s){
+  function linha(idBox, idVal, quem, quando){
+    var box = g(idBox), el = g(idVal);
+    if(!box || !el) return false;
+    var nome = certNomeUsuario(quem);
+    if(!nome){ box.style.display = 'none'; return false; }
+    el.textContent = nome + (quando ? ' · ' + quando : '');
+    box.style.display = '';
+    return true;
+  }
+  var algum = false;
+  algum = linha('cmi-regBox','cmi-registrado', s.registradoPor, s.dataRegistro) || algum;
+  algum = linha('cmi-aprBox','cmi-aprovado',   s.aprovadoPor,   s.dataAprovacao) || algum;
+  algum = linha('cmi-emiBox','cmi-emitido',    s.emitidoPor,    s.dataEmissao)   || algum;
+  var caixa = g('cmi-quemBox');
+  if(caixa) caixa.style.display = algum ? '' : 'none';
+}
+
+/* "marcela.secretaria@sindeducacao.com" → "Marcela Secretaria". Aqui o nome
+   sai inteiro, e não só o primeiro como no cabeçalho da observação: a linha
+   do modal tem largura de sobra, e duas Marcelas na secretaria precisariam
+   do sobrenome para se distinguirem. */
+function certNomeUsuario(v){
+  var txt = String(v||'').trim();
+  if(!txt) return '';
+  if(txt.indexOf('@') === -1) return txt;
+  var antes = txt.split('@')[0].replace(/[._-]+/g,' ').trim();
+  if(!antes) return txt;
+  return antes.split(/\s+/).map(function(p){
+    return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+  }).join(' ');
+}
+
+function set(id,val){var el=g(id);if(el)el.textContent=val||'—';}
   set('cmi-nome',        s.nome);
   set('cmi-cpf',         s.cpf);
   set('cmi-email',       s.email);
@@ -1813,6 +1887,7 @@ function cert_abrirModal(s){
      registro ANTERIOR deixou. */
   corrPeriodoSincronizar(s);
   set('cmi-data',        certData(s.data));
+  certQuemFez(s);
 
   /* Sem percentual gravado a caixa avisa, em vez de mostrar "—" e deixar
      passar: linha antiga ou cálculo que não rodou precisa ser vista ANTES da
@@ -2970,6 +3045,7 @@ function nvCampos(){
     nome:             g('certNvNome').value,
     email:            g('certNvEmail').value,
     telefone:         g('certNvTelefone').value,
+    dataPedido:       g('certNvDataPedido') ? g('certNvDataPedido').value : '',
     situacaoSindical: g('certNvSituacao') ? g('certNvSituacao').value : '',
     /* Quando e por quem o papel foi recebido. Só vão preenchidos no
        atendimento presencial — nos demais a faixa está escondida e os campos
@@ -2998,7 +3074,33 @@ function nvCampos(){
   };
 }
 
+/* A DATA DO PEDIDO NASCE COM HOJE, e o calendário não deixa escolher o futuro.
+ *
+ * "Na observação tem que constar a data da solicitação" — você, 30/09/2026.
+ *
+ * Hoje é o palpite certo na maioria das vezes: o e-mail do associado costuma
+ * ser transcrito no mesmo dia. Quando não for, a pessoa corrige para trás — e
+ * é justamente esse caso que o campo existe para capturar, porque é ele que
+ * faz o prazo de atendimento medir alguma coisa.
+ *
+ * O `max` é hoje. Data de amanhã num pedido é erro de digitação, sempre; e o
+ * backend recusa de novo, porque quem grava é quem responde. */
+function nvDataPedidoHoje(){
+  var el = g('certNvDataPedido');
+  if(!el) return;
+  var d = new Date();
+  /* Montado peça por peça, e não com toISOString(): o ISO é UTC, e às 21h de
+     Vitória ele já devolve o dia seguinte. */
+  var iso = d.getFullYear() + '-' +
+            String(d.getMonth()+1).padStart(2,'0') + '-' +
+            String(d.getDate()).padStart(2,'0');
+  el.value = iso;
+  el.setAttribute('max', iso);
+  nvOrigem(g('certNvOrgDataPedido'), 'HOJE');
+}
+
 function nvLimpar(){
+  nvDataPedidoHoje();
   ['certNvBusca','certNvCpf','certNvNome','certNvEmail','certNvTelefone','certNvEscola',
    'certNvCnpjEscola','certNvInstituicao','certNvCnpjInst','certNvEmailInst',
    'certNvBeneficiario','certNvCurso','certNvIdade','certNvPercentual',
@@ -3058,7 +3160,8 @@ function nvOrigem(el, origem){
     REGRA_CCT_RECUSA:   ['recusa','convenção não prevê'],
     PADRAO_DO_CURSO:    ['padrao','padrão do curso'],
     MEMORIA_INSTITUICAO:['hist','já usada antes'],
-    MESMA_ESCOLA:       ['hist','copiado da escola']
+    MESMA_ESCOLA:       ['hist','copiado da escola'],
+    HOJE:               ['padrao','hoje — corrija se o e-mail é mais antigo']
   };
   var m = mapa[origem];
   el.innerHTML = m ? '<span class="cert-nv-org '+m[0]+'">'+m[1]+'</span>' : '';
