@@ -193,6 +193,8 @@ só o Apps Script executa:
 - linha tracejada de corte ENTRE as pessoas, não só a vertical;
 - o número saiu do canhoto (fica só na relação da portaria);
 - saiu a coluna da direita do canhoto (slogan e selo com texto ilegível, gerado por IA).
+- canhoto maior: ~11,6 × 2,9 cm (era ~9 × 2,2), com 6 pessoas por folha como padrão
+  (60 folhas com a planilha de 01/10, em vez de 46); 8 por folha continua na tela.
 
 **AINDA ABERTO:**
 3. **Imprimir UMA folha de prova antes da gráfica**: a arte foi recortada de

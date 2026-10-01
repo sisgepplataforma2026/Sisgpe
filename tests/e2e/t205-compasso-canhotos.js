@@ -184,7 +184,7 @@ if (!dom.jsdomDisponivel()) {
   b.ok(t.chamadas.some(c => c.fn === "compassoCanhotos_arte"), "busca a arte só na hora de gerar");
   const doc = (janelas[0] || {}).html || "";
   const folhas = doc.split('<section class="folha">').slice(1);
-  b.ok(folhas.length >= 8, "gera as folhas (8 por folha): " + folhas.length);
+  b.ok(folhas.length >= 10, "gera as folhas (6 por folha, o padrão): " + folhas.length);
   let alinhado = true, umaVez = true, faixaCerta = true, cabecalho = true;
   let semNumero = true, cortesOk = true;
   const vistos = {};
