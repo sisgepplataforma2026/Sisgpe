@@ -1,0 +1,399 @@
+<!-- CANHOTOS DA URNA — Compasso da Vida 2026 (01/10/2026)
+
+     FRAGMENTO, NÃO PÁGINA: é incluído na tela de Eventos, submódulo Sorteios.
+     Por isso o script vive inteiro numa função que se executa sozinha e só
+     publica nomes com o prefixo canh — no Apps Script, todos os blocos de
+     script dos arquivos incluídos viram UM escopo global, e uma colisão de
+     nome derruba o JavaScript da página inteira. CSS escopado sob
+     #compassoCanhotos pelo mesmo motivo.
+
+     O QUE ELA FAZ, E SÓ ISSO (o usuário: "Somente isso, nada além disso"):
+     lê a planilha de respostas do formulário, divide por faixa de letras e
+     monta a folha que vai para a gráfica — relação à esquerda, canhoto na
+     MESMA linha à direita, linha de corte grossa no meio. Não toca ingresso,
+     check-in nem inscrição. A leitura do QR na entrada é de outra plataforma.
+
+     A folha segue o modelo que o usuário aprovou: a arte (banner e canhoto)
+     foi recortada da própria imagem dele, em CompassoCanhotosArte, e o
+     sistema só escreve por cima — nome, escola, número e faixa. -->
+<div id="compassoCanhotos">
+<style>
+  #compassoCanhotos{padding:4px 0 40px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
+  #compassoCanhotos .cn-etapa{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+  #compassoCanhotos .cn-etapa.off{opacity:.45;pointer-events:none}
+  #compassoCanhotos .cn-etapa>h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy,#001f4d);font-weight:800}
+  #compassoCanhotos .cn-nota{font-size:13px;color:#4b5565;line-height:1.55;margin:0 0 12px}
+  #compassoCanhotos .cn-solta{border:2px dashed #c8d3e4;border-radius:14px;padding:24px 18px;text-align:center;background:#fbfcfe;cursor:pointer;transition:.15s}
+  #compassoCanhotos .cn-solta:hover,#compassoCanhotos .cn-solta.sobre{border-color:var(--blue,#1565C0);background:#f2f7ff}
+  #compassoCanhotos .cn-solta b{display:block;color:var(--navy,#001f4d);margin-top:6px}
+  #compassoCanhotos .cn-solta span{font-size:12px;color:#6b7385}
+  #compassoCanhotos .cn-kpis{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+  #compassoCanhotos .cn-kpi{flex:1 1 120px;border:1.5px solid #d8e0ea;border-radius:12px;padding:10px 13px}
+  #compassoCanhotos .cn-kpi .n{font-size:22px;font-weight:800;color:var(--navy,#001f4d);line-height:1.1}
+  #compassoCanhotos .cn-kpi .r{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7385;font-weight:700}
+  #compassoCanhotos .cn-kpi.al .n{color:#d97706}
+  #compassoCanhotos .cn-col{font-size:12.5px;color:#334155;margin:4px 0}
+  #compassoCanhotos .cn-col code{background:#eef3f9;padding:1px 6px;border-radius:6px;font-size:12px}
+  #compassoCanhotos .cn-aviso{border:1px solid #fed7aa;background:#fff7ed;color:#7c4a03;border-radius:10px;padding:9px 12px;margin:6px 0;font-size:13px}
+  #compassoCanhotos .cn-aviso summary{cursor:pointer;font-weight:700}
+  #compassoCanhotos .cn-aviso ul{margin:6px 0 0 18px;padding:0}
+  #compassoCanhotos .cn-linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #compassoCanhotos label.cn-op{display:flex;gap:6px;align-items:center;font-size:13.5px;font-weight:600;cursor:pointer}
+  #compassoCanhotos input[type=number],#compassoCanhotos input[type=text]{padding:8px 10px;border:1.5px solid #d8e0ea;border-radius:9px;font:inherit;font-size:14px}
+  #compassoCanhotos input[type=number]{width:70px}
+  #compassoCanhotos input[type=text]{flex:1;min-width:240px}
+  #compassoCanhotos .cn-faixas{margin-top:12px;display:grid;gap:6px}
+  #compassoCanhotos .cn-fx{display:grid;grid-template-columns:70px 1fr 150px;gap:10px;align-items:center;font-size:13px}
+  #compassoCanhotos .cn-fx b{font-size:15px;color:var(--navy,#001f4d)}
+  #compassoCanhotos .cn-barra{height:12px;border-radius:6px;background:#eef3f9;overflow:hidden}
+  #compassoCanhotos .cn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--navy,#001f4d),var(--blue,#1565C0));border-radius:6px}
+  #compassoCanhotos .cn-erro{color:#dc2626;font-weight:700;font-size:13px;margin-top:8px}
+  #compassoCanhotos .cn-bt{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  #compassoCanhotos .cn-bt.pri{background:var(--navy,#001f4d);color:#fff}
+  #compassoCanhotos .cn-bt.sec{background:#fff;color:var(--navy,#001f4d);border:1.5px solid #d8e0ea}
+  #compassoCanhotos .cn-bt:disabled{opacity:.45;cursor:default}
+  #compassoCanhotos .cn-msg{font-size:13px;font-weight:700;color:#0f8a5f}
+</style>
+
+  <div class="cn-etapa">
+    <h3>① Planilha de inscritos</h3>
+    <p class="cn-nota">A planilha de respostas do formulário de inscrição, exportada (.xlsx, .xls, .csv ou .ods).
+      O SISGEP lê, confere e monta os canhotos. Nada é gravado: o arquivo é lido e descartado.</p>
+    <div class="cn-solta" id="canhSolta">
+      <div style="font-size:28px">📄</div>
+      <b id="canhSoltaTit">Clique ou solte aqui a planilha</b>
+      <span id="canhSoltaSub">O número do canhoto é a ordem de inscrição</span>
+    </div>
+    <input type="file" id="canhArq" accept=".xlsx,.xls,.csv,.ods" hidden>
+    <div id="canhLido" hidden>
+      <div class="cn-kpis">
+        <div class="cn-kpi"><div class="n" id="canhTotal">0</div><div class="r">Vão para a urna</div></div>
+        <div class="cn-kpi al"><div class="n" id="canhAvisosN">0</div><div class="r">Avisos</div></div>
+        <div class="cn-kpi"><div class="n" id="canhFolhasN">0</div><div class="r">Folhas</div></div>
+      </div>
+      <div class="cn-col">Nome lido da coluna <code id="canhColNome"></code></div>
+      <div class="cn-col">Escola lida da coluna <code id="canhColEscola"></code></div>
+      <div class="cn-col" id="canhColOrdemLinha">Número pela ordem de <code id="canhColOrdem"></code></div>
+      <div id="canhAvisos"></div>
+    </div>
+  </div>
+
+  <div class="cn-etapa off" id="canhEtapaFaixas">
+    <h3>② Faixas de letras (uma por mesa)</h3>
+    <div class="cn-linha">
+      <label class="cn-op"><input type="radio" name="canhModo" value="auto" checked> Automático, dividir em</label>
+      <input type="number" id="canhMesas" min="1" max="12" value="5"> <span style="font-size:13.5px;font-weight:600">mesas</span>
+    </div>
+    <div class="cn-linha" style="margin-top:8px">
+      <label class="cn-op"><input type="radio" name="canhModo" value="manual"> Eu escolho as faixas:</label>
+      <input type="text" id="canhManual" placeholder="Ex.: A-B, C-F, G-L, M-R, S-Z">
+    </div>
+    <div class="cn-faixas" id="canhFaixas"></div>
+    <div class="cn-erro" id="canhFaixaErro" hidden></div>
+  </div>
+
+  <div class="cn-etapa off" id="canhEtapaGerar">
+    <h3>③ Gerar a folha para a gráfica</h3>
+    <div class="cn-linha" style="margin-bottom:12px">
+      <span style="font-size:13.5px;font-weight:600">Pessoas por folha:</span>
+      <label class="cn-op"><input type="radio" name="canhPorFolha" value="6"> 6</label>
+      <label class="cn-op"><input type="radio" name="canhPorFolha" value="8" checked> 8</label>
+      <label class="cn-op"><input type="radio" name="canhPorFolha" value="10"> 10</label>
+    </div>
+    <div class="cn-linha">
+      <button class="cn-bt sec" id="canhBtPrevia">👁 Prévia de 1 folha</button>
+      <button class="cn-bt pri" id="canhBtGerar">🖨 Gerar todas as folhas</button>
+      <span class="cn-msg" id="canhMsg"></span>
+    </div>
+    <p class="cn-nota" style="margin:12px 0 0">Abre numa janela nova, já pronta para imprimir. Para mandar à gráfica,
+      escolha <b>Salvar como PDF</b> no destino da impressão.</p>
+  </div>
+
+<script>
+(function(){
+  var LISTA = [], FAIXAS = [], ARTE = '';
+  var LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function msg(t, erro){
+    if (typeof window.toast==='function') { window.toast(t, erro?'erro':'ok'); return; }
+    var m=g('canhMsg'); m.textContent=t; m.style.color=erro?'#dc2626':'#0f8a5f';
+  }
+
+  /* ── ① planilha ─────────────────────────────────────────────────────── */
+  var solta=g('canhSolta');
+  ['dragenter','dragover'].forEach(function(ev){ solta.addEventListener(ev,function(e){ e.preventDefault(); solta.classList.add('sobre'); }); });
+  ['dragleave','drop'].forEach(function(ev){ solta.addEventListener(ev,function(e){ e.preventDefault(); solta.classList.remove('sobre'); }); });
+  solta.addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]) ler(e.dataTransfer.files[0]); });
+  /* Eventos ligados aqui, não em atributo onclick: o fragmento fica sem
+     depender de nome global para os botões funcionarem. */
+  solta.addEventListener('click',function(){ g('canhArq').click(); });
+  g('canhArq').addEventListener('change',function(){ if(this.files[0]) ler(this.files[0]); });
+
+  function ler(arq){
+    g('canhSoltaTit').textContent='Lendo "'+arq.name+'"…';
+    var r=new FileReader();
+    r.onload=function(){
+      google.script.run
+        .withSuccessHandler(function(res){ lido(res, arq.name); })
+        .withFailureHandler(function(e){ falhou((e&&e.message)||String(e)); })
+        .compassoCanhotos_ler({ base64:r.result, nome:arq.name }, '', token());
+    };
+    r.onerror=function(){ falhou('Não consegui abrir o arquivo.'); };
+    r.readAsDataURL(arq);
+  }
+  function falhou(t){
+    g('canhSoltaTit').textContent='Clique ou solte aqui a planilha';
+    msg(t, true);
+  }
+  function lido(res, nomeArq){
+    g('canhArq').value='';
+    if(!res||!res.ok){ falhou((res&&res.erro)||'Não foi possível ler a planilha.'); return; }
+    LISTA=res.participantes||[];
+    g('canhSoltaTit').textContent='📄 '+nomeArq+(res.aba?' — aba "'+res.aba+'"':'');
+    g('canhSoltaSub').textContent='Clique para trocar a planilha';
+    g('canhLido').hidden=false;
+    g('canhTotal').textContent=LISTA.length;
+    g('canhColNome').textContent=res.colunas.nome||'—';
+    g('canhColEscola').textContent=res.colunas.escola||'(não encontrada)';
+    g('canhColOrdem').textContent=res.colunas.ordem||'linha da planilha';
+    var av=res.avisos||[];
+    g('canhAvisosN').textContent=av.length;
+    g('canhAvisos').innerHTML=av.map(function(a){
+      var itens=(a.itens||[]).map(function(i){ return '<li>linha '+i.linha+' — '+esc(i.nome)+'</li>'; }).join('');
+      return itens ? '<details class="cn-aviso"><summary>⚠ '+esc(a.texto)+'</summary><ul>'+itens+'</ul></details>'
+                   : '<div class="cn-aviso">⚠ '+esc(a.texto)+'</div>';
+    }).join('');
+    g('canhEtapaFaixas').classList.remove('off');
+    g('canhEtapaGerar').classList.remove('off');
+    calcular();
+  }
+
+  /* ── ② faixas ───────────────────────────────────────────────────────── */
+  function letraDe(nome){
+    var s=String(nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+    var m=s.match(/[A-Z]/); return m?m[0]:'Z';
+  }
+  function rotulo(a,b){ return a===b ? a : a+'–'+b; }
+
+  /* Divide o alfabeto em N blocos CONTÍNUOS com quantidades parecidas. Cada
+     corte cai na letra onde a soma acumulada passa de k/N do total — na letra
+     antes ou na depois, a que ficar mais perto. Em português sobra nome em
+     A, J, L, M e quase não há H, O, U: dividir de 4 em 4 letras daria mesa
+     com 90 pessoas ao lado de mesa com 20. */
+  function canhDividirAuto(lista, n){
+    var cont={}; LETRAS.split('').forEach(function(l){ cont[l]=0; });
+    lista.forEach(function(p){ cont[letraDe(p.nome)]++; });
+    var acum=[], soma=0;
+    for(var i=0;i<26;i++){ soma+=cont[LETRAS[i]]; acum.push(soma); }
+    n=Math.max(1,Math.min(n|0||1,26));
+    var inicios=[0];
+    for(var k=1;k<n;k++){
+      var alvo=soma*k/n, j=0;
+      while(j<25 && acum[j]<alvo) j++;
+      if(j>0 && Math.abs(acum[j-1]-alvo) < Math.abs(acum[j]-alvo)) j--;
+      var ini=j+1;
+      if(ini>inicios[inicios.length-1] && ini<26) inicios.push(ini);
+    }
+    var faixas=[];
+    for(var f=0;f<inicios.length;f++){
+      var a=inicios[f], b=(f+1<inicios.length?inicios[f+1]:26)-1;
+      faixas.push({ de:LETRAS[a], ate:LETRAS[b] });
+    }
+    return faixas;
+  }
+  /* "A-B, C-F, G-L" → faixas. Devolve também quem ficou sem faixa: no modo
+     manual, letra esquecida é gente sem canhoto. */
+  function canhFaixasManual(texto){
+    var faixas=[], erros=[];
+    String(texto||'').toUpperCase().split(/[,;]+/).forEach(function(p){
+      p=p.trim(); if(!p) return;
+      var m=p.match(/^([A-Z])\s*(?:[-–—A]\s*([A-Z]))?$/);
+      if(!m){ erros.push('"'+p+'" não é uma faixa (use A-B)'); return; }
+      var de=m[1], ate=m[2]||m[1];
+      if(ate<de){ erros.push('"'+p+'" está ao contrário'); return; }
+      faixas.push({ de:de, ate:ate });
+    });
+    faixas.sort(function(x,y){ return x.de<y.de?-1:1; });
+    for(var i=1;i<faixas.length;i++)
+      if(faixas[i].de<=faixas[i-1].ate) erros.push('As faixas '+rotulo(faixas[i-1].de,faixas[i-1].ate)+' e '+rotulo(faixas[i].de,faixas[i].ate)+' se sobrepõem');
+    return { faixas:faixas, erros:erros };
+  }
+  function canhDistribuir(lista, faixas){
+    var out=faixas.map(function(f){ return { de:f.de, ate:f.ate, rotulo:rotulo(f.de,f.ate), pessoas:[] }; });
+    var fora=[];
+    lista.forEach(function(p){
+      var l=letraDe(p.nome), achou=null;
+      for(var i=0;i<out.length;i++) if(l>=out[i].de && l<=out[i].ate){ achou=out[i]; break; }
+      if(achou) achou.pessoas.push(p); else fora.push(p);
+    });
+    out.forEach(function(f){ f.pessoas.sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}); }); });
+    return { faixas:out, fora:fora };
+  }
+  window.canhDividirAuto=canhDividirAuto;
+  window.canhFaixasManual=canhFaixasManual;
+  window.canhDistribuir=canhDistribuir;
+
+  function porFolha(){ var r=document.querySelector('input[name=canhPorFolha]:checked'); return r?+r.value:8; }
+  function modo(){ var r=document.querySelector('input[name=canhModo]:checked'); return r?r.value:'auto'; }
+
+  function calcular(){
+    var erro=g('canhFaixaErro'); erro.hidden=true;
+    var faixas;
+    if(modo()==='manual'){
+      var m=canhFaixasManual(g('canhManual').value);
+      if(m.erros.length){ erro.textContent=m.erros.join(' · '); erro.hidden=false; }
+      faixas=m.faixas;
+    } else faixas=canhDividirAuto(LISTA, +g('canhMesas').value||5);
+    var d=canhDistribuir(LISTA, faixas);
+    FAIXAS=d.faixas.filter(function(f){ return f.pessoas.length; });
+    if(d.fora.length){
+      erro.textContent=(erro.hidden?'':erro.textContent+' · ')+d.fora.length+' pessoa(s) ficaram sem faixa (letras '+
+        d.fora.map(function(p){ return letraDe(p.nome); }).filter(function(v,i,a){ return a.indexOf(v)===i; }).join(', ')+') e NÃO teriam canhoto.';
+      erro.hidden=false;
+    }
+    var maior=Math.max.apply(null, FAIXAS.map(function(f){ return f.pessoas.length; }).concat([1]));
+    var pf=porFolha(), folhas=0;
+    g('canhFaixas').innerHTML=FAIXAS.map(function(f){
+      var fl=Math.ceil(f.pessoas.length/pf); folhas+=fl;
+      return '<div class="cn-fx"><b>'+esc(f.rotulo)+'</b><div class="cn-barra"><i style="width:'+
+        Math.round(f.pessoas.length/maior*100)+'%"></i></div><span>'+f.pessoas.length+' pessoas · '+fl+' folha'+(fl>1?'s':'')+'</span></div>';
+    }).join('');
+    g('canhFolhasN').textContent=folhas;
+    var bloqueia=!FAIXAS.length || d.fora.length>0;
+    g('canhBtGerar').disabled=bloqueia; g('canhBtPrevia').disabled=bloqueia;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#compassoCanhotos input[name=canhModo], #compassoCanhotos input[name=canhPorFolha]'),
+    function(el){ el.addEventListener('change',calcular); });
+  g('canhMesas').addEventListener('input',function(){ document.querySelector('input[name=canhModo][value=auto]').checked=true; calcular(); });
+  g('canhManual').addEventListener('input',function(){ document.querySelector('input[name=canhModo][value=manual]').checked=true; calcular(); });
+
+  /* ── ③ a folha ──────────────────────────────────────────────────────── */
+  /* Medidas em mm sobre A4. O banner é a arte do modelo (1055×352 → 210×70).
+     As caixas do canhoto estão em % da arte, medidas no modelo: é o que deixa
+     o texto cair dentro da caixa branca em qualquer tamanho de canhoto. */
+  var TOPO_TAB=83, ALT_TH=10, FIM=289, PROP=496/107;
+  var CAMPOS={
+    nome:  {l:52.4, t:3.7,  w:33.6, h:15.9, k:.36},
+    escola:{l:60.5, t:24.3, w:25.4, h:14.0, k:.30},
+    numero:{l:50.4, t:44.9, w:10.3, h:15.0, k:.38},
+    faixa: {l:75.8, t:44.9, w:10.1, h:15.0, k:.38},
+    urna:  {l:53.4, t:81.3, w:32.1, h:11.2, k:.19}
+  };
+  function campo(nome, texto, alt){
+    var c=CAMPOS[nome];
+    return '<div class="cv fit '+nome+'" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
+      '%;font-size:'+(alt*c.k).toFixed(2)+'pt">'+esc(texto)+'</div>';
+  }
+  function folha(f, pessoas, idx, total, pf){
+    var altLinha=(FIM-TOPO_TAB-ALT_TH)/pf;
+    var altC=Math.min(altLinha-2.4, 21.3), largC=altC*PROP;
+    var linhas='', canhotos='';
+    for(var i=0;i<pf;i++){
+      var p=pessoas[i];
+      var tr='<tr style="height:'+altLinha.toFixed(2)+'mm"';
+      if(!p){ linhas+=tr+' class="vz"><td></td><td></td><td></td></tr>'; continue; }
+      linhas+=tr+'><td class="n">'+esc(p.numero)+'</td><td class="nm">'+esc(p.nome)+'</td><td class="es">'+esc(p.escola)+'</td></tr>';
+      var topo=TOPO_TAB+ALT_TH+i*altLinha;
+      canhotos+='<span class="tes" style="top:'+(topo+altLinha/2-2.6).toFixed(2)+'mm">✂</span>'+
+        '<div class="canh-arte cv-c" style="top:'+(topo+(altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
+          campo('nome',p.nome,altC)+campo('escola',p.escola,altC)+campo('numero',p.numero,altC)+
+          campo('faixa',f.rotulo.replace('–',' - '),altC)+campo('urna','e concorra aos prêmios da Festa dos Educadores',altC)+
+        '</div>';
+    }
+    return '<section class="folha">'+
+      '<div class="canh-banner bn"></div>'+
+      '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
+      '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div>'+
+      '<div class="cab esq"><b>LISTA DE CONTROLE</b> (permanece na portaria)</div>'+
+      '<div class="cab dir"><b>CANHOTOS</b> (destacar e entregar ao participante)</div>'+
+      '<table style="top:'+TOPO_TAB+'mm"><colgroup><col style="width:14mm"><col><col style="width:33mm"></colgroup>'+
+        '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Nome do participante</th><th>Escola/Instituição</th></tr>'+
+        linhas+
+      '</table>'+
+      '<div class="corte"></div>'+canhotos+
+      '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span>'+
+        '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
+    '</section>';
+  }
+  var CSS_FOLHA=
+    '@page{size:A4;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    'body{margin:0;background:#dfe3ec;font-family:"Barlow Condensed",Arial Narrow,Arial,sans-serif;color:#0b1446}'+
+    '.barra{position:sticky;top:0;z-index:5;background:#0b1446;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;font:600 14px Arial}'+
+    '.barra button{background:#ffd51c;color:#0b1446;border:0;border-radius:8px;padding:8px 14px;font:800 14px Arial;cursor:pointer}'+
+    '.folha{width:210mm;height:297mm;margin:10mm auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.2)}'+
+    '.bn{position:absolute;left:0;top:0;width:210mm;height:70mm;background-size:100% 100%}'+
+    '.bn-tit{position:absolute;left:32.8mm;top:39.9mm;width:144.4mm;height:8.4mm;display:flex;align-items:center;justify-content:center;'+
+      'font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:19pt;color:#0b1446;letter-spacing:-.01em;line-height:1}'+
+    '.bn-sub{position:absolute;left:47.8mm;top:51.1mm;width:114.4mm;height:5.2mm;display:flex;align-items:center;justify-content:center;gap:1.6mm;'+
+      'font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:11.5pt;color:#fff;line-height:1}'+
+    '.bn-sub b{font-size:13.5pt}'+
+    '.cab{position:absolute;top:73mm;height:8mm;border-radius:2mm;background:linear-gradient(180deg,#14307f,#0b1446);color:#fff;'+
+      'display:flex;align-items:center;padding:0 3mm;font-size:10.5pt;font-weight:500;white-space:nowrap}'+
+    '.cab b{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:13pt;margin-right:1.6mm}'+
+    '.cab.esq{left:4mm;width:96mm}.cab.dir{left:108mm;width:98mm}'+
+    'table{position:absolute;left:4mm;width:96mm;border-collapse:collapse;table-layout:fixed}'+
+    'th{background:#ffd51c;border:.45mm solid #1c3fae;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10.5pt}'+
+    'td{border:.45mm solid #1c3fae;padding:0 1.8mm;vertical-align:middle;overflow:hidden}'+
+    'td.n{text-align:center;font-weight:700;font-size:12pt;padding:0}'+
+    'td.nm{font-weight:700;font-size:10.5pt;line-height:1.12;text-transform:uppercase}'+
+    'td.es{font-weight:500;font-size:10pt;line-height:1.15}'+
+    'tr.vz td{background:repeating-linear-gradient(135deg,#fff 0 2mm,#f2f4fa 2mm 4mm)}'+
+    '.corte{position:absolute;left:103.5mm;top:72mm;bottom:7mm;border-left:1mm dashed #0b1446}'+
+    '.tes{position:absolute;left:100.6mm;width:6.8mm;text-align:center;font-size:15pt;line-height:5.2mm;background:#fff;color:#0b1446}'+
+    '.cv-c{position:absolute;left:108mm;background-size:100% 100%;border-radius:1mm}'+
+    '.cv{position:absolute;display:flex;align-items:center;white-space:nowrap;overflow:hidden;line-height:1;color:#0b1446}'+
+    '.cv.nome{font-weight:700;text-transform:uppercase}.cv.escola{font-weight:500}'+
+    '.cv.numero,.cv.faixa{font-weight:700}.cv.urna{font-weight:500;color:#1a1a1a}'+
+    '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
+    '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
+
+  /* Encolhe a fonte até caber; se nem no mínimo couber, corta com reticências
+     — nome comprido não pode vazar para a caixa do lado. */
+  var JS_AJUSTE=
+    'function ajustar(){var els=document.querySelectorAll(".fit");for(var i=0;i<els.length;i++){var e=els[i],'+
+    'pt=parseFloat(e.style.fontSize),min=pt*.55;while(e.scrollWidth>e.clientWidth+.5&&pt>min){pt-=.2;e.style.fontSize=pt+"pt";}'+
+    'if(e.scrollWidth>e.clientWidth+.5){e.style.display="block";e.style.textOverflow="ellipsis";e.style.lineHeight=e.clientHeight+"px";}}}';
+
+  function documento(paginas, imprimir){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Canhotos do sorteio — Compasso da Vida 2026</title>'+
+      ARTE+'<style>'+CSS_FOLHA+'</style></head><body>'+
+      '<div class="barra"><span>'+paginas.length+' folha(s) · confira antes de mandar para a gráfica</span>'+
+      '<button onclick="window.print()">Imprimir / Salvar PDF</button></div>'+
+      paginas.join('')+
+      '<scr'+'ipt>'+JS_AJUSTE+'(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){ajustar();'+
+      (imprimir?'setTimeout(function(){window.print();},400);':'')+'});<\/scr'+'ipt></body></html>';
+  }
+
+  function canhGerar(soPrevia){
+    if(!FAIXAS.length){ msg('Carregue a planilha primeiro.', true); return; }
+    var w=window.open('','_blank');
+    if(!w){ msg('O navegador bloqueou a janela nova. Permita pop-ups para o SISGEP.', true); return; }
+    w.document.write('<p style="font:16px Arial;padding:30px">Montando as folhas…</p>');
+    var montar=function(){
+      var pf=porFolha(), paginas=[];
+      FAIXAS.forEach(function(f){
+        var total=Math.ceil(f.pessoas.length/pf);
+        for(var i=0;i<total;i++){
+          if(soPrevia && paginas.length) return;
+          paginas.push(folha(f, f.pessoas.slice(i*pf,(i+1)*pf), i, total, pf));
+        }
+      });
+      w.document.open(); w.document.write(documento(paginas, !soPrevia)); w.document.close();
+      msg(soPrevia ? 'Prévia aberta.' : paginas.length+' folha(s) prontas para imprimir.');
+    };
+    if(ARTE){ montar(); return; }
+    google.script.run
+      .withSuccessHandler(function(css){ ARTE=css||''; montar(); })
+      .withFailureHandler(function(e){ w.close(); msg('Não consegui carregar a arte: '+((e&&e.message)||e), true); })
+      .compassoCanhotos_arte(token());
+  }
+  window.canhGerar=canhGerar;
+  g('canhBtPrevia').addEventListener('click',function(){ canhGerar(true); });
+  g('canhBtGerar').addEventListener('click',function(){ canhGerar(false); });
+})();
+</script>
+</div>
