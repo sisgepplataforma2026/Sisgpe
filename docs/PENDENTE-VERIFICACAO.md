@@ -68,7 +68,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar |
 | 112 | ✅ conferido em 24/09 — nome legível e CNPJ pontuado ao lado |
 | 111 | 🔴 a busca de escola responde rápido da segunda digitação em diante |
-| 127 | 🟡 Canhotos da urna (Compasso 2026) — gerar no ar e imprimir uma folha de prova |
+| 127 | 🟡 Canhotos da urna — NO AR (hml 190, prod 748); falta gerar no sistema e imprimir a folha de prova |
 | 126 | 🔴 registrar um pedido com data de dias atrás e ver o cabeçalho na observação |
 | 125 | 🔴 o modal mostra "Quem fez" com quem registrou e quem aprovou |
 | 124 | 🔴 a "Data do pedido" nasce com hoje e não aceita data futura |
@@ -160,6 +160,9 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 ## 🔴 ABERTO
 
 ### 127. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
+
+**NO AR em 01/10/2026:** homologação versão **190** (run #178) e produção versão **748**
+(run #97; rollback = versão 747). Falta abrir no sistema e imprimir a folha de prova.
 
 **Onde:** Eventos → Sorteios → **Canhotos da urna**. Arquivos novos:
 `CompassoCanhotos.html` (tela), `CompassoCanhotosDados.gs` (leitura),
