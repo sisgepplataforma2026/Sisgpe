@@ -90,11 +90,22 @@ const porStatus = (st) => filaLinhas().filter(r => String(r[5]) === st);
 const emailsEnviados = () => amb.outbox.map(m => String(m.to || "")).filter(Boolean);
 
 /* ══════════════════════════════════════════════════════════════════════ */
+/* PRAZO SEMPRE NO FUTURO — 01/10/2026.
+   Aqui havia "2026-09-30" cravado. No dia 01/10 o prazo venceu, o teto passou
+   a sair como "prazo vencido — sem escalonar" (que é o comportamento CERTO) e
+   a asserção da conta com "÷" quebrou a suíte inteira — inclusive a esteira
+   de publicação, que roda esta suíte. O teste mede a conta do teto, não o
+   calendário: o prazo agora é sempre daqui a 30 dias. */
+const ALVO = (function () {
+  const d = new Date(); d.setDate(d.getDate() + 30);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+})();
+
 fluxo("Preparar: uma linha por ENDEREÇO, não por escola");
 
 montarEscolas(false);
 passo("primeira preparação");
-const p1 = g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: "2026-09-30" },
+const p1 = g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: ALVO },
                              "wanderson@sindeducacao.com");
 
 ok(p1.ok === true, "a fila foi preparada", p1.mensagem);
@@ -242,7 +253,7 @@ fluxo("Testar com uma escola ESCOLHIDA");
 })();
 montarEscolas(false);
 comAlias();
-g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: "2026-09-30" }, "wanderson@sindeducacao.com");
+g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: ALVO }, "wanderson@sindeducacao.com");
 g.__cotaEmailRestante = 1500;
 
 passo("texto curto demais");
@@ -583,7 +594,7 @@ fluxo("O e-mail: quem assina e o que ele diz");
   sh.getRange(1, 1, 1, g.TN_COM_CAB.length).setValues([g.TN_COM_CAB]);
 })();
 montarEscolas(false);
-g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: "2026-09-30" }, "wanderson@x");
+g.tnCom_preparar_({ competencia: "setembro/2026", dataAlvo: ALVO }, "wanderson@x");
 g.__cotaEmailRestante = 1500;
 
 passo("a assinatura do e-mail e a do financeiro, nao a da secretaria");
