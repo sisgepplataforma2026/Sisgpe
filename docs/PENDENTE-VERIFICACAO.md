@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 80 | 🟡 Canhotos da urna (Compasso 2026) — gerar no ar e imprimir uma folha de prova |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
@@ -117,6 +118,38 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 80. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
+
+**Onde:** Eventos → Sorteios → **Canhotos da urna**. Arquivos novos:
+`CompassoCanhotos.html` (tela), `CompassoCanhotosDados.gs` (leitura),
+`CompassoCanhotosArte.html` (arte do modelo aprovado, ~470 KB, lida só ao gerar).
+
+**O que faz, e só isso:** lê a planilha de respostas do formulário, numera
+pela ordem de inscrição, divide em faixas de letras (uma por mesa) e monta a
+folha da gráfica no layout do modelo do usuário — relação à esquerda, canhoto
+na mesma linha à direita, linha de corte grossa. Não toca ingresso, check-in
+nem inscrição: o QR da entrada é de outra plataforma.
+
+**O que rodou (01/10/2026):**
+- `t151-compasso-canhotos.js` — 41 asserções, 5 mutações mortas; suíte inteira verde.
+- A planilha REAL (357 linhas) passou pela regra no emulador: 353 vão para a
+  urna, 2 "Não concordo" ficaram fora com aviso, o cabeçalho colado no meio
+  foi ignorado com aviso. 46 folhas em 5 faixas (A–C 65 · D–H 77 · I–L 79 ·
+  M–Q 54 · R–Z 78).
+- A folha foi renderizada no Chromium com esses dados e o PDF conferido página 1.
+
+**NÃO TESTADO — depende do sistema no ar:**
+1. Ler o `.xlsx` pelo Drive dentro do Apps Script (`compassoImp_abrir_`, o
+   mesmo do importador) — no teste a leitura é injetada.
+2. A janela de impressão abrir a partir do SISGEP (bloqueio de pop-up).
+3. **Imprimir UMA folha de prova antes da gráfica**: a arte foi recortada de
+   uma imagem de 1055 px de largura, então o banner e o canhoto saem um pouco
+   suaves no papel; o texto (nomes, escolas, números) é nítido.
+
+**Decisão a confirmar com o usuário:** o número do canhoto é a ordem de
+inscrição (0001 = primeiro a se inscrever). Se a bilheteria tiver numeração
+própria que precise bater, a planilha precisa trazer essa coluna.
 
 ### 74. 🔴 O DETECTOR DE BOUNCE ESTAVA DESFAZENDO O REENVIO
 

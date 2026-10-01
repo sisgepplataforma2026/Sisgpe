@@ -377,6 +377,11 @@
   </div>
 
   <!-- ══ SORTEIOS ══ -->
+  <!-- ══ CANHOTOS DA URNA — Festa Compasso da Vida 2026 ══ -->
+  <div class="ev-conteudo" id="conteudo-canhotos" hidden>
+    <?!= include('CompassoCanhotos'); ?>
+  </div>
+
   <div class="ev-conteudo" id="conteudo-sorteios" hidden>
     <p class="ev-secao">Bingo online</p>
     <div class="ev-acoes">
@@ -439,7 +444,11 @@ var EV_SUBMODULOS = {
   ],
   /* SORTEIOS — era "Bingo Online". Bingo é UM sorteio, não o submódulo. */
   sorteios: [
-    { id:'bingo', rotulo:'Bingo', conteudo:'sorteios' }
+    { id:'bingo', rotulo:'Bingo', conteudo:'sorteios' },
+    /* A urna da Festa: relação + canhoto na mesma linha, para a gráfica.
+       01/10/2026 — o caminho do sorteio que ficou "ainda não desenhado"
+       quando o canhoto saiu do ingresso, em 21/09. */
+    { id:'canhotos', rotulo:'Canhotos da urna', conteudo:'canhotos' }
   ]
 };
 var EV_SUB_ATUAL='painel', EV_TELA_ATUAL='', EV_QUADRO_URL='';
