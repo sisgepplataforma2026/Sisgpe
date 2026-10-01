@@ -281,14 +281,26 @@ function _converterDataRelatorio_(valor) {
 }
 
 function _obterPastaRelatorios_() {
+  /* A pasta sai de getRecursoId_ (AmbienteRecursos.gs), que troca por ambiente
+     e trava a gravação se a homologação cair na pasta de produção.
+
+     PASTAS.RELATORIOS e PASTA_RELATORIOS_ID eram lidos direto aqui e ambos
+     valem PRODUÇÃO em qualquer ambiente — era por este caminho que a
+     homologação escrevia relatório no acervo real. Ficam como último recurso,
+     só para o caso de AmbienteRecursos.gs não estar no projeto. */
   let pastaId = "";
 
-  if (typeof PASTAS !== "undefined" && PASTAS.RELATORIOS) {
-    pastaId = PASTAS.RELATORIOS;
-  }
+  try {
+    pastaId = getRecursoId_("RELATORIOS");
+  } catch (e) {
+    if (/BLOQUEADO/.test(String(e && e.message))) throw e;
 
-  if (!pastaId && typeof PASTA_RELATORIOS_ID !== "undefined") {
-    pastaId = PASTA_RELATORIOS_ID;
+    if (typeof PASTAS !== "undefined" && PASTAS.RELATORIOS) {
+      pastaId = PASTAS.RELATORIOS;
+    }
+    if (!pastaId && typeof PASTA_RELATORIOS_ID !== "undefined") {
+      pastaId = PASTA_RELATORIOS_ID;
+    }
   }
 
   if (!pastaId) {

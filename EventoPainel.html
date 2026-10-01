@@ -44,6 +44,22 @@
   <h2>Emissão de Ingressos</h2>
   <div class="sub">Festa Compasso da Vida 2026</div>
 
+  <!-- Faixa da desativação. A tela continua aberta pela rota ?painel=emissao,
+       e quem chegar por link salvo precisa entender o que houve — botão que
+       só devolve erro faz a pessoa achar que o sistema quebrou. -->
+  <div style="margin:14px 0;padding:14px 16px;border-radius:12px;
+              background:#fff4f4;border:1px solid #dc2626;color:#7f1d1d">
+    <div style="font-weight:700;margin-bottom:6px">🚫 Esta emissão foi desativada em 21/08/2026</div>
+    <div style="font-size:13px;line-height:1.5">
+      O QR gerado por esta tela <b>não era assinado</b> — dava para deduzi-lo a
+      partir do número do ingresso. O botão abaixo vai recusar.
+      <br><br>
+      <b>Emita pelo Painel de inscrições:</b> menu Eventos → aba
+      <b>Inscrições</b> → “Painel de inscrições”. De lá o ingresso sai com QR
+      assinado e com o índice que prova que foi emitido de verdade.
+    </div>
+  </div>
+
   <div class="vagas">
     <div><div class="n" id="vRest">—</div><div style="font-size:11px;opacity:.8">vagas restantes de <span id="vLim">2000</span></div></div>
     <div id="vTeste"></div>
@@ -114,7 +130,12 @@
     google.script.run.withSuccessHandler(function(s){
       document.getElementById('vRest').textContent = s.restantes;
       document.getElementById('vLim').textContent = s.limite;
-      document.getElementById('vTeste').innerHTML = s.modoTeste ? '<span class="teste">MODO TESTE</span>' : '';
+      // A tarja carrega a ORIGEM no title: "MODO TESTE" sem causa visivel
+      // engana quem passa o olho. Passando o mouse, aparece de onde veio.
+      document.getElementById('vTeste').innerHTML = s.modoTeste
+        ? '<span class="teste" title="' + String(s.modoTesteOrigem || '').replace(/"/g, '&quot;') +
+          '">MODO TESTE</span>'
+        : '';
       var opEl = document.getElementById('operador');
       if(opEl) opEl.value = s.operador || '';
     }).withFailureHandler(function(e){

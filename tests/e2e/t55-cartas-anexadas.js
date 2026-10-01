@@ -111,8 +111,8 @@ const nomes = (anexos || []).map(a => String(a.nome || ""));
    data". Minha primeira asserção procurava o nome original do arquivo e
    reprovava o comportamento CERTO. Confere a regra de nomeação, não o nome
    que o atendente deu ao arquivo no computador dele. */
-b.ok(nomes.some(n => /^Fichas_.+_\d{2}-\d{2}-\d{4}/i.test(n)),
-  "a carta anexada aparece com nome da escola e data",
+b.ok(nomes.some(n => /^Fichas_Oposicao_.+_\d{2}-\d{2}-\d{4}/i.test(n)),
+  "a carta anexada aparece como Fichas_Oposicao, com escola e data",
   nomes.join(" · "));
 b.ok(nomes.some(n => /^Of[ií]cio/i.test(n)),
   "e o PDF do próprio ofício também vai", nomes.join(" · "));
@@ -177,6 +177,89 @@ b.ok(/oposi(ç|c)(ã|a)o/i.test(corpo), "o corpo guardado fala em oposição");
 b.ok(/n(ã|a)o seja realizado/i.test(corpo), "e manda NÃO descontar");
 b.ok(!/tr(ê|e)s parcelas mensais e sucessivas/i.test(corpo),
   "e não é o texto da cobrança");
+
+/* ═══════════════════════════════════════════════════════════
+   5. O NOME do anexo segue o tipo do ofício
+   ═══════════════════════════════════════════════════════════
+
+   Medido em 18/08/2026, depois de o usuário insistir que "a ficha deve ser
+   encaminhada junto do anexo": o arquivo IA junto, mas TODO tipo produzia
+   o mesmo nome — "Ficha_Filiacao_<NOME>.pdf". Filiação, Desfiliação e
+   Oposição, idênticos.
+
+   A escola recebia, num ofício de OPOSIÇÃO — que determina que o desconto
+   NÃO seja feito —, um arquivo chamado ficha de filiação. O documento diz
+   uma coisa e o anexo, pelo nome, diz o contrário. Numa contestação é o
+   nome do arquivo que fica no e-mail arquivado.
+   ═══════════════════════════════════════════════════════════ */
+b.fluxo("ANEXOS · O nome do arquivo diz o que ele é");
+
+/* A data do arquivo é a de HOJE, então o esperado não pode ser fixo — senão
+   o teste passa hoje e falha amanhã, que é o pior tipo de teste. */
+function hoje() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return dd + "-" + mm + "-" + d.getFullYear();
+}
+
+function anexoDe(tipo, pessoas, arquivos) {
+  const res = emitir(tipo, pessoas, arquivos);
+  if (!res || res.erro) return ["ERRO: " + (res && res.mensagem)];
+  return (anexosDaFila(res.dados.numero) || []).map(a => String(a.nome || "")).slice(1);
+}
+
+b.passo("8");
+b.igual(anexoDe("Filiação", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A")]),
+  ["Ficha_Filiacao_CLARA_GOMES_COLEGIO_EXEMPLO_LTDA_18-08-2026.pdf".replace(
+      "18-08-2026", hoje())],
+  "Filiação: Ficha_Filiacao + nome + escola + data");
+
+b.passo("9");
+b.igual(anexoDe("Desfiliação", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A")]),
+  ["Ficha_Desfiliacao_CLARA_GOMES_COLEGIO_EXEMPLO_LTDA_18-08-2026.pdf".replace(
+      "18-08-2026", hoje())],
+  "Desfiliação: Ficha_Desfiliacao, não Ficha_Filiacao");
+
+b.passo("10");
+b.igual(anexoDe("Oposição à Taxa Negocial", [{ nome: "CLARA GOMES" }], [arquivo("scan.pdf", "A")]),
+  ["Ficha_Oposicao_CLARA_GOMES_COLEGIO_EXEMPLO_LTDA_18-08-2026.pdf".replace(
+      "18-08-2026", hoje())],
+  "Oposição: Ficha_Oposicao + nome + escola + data",
+  "era o defeito: vinha como ficha de filiação, dizendo o contrário do ofício");
+
+/* Contraprova: os três nomes têm que ser DIFERENTES. Sem isto, um rótulo
+   único novo passaria nas três asserções acima. */
+b.passo("11");
+const tresNomes = [
+  anexoDe("Filiação", [{ nome: "X Y" }], [arquivo("a.pdf", "A")])[0],
+  anexoDe("Desfiliação", [{ nome: "X Y" }], [arquivo("a.pdf", "A")])[0],
+  anexoDe("Oposição à Taxa Negocial", [{ nome: "X Y" }], [arquivo("a.pdf", "A")])[0]
+];
+b.igual(new Set(tresNomes).size, 3,
+  "os três tipos produzem nomes de anexo diferentes", tresNomes.join(" · "));
+
+/* Os TRÊS pedaços têm que estar no nome, no caso nominal — pedido do usuário
+   em 18/08/2026: nome da pessoa, escola e data juntos, para o arquivo se
+   identificar sozinho na pasta do Drive e no anexo do e-mail. */
+b.passo("11b");
+const nominal = anexoDe("Oposição à Taxa Negocial", [{ nome: "CLARA GOMES" }],
+                        [arquivo("a.pdf", "A")])[0] || "";
+b.ok(/CLARA_GOMES/.test(nominal), "o nome da pessoa está no arquivo", nominal);
+b.ok(/COLEGIO_EXEMPLO/.test(nominal), "a escola também");
+b.ok(new RegExp(hoje()).test(nominal), "e a data também");
+
+/* No LOTE (um PDF para vários) o nome leva escola e data, e também segue o
+   tipo — "Cartas_Oposicao_ESCOLA_data", não "Fichas_ESCOLA_data". */
+b.passo("12");
+const lote = anexoDe("Oposição à Taxa Negocial",
+  [{ nome: "A A" }, { nome: "B B" }, { nome: "C C" }],
+  [arquivo("scan_unico.pdf", "TUDO")]);
+b.ok(/^Fichas_Oposicao_/.test(lote[0] || ""),
+  "no lote o PDF único sai como Fichas_Oposicao — plural no Ficha, não no tipo",
+  lote.join(" · "));
+b.ok(/COLEGIO/.test(lote[0] || "") && /\d{2}-\d{2}-\d{4}/.test(lote[0] || ""),
+  "com nome da escola e data", lote[0] || "");
 
 b.naoTestavel("Entrega pelo Gmail e aparência do anexo na caixa da escola",
   "o emulador registra o envio, não envia — só a emissão no sistema no ar prova isso");

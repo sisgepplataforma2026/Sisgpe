@@ -374,7 +374,7 @@ b.fluxo("BALCÃO · A faixa do presencial na tela de nova solicitação");
 if (!dom.jsdomDisponivel()) {
   b.naoTestavel("faixa presencial no balcão", "jsdom não instalado");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 (async function () {
@@ -546,5 +546,5 @@ if (!dom.jsdomDisponivel()) {
     "Medicina sai com 50% — o percentual de saúde");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

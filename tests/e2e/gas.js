@@ -322,10 +322,28 @@ function blob(content, type, name) {
 }
 
 let _fileSeq = 0;
+
+/* ID DE ARQUIVO COM COMPRIMENTO REALISTA — corrigido em 01/09/2026.
+ *
+ * O id era "FILE_3": 6 caracteres. O do Drive de verdade tem 25 a 44, e
+ * codigo de producao conta com isso — o sindOf_fichaComoAnexo_
+ * (SindicalizacaoOficio.gs:403) extrai o id do link com /[-\w]{25,}/ e
+ * devolve null quando nao acha. Contra o emulador antigo, ele SEMPRE devolvia
+ * null: a ficha nunca virava anexo, e o "aprovar e encaminhar" caia direto no
+ * caminho parcial. O teste media o emulador, nao o sistema.
+ *
+ * O formato abaixo mantem o numero de sequencia visivel no comeco (para o id
+ * continuar dizendo qual arquivo e, na hora de depurar) e completa ate 33
+ * caracteres, dentro da faixa real. Deterministico de proposito: id que muda
+ * a cada execucao tira a reprodutibilidade do teste. */
+function driveFileId_(seq) {
+  return ("1FILE" + seq + "sisgepEmuladorDriveIdLongo").substring(0, 33);
+}
+
 function driveFile(name, mime, parentName) {
   _fileSeq++;
   const f = {
-    id: "FILE_" + _fileSeq, name, mime, parent: parentName || "raiz", trashed: false,
+    id: driveFileId_(_fileSeq), name, mime, parent: parentName || "raiz", trashed: false,
     getId() { return this.id; }, getName() { return this.name; },
     setName(n) { this.name = n; return this; },
     getUrl() { return "https://drive.google.com/file/d/" + this.id; },
@@ -436,12 +454,61 @@ function install(g, opts) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       outbox.push({ via: "MailApp", ...m, quando: new Date() });
     },
-    getRemainingDailyQuota: () => 1500
+    /* A cota diária é MUTÁVEL no emulador: em 03/09/2026 a produção estourou
+       ("Serviço chamado muitas vezes no mesmo dia: gmail") e o botão de envio
+       imediato não tinha trava — tentava, apanhava do Google e queimava uma
+       tentativa. Testar isso exige poder zerar a cota. Valor de partida 1500
+       (conta Workspace); `g.__cotaEmailRestante = 0` simula a conta comum
+       esgotada. */
+    getRemainingDailyQuota: () =>
+      (g.__cotaEmailRestante !== undefined ? g.__cotaEmailRestante : 1500)
   };
   g.GmailApp = {
     sendEmail(a, b, c, d) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       outbox.push({ via: "GmailApp", ...m, quando: new Date() });
+    },
+    /* createDraft().send() — o caminho que o envio de ofício passou a usar em
+       02/09/2026, para a mensagem ficar em Enviados e devolver o ID real.
+       O rascunho registra no outbox só quando ENVIADO: um rascunho apagado
+       não pode aparecer como e-mail que saiu. */
+    createDraft(a, b, c, d) {
+      const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
+      let apagado = false;
+      const rascunhos = g.__rascunhosGmail || (g.__rascunhosGmail = []);
+      /* `criadoEm` existe para a varredura de rascunhos órfãos poder medir
+         idade. O teste o reescreve para simular rascunho antigo — não há
+         como esperar quinze minutos dentro de um teste. */
+      const eu = { apagado: false, dados: m, criadoEm: new Date() };
+      rascunhos.push(eu);
+      return {
+        send() {
+          if (apagado) throw new Error("rascunho já apagado");
+          const id = "MSG" + Date.now().toString(36) + outbox.length;
+          outbox.push({ via: "GmailApp", ...m, quando: new Date(), mensagemId: id });
+          return {
+            getId: () => id,
+            getThread: () => ({ getId: () => "TH" + id })
+          };
+        },
+        deleteDraft() { apagado = true; eu.apagado = true; },
+        getId: () => "DRAFT" + rascunhos.length
+      };
+    },
+    /* getDrafts — o que a varredura de rascunhos órfãos lê.
+       Devolve só os NÃO apagados, que é o que o Gmail faria: rascunho
+       apagado pelo catch do envio não pode aparecer na caixa. */
+    getDrafts() {
+      const rascunhos = g.__rascunhosGmail || [];
+      return rascunhos.filter(r => !r.apagado).map((r, i) => ({
+        getId: () => "DRAFT" + (i + 1),
+        getMessage: () => ({
+          getSubject: () => String(r.dados.subject || ""),
+          getTo: () => String(r.dados.to || ""),
+          getDate: () => r.criadoEm,
+          getAttachments: () => r.dados.attachments || []
+        })
+      }));
     },
     search: () => [],
     getInboxThreads: () => [],

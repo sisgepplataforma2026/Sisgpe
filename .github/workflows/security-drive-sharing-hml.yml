@@ -1,0 +1,122 @@
+name: Security - Drive sharing HML
+
+on:
+  push:
+    branches:
+      - integracao/sisgep-homologacao
+    paths:
+      - scripts/harden-drive-sharing-hml.js
+      # scripts/deploy-documentos-security-hml.js saiu daqui junto com o
+      # passo de deploy: nao participa mais deste workflow, e manter o
+      # caminho faria o workflow rodar a toa ao mexer nele.
+      - Comprovantes.gs
+      - ComprovantesNF.html
+      - RelatoriosOficios.gs
+      - .github/workflows/security-drive-sharing-hml.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: security-drive-sharing-hml
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout da Homologacao
+        uses: actions/checkout@v4
+        with:
+          ref: integracao/sisgep-homologacao
+          fetch-depth: 0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Corrigir compartilhamentos publicos do Documentos
+        run: node scripts/harden-drive-sharing-hml.js --fix
+
+      - name: Validar P0 documental
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs; do
+            ! grep -q 'DriveApp.Access.ANYONE_WITH_LINK' "$f"
+            ! grep -q 'DriveApp.Access.ANYONE[^_]' "$f" || false
+          done
+          # A POLITICA SAIU DO TEXTO LITERAL E VIROU CHAMADA — 20/08/2026.
+          #
+          # Antes exigia-se, com grep, a string exata
+          # "DriveApp.Access.PRIVATE, DriveApp.Permission.NONE" dentro de
+          # cada arquivo. Isso amarrava a checagem a UMA forma de escrever a
+          # regra, e nao a regra em si: bastava alguem reescrever a mesma
+          # protecao de outro jeito para o CI reprovar codigo correto.
+          #
+          # Agora a decisao de compartilhamento mora em ArquivoDrive.gs, e o
+          # que se exige e o que de fato importa: os .gs chamam o helper e
+          # nenhum deles chama setSharing por conta propria.
+          grep -q 'arquivoAplicarPolitica_' Comprovantes.gs
+          grep -q 'arquivoAplicarPolitica_' RelatoriosOficios.gs
+          ! grep -q '\.setSharing(' Comprovantes.gs
+          ! grep -q '\.setSharing(' RelatoriosOficios.gs
+          # ComprovantesNF.html e a copia MORTA de Comprovantes.gs — sem tags
+          # de script, sem include, ninguem a referencia. Nao executa, e por
+          # isso nao foi migrada (REGRA Nº 1: fica, documentada). A checagem
+          # dela continua na forma antiga, que e a que o arquivo tem.
+          grep -q 'DriveApp.Access.PRIVATE, DriveApp.Permission.NONE' ComprovantesNF.html
+          node scripts/harden-drive-sharing-hml.js
+          git --no-pager diff --check -- Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs
+
+      - name: Registrar correcao na branch de Homologacao
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs; then
+            echo 'P0 documental ja estava endurecido.'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add Comprovantes.gs ComprovantesNF.html RelatoriosOficios.gs
+            git commit -m 'security: remover compartilhamento publico do Documentos'
+            git push origin HEAD:integracao/sisgep-homologacao
+          fi
+
+      - name: Auditoria final obrigatoria
+        run: node scripts/harden-drive-sharing-hml.js
+
+      # ══════════════════════════════════════════════════════════════════
+      # O DEPLOY SAIU DAQUI EM 20/08/2026. A GUARDA ACIMA FICA.
+      #
+      # Este workflow fazia duas coisas coladas: (1) garantir que o
+      # Documentos nao tenha compartilhamento publico, e (2) PUBLICAR os
+      # 3 arquivos na homologacao. So a segunda foi aposentada.
+      #
+      # POR QUE. O deploy seletivo chamava a Apps Script API, cujo
+      # PUT /projects/{id}/content REESCREVE A LISTA INTEIRA de arquivos.
+      # Ele lia o projeto, trocava 3 itens e devolvia tudo — o que
+      # significa que qualquer publicacao feita entre a leitura e a
+      # escrita era DESFEITA.
+      #
+      # Aconteceu, medido: em 20/08/2026 o deploy-homologacao.yml enviou
+      # o repositorio inteiro as 15:53:46 e este workflow gravou as
+      # 15:54:30 com uma foto anterior. AmbienteRecursos.gs sumiu do
+      # projeto e 8 arquivos voltaram a versao velha. Os DOIS deploys
+      # terminaram verdes; o usuario so descobriu ao rodar a funcao no
+      # editor e receber "diagnosticoAmbienteRecursos_ is not defined".
+      #
+      # O agravante era o gatilho: este workflow roda em `push` tocando
+      # Comprovantes.gs — ou seja, disputava com o deploy a cada envio.
+      #
+      # QUEM PUBLICA AGORA: .github/workflows/deploy-homologacao.yml, que
+      # envia o repositorio inteiro e ja cobre estes 3 arquivos. Nao ha
+      # nada que o caminho aposentado fizesse e ele nao faca.
+      #
+      # O scripts/deploy-documentos-security-hml.js NAO foi apagado: fica
+      # como legado documentado, com a trava de corrida que se aprendeu a
+      # escrever, caso um dia se precise de publicacao seletiva de novo.
+      # Ver o cabecalho dele e tests/e2e/t70-deploy-corrida.js.
+      # ══════════════════════════════════════════════════════════════════

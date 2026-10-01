@@ -227,4 +227,3 @@ b.naoTestavel("A busca da trilha por titular",
   "O botão 'ver trilha' só acha o que os módulos gravaram — hoje, ofícios");
 
 b.resumo();
-process.exit(0);

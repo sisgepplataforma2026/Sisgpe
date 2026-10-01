@@ -236,7 +236,7 @@ function excluirReceita(idReceita, tokenSessao) {
 
       if (String(dados[i][idxId]) === String(idReceita)) {
 
-        sh.deleteRow(i + 1);
+        lixeiraMover_(sh, i + 1, { origem: "excluirReceita" });
 
         return {
           erro: false,

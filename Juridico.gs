@@ -363,7 +363,7 @@ function jurUploadDocumento(dados, tokenSessao) {
       var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
       var pasta = jurObterPastaAnexos_();
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+      try { arquivoAplicarPolitica_(arquivo, "Juridico.gs"); } catch (eShare) {}
 
       var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
 
@@ -522,7 +522,7 @@ function jurAdicionarDocumento(dados, tokenSessao) {
       var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
       var pasta = jurObterPastaAnexos_();
       var arquivo = pasta.createFile(blob);
-      try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+      try { arquivoAplicarPolitica_(arquivo, "Juridico.gs"); } catch (eShare) {}
 
       var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
       var id = "DOC-" + Utilities.getUuid().slice(0, 8).toUpperCase();
@@ -561,7 +561,7 @@ function jurExcluirDocumento(id, tokenSessao) {
               Logger.log("jurExcluirDocumento: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message);
             }
           }
-          aba.deleteRow(i + 2);
+          lixeiraMover_(aba, i + 2, { origem: "jurExcluirDocumento" });
           return { ok: true };
         }
       }
@@ -786,7 +786,7 @@ function jurExcluirPrazo(id, tokenSessao) {
       var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
       for (var i = 0; i < dados.length; i++) {
         if (String(dados[i][0]) === String(id)) {
-          aba.deleteRow(i + 2);
+          lixeiraMover_(aba, i + 2, { origem: "jurExcluirPrazo" });
           return { ok: true };
         }
       }
@@ -989,7 +989,7 @@ function jurExcluirAudiencia(id, tokenSessao) {
               Logger.log("jurExcluirAudiencia: não consegui remover o evento da Agenda (" + eventoId + "): " + eCal.message);
             }
           }
-          aba.deleteRow(i + 2);
+          lixeiraMover_(aba, i + 2, { origem: "jurExcluirAudiencia" });
           return { ok: true };
         }
       }
@@ -1653,7 +1653,7 @@ function jurRemoverEscolaColetivo(id, tokenSessao) {
       var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
       for (var i = 0; i < dados.length; i++) {
         if (String(dados[i][0]) === String(id)) {
-          aba.deleteRow(i + 2);
+          lixeiraMover_(aba, i + 2, { origem: "jurRemoverEscolaColetivo" });
           return { ok: true };
         }
       }
@@ -1751,7 +1751,7 @@ function jurRemoverReclamante(id, tokenSessao) {
       var dados = aba.getRange(2, 1, ultimaLinha - 1, 1).getValues();
       for (var i = 0; i < dados.length; i++) {
         if (String(dados[i][0]) === String(id)) {
-          aba.deleteRow(i + 2);
+          lixeiraMover_(aba, i + 2, { origem: "jurRemoverReclamante" });
           return { ok: true };
         }
       }

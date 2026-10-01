@@ -181,7 +181,7 @@ function montarTextoFiliacao_(dados, colaboradoresArr) {
   var qtd = colaboradoresArr.length;
   return (
     "Prezados(as) Senhores(as),\n\n" +
-    "O SindEducação/ES — Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos " +
+    "O SindEducação-ES — Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos " +
     "de Ensino Particular no Estado do Espírito Santo — vem, por meio deste, comunicar que " +
     (qtd === 1
       ? "o(a) colaborador(a) abaixo identificado(a) passou a integrar"
@@ -208,7 +208,7 @@ function montarTextoDesfiliacao_(dados, colaboradoresArr) {
     (qtd === 1
       ? "o(a) colaborador(a) acima identificado(a) exerceu seu direito de desfiliação"
       : "os(as) colaboradores(as) acima identificados(as) exerceram seu direito de desfiliação") +
-    " do quadro de associados do SindEducação/ES, conforme carta" +
+    " do quadro de associados do SindEducação-ES, conforme carta" +
     (qtd === 1 ? "" : "s") + " em anexo.\n\n" +
     "Solicitamos, portanto, que seja" + (qtd === 1 ? "" : "m") +
     " cessado" + (qtd === 1 ? "" : "s") + " imediatamente o" + (qtd === 1 ? "" : "s") +
@@ -268,7 +268,7 @@ function montarTextoOposicaoTaxaNegocial_(dados, colaboradoresArr) {
 function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
   return (
     "Prezados(as) Senhores(as),\n\n" +
-    "O SindEducação/ES, no exercício de suas atribuições legais e em conformidade com a " +
+    "O SindEducação-ES, no exercício de suas atribuições legais e em conformidade com a " +
     "Convenção Coletiva de Trabalho 2026/2027, com vigência de 1º de março de 2026 a 28 de " +
     "fevereiro de 2027, vem solicitar o cumprimento das disposições relativas à Taxa " +
     "Negocial.\n\n" +
@@ -276,7 +276,7 @@ function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
     "cento), recolhida em 3 (três) parcelas mensais e sucessivas de 2% (dois por cento) " +
     "sobre o salário-base dos educadores técnico-administrativos, iniciando-se na " +
     "competência de setembro de 2026.\n\n" +
-    "Ficam isentos do recolhimento os trabalhadores filiados ao SindEducação/ES.\n\n" +
+    "Ficam isentos do recolhimento os trabalhadores filiados ao SindEducação-ES.\n\n" +
     "Os valores descontados deverão ser repassados a este Sindicato até o 10º (décimo) dia " +
     "útil do mês subsequente ao desconto, acompanhados da relação nominal dos contribuintes.\n\n" +
     "Solicitamos a observância dos prazos e percentuais acima, bem como a confirmação " +
@@ -289,7 +289,7 @@ function montarTextoTaxaNegocial_(dados, colaboradoresArr) {
 function montarTextoTaxaAssistencial_(dados, colaboradoresArr) {
   return (
     "Prezados(as) Senhores(as),\n\n" +
-    "O SindEducação/ES, em conformidade com a Convenção Coletiva de Trabalho 2026/2027, " +
+    "O SindEducação-ES, em conformidade com a Convenção Coletiva de Trabalho 2026/2027, " +
     "com vigência de 1º de março de 2026 a 28 de fevereiro de 2027, vem orientar e solicitar " +
     "o cumprimento do repasse da Taxa Assistencial destinada à Assistência Médica dos " +
     "trabalhadores técnico-administrativos.\n\n" +
@@ -401,7 +401,12 @@ function carregarImagensOficio_() {
 
 /* ── Invalida cache de templates ── */
 
-function invalidarCacheTemplatesOficios(templateId) {
+function invalidarCacheTemplatesOficios(templateId, tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Escreve na planilha
+     e nao tinha checagem nenhuma. E dupla porque isto e ferramenta que se
+     roda do EDITOR, onde nao existe token: fechar so com token tiraria o
+     unico jeito de usa-la. Mesmo padrao dos gatilhos (t121). */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Invalidacao do cache de templates de oficio", true);
   Logger.log("ℹ Sistema utiliza templates internos em código.");
   return { ok: true, mensagem: "Sistema utilizando templates internos. Nenhum cache necessário." };
 }

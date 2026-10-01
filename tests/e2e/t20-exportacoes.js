@@ -205,4 +205,3 @@ b.naoTestavel("Exportação feita por fora do SISGEP",
   "saiu pelo SISGEP', não 'o que saiu do sindicato'");
 
 b.resumo();
-process.exit(0);

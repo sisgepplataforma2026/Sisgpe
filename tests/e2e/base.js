@@ -119,6 +119,28 @@ function resumo() {
     console.log("\n\x1b[31mFALHAS:\x1b[0m");
     RESULTADOS.filter(r => r.status === "FALHOU").forEach(r =>
       console.log("  • [" + r.fluxo + "] " + r.descricao + (r.detalhe ? " — " + r.detalhe : "")));
+
+    /* ASSERÇÃO QUE FALHA TEM DE SAIR COM CÓDIGO ≠ 0.
+     *
+     * Até 20/08/2026 não saía. resumo() imprimia "Falhou: 5" em vermelho e
+     * devolvia 0 ao sistema operacional. Só 9 dos 69 testes capturavam o
+     * retorno e chamavam process.exit(c.FALHOU ? 1 : 0) — os outros 60 eram
+     * CEGOS: reprovavam na tela e passavam no CI.
+     *
+     * O tests/run-suite.js lê o CÓDIGO DE SAÍDA, de propósito, porque teste
+     * que morre antes da primeira asserção não imprime resumo nenhum. Só que
+     * a ponta de cá nunca produziu esse código: a suíte enxergava processo
+     * que ESTOURA e era cega a asserção que REPROVA.
+     *
+     * Apareceu ao rodar mutação contra o t68: das 5 mutações, 4 "sobreviveram"
+     * — e nenhuma delas tinha sobrevivido de verdade. O teste reprovava certo;
+     * o código de saída é que mentia.
+     *
+     * process.exitCode, e não process.exit(): marca o resultado sem abortar a
+     * execução. Testes que chamam resumo() no meio (t34, t36, t44) seguem
+     * rodando, e os 9 que já decidem o exit explicitamente continuam mandando.
+     */
+    process.exitCode = 1;
   }
   return c;
 }

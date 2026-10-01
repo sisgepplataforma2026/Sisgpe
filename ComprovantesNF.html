@@ -107,7 +107,7 @@ var nomeAnexo = sanitizarNomeArquivoComprovante_(
 );
 blob.setName(nomeAnexo);
 var salvo = pastaMes.createFile(blob);
-salvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // ✅
+salvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); // ✅
 
       ids.push(salvo.getId());
       nomes.push(salvo.getName());
@@ -537,8 +537,8 @@ function gerarPdfComprovanteWeb(dados) {
 
     var pdfFile = converterHtmlParaPdf_(htmlDoc, nomeBase, pastaMes);
 
-    // ✅ Libera acesso público ao PDF
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // 🔒 Mantém o PDF privado no Drive
+    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -826,8 +826,8 @@ function gerarComprovanteWeb(dados) {
 
 var pdfFile = converterHtmlParaPdf_(htmlDoc, nomeBase, pastaMes);
 
-// ✅ Libera acesso para qualquer pessoa com o link
-pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+// 🔒 Mantém o PDF privado no Drive
+pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
 
 var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -1496,7 +1496,7 @@ function gerarPdfLoteComprovantes(dados) {
     );
 
     var pdfFile = converterHtmlParaPdf_(htmlDoc, nomeBase, pastaMes);
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    pdfFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
     // ── Salva arquivos individuais dos itens e registra na aba COMPROVANTES_ITENS ──
@@ -1527,7 +1527,7 @@ function gerarPdfLoteComprovantes(dados) {
           );
           blobItem.setName(nomeItemArq);
           var arqSalvo = pastaMes.createFile(blobItem);
-          arqSalvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          arqSalvo.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
           arquivoId   = arqSalvo.getId();
           arquivoNome = arqSalvo.getName();
           mimeType    = arqSalvo.getMimeType();

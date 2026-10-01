@@ -49,7 +49,11 @@ function analisarEscolaIA(chave, tokenSessao) {
       var filtros = dadosEscola
         ? { escola: dadosEscola.escola || dadosEscola.NomeEscola || chave }
         : { escola: chave };
-      var hist = listarHistoricoOficios(filtros);
+      /* O token desce: listarHistoricoOficios pede o modulo Documentos.
+         Sem ele a chamada morria em "Sessao invalida" e a IA analisava a
+         escola SEM o historico de oficios dela, sem dizer que faltou.
+         Defeito anterior a 01/09/2026, achado ao cobrir o modulo. */
+      var hist = listarHistoricoOficios(filtros, tokenSessao);
       var itens = (hist && hist.itens) ? hist.itens : (Array.isArray(hist) ? hist : []);
       if (itens.length > 0) {
         historicoTexto = itens.slice(0, 10).map(function(of) {
