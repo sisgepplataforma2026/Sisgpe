@@ -186,13 +186,18 @@ if (!dom.jsdomDisponivel()) {
   const folhas = doc.split('<section class="folha">').slice(1);
   b.ok(folhas.length >= 8, "gera as folhas (8 por folha): " + folhas.length);
   let alinhado = true, umaVez = true, faixaCerta = true, cabecalho = true;
+  let semNumero = true, cortesOk = true;
   const vistos = {};
   folhas.forEach(f => {
     const rot = (f.match(/LETRAS <b>([^<]+)<\/b>/) || [])[1];
     if (!rot) cabecalho = false;
     const nomesTab = [...f.matchAll(/<td class="nm">([^<]*)<\/td>/g)].map(m => m[1]);
     const nomesCan = [...f.matchAll(/class="cv fit nome"[^>]*>([^<]*)</g)].map(m => m[1]);
-    const faixasCan = [...f.matchAll(/class="cv fit faixa"[^>]*>([^<]*)</g)].map(m => m[1]);
+    const faixasCan = [...f.matchAll(/class="cv faixa"[^>]*><span class="rot">Faixa alfabética:<\/span><b>([^<]*)<\/b>/g)].map(m => m[1]);
+    const nCanhotos = (f.match(/class="canh-arte cv-c"/g) || []).length;
+    if (faixasCan.length !== nCanhotos) faixaCerta = false;
+    if (/class="cv[^"]*numero/.test(f)) semNumero = false;
+    if ((f.match(/class="ch"/g) || []).length !== nCanhotos + 1) cortesOk = false;
     if (nomesTab.join("|") !== nomesCan.join("|")) alinhado = false;
     faixasCan.forEach(x => { if (x !== rot.replace("–", " - ")) faixaCerta = false; });
     nomesCan.forEach(n => { if (vistos[n]) umaVez = false; vistos[n] = true; });
@@ -200,6 +205,8 @@ if (!dom.jsdomDisponivel()) {
   b.ok(cabecalho, "TODA folha repete as letras da faixa no cabeçalho");
   b.ok(alinhado, "o canhoto de cada pessoa está na MESMA linha do nome dela na relação");
   b.ok(faixaCerta, "a faixa escrita no canhoto é a da folha");
+  b.ok(semNumero, "o canhoto NÃO traz o número — fica só na relação da portaria (pedido de 01/10/2026)");
+  b.ok(cortesOk, "linha de corte ENTRE as pessoas: uma acima de cada canhoto e uma abaixo do último");
   b.ok(umaVez && Object.keys(vistos).length === 60, "cada pessoa tem exatamente um canhoto: " + Object.keys(vistos).length);
   b.ok(!/@x\.com|9000000000/.test(doc), "a folha não traz e-mail nem CPF");
   b.ok(/border-left:1mm dashed/.test(doc), "a linha de corte é grossa (1 mm), não um fio");

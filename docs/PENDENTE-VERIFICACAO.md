@@ -189,6 +189,11 @@ só o Apps Script executa:
    folha 1 de 9, primeira pessoa nº 0038, idêntica à renderização local;
 2. ✅ a janela de impressão abriu a partir do SISGEP e salvou como PDF.
 
+**AJUSTES DE 01/10/2026, depois da prévia no ar** (pedidos do usuário com a folha na mão):
+- linha tracejada de corte ENTRE as pessoas, não só a vertical;
+- o número saiu do canhoto (fica só na relação da portaria);
+- saiu a coluna da direita do canhoto (slogan e selo com texto ilegível, gerado por IA).
+
 **AINDA ABERTO:**
 3. **Imprimir UMA folha de prova antes da gráfica**: a arte foi recortada de
    uma imagem de 1055 px de largura, então o banner e o canhoto saem um pouco

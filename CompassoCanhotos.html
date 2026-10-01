@@ -275,33 +275,56 @@
   /* Medidas em mm sobre A4. O banner é a arte do modelo (1055×352 → 210×70).
      As caixas do canhoto estão em % da arte, medidas no modelo: é o que deixa
      o texto cair dentro da caixa branca em qualquer tamanho de canhoto. */
-  var TOPO_TAB=83, ALT_TH=10, FIM=289, PROP=496/107;
+  /* A arte tinha 496×107; sem a coluna do slogan e do selo (01/10/2026), 432×107.
+     As % dos campos foram recalculadas sobre a largura nova. */
+  var TOPO_TAB=83, ALT_TH=10, FIM=289, PROP=432/107;
   var CAMPOS={
-    nome:  {l:52.4, t:3.7,  w:33.6, h:15.9, k:.36},
-    escola:{l:60.5, t:24.3, w:25.4, h:14.0, k:.30},
-    numero:{l:50.4, t:44.9, w:10.3, h:15.0, k:.38},
-    faixa: {l:75.8, t:44.9, w:10.1, h:15.0, k:.38},
-    urna:  {l:53.4, t:81.3, w:32.1, h:11.2, k:.19}
+    nome:  {l:60.2, t:3.7,  w:38.6, h:15.9, k:.36},
+    escola:{l:69.5, t:24.3, w:29.2, h:14.0, k:.30},
+    /* A caixa do número saiu do canhoto em 01/10/2026 ("o número não
+       deveria estar no canhoto"): a linha inteira é da faixa. */
+    faixa: {l:52.4, t:44.9, w:46.2, h:15.0, k:.38},
+    urna:  {l:61.3, t:81.3, w:36.9, h:11.2, k:.19}
   };
+  /* LINHA DE CORTE ENTRE AS PESSOAS — 01/10/2026. A primeira versão só
+     tinha a vertical: o usuário, com a folha na mão, "falta a linha
+     pontilhada entre as pessoas para recortar". Uma acima do primeiro
+     canhoto, uma entre cada dois e uma abaixo do último. */
+  function cortes(n, altLinha){
+    var h='';
+    for(var j=0;j<=n;j++){
+      var y=TOPO_TAB+ALT_TH+j*altLinha;
+      h+='<div class="ch" style="top:'+(y-.4).toFixed(2)+'mm"></div>'+
+         '<span class="tes-h" style="top:'+(y-2.6).toFixed(2)+'mm">✂</span>';
+    }
+    return h;
+  }
   function campo(nome, texto, alt){
     var c=CAMPOS[nome];
     return '<div class="cv fit '+nome+'" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
       '%;font-size:'+(alt*c.k).toFixed(2)+'pt">'+esc(texto)+'</div>';
   }
+  /* O rótulo "Faixa alfabética:" era da arte; com a caixa refeita, quem
+     escreve é o sistema — no mesmo azul dos rótulos da arte. */
+  function campoFaixa(texto, alt){
+    var c=CAMPOS.faixa;
+    return '<div class="cv faixa" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
+      '%;font-size:'+(alt*c.k).toFixed(2)+'pt"><span class="rot">Faixa alfabética:</span><b>'+esc(texto)+'</b></div>';
+  }
   function folha(f, pessoas, idx, total, pf){
     var altLinha=(FIM-TOPO_TAB-ALT_TH)/pf;
-    var altC=Math.min(altLinha-2.4, 21.3), largC=altC*PROP;
-    var linhas='', canhotos='';
+    var altC=Math.min(altLinha-2.4, 97/PROP), largC=altC*PROP;
+    var linhas='', canhotos='', n=0;
     for(var i=0;i<pf;i++){
       var p=pessoas[i];
       var tr='<tr style="height:'+altLinha.toFixed(2)+'mm"';
       if(!p){ linhas+=tr+' class="vz"><td></td><td></td><td></td></tr>'; continue; }
       linhas+=tr+'><td class="n">'+esc(p.numero)+'</td><td class="nm">'+esc(p.nome)+'</td><td class="es">'+esc(p.escola)+'</td></tr>';
-      var topo=TOPO_TAB+ALT_TH+i*altLinha;
+      var topo=TOPO_TAB+ALT_TH+i*altLinha; n++;
       canhotos+='<span class="tes" style="top:'+(topo+altLinha/2-2.6).toFixed(2)+'mm">✂</span>'+
         '<div class="canh-arte cv-c" style="top:'+(topo+(altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
-          campo('nome',p.nome,altC)+campo('escola',p.escola,altC)+campo('numero',p.numero,altC)+
-          campo('faixa',f.rotulo.replace('–',' - '),altC)+campo('urna','e concorra aos prêmios da Festa dos Educadores',altC)+
+          campo('nome',p.nome,altC)+campo('escola',p.escola,altC)+
+          campoFaixa(f.rotulo.replace('–',' - '),altC)+campo('urna','e concorra aos prêmios da Festa dos Educadores',altC)+
         '</div>';
     }
     return '<section class="folha">'+
@@ -314,7 +337,7 @@
         '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Nome do participante</th><th>Escola/Instituição</th></tr>'+
         linhas+
       '</table>'+
-      '<div class="corte"></div>'+canhotos+
+      '<div class="corte"></div>'+cortes(n, altLinha)+canhotos+
       '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span>'+
         '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
     '</section>';
@@ -343,11 +366,13 @@
     'td.es{font-weight:500;font-size:10pt;line-height:1.15}'+
     'tr.vz td{background:repeating-linear-gradient(135deg,#fff 0 2mm,#f2f4fa 2mm 4mm)}'+
     '.corte{position:absolute;left:103.5mm;top:72mm;bottom:7mm;border-left:1mm dashed #0b1446}'+
+    '.ch{position:absolute;left:103.5mm;right:3mm;border-top:.8mm dashed #0b1446}'+
+    '.tes-h{position:absolute;right:2mm;width:6mm;text-align:center;font-size:12pt;line-height:5.2mm;background:#fff;color:#0b1446;transform:rotate(180deg)}'+
     '.tes{position:absolute;left:100.6mm;width:6.8mm;text-align:center;font-size:15pt;line-height:5.2mm;background:#fff;color:#0b1446}'+
     '.cv-c{position:absolute;left:108mm;background-size:100% 100%;border-radius:1mm}'+
     '.cv{position:absolute;display:flex;align-items:center;white-space:nowrap;overflow:hidden;line-height:1;color:#0b1446}'+
     '.cv.nome{font-weight:700;text-transform:uppercase}.cv.escola{font-weight:500}'+
-    '.cv.numero,.cv.faixa{font-weight:700}.cv.urna{font-weight:500;color:#1a1a1a}'+
+    '.cv.faixa{font-weight:700;gap:1.4mm}.cv.faixa .rot{font-weight:600;color:#1f4fd0}.cv.urna{font-weight:500;color:#1a1a1a}'+
     '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
     '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
 
