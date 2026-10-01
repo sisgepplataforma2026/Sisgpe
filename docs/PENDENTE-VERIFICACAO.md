@@ -57,7 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 80 | 🟡 Canhotos da urna (Compasso 2026) — gerar no ar e imprimir uma folha de prova |
+| 122 | 🟡 Canhotos da urna (Compasso 2026) — gerar no ar e imprimir uma folha de prova |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
@@ -119,7 +119,7 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 80. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
+### 122. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
 
 **Onde:** Eventos → Sorteios → **Canhotos da urna**. Arquivos novos:
 `CompassoCanhotos.html` (tela), `CompassoCanhotosDados.gs` (leitura),
@@ -132,7 +132,7 @@ na mesma linha à direita, linha de corte grossa. Não toca ingresso, check-in
 nem inscrição: o QR da entrada é de outra plataforma.
 
 **O que rodou (01/10/2026):**
-- `t151-compasso-canhotos.js` — 41 asserções, 5 mutações mortas; suíte inteira verde.
+- `t205-compasso-canhotos.js` — 41 asserções, 5 mutações mortas; suíte inteira verde.
 - A planilha REAL (357 linhas) passou pela regra no emulador: 353 vão para a
   urna, 2 "Não concordo" ficaram fora com aviso, o cabeçalho colado no meio
   foi ignorado com aviso. 46 folhas em 5 faixas (A–C 65 · D–H 77 · I–L 79 ·
