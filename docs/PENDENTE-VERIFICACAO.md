@@ -68,7 +68,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 | 113 | 🔴 escola sem CNPJ aparece dizendo "sem CNPJ", em âmbar |
 | 112 | ✅ conferido em 24/09 — nome legível e CNPJ pontuado ao lado |
 | 111 | 🔴 a busca de escola responde rápido da segunda digitação em diante |
-| 127 | 🟡 Canhotos da urna — NO AR (hml 190, prod 748); falta gerar no sistema e imprimir a folha de prova |
+| 127 | 🟡 Canhotos da urna — gerado no ar em 01/10 ✅; falta só a folha de prova no PAPEL |
 | 126 | 🔴 registrar um pedido com data de dias atrás e ver o cabeçalho na observação |
 | 125 | 🔴 o modal mostra "Quem fez" com quem registrou e quem aprovou |
 | 124 | 🔴 a "Data do pedido" nasce com hoje e não aceita data futura |
@@ -182,10 +182,14 @@ nem inscrição: o QR da entrada é de outra plataforma.
   M–Q 54 · R–Z 78).
 - A folha foi renderizada no Chromium com esses dados e o PDF conferido página 1.
 
-**NÃO TESTADO — depende do sistema no ar:**
-1. Ler o `.xlsx` pelo Drive dentro do Apps Script (`compassoImp_abrir_`, o
-   mesmo do importador) — no teste a leitura é injetada.
-2. A janela de impressão abrir a partir do SISGEP (bloqueio de pop-up).
+**✅ VERIFICADO NO AR — 01/10/2026:** o usuário gerou a prévia no sistema e
+mandou o PDF (Chrome 153 no Windows, A4, 1 página). Prova as duas etapas que
+só o Apps Script executa:
+1. ✅ a leitura do `.xlsx` pelo Drive — a folha traz a planilha real: A–C,
+   folha 1 de 9, primeira pessoa nº 0038, idêntica à renderização local;
+2. ✅ a janela de impressão abriu a partir do SISGEP e salvou como PDF.
+
+**AINDA ABERTO:**
 3. **Imprimir UMA folha de prova antes da gráfica**: a arte foi recortada de
    uma imagem de 1055 px de largura, então o banner e o canhoto saem um pouco
    suaves no papel; o texto (nomes, escolas, números) é nítido.
