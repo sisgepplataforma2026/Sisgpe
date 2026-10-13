@@ -57,6 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
+| 75 | 🟡 Pedidos de voucher por e-mail — a IA lê, você valida (falta ligar a caixa e ver no ar) |
 | 64 | ✅ VERIFICADO NO AR — seletor, remetente e destino real (02/09, 19h32) |
 | 63 | ⚠️ Não havia defeito — o ofício sempre esteve em Enviados (da conta que envia) |
 | 62 | 🟡 42 falhas — cadastros CORRIGIDOS em 02/09; faltam os 15 ofícios que nunca chegaram |
@@ -117,6 +118,69 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
+
+### 75. 🟡 PEDIDOS DE VOUCHER POR E-MAIL — a IA lê, o sistema confere, você valida
+
+13/10/2026. Pedido do usuário: *"a solicitação de certificado é tudo por
+e-mail [...] você tem que ler e entender o que ele está pedindo [...] veio
+anexado? [...] se ele é sindicalizado, a gente responde por e-mail, já envia
+o certificado. A gente valida primeiro e envia. Se ele não é, tem que
+direcionar ele para ele ir à sede."*
+
+**O que foi entregue:** `VoucherPedidosEmail.gs` (backend) e
+`VoucherPedidosEmailUI.html` (painel no topo de Benefícios → Vouchers).
+Reaproveita a criação, a emissão e o corpo do e-mail do Voucher — não há
+segundo caminho de emissão.
+
+**Regras fechadas na conversa de 13/10:**
+
+| | |
+|---|---|
+| Documentos | último contracheque + RG ou CNH + nome do curso + semestre |
+| Último contracheque | mês atual ou anterior; mais antigo vira aviso, você decide com justificativa |
+| Filho | até 24 anos, identidade/certidão/CNH, sem IR |
+| Enteado | até 24 anos, **só com comprovante de dependente no IR** |
+| Cônjuge | certidão de casamento |
+| Associado | CPF na aba Associados **com Filiado = SIM**; a secretaria pode confirmar à mão |
+| Não associado | resposta com o texto do sindicato: sede, 9h–10h e 15h–16h, 15 dias úteis, convite |
+| Envio | **nada sai sem clique**; a resposta vai na MESMA conversa, como a caixa que recebeu |
+
+**Testado no emulador (REGRA Nº -1, o que vale):** `t151` (95 asserções,
+backend) e `t152` (40 asserções, tela com DOM real) — os estados, a
+releitura da conversa quando o associado manda o que faltava, a trava de
+duplicidade do Voucher, a recusa sem módulo Benefícios ANTES de gravar, a
+separação por caixa (a Secretaria não vê o financeiro@), a trava de
+homologação e o "obrigado" que não reabre o pedido. Duas mutações
+conferidas: tirar a trava de módulo e ignorar a coluna Filiado — as duas
+derrubam o teste.
+
+**Defeito achado pelo próprio teste e corrigido antes da entrega:** o ID do
+pedido usava `gerarIdPadrao_` (segundo + 3 dígitos). Lendo vários e-mails no
+mesmo segundo, ~8,6% de chance de dois pedidos ganharem o mesmo ID — e abrir
+um mostraria o de outra pessoa. Apareceu como falha intermitente (1 em ~30
+rodadas); virou UUID, com asserção que trava o `Math.random` para forçar a
+colisão.
+
+**NÃO TESTADO — depende do sistema no ar:**
+
+| | Como testar |
+|---|---|
+| 🔴 **a caixa da secretaria@ chegar ao Gmail do sistema** | é pré-requisito. Gmail da conta dona do SISGEP → Configurações → Contas e importação → *Verificar e-mails de outras contas* → `secretaria@sindeducacao.com`, POP `pop.kinghost.net`, **"Deixar uma cópia no servidor" marcado**. Mesmo passo do item da confirmação de ofícios. |
+| 🟡 a IA real lendo contracheque e RG escaneados | mandar 3 pedidos reais (completo, sem contracheque, filho) e conferir no painel se os campos e a origem batem com os anexos |
+| 🟡 o gatilho de 15 minutos | rodar `instalarGatilhoVoucherPedidosEmail` no editor, uma vez |
+| 🟡 o certificado chegando como RESPOSTA, com PDF, saindo como secretaria@ | em homologação, mandar o pedido **a partir da própria secretaria@** — a trava só deixa responder para ela |
+| 🟡 a tela no navegador | aparência, prévia do PDF no iframe, celular |
+
+**Propriedades do script que o módulo lê** (todas opcionais menos a primeira):
+`ANTHROPIC_API_KEY` (já existe — a Central de E-mails usa),
+`VOUCHER_PEDIDOS_PERIODOS` (ex.: `2026/2,2027/1`; sem ela, semestre corrente
+e o seguinte), `VOUCHER_PEDIDOS_MODELO` (padrão: o mesmo modelo da Central).
+
+**Achado no caminho, NÃO corrigido (fora do escopo):** a emissão
+(`atualizarStatusSolicitacao_`) sobrescreve a coluna OBSERVACOES da
+solicitação. Já estava documentado em `VoucherAdmin.gs`. O módulo novo
+contorna: grava a origem no HISTÓRICO e passa a observação para a própria
+emissão, que a preserva junto do carimbo.
 
 ### 74. 🔴 O DETECTOR DE BOUNCE ESTAVA DESFAZENDO O REENVIO
 

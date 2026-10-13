@@ -576,6 +576,7 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         </div>
 
         <div id="benefSubVouchers" class="docSubPanel" style="display:none;">
+            <?!= include('VoucherPedidosEmailUI'); ?>
             <?!= include('Scripts_Certificado'); ?>
         </div>
 
@@ -1821,6 +1822,7 @@ if(mod==="beneficios"){
 
     if(subBeneficio === "vouchers"){
       setTimeout(function(){ callFn("carregarLista"); },100);
+      setTimeout(function(){ if(window.VPE && typeof window.VPE.carregar === "function") window.VPE.carregar(); },150);
     }
 
     if(subBeneficio === "agendaOftalmo"){

@@ -1,0 +1,448 @@
+<style>
+/* ── Pedidos de voucher por e-mail — backend: VoucherPedidosEmail.gs (este arquivo é VoucherPedidosEmailUI.html — nome diferente do .gs de propósito: o Apps Script recusa .gs e .html com o mesmo nome) ──
+   Tokens e modal vêm de OficiosStyles.html (CSS mestre). Nada de paleta nova. */
+#vpeSecao { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 0 18px; }
+#vpeSecao * { box-sizing: border-box; }
+#vpeSecao .vpe-topo {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, #1058b0 100%);
+  color: #fff; border-radius: 14px; padding: 16px 18px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: var(--sh-sm);
+}
+#vpeSecao .vpe-titulo { font-size: 16px; font-weight: 800; }
+#vpeSecao .vpe-sub { font-size: 12px; color: rgba(255,255,255,.72); margin-top: 3px; }
+#vpeSecao .vpe-sub b { color: var(--gold2); font-weight: 700; }
+#vpeSecao .vpe-acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#vpeSecao .vpe-sel { border-radius: 9px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12);
+  color: #fff; padding: 7px 10px; font: inherit; font-size: 12px; }
+#vpeSecao .vpe-sel option { color: #0f172a; }
+#vpeSecao .vpe-b { border: 0; border-radius: 9px; padding: 8px 14px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+#vpeSecao .vpe-b-claro { background: #fff; color: var(--navy); }
+#vpeSecao .vpe-b-vidro { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28); }
+#vpeSecao .vpe-b:disabled { opacity: .55; cursor: wait; }
+#vpeSecao .vpe-cards { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+#vpeSecao .vpe-card { background: var(--surface); border: var(--border); border-radius: 14px; padding: 12px 14px;
+  cursor: pointer; box-shadow: var(--sh-xs); border-top: 4px solid var(--g300); text-align: left; font: inherit; }
+#vpeSecao .vpe-card.ativo { box-shadow: 0 0 0 2px var(--blue); }
+#vpeSecao .vpe-card .n { font-size: 24px; font-weight: 800; color: var(--g900); line-height: 1.1; }
+#vpeSecao .vpe-card .l { font-size: 11.5px; font-weight: 700; color: var(--g600); margin-top: 2px; }
+#vpeSecao .c-PRONTO { border-top-color: #059669; }
+#vpeSecao .c-FALTA_DOC { border-top-color: #d97706; }
+#vpeSecao .c-NAO_ENCONTRADO { border-top-color: #dc2626; }
+#vpeSecao .c-PRECISA_VOCE { border-top-color: var(--g400); }
+#vpeSecao .c-AGUARDANDO { border-top-color: var(--blue); }
+#vpeSecao .c-CONCLUIDO_HOJE { border-top-color: var(--navy); }
+#vpeSecao .vpe-lista { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+#vpeSecao .vpe-item { background: var(--surface); border: var(--border); border-radius: 14px; padding: 12px 14px;
+  display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: var(--sh-xs); }
+#vpeSecao .vpe-item-nome { font-weight: 800; color: var(--g900); font-size: 14px; }
+#vpeSecao .vpe-item-meta { font-size: 12px; color: var(--g600); margin-top: 2px; }
+#vpeSecao .vpe-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+#vpeSecao .vpe-chip { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--g100); color: var(--g700); }
+#vpeSecao .vpe-chip.FALTA, #vpeModal .vpe-chip.FALTA { background: var(--amber-lt); color: #92400e; }
+#vpeSecao .vpe-chip.AVISO, #vpeModal .vpe-chip.AVISO { background: var(--amber-lt); color: #92400e; }
+#vpeSecao .vpe-chip.CONFLITO, #vpeModal .vpe-chip.CONFLITO { background: var(--red-lt); color: #991b1b; }
+#vpeSecao .vpe-chip.INTERNO, #vpeModal .vpe-chip.INTERNO { background: var(--blue-lt); color: var(--navy2); }
+#vpeSecao .vpe-chip.ERRO { background: var(--red-lt); color: #991b1b; }
+#vpeSecao .vpe-vazio { padding: 22px; text-align: center; color: var(--g500); font-size: 13px; background: var(--surface);
+  border: 1px dashed var(--g300); border-radius: 14px; }
+#vpeSecao .vpe-aviso { margin-top: 10px; background: var(--amber-lt); color: #92400e; border-radius: 10px; padding: 9px 12px; font-size: 12.5px; }
+
+#vpeModal .of-modal { max-width: 1120px; }
+#vpeModal .vpe-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+#vpeModal h4 { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); margin: 0 0 8px; }
+#vpeModal .vpe-msg { border: var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--g50); }
+#vpeModal .vpe-msg.nossa { background: var(--blue-lt); }
+#vpeModal .vpe-msg-cab { font-size: 11.5px; color: var(--g500); margin-bottom: 4px; }
+#vpeModal .vpe-msg-corpo { font-size: 13px; color: var(--g800); white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+#vpeModal .vpe-anexos { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 12px; }
+#vpeModal .vpe-anexo { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: var(--border);
+  border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+#vpeModal .vpe-anexo small { color: var(--g500); }
+#vpeModal .vpe-prev { border: var(--border); border-radius: 10px; min-height: 60px; max-height: 420px; overflow: auto; text-align: center; background: var(--g50); }
+#vpeModal .vpe-prev img { max-width: 100%; }
+#vpeModal .vpe-prev iframe { width: 100%; height: 400px; border: 0; }
+#vpeModal .vpe-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+#vpeModal .vpe-campo label { display: block; font-size: 11.5px; font-weight: 700; color: var(--g600); }
+#vpeModal .vpe-campo input, #vpeModal .vpe-campo select, #vpeModal textarea {
+  width: 100%; border: 1px solid var(--g300); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 13px; background: #fff; }
+#vpeModal .vpe-campo small { display: block; font-size: 10.5px; color: var(--g500); margin-top: 2px; min-height: 13px; }
+#vpeModal .vpe-campo small.ia { color: #7c3aed; }
+#vpeModal .vpe-campo small.edit { color: var(--amber); }
+#vpeModal textarea { min-height: 170px; resize: vertical; line-height: 1.5; }
+#vpeModal .vpe-pend { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#vpeModal .vpe-pend .vpe-chip { font-size: 12px; padding: 6px 10px; border-radius: 9px; display: block; }
+#vpeModal .vpe-ok { background: var(--green-lt); color: var(--green-dk); border-radius: 9px; padding: 8px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeModal .vpe-pct { margin: 8px 0 12px; font-size: 13px; color: var(--g700); }
+#vpeModal .vpe-pct b { color: var(--navy); font-size: 16px; }
+#vpeModal .of-modal-foot { flex-wrap: wrap; }
+#vpeModal .vpe-just { display: none; margin-top: 10px; }
+
+@media (max-width: 900px) {
+  #vpeSecao .vpe-cards { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  #vpeModal .vpe-grade { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  #vpeSecao .vpe-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #vpeSecao .vpe-item { flex-direction: column; align-items: stretch; }
+  #vpeModal .vpe-campos { grid-template-columns: 1fr; }
+}
+</style>
+
+<div id="vpeSecao">
+  <div class="vpe-topo">
+    <div>
+      <div class="vpe-titulo">📨 Pedidos de voucher por e-mail</div>
+      <div class="vpe-sub" id="vpeSub">Carregando…</div>
+    </div>
+    <div class="vpe-acoes">
+      <select class="vpe-sel" id="vpeCaixa" style="display:none;"></select>
+      <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnLer" data-vpe="lerAgora">↻ Ler agora</button>
+      <button type="button" class="vpe-b vpe-b-vidro" id="vpeBtnRecolher" data-vpe="recolher">Recolher</button>
+    </div>
+  </div>
+  <div id="vpeCorpo">
+    <div class="vpe-cards" id="vpeCards"></div>
+    <div id="vpeAvisoGatilho" class="vpe-aviso" style="display:none;">
+      A leitura automática ainda não está ligada. Até ela ser instalada no editor do Apps Script
+      (<b>instalarGatilhoVoucherPedidosEmail</b>), use o botão "Ler agora".
+    </div>
+    <div class="vpe-lista" id="vpeLista"></div>
+  </div>
+</div>
+
+<div class="of-modal-overlay" id="vpeModal">
+  <div class="of-modal">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title" id="vpeMTitulo">Pedido</div>
+        <div class="of-modal-head-sub" id="vpeMSub"></div>
+      </div>
+      <button type="button" class="of-modal-close" data-vpe="fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div class="vpe-grade">
+        <div>
+          <h4>O que a pessoa mandou</h4>
+          <div id="vpeMResumo" style="font-size:12.5px;color:#7c3aed;margin-bottom:8px;"></div>
+          <div id="vpeMMensagens"></div>
+          <h4 style="margin-top:12px;">Anexos</h4>
+          <div class="vpe-anexos" id="vpeMAnexos"></div>
+          <div class="vpe-prev" id="vpeMPrev"><div style="padding:18px;font-size:12px;color:#64748b;">Clique em "Ver" para abrir um anexo aqui.</div></div>
+        </div>
+        <div>
+          <h4>Conferência</h4>
+          <div class="vpe-pend" id="vpeMPend"></div>
+          <h4>Dados do pedido <span style="text-transform:none;letter-spacing:0;font-weight:600;">— confira e corrija</span></h4>
+          <div class="vpe-campos" id="vpeMCampos"></div>
+          <div class="vpe-pct" id="vpeMPct"></div>
+          <div id="vpeMRespostaBox">
+            <h4>Resposta que vai sair</h4>
+            <textarea id="vpeMResposta"></textarea>
+          </div>
+          <div class="vpe-just" id="vpeMJustBox">
+            <h4 id="vpeMJustTitulo">Por que validar com pendência?</h4>
+            <textarea id="vpeMJust" style="min-height:70px;" placeholder="Ex.: a escola atrasou o contracheque de setembro"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="of-modal-foot" id="vpeMAcoes"></div>
+  </div>
+</div>
+
+<script>
+/* Pedidos de voucher por e-mail. Tudo dentro de VPE: os <script> do SISGEP
+   dividem um escopo global só, e nome solto aqui colidiria com outra tela. */
+var VPE = (function () {
+  var estado = { filtro: "", dados: null, atual: null, recolhido: false };
+  var ROTULOS = {
+    PRONTO: ["🟢", "Prontos para validar"],
+    FALTA_DOC: ["🟡", "Falta documento"],
+    NAO_ENCONTRADO: ["🔴", "Não encontrado na relação"],
+    PRECISA_VOCE: ["⚪", "Precisa de você"],
+    AGUARDANDO: ["⏳", "Aguardando associado"],
+    CONCLUIDO_HOJE: ["✔", "Concluídos hoje"]
+  };
+  var CAMPOS = [
+    ["nome", "Nome do associado"], ["cpf", "CPF"], ["telefone", "Telefone"], ["rg", "RG (vai no certificado)"],
+    ["escola", "Escola onde trabalha"], ["curso", "Curso"], ["modalidade", "Nível do curso", "modalidades"],
+    ["area", "Área (graduação)", "areas"], ["instituicao", "Instituição de ensino"], ["periodo", "Semestre", "periodos"],
+    ["regime", "Regime", ["SEMESTRAL", "ANUAL"]], ["tipoBeneficiario", "Para quem é", "beneficiarios"],
+    ["nomeBeneficiario", "Nome do beneficiário"], ["dataNascimento", "Nascimento do beneficiário"],
+    ["ordemFilho", "Ordem do filho (ensino básico)"]
+  ];
+
+  function tk() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function aviso(msg, tipo) {
+    if (typeof toast === "function") toast(msg, tipo || "info", 5000);
+    else if (window.console) console.log(msg);
+  }
+  function rodar(fn, args, ok) {
+    var r = google.script.run
+      .withSuccessHandler(function (res) { ok(res || { ok: false, mensagem: "Sem resposta do servidor." }); })
+      .withFailureHandler(function (e) { ok({ ok: false, mensagem: (e && e.message) || String(e) }); });
+    r[fn].apply(r, args.concat([tk()]));
+  }
+
+  function carregar() {
+    var cx = el("vpeCaixa").value || "";
+    rodar("voucherPedidosPainel", [cx], function (r) {
+      if (!r.ok) { el("vpeSub").textContent = r.mensagem || "Não foi possível carregar."; return; }
+      estado.dados = r;
+      var sel = el("vpeCaixa");
+      if (r.caixas && r.caixas.length > 1) {
+        sel.style.display = "";
+        sel.innerHTML = r.caixas.map(function (c) {
+          return "<option value='" + esc(c) + "'" + (c === r.caixa ? " selected" : "") + ">Caixa: " +
+            esc(c === "SECRETARIA" ? "secretaria@" : c === "FINANCEIRO" ? "financeiro@" : "outras") + "</option>";
+        }).join("");
+      }
+      el("vpeSub").innerHTML = "Semestres abertos: <b>" + esc((r.periodosAbertos || []).join(" e ")) + "</b>" +
+        " · Última leitura: " + esc(r.ultimaLeitura || "nenhuma ainda") +
+        (r.gatilhoInstalado ? " · leitura automática a cada 15 min" : "");
+      el("vpeAvisoGatilho").style.display = r.gatilhoInstalado ? "none" : "";
+      desenharCards(); desenharLista();
+    });
+  }
+
+  function desenharCards() {
+    var c = estado.dados.contagens || {};
+    el("vpeCards").innerHTML = Object.keys(ROTULOS).map(function (k) {
+      return "<button type='button' class='vpe-card c-" + k + (estado.filtro === k ? " ativo" : "") +
+        "' data-vpe='filtrar' data-arg='" + k + "'><div class='n'>" + (c[k] || 0) + "</div><div class='l'>" +
+        ROTULOS[k][0] + " " + esc(ROTULOS[k][1]) + "</div></button>";
+    }).join("");
+  }
+
+  function desenharLista() {
+    var itens = (estado.dados.itens || []).filter(function (i) {
+      if (!estado.filtro) return i.estado !== "CONCLUIDO";
+      if (estado.filtro === "CONCLUIDO_HOJE") return i.estado === "CONCLUIDO";
+      return i.estado === estado.filtro;
+    });
+    if (!itens.length) {
+      el("vpeLista").innerHTML = "<div class='vpe-vazio'>" + (estado.filtro
+        ? "Nada neste estado." : "Nenhum pedido aguardando. Os novos aparecem aqui depois da leitura da caixa.") + "</div>";
+      return;
+    }
+    el("vpeLista").innerHTML = itens.map(function (i) {
+      var r = ROTULOS[i.estado] || ROTULOS[i.estado === "CONCLUIDO" ? "CONCLUIDO_HOJE" : "PRECISA_VOCE"];
+      var meta = [i.cpfMascarado, i.periodo, i.curso, i.beneficiario, i.percentual ? i.percentual + "%" : "",
+                  "recebido " + i.recebidoEm].filter(String).map(esc).join(" · ");
+      var chips = (i.pendencias || []).slice(0, 4).map(function (p) {
+        var t = p.split("|"); return "<span class='vpe-chip " + esc(t[0]) + "'>" + esc(t.slice(1).join("|")) + "</span>";
+      }).join("");
+      if (i.erro) chips += "<span class='vpe-chip ERRO'>" + esc(i.erro) + "</span>";
+      if (i.protocolo) chips += "<span class='vpe-chip'>Protocolo " + esc(i.protocolo) + "</span>";
+      return "<div class='vpe-item'><div><div class='vpe-item-nome'>" + r[0] + " " + esc(i.nome || i.remetente) +
+        "</div><div class='vpe-item-meta'>" + meta + " · " + esc(i.remetente) + "</div><div class='vpe-chips'>" + chips +
+        "</div></div><button type='button' class='btn btn-navy' data-vpe='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></div>";
+    }).join("");
+  }
+
+  function filtrar(k) { estado.filtro = estado.filtro === k ? "" : k; desenharCards(); desenharLista(); }
+
+  function recolher() {
+    estado.recolhido = !estado.recolhido;
+    el("vpeCorpo").style.display = estado.recolhido ? "none" : "";
+    el("vpeBtnRecolher").textContent = estado.recolhido ? "Mostrar" : "Recolher";
+  }
+
+  function lerAgora() {
+    var b = el("vpeBtnLer"); b.disabled = true; b.textContent = "Lendo a caixa…";
+    rodar("voucherPedidosLerAgora", [], function (r) {
+      b.disabled = false; b.textContent = "↻ Ler agora";
+      aviso(r.mensagem || (r.ok ? "Leitura concluída." : "Falha na leitura."), r.ok ? "ok" : "err");
+      carregar();
+    });
+  }
+
+  /* ── o pedido aberto ── */
+  function abrir(id) {
+    el("vpeMTitulo").textContent = "Carregando…"; el("vpeMSub").textContent = "";
+    el("vpeModal").classList.add("aberto");
+    rodar("voucherPedidosDetalhe", [id], mostrar);
+  }
+
+  function mostrar(d) {
+    if (!d.ok) { aviso(d.mensagem, "err"); fechar(); return; }
+    estado.atual = d;
+    var it = d.item;
+    el("vpeMTitulo").textContent = (ROTULOS[it.estado] || ["", ""])[0] + " " + (it.nome || it.remetente);
+    el("vpeMSub").textContent = d.assunto + " · " + it.remetente + " · caixa " + it.caixa.toLowerCase() +
+      (it.protocolo ? " · protocolo " + it.protocolo : "") + (d.confirmadoPor ? " · associado confirmado por " + d.confirmadoPor : "");
+    el("vpeMResumo").textContent = d.resumoIA ? "Leitura da IA: " + d.resumoIA : "";
+    el("vpeMMensagens").innerHTML = (d.mensagens || []).map(function (m) {
+      return "<div class='vpe-msg" + (m.nossa ? " nossa" : "") + "'><div class='vpe-msg-cab'>" + esc(m.de) + " · " + esc(m.data) +
+        "</div><div class='vpe-msg-corpo'>" + esc(m.corpo || "(sem texto)") + "</div></div>";
+    }).join("") || "<div class='vpe-vazio'>Conversa indisponível.</div>";
+    el("vpeMAnexos").innerHTML = (d.anexos || []).map(function (a) {
+      var cls = a.classificacao ? a.classificacao.replace(/_/g, " ").toLowerCase() : (a.lidoPelaIA ? "não identificado" : "não lido pela IA");
+      return "<div class='vpe-anexo'><div>📎 " + esc(a.nome) + "<br><small>" + esc(cls) +
+        (a.nomePessoa ? " · " + esc(a.nomePessoa) : "") + (a.legivel === false ? " · ilegível" : "") +
+        "</small></div><button type='button' class='btn btn-outline' data-vpe='verAnexo' data-arg='" + Number(a.indice) + "'>Ver</button></div>";
+    }).join("") || "<div style='font-size:12.5px;color:#64748b;'>Nenhum anexo.</div>";
+    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Clique em \"Ver\" para abrir um anexo aqui.</div>";
+
+    var pend = d.pendencias || [];
+    el("vpeMPend").innerHTML = pend.length ? pend.map(function (p) {
+      return "<span class='vpe-chip " + esc(p.tipo) + "'>" + esc(p.texto) + "</span>";
+    }).join("") : "<div class='vpe-ok'>Tudo conferido: associado na relação, documentos e dados completos.</div>";
+
+    var concl = it.estado === "CONCLUIDO";
+    el("vpeMCampos").innerHTML = CAMPOS.map(function (c) {
+      var chave = c[0], f = d.campos[chave] || { valor: "", origem: "" };
+      var lista = Array.isArray(c[2]) ? c[2] : (c[2] ? (d.opcoes[c[2]] || []) : null);
+      var origem = f.origem || "";
+      var cls = /editado/.test(origem) ? "edit" : /IA/.test(origem) ? "ia" : "";
+      var input;
+      if (lista) {
+        var vals = lista.slice(); if (f.valor && vals.indexOf(String(f.valor)) === -1) vals.unshift(String(f.valor));
+        input = "<select data-k='" + chave + "'" + (concl ? " disabled" : "") + "><option value=''>—</option>" +
+          vals.map(function (v) { return "<option" + (String(v) === String(f.valor) ? " selected" : "") + ">" + esc(v) + "</option>"; }).join("") + "</select>";
+      } else {
+        input = "<input data-k='" + chave + "' value='" + esc(f.valor) + "'" + (concl ? " disabled" : "") + ">";
+      }
+      return "<div class='vpe-campo'><label>" + esc(c[1]) + "</label>" + input +
+        "<small class='" + cls + "'>" + esc(origem ? "↳ " + origem : "") + "</small></div>";
+    }).join("");
+    el("vpeMPct").innerHTML = d.percentual
+      ? "Percentual: <b>" + esc(d.percentual.valor) + "%</b> <small>(" + esc(d.percentual.origem) + ")</small>"
+      : "<small>Percentual calculado na criação, pela regra da convenção.</small>";
+
+    var temResposta = !concl && (it.estado === "FALTA_DOC" || it.estado === "NAO_ENCONTRADO" || it.estado === "PRECISA_VOCE" || it.estado === "AGUARDANDO");
+    el("vpeMRespostaBox").style.display = temResposta ? "" : "none";
+    el("vpeMResposta").value = d.respostaSugerida || "";
+    el("vpeMJustBox").style.display = "none";
+    el("vpeMJust").value = "";
+    estado.modo = "";
+    botoes(it.estado);
+  }
+
+  function botoes(st) {
+    var b = [];
+    function add(rot, cls, fn, arg) {
+      b.push("<button type='button' class='btn " + cls + "' data-vpe='" + fn + "'" + (arg ? " data-arg='" + arg + "'" : "") + ">" + rot + "</button>");
+    }
+    if (st !== "CONCLUIDO") {
+      add("Descartar", "btn-outline", "descartar");
+      add("Salvar e reconferir", "btn-outline", "salvar");
+      if (st === "NAO_ENCONTRADO") {
+        add("Confirmar que é associado", "btn-outline", "confirmarAssociado");
+        add("Encaminhar à sede", "btn-red", "responder", "SEDE");
+      } else {
+        if (st !== "PRONTO") add("Enviar pedido de complemento", "btn-outline", "responder", "COMPLEMENTO");
+        add(st === "PRONTO" ? "Validar e enviar certificado" : "Validar mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validar");
+      }
+    }
+    b.push("<button type='button' class='btn btn-outline' data-vpe='fechar'>Fechar</button>");
+    el("vpeMAcoes").innerHTML = b.join("");
+  }
+
+  function camposDaTela() {
+    var o = {};
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMCampos [data-k]"), function (x) { o[x.getAttribute("data-k")] = x.value; });
+    return o;
+  }
+  function travar(sim) {
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMAcoes button"), function (x) { x.disabled = !!sim; });
+  }
+  function depois(r, fecharSeOk) {
+    travar(false);
+    aviso(r.mensagem || (r.ok ? "Feito." : "Não foi possível."), r.ok ? "ok" : "err");
+    if (r.ok && fecharSeOk) { fechar(); }
+    carregar();
+  }
+
+  function salvar() {
+    travar(true);
+    rodar("voucherPedidosSalvarCampos", [estado.atual.item.id, camposDaTela()], function (r) {
+      travar(false);
+      if (r.ok) { mostrar(r); aviso("Dados salvos e pedido reconferido.", "ok"); carregar(); }
+      else aviso(r.mensagem, "err");
+    });
+  }
+
+  function pedirMotivo(modo, titulo, dica) {
+    var just = el("vpeMJustBox");
+    if (estado.modo === modo && just.style.display !== "none") return el("vpeMJust").value;
+    estado.modo = modo;
+    el("vpeMJustTitulo").textContent = titulo;
+    el("vpeMJust").value = "";
+    just.style.display = ""; el("vpeMJust").focus();
+    aviso(dica, "warn");
+    return null;
+  }
+
+  function validar() {
+    var opc = {};
+    if (estado.atual.item.estado !== "PRONTO") {
+      var j = pedirMotivo("VALIDAR", "Por que validar com pendência?",
+        "Há pendências. Escreva por que validar mesmo assim e clique de novo.");
+      if (j === null) return;
+      opc = { forcar: true, justificativa: j };
+    }
+    travar(true);
+    rodar("voucherPedidosValidarEnviar", [estado.atual.item.id, camposDaTela(), opc], function (r) { depois(r, true); });
+  }
+
+  function responder(tipo) {
+    var txt = el("vpeMResposta").value;
+    travar(true);
+    rodar("voucherPedidosResponder", [estado.atual.item.id, tipo, txt], function (r) { depois(r, true); });
+  }
+
+  function confirmarAssociado() {
+    travar(true);
+    rodar("voucherPedidosConfirmarAssociado", [estado.atual.item.id], function (r) {
+      travar(false);
+      if (r.ok) { mostrar(r); aviso("Associado confirmado. Pedido reconferido.", "ok"); carregar(); }
+      else aviso(r.mensagem, "err");
+    });
+  }
+
+  function descartar() {
+    var motivo = pedirMotivo("DESCARTAR", "Por que descartar este pedido? (nenhum e-mail será enviado)",
+      "Escreva o motivo do descarte e clique em Descartar de novo.");
+    if (motivo === null) return;
+    travar(true);
+    rodar("voucherPedidosDescartar", [estado.atual.item.id, motivo], function (r) { depois(r, true); });
+  }
+
+  function verAnexo(i) {
+    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Abrindo…</div>";
+    rodar("voucherPedidosAnexo", [estado.atual.item.id, i], function (r) {
+      if (!r.ok) { el("vpeMPrev").innerHTML = "<div style='padding:18px;color:#dc2626;'>" + esc(r.mensagem) + "</div>"; return; }
+      el("vpeMPrev").innerHTML = /^image\//.test(r.tipo)
+        ? "<img alt='" + esc(r.nome) + "' src='" + r.dataUrl + "'>"
+        : /pdf/.test(r.tipo) ? "<iframe title='" + esc(r.nome) + "' src='" + r.dataUrl + "'></iframe>"
+        : "<div style='padding:18px;font-size:12px;'>Formato sem prévia: " + esc(r.tipo) + "</div>";
+    });
+  }
+
+  function fechar() { el("vpeModal").classList.remove("aberto"); estado.atual = null; }
+
+  /* UM ouvinte de clique para a tela inteira, por data-vpe. Sem onclick
+     inline: o HTML é redesenhado a cada carga, e o ouvinte delegado
+     continua valendo para os botões que nascem depois. */
+  var ACOES = { lerAgora: lerAgora, recolher: recolher, fechar: fechar, filtrar: filtrar, abrir: abrir,
+                verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
+                responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar };
+  document.addEventListener("click", function (ev) {
+    var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
+    if (!alvo || alvo.disabled) return;
+    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal")) return;
+    var fn = ACOES[alvo.getAttribute("data-vpe")];
+    if (fn) fn(alvo.getAttribute("data-arg"));
+  });
+  document.addEventListener("change", function (ev) {
+    if (ev.target && ev.target.id === "vpeCaixa") carregar();
+  });
+
+  return { carregar: carregar, filtrar: filtrar, recolher: recolher, lerAgora: lerAgora, abrir: abrir,
+           salvar: salvar, validar: validar, responder: responder, confirmarAssociado: confirmarAssociado,
+           descartar: descartar, verAnexo: verAnexo, fechar: fechar };
+})();
+</script>
