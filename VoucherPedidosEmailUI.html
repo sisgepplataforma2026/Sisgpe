@@ -19,7 +19,7 @@
 #vpeSecao .vpe-b-claro { background: #fff; color: var(--navy); }
 #vpeSecao .vpe-b-vidro { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28); }
 #vpeSecao .vpe-b:disabled { opacity: .55; cursor: wait; }
-#vpeSecao .vpe-cards { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+#vpeSecao .vpe-cards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
 #vpeSecao .vpe-card { background: var(--surface); border: var(--border); border-radius: 14px; padding: 12px 14px;
   cursor: pointer; box-shadow: var(--sh-xs); border-top: 4px solid var(--g300); text-align: left; font: inherit; }
 #vpeSecao .vpe-card.ativo { box-shadow: 0 0 0 2px var(--blue); }
@@ -77,8 +77,26 @@
 #vpeModal .of-modal-foot { flex-wrap: wrap; }
 #vpeModal .vpe-just { display: none; margin-top: 10px; }
 
+/* Abas: Pedidos por e-mail | Solicitações e certificados (21/10/2026) */
+#vpeAbas { display: flex; gap: 6px; border-bottom: 2px solid var(--g200); margin: 0 0 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+#vpeAbas .vpe-aba { border: 0; background: transparent; padding: 12px 18px; font: inherit; font-weight: 800; font-size: 14px;
+  color: var(--g500); border-radius: 12px 12px 0 0; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+#vpeAbas .vpe-aba.on { background: var(--surface); color: var(--navy); border: 2px solid var(--g200);
+  border-bottom: 2px solid var(--surface); margin-bottom: -2px; }
+#vpeAbas .vpe-badge { background: var(--red); color: #fff; border-radius: 999px; font-size: 11px; padding: 2px 8px; }
+#vpeSecao { margin-top: 0; }
+#vpeSecao .vpe-mini { margin: 10px 2px 4px; font-size: 12.5px; color: var(--g500); font-weight: 600; }
+#vpeSecao .vpe-mini button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; }
+#vpeSecao .vpe-mini button.ativo { color: var(--blue); text-decoration: underline; }
+#vpeSecao .vpe-resumo-ok { margin-top: 6px; display: inline-block; background: var(--green-lt); color: var(--green-dk);
+  border-radius: 9px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeSecao .vpe-resumo-aviso { margin-top: 6px; display: inline-block; background: var(--amber-lt); color: #92400e;
+  border-radius: 9px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeSecao .vpe-espera { font-weight: 700; color: var(--g700); }
+#vpeSecao .vpe-espera.longa { color: var(--red); }
+
 @media (max-width: 900px) {
-  #vpeSecao .vpe-cards { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  #vpeSecao .vpe-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
   #vpeModal .vpe-grade { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -88,7 +106,14 @@
 }
 </style>
 
-<div id="vpeSecao">
+<div id="vpeAbas" role="tablist">
+  <button type="button" class="vpe-aba" id="vpeAbaPedidos" role="tab" data-vpe="aba" data-arg="pedidos">
+    📨 Pedidos por e-mail <span class="vpe-badge" id="vpeAbaBadge" style="display:none;"></span></button>
+  <button type="button" class="vpe-aba on" id="vpeAbaSolicitacoes" role="tab" data-vpe="aba" data-arg="solicitacoes">
+    🎓 Solicitações e certificados</button>
+</div>
+
+<div id="vpeSecao" style="display:none;">
   <div class="vpe-topo">
     <div>
       <div class="vpe-titulo">📨 Pedidos de voucher por e-mail</div>
@@ -97,11 +122,11 @@
     <div class="vpe-acoes">
       <select class="vpe-sel" id="vpeCaixa" style="display:none;"></select>
       <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnLer" data-vpe="lerAgora">↻ Ler agora</button>
-      <button type="button" class="vpe-b vpe-b-vidro" id="vpeBtnRecolher" data-vpe="recolher">Recolher</button>
     </div>
   </div>
   <div id="vpeCorpo">
     <div class="vpe-cards" id="vpeCards"></div>
+    <div class="vpe-mini" id="vpeMini"></div>
     <div id="vpeAvisoGatilho" class="vpe-aviso" style="display:none;">
       <span id="vpeAvisoTexto">A leitura automática ainda não está ligada. Até lá, use o botão "Ler agora".</span>
       <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnGatilho" data-vpe="ligarGatilho"
@@ -155,7 +180,13 @@
 /* Pedidos de voucher por e-mail. Tudo dentro de VPE: os <script> do SISGEP
    dividem um escopo global só, e nome solto aqui colidiria com outra tela. */
 var VPE = (function () {
-  var estado = { filtro: "", dados: null, atual: null, recolhido: false };
+  var estado = { filtro: "", dados: null, atual: null, aba: "", abaEscolhida: false };
+  /* Os quatro que pedem ação viram card; os dois informativos, linha fina. */
+  var CARDS = ["PRONTO", "PRECISA_VOCE", "FALTA_DOC", "NAO_ENCONTRADO"];
+  var INFORMATIVOS = ["AGUARDANDO", "CONCLUIDO_HOJE"];
+  /* Ordem da lista: o que só falta um clique primeiro; o que espera o
+     associado por último. Dentro do grupo, o mais antigo primeiro. */
+  var PRIORIDADE = { PRONTO: 1, PRECISA_VOCE: 2, FALTA_DOC: 3, NAO_ENCONTRADO: 4, AGUARDANDO: 5, CONCLUIDO: 6 };
   var ROTULOS = {
     PRONTO: ["🟢", "Prontos para validar"],
     FALTA_DOC: ["🟡", "Falta documento"],
@@ -217,16 +248,75 @@ var VPE = (function () {
         caixaAviso.style.display = "none";
       }
       desenharCards(); desenharLista();
+      /* A aba abre em Pedidos quando há pedido esperando — só na primeira
+         carga; depois, a escolha de quem está usando manda. */
+      var c = r.contagens || {};
+      var esperando = (c.PRONTO || 0) + (c.PRECISA_VOCE || 0) + (c.FALTA_DOC || 0) + (c.NAO_ENCONTRADO || 0);
+      var badge = el("vpeAbaBadge");
+      badge.textContent = esperando; badge.style.display = esperando ? "" : "none";
+      if (!estado.abaEscolhida) mostrarAba(esperando ? "pedidos" : "solicitacoes");
     });
+  }
+
+  function mostrarAba(qual) {
+    estado.aba = qual;
+    var pedidos = qual === "pedidos";
+    el("vpeSecao").style.display = pedidos ? "" : "none";
+    var sol = document.getElementById("secCertificadoAdmin");
+    if (sol) sol.style.display = pedidos ? "none" : "";
+    el("vpeAbaPedidos").className = "vpe-aba" + (pedidos ? " on" : "");
+    el("vpeAbaSolicitacoes").className = "vpe-aba" + (pedidos ? "" : " on");
+    el("vpeAbaPedidos").setAttribute("aria-selected", pedidos ? "true" : "false");
+    el("vpeAbaSolicitacoes").setAttribute("aria-selected", pedidos ? "false" : "true");
+  }
+
+  function aba(qual) { estado.abaEscolhida = true; mostrarAba(qual); }
+
+  /* "há 3 dias" — prazo sem fazer conta. Vermelho a partir de 3 dias. */
+  function espera(ts) {
+    if (!ts) return "";
+    var min = Math.floor((Date.now() - ts) / 60000);
+    var txt = min < 60 ? "há " + Math.max(min, 1) + " min"
+      : min < 1440 ? "há " + Math.floor(min / 60) + " h"
+      : "há " + Math.floor(min / 1440) + (Math.floor(min / 1440) === 1 ? " dia" : " dias");
+    return "<span class='vpe-espera" + (min >= 3 * 1440 ? " longa" : "") + "'>" + txt + "</span>";
+  }
+
+  /* UMA frase por pedido. O erro da IA vinha duas vezes (como pendência e
+     como erro); agora sai uma vez, dizendo o que o sistema vai fazer. */
+  function resumoDoItem(i) {
+    var pend = (i.pendencias || []).map(function (p) { var t = p.split("|"); return { tipo: t[0], texto: t.slice(1).join("|") }; });
+    var falhaIA = i.erro && /^IA:|leitura pela IA falhou/i.test(i.erro + " " + pend.map(function (p) { return p.texto; }).join(" "));
+    if (falhaIA && i.estado === "PRECISA_VOCE" && !i.protocolo) {
+      var motivo = /credit balance/i.test(i.erro) ? "sem crédito na API" : String(i.erro).replace(/^IA:\s*/, "");
+      return "<div class='vpe-resumo-aviso'>⚠ A IA não conseguiu ler este pedido (" + esc(motivo) +
+        "). Ele será lido de novo sozinho na próxima leitura.</div>";
+    }
+    var html = "";
+    if (i.estado === "PRONTO" && !pend.length) {
+      html += "<div class='vpe-resumo-ok'>✔ Tudo conferido: associado na relação, documentos e dados completos</div>";
+    }
+    var chips = pend.slice(0, 4).map(function (p) {
+      return "<span class='vpe-chip " + esc(p.tipo) + "'>" + esc(p.texto) + "</span>";
+    }).join("");
+    if (i.erro && !falhaIA) chips += "<span class='vpe-chip ERRO'>" + esc(i.erro) + "</span>";
+    if (i.protocolo) chips += "<span class='vpe-chip'>Protocolo " + esc(i.protocolo) + "</span>";
+    if (i.envio) chips += "<span class='vpe-chip " + (i.envio.status === "ENVIADO" ? "" : i.envio.status === "PENDENTE" ? "INTERNO" : "ERRO") +
+      "'>Resposta: " + esc(i.envio.rotulo) + (i.envio.detalhe ? " — " + esc(i.envio.detalhe) : "") + "</span>";
+    return html + (chips ? "<div class='vpe-chips'>" + chips + "</div>" : "");
   }
 
   function desenharCards() {
     var c = estado.dados.contagens || {};
-    el("vpeCards").innerHTML = Object.keys(ROTULOS).map(function (k) {
+    el("vpeCards").innerHTML = CARDS.map(function (k) {
       return "<button type='button' class='vpe-card c-" + k + (estado.filtro === k ? " ativo" : "") +
         "' data-vpe='filtrar' data-arg='" + k + "'><div class='n'>" + (c[k] || 0) + "</div><div class='l'>" +
         ROTULOS[k][0] + " " + esc(ROTULOS[k][1]) + "</div></button>";
     }).join("");
+    el("vpeMini").innerHTML = INFORMATIVOS.map(function (k) {
+      return "<button type='button' class='" + (estado.filtro === k ? "ativo" : "") + "' data-vpe='filtrar' data-arg='" + k + "'>" +
+        ROTULOS[k][0] + " " + esc(ROTULOS[k][1]) + ": " + (c[k] || 0) + "</button>";
+    }).join(" &nbsp;·&nbsp; ");
   }
 
   function desenharLista() {
@@ -235,6 +325,10 @@ var VPE = (function () {
       if (estado.filtro === "CONCLUIDO_HOJE") return i.estado === "CONCLUIDO";
       return i.estado === estado.filtro;
     });
+    itens = itens.slice().sort(function (a, b) {
+      var pa = PRIORIDADE[a.estado] || 9, pb = PRIORIDADE[b.estado] || 9;
+      return pa !== pb ? pa - pb : (a.recebidoTs || 0) - (b.recebidoTs || 0);
+    });
     if (!itens.length) {
       el("vpeLista").innerHTML = "<div class='vpe-vazio'>" + (estado.filtro
         ? "Nada neste estado." : "Nenhum pedido aguardando. Os novos aparecem aqui depois da leitura da caixa.") + "</div>";
@@ -242,28 +336,20 @@ var VPE = (function () {
     }
     el("vpeLista").innerHTML = itens.map(function (i) {
       var r = ROTULOS[i.estado] || ROTULOS[i.estado === "CONCLUIDO" ? "CONCLUIDO_HOJE" : "PRECISA_VOCE"];
-      var meta = [i.cpfMascarado, i.periodo, i.curso, i.beneficiario, i.percentual ? i.percentual + "%" : "",
-                  "recebido " + i.recebidoEm].filter(String).map(esc).join(" · ");
-      var chips = (i.pendencias || []).slice(0, 4).map(function (p) {
-        var t = p.split("|"); return "<span class='vpe-chip " + esc(t[0]) + "'>" + esc(t.slice(1).join("|")) + "</span>";
-      }).join("");
-      if (i.erro) chips += "<span class='vpe-chip ERRO'>" + esc(i.erro) + "</span>";
-      if (i.protocolo) chips += "<span class='vpe-chip'>Protocolo " + esc(i.protocolo) + "</span>";
-      if (i.envio) chips += "<span class='vpe-chip " + (i.envio.status === "ENVIADO" ? "" : i.envio.status === "PENDENTE" ? "INTERNO" : "ERRO") +
-        "'>Resposta: " + esc(i.envio.rotulo) + (i.envio.detalhe ? " — " + esc(i.envio.detalhe) : "") + "</span>";
+      /* Só o que existe: dado vazio não pode virar " · · " solto na linha. */
+      var meta = [i.cpfMascarado, i.periodo, i.curso, i.beneficiario, i.percentual ? i.percentual + "%" : ""]
+        .filter(function (x) { return x !== undefined && x !== null && String(x).trim() !== ""; })
+        .map(esc).join(" · ");
+      var quando = (i.estado === "CONCLUIDO" ? "recebido " + esc(i.recebidoEm) : espera(i.recebidoTs) + " · " + esc(i.recebidoEm));
       return "<div class='vpe-item'><div><div class='vpe-item-nome'>" + r[0] + " " + esc(i.nome || i.remetente) +
-        "</div><div class='vpe-item-meta'>" + meta + " · " + esc(i.remetente) + "</div><div class='vpe-chips'>" + chips +
-        "</div></div><button type='button' class='btn btn-navy' data-vpe='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></div>";
+        "</div><div class='vpe-item-meta'>" + (meta ? meta + " · " : "") + quando + " · " + esc(i.remetente) + "</div>" +
+        resumoDoItem(i) +
+        "</div><button type='button' class='btn btn-navy' data-vpe='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></div>";
     }).join("");
   }
 
   function filtrar(k) { estado.filtro = estado.filtro === k ? "" : k; desenharCards(); desenharLista(); }
 
-  function recolher() {
-    estado.recolhido = !estado.recolhido;
-    el("vpeCorpo").style.display = estado.recolhido ? "none" : "";
-    el("vpeBtnRecolher").textContent = estado.recolhido ? "Mostrar" : "Recolher";
-  }
 
   function lerAgora() {
     var b = el("vpeBtnLer"); b.disabled = true; b.textContent = "Lendo… (até 2 min)";
@@ -452,14 +538,14 @@ var VPE = (function () {
   /* UM ouvinte de clique para a tela inteira, por data-vpe. Sem onclick
      inline: o HTML é redesenhado a cada carga, e o ouvinte delegado
      continua valendo para os botões que nascem depois. */
-  var ACOES = { lerAgora: lerAgora, recolher: recolher, fechar: fechar, filtrar: filtrar, abrir: abrir,
+  var ACOES = { lerAgora: lerAgora, aba: aba, fechar: fechar, filtrar: filtrar, abrir: abrir,
                 verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
                 responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
                 ligarGatilho: ligarGatilho };
   document.addEventListener("click", function (ev) {
     var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
     if (!alvo || alvo.disabled) return;
-    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal")) return;
+    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal") && !alvo.closest("#vpeAbas")) return;
     var fn = ACOES[alvo.getAttribute("data-vpe")];
     if (fn) fn(alvo.getAttribute("data-arg"));
   });
@@ -467,7 +553,7 @@ var VPE = (function () {
     if (ev.target && ev.target.id === "vpeCaixa") carregar();
   });
 
-  return { carregar: carregar, filtrar: filtrar, recolher: recolher, lerAgora: lerAgora, abrir: abrir,
+  return { carregar: carregar, filtrar: filtrar, aba: aba, lerAgora: lerAgora, abrir: abrir,
            salvar: salvar, validar: validar, responder: responder, confirmarAssociado: confirmarAssociado,
            descartar: descartar, verAnexo: verAnexo, fechar: fechar };
 })();

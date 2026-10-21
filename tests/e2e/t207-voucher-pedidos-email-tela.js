@@ -51,12 +51,27 @@ novaThread("Bolsa", "bia@exemplo.com", "Voucher 2027/1 Enfermagem. CASO:BIA", [S
 EXTRACOES.FORA = base({ titular: { nome: "Fulano Fora", cpf: "15350946056" },
   anexos: [CC("FULANO FORA", "15350946056", "09/2026", "ESCOLA Z"), RG(2, "FULANO FORA", "15350946056")] });
 novaThread("voucher", "fulano@exemplo.com", "Voucher da faculdade. CASO:FORA", [SIM.pdf("a.pdf"), SIM.pdf("b.pdf")]);
+novaThread("voucher", "josiane@exemplo.com", "Quero voucher. CASO:FALHA", []);   // a IA sem crédito
 SIM.ciclo();                       // o leitor, na conta da Secretaria, copia para a ponte
 g.voucherPedidosLerAgora(TOKEN);
+/* Recebidos em dias diferentes, para a ordem e o "há X dias" terem o que mostrar. */
+(function () {
+  const sh = g.vpeAba_();
+  const dias = { "ana@exemplo.com": 0, "bia@exemplo.com": 4, "fulano@exemplo.com": 1, "josiane@exemplo.com": 2 };
+  g.vpeLinhas_(sh).forEach(r => {
+    if (dias[r.REMETENTE_EMAIL] === undefined) return;
+    r.RECEBIDO_EM = new Date(Date.now() - dias[r.REMETENTE_EMAIL] * 86400000 - 3600000);
+    g.vpeGravar_(r, sh);
+  });
+})();
 const idDe = email => g.vpeLinhas_().find(r => r.REMETENTE_EMAIL === email).ID_PEDIDO;
 
 const t = dom.montar(g, ["VoucherPedidosEmailUI.html"], { token: TOKEN });
 const win = t.win, doc = t.doc;
+/* A outra aba é a tela de Gestão de Bolsas (Scripts_Certificado). Aqui só o
+   contêiner dela, para provar que a aba esconde e mostra. */
+const solic = doc.createElement("div"); solic.id = "secCertificadoAdmin"; solic.textContent = "Gestão de Bolsas";
+doc.body.appendChild(solic);
 const el = id => doc.getElementById(id);
 const botao = rot => Array.from(doc.querySelectorAll("#vpeMAcoes button")).find(x => x.textContent.trim() === rot);
 const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(x => x.textContent.trim());
@@ -66,12 +81,44 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   win.VPE.carregar();
   await t.assentar(60);
 
+  b.passo("0. Com pedido esperando, abre na aba de Pedidos");
+  b.ok(el("vpeSecao").style.display !== "none", "a aba de Pedidos está visível");
+  b.igual(solic.style.display, "none", "e a Gestão de Bolsas fica escondida");
+  b.igual(t.texto("#vpeAbaBadge"), "4", "a aba mostra quantos esperam");
+  t.clicar(el("vpeAbaSolicitacoes"));
+  b.ok(el("vpeSecao").style.display === "none" && solic.style.display === "", "a outra aba troca a tela");
+  win.VPE.carregar(); await t.assentar(60);
+  b.ok(solic.style.display === "", "e recarregar não desfaz a escolha de quem está usando");
+  t.clicar(el("vpeAbaPedidos"));
+  b.ok(el("vpeSecao").style.display !== "none", "e volta para Pedidos");
+
   b.passo("1. Os cards mostram a fila");
   const cards = Array.from(doc.querySelectorAll("#vpeCards .vpe-card")).map(c => c.textContent.replace(/\s+/g, " ").trim());
+  b.igual(cards.length, 4, "só os 4 cards que pedem ação");
   b.ok(cards.some(c => /^1\D.*Prontos para validar/.test(c)), "1 pronto", cards.join(" | "));
   b.ok(cards.some(c => /^1\D.*Falta documento/.test(c)), "1 com falta de documento");
   b.ok(cards.some(c => /^1\D.*Não encontrado/.test(c)), "1 não encontrado");
-  b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 3, "e a lista traz os 3");
+  b.ok(/Aguardando associado: 0/.test(t.texto("#vpeMini")) && /Concluídos hoje: 0/.test(t.texto("#vpeMini")),
+    "os dois informativos numa linha fina", t.texto("#vpeMini"));
+  b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 4, "e a lista traz os 4");
+
+  b.passo("1a. A lista vem por urgência, e cada pedido diz há quanto tempo espera");
+  const nomes = Array.from(doc.querySelectorAll("#vpeLista .vpe-item-nome")).map(x => x.textContent);
+  b.ok(/ANA/i.test(nomes[0]), "o pronto vem primeiro", nomes.join(" | "));
+  b.ok(/josiane/i.test(nomes[1]) || /Y\b/.test(nomes[1]) || nomes[1].indexOf("⚪") > -1, "depois o que precisa de você");
+  b.ok(/BEATRIZ|bia/i.test(nomes[2]), "depois o que falta documento");
+  b.ok(/FULANO/i.test(nomes[3]), "por último o não encontrado");
+  const itemBia = Array.from(doc.querySelectorAll("#vpeLista .vpe-item")).find(x => /bia@/.test(x.textContent));
+  b.ok(/há 4 dias/.test(itemBia.textContent), "a Bia espera há 4 dias", itemBia.textContent.slice(0, 120));
+  b.ok(itemBia.querySelector(".vpe-espera.longa"), "e, passados 3 dias, o tempo aparece em vermelho");
+
+  b.passo("1b'. O erro da IA aparece UMA vez, dizendo o que vai acontecer");
+  const itemJo = Array.from(doc.querySelectorAll("#vpeLista .vpe-item")).find(x => /josiane@/.test(x.textContent));
+  b.ok(/será lido de novo sozinho/.test(itemJo.textContent), "diz que será relido", itemJo.textContent.slice(0, 200));
+  b.igual((itemJo.textContent.match(/sobrecarga/g) || []).length, 1, "e o motivo aparece uma vez só");
+  const itemAna = Array.from(doc.querySelectorAll("#vpeLista .vpe-item")).find(x => /ana@/.test(x.textContent));
+  b.ok(/Tudo conferido/.test(itemAna.textContent), "o pronto diz em uma frase que está tudo conferido");
+  b.ok(!/·\s*·/.test(itemJo.textContent), "sem separador solto quando falta dado", itemJo.textContent.slice(0, 120));
   b.ok(/2026\/2 e 2027\/1/.test(t.texto("#vpeSub")), "o topo diz os semestres abertos");
   b.ok(t.chamadas.some(c => c.fn === "voucherPedidosPainel" && c.args[c.args.length - 1] === TOKEN), "com o token de sessão");
 
@@ -89,7 +136,7 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   t.clicar(Array.from(doc.querySelectorAll("#vpeCards .vpe-card")).find(c => /Falta documento/.test(c.textContent)));
   b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 1, "só o de falta de documento");
   t.clicar(Array.from(doc.querySelectorAll("#vpeCards .vpe-card")).find(c => /Falta documento/.test(c.textContent)));
-  b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 3, "e volta aos 3");
+  b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 4, "e volta aos 4");
 
   b.fluxo("PEDIDOS POR E-MAIL · Tela · 2. O pedido pronto");
   b.passo("3. Abrir mostra a conversa, os anexos e a origem de cada campo");
