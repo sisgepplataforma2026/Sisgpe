@@ -75,6 +75,16 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.ok(/2026\/2 e 2027\/1/.test(t.texto("#vpeSub")), "o topo diz os semestres abertos");
   b.ok(t.chamadas.some(c => c.fn === "voucherPedidosPainel" && c.args[c.args.length - 1] === TOKEN), "com o token de sessão");
 
+  b.passo("1b. Leitura automática desligada: o administrador liga pela tela");
+  const btnG = el("vpeBtnGatilho");
+  b.ok(btnG && btnG.style.display !== "none", "o botão 'Ligar leitura automática' aparece para o administrador");
+  t.clicar(btnG);
+  await t.assentar(80);
+  const lig = t.chamadas.filter(c => c.fn === "instalarGatilhoVoucherPedidosEmail").pop();
+  b.ok(lig && lig.args[lig.args.length - 1] === TOKEN, "chama o instalador com o token de sessão");
+  b.igual(amb.triggers.filter(x => x.fn === "voucherPedidosLerCaixaAgendado").length, 1, "e o gatilho foi criado");
+  b.ok(el("vpeBtnGatilho").style.display === "none", "e o botão some depois de ligado");
+
   b.passo("2. Clicar num card filtra; clicar de novo desfaz");
   t.clicar(Array.from(doc.querySelectorAll("#vpeCards .vpe-card")).find(c => /Falta documento/.test(c.textContent)));
   b.igual(doc.querySelectorAll("#vpeLista .vpe-item").length, 1, "só o de falta de documento");

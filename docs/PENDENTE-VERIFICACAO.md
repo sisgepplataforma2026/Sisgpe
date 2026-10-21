@@ -231,13 +231,14 @@ que não copiou como pedido e recusa anexo que não é PDF.
 | Gmail da Secretaria criado | `sindeducacaosecretaria@gmail.com` |
 | Redirecionamento com cópia na KingHost | "Redirecionamento configurado"; teste do Financeiro chegou na Caixa de entrada |
 | "Enviar e-mail como" secretaria@ nesse Gmail | "Confirmado", via `smtp.kinghost.net` |
+| Leitor instalado e `configurarLeitor` rodado (11:53) | ponte `1-bt2VsN1a4-ueCe66ilLPNRQhk4h0Qy_sGS_yTok810` — gravada como padrão no código, sem precisar de propriedade |
 
 **NÃO TESTADO — depende do sistema no ar:**
 
 | | Como testar |
 |---|---|
-| 🔴 **instalar o leitor na conta da Secretaria** | `leitor-secretaria/README.md`, passos 1 a 5 (`configurarLeitor`) |
-| 🔴 **ligar a ponte no SISGEP** | propriedade `VOUCHER_PEDIDOS_PONTE_ID` + `instalarGatilhoVoucherPedidosEmail` (README, 6 e 7) |
+| 🔴 **ligar a leitura automática no SISGEP** | botão "Ligar leitura automática" no painel (administrador) |
+| 🔴 **o primeiro pedido de verdade passar pela ponte** | mandar um pedido de teste para a secretaria@ e ver no painel |
 | 🟡 a IA real lendo contracheque e RG escaneados | 3 pedidos reais (completo, sem contracheque, filho) e conferir campos e origem no painel |
 | 🟡 a resposta saindo COMO secretaria@, na conversa, com o PDF | validar um pedido de teste e olhar o e-mail recebido |
 | 🟡 o compartilhamento do PDF com a conta do leitor | se o leitor marcar ERRO "não abre o arquivo", é aqui |

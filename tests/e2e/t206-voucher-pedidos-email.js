@@ -371,6 +371,15 @@ b.ok(!saida().some(r => r.THREAD_ID === thEnteado.id), "nem entrou na fila");
 g.PropertiesService.getScriptProperties().setProperty("SISGEP_AMBIENTE", "producao");
 g.getAmbienteAtual(true);
 
+b.passo("17b. Sem ponte, o SISGEP avisa e não lê nada");
+g.PropertiesService.getScriptProperties().setProperty("VOUCHER_PEDIDOS_PONTE_ID", "DESLIGADA");
+const semPonte = g.voucherPedidosLerAgora(TOKEN);
+b.igual(semPonte.ok, false, "a leitura recusa");
+b.ok(/ponte/i.test(semPonte.mensagem), "dizendo que falta a ponte", semPonte.mensagem);
+b.igual(painel("SECRETARIA", TOKEN_SEC).ponteConfigurada, false, "e o painel mostra o aviso");
+g.PropertiesService.getScriptProperties().setProperty("VOUCHER_PEDIDOS_PONTE_ID", SIM.PONTE_ID);
+b.ok(g.VPE_PONTE_ID_PADRAO.length > 30, "sem propriedade nenhuma, vale a ponte criada em 21/10 na conta da Secretaria");
+
 b.passo("18. O gatilho instala uma vez só");
 b.bloqueia(() => g.instalarGatilhoVoucherPedidosEmail(TOKEN_SEC), "quem não é administrador não instala gatilho");
 const t1 = g.instalarGatilhoVoucherPedidosEmail(TOKEN);

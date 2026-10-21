@@ -103,8 +103,9 @@
   <div id="vpeCorpo">
     <div class="vpe-cards" id="vpeCards"></div>
     <div id="vpeAvisoGatilho" class="vpe-aviso" style="display:none;">
-      A leitura automática ainda não está ligada. Até ela ser instalada no editor do Apps Script
-      (<b>instalarGatilhoVoucherPedidosEmail</b>), use o botão "Ler agora".
+      <span id="vpeAvisoTexto">A leitura automática ainda não está ligada. Até lá, use o botão "Ler agora".</span>
+      <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnGatilho" data-vpe="ligarGatilho"
+              style="display:none;margin-left:8px;">Ligar leitura automática</button>
     </div>
     <div class="vpe-lista" id="vpeLista"></div>
   </div>
@@ -202,13 +203,18 @@ var VPE = (function () {
       el("vpeSub").innerHTML = "Semestres abertos: <b>" + esc((r.periodosAbertos || []).join(" e ")) + "</b>" +
         " · Última leitura: " + esc(r.ultimaLeitura || "nenhuma ainda") +
         (r.gatilhoInstalado ? " · leitura automática a cada 15 min" : "");
-      var aviso = el("vpeAvisoGatilho");
+      var caixaAviso = el("vpeAvisoGatilho");
+      el("vpeBtnGatilho").style.display = "none";
       if (!r.ponteConfigurada) {
-        aviso.style.display = "";
-        aviso.textContent = "O leitor da Secretaria ainda não foi ligado. Os pedidos só aparecem aqui depois " +
-          "de instalar o leitor na conta " + (r.contaLeitor || "da Secretaria") + " (ver leitor-secretaria/README.md).";
+        caixaAviso.style.display = "";
+        el("vpeAvisoTexto").textContent = "O leitor da Secretaria ainda não foi ligado. Os pedidos só aparecem aqui " +
+          "depois de instalar o leitor na conta " + (r.contaLeitor || "da Secretaria") + ".";
+      } else if (!r.gatilhoInstalado) {
+        caixaAviso.style.display = "";
+        el("vpeAvisoTexto").textContent = "A leitura automática ainda não está ligada. Até lá, use o botão \"Ler agora\".";
+        if (r.podeLigarGatilho) el("vpeBtnGatilho").style.display = "";
       } else {
-        aviso.style.display = r.gatilhoInstalado ? "none" : "";
+        caixaAviso.style.display = "none";
       }
       desenharCards(); desenharLista();
     });
@@ -431,6 +437,16 @@ var VPE = (function () {
     });
   }
 
+  function ligarGatilho() {
+    var b = el("vpeBtnGatilho"); b.disabled = true;
+    rodar("instalarGatilhoVoucherPedidosEmail", [], function (r) {
+      b.disabled = false;
+      var ok = typeof r === "string" || (r && r.ok !== false);
+      aviso(typeof r === "string" ? r : (r.mensagem || "Pronto."), ok ? "ok" : "err");
+      carregar();
+    });
+  }
+
   function fechar() { el("vpeModal").classList.remove("aberto"); estado.atual = null; }
 
   /* UM ouvinte de clique para a tela inteira, por data-vpe. Sem onclick
@@ -438,7 +454,8 @@ var VPE = (function () {
      continua valendo para os botões que nascem depois. */
   var ACOES = { lerAgora: lerAgora, recolher: recolher, fechar: fechar, filtrar: filtrar, abrir: abrir,
                 verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
-                responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar };
+                responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
+                ligarGatilho: ligarGatilho };
   document.addEventListener("click", function (ev) {
     var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
     if (!alvo || alvo.disabled) return;

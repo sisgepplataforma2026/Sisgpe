@@ -735,13 +735,22 @@ function vpeChamarIA_(prompt, blocosAnexo) {
 
 var VPE_CONTA_LEITOR_PADRAO = "sindeducacaosecretaria@gmail.com";
 
+/* A PONTE CRIADA PELO configurarLeitor EM 21/10/2026, 11:53, na conta da
+   Secretaria. Fica no código para ninguém precisar abrir Propriedades do
+   script; a propriedade VOUCHER_PEDIDOS_PONTE_ID continua mandando quando
+   existir (por exemplo, uma ponte de teste). Não é segredo: quem não tem o
+   compartilhamento não abre a planilha. */
+var VPE_PONTE_ID_PADRAO = "1-bt2VsN1a4-ueCe66ilLPNRQhk4h0Qy_sGS_yTok810";
+
 function vpeContaLeitor_() {
   return PropertiesService.getScriptProperties().getProperty("VOUCHER_PEDIDOS_CONTA_LEITOR") ||
     VPE_CONTA_LEITOR_PADRAO;
 }
 
 function vpePonteId_() {
-  return PropertiesService.getScriptProperties().getProperty("VOUCHER_PEDIDOS_PONTE_ID") || "";
+  var p = PropertiesService.getScriptProperties().getProperty("VOUCHER_PEDIDOS_PONTE_ID");
+  if (p === "DESLIGADA") return "";
+  return p || VPE_PONTE_ID_PADRAO;
 }
 
 function vpePonte_() {
@@ -1246,7 +1255,8 @@ function voucherPedidosPainel(caixa, tokenSessao) {
       ok: true, caixa: alvo, caixas: permitidas, contagens: cont, itens: itens,
       ultimaLeitura: ultima ? Utilities.formatDate(new Date(ultima), "America/Sao_Paulo", "dd/MM HH:mm") : "",
       gatilhoInstalado: gatilho, periodosAbertos: vpePeriodosAbertos_(),
-      ponteConfigurada: !!vpePonteId_(), contaLeitor: vpeContaLeitor_()
+      ponteConfigurada: !!vpePonteId_(), contaLeitor: vpeContaLeitor_(),
+      podeLigarGatilho: String((sessao && sessao.perfil) || "").toUpperCase().indexOf("ADMIN") > -1
     };
   } catch (e) {
     return { ok: false, mensagem: e.message };
