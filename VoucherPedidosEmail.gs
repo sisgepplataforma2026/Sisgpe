@@ -31,13 +31,13 @@
 // que faltava, a mesma thread é relida inteira e o pedido é reavaliado —
 // sem a secretaria precisar juntar as duas mensagens na mão.
 //
-// DE QUAL CAIXA SE LÊ: da conta que executa o SISGEP (webapp executeAs
-// USER_DEPLOYING). A secretaria@ chega nela por importação POP da KingHost —
-// configuração do Gmail, sem código (PENDENTE-VERIFICACAO, item da caixa da
-// secretaria). Cada e-mail é separado pelo endereço de DESTINO: o que foi
-// enviado para a secretaria@ é da fila da Secretaria e é respondido como
-// Secretaria. E-mail que não é pedido de voucher não é tocado: não marca
-// lido, não arquiva, não responde.
+// DE ONDE SE LÊ: de NENHUMA caixa. Decisão do usuário em 21/10/2026 — "os
+// e-mails da secretaria não devem ser acessados pelo financeiro", e o SISGEP
+// roda na conta do Financeiro. A KingHost manda cópia da secretaria@ para um
+// Gmail SÓ da Secretaria; um leitor que roda NA CONTA DELA
+// (leitor-secretaria/, projeto separado) copia para a planilha-ponte apenas
+// as conversas que parecem pedido de voucher. Este arquivo lê a ponte, e as
+// respostas voltam pela fila da ponte para o leitor enviar como secretaria@.
 //
 // GATILHO: instalarGatilhoVoucherPedidosEmail(), uma vez, pelo editor.
 // ============================================================================
@@ -716,14 +716,118 @@ function vpeChamarIA_(prompt, blocosAnexo) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   6. A CAIXA
+   6. DE ONDE VÊM OS PEDIDOS — a planilha-ponte, NUNCA uma caixa de e-mail
+
+   DECISÃO DO USUÁRIO, 21/10/2026: "os e-mails da secretaria não devem ser
+   acessados pelo financeiro". O SISGEP roda na conta do Financeiro
+   (executeAs USER_DEPLOYING), então este arquivo NÃO usa GmailApp para
+   nada. Quem lê a caixa da Secretaria é o leitor que roda NA CONTA DELA
+   (leitor-secretaria/LeitorSecretaria.gs.txt, projeto separado), e ele só copia
+   para a ponte o que parece pedido de voucher.
+
+   A ponte é lida pelo mesmo formato que o resto do arquivo já usava —
+   conversa com getMessages(), mensagem com getAttachments() —, então a
+   conferência, os estados e as telas não mudaram com a troca de origem.
+
+   E AS RESPOSTAS: o SISGEP não envia. Deixa na aba Saida da ponte, e o
+   leitor responde na conversa do associado, como secretaria@.
 ═══════════════════════════════════════════════════════════════════════ */
 
+var VPE_CONTA_LEITOR_PADRAO = "sindeducacaosecretaria@gmail.com";
+
+function vpeContaLeitor_() {
+  return PropertiesService.getScriptProperties().getProperty("VOUCHER_PEDIDOS_CONTA_LEITOR") ||
+    VPE_CONTA_LEITOR_PADRAO;
+}
+
+function vpePonteId_() {
+  return PropertiesService.getScriptProperties().getProperty("VOUCHER_PEDIDOS_PONTE_ID") || "";
+}
+
+function vpePonte_() {
+  var id = vpePonteId_();
+  if (!id) throw new Error("A ponte da Secretaria não está configurada: rode configurarLeitor() na conta " +
+    "da Secretaria e grave o ID em VOUCHER_PEDIDOS_PONTE_ID.");
+  return SpreadsheetApp.openById(id);
+}
+
+function vpePonteAba_(nome) {
+  var sh = vpePonte_().getSheetByName(nome);
+  if (!sh) throw new Error("A ponte da Secretaria está sem a aba " + nome + ".");
+  return sh;
+}
+
+/** Anexo guardado pelo leitor no Drive, com a cara de um anexo do Gmail. */
+function vpeAnexoDaPonte_(a) {
+  var cache = null;
+  function blob() {
+    if (!cache) cache = a.fileId ? DriveApp.getFileById(String(a.fileId)).getBlob() : null;
+    return cache;
+  }
+  return {
+    getName: function () { return a.nome || "anexo"; },
+    getContentType: function () { return a.tipo || ""; },
+    /* Sem fileId (o leitor não guardou: grande demais), o tamanho fica acima
+       do teto e o anexo não vai para a IA — mas continua listado. */
+    getSize: function () { return a.fileId ? Number(a.tamanho || 0) : Number.MAX_SAFE_INTEGER; },
+    getBytes: function () { var b = blob(); return b ? b.getBytes() : []; },
+    copyBlob: function () { return blob(); }
+  };
+}
+
+function vpeMensagemDaPonte_(m, anexos) {
+  var proprios = anexos.filter(function (a) { return String(a.msgId) === String(m.id); })
+    .sort(function (x, y) { return Number(x.pos) - Number(y.pos); });
+  return {
+    getId: function () { return String(m.id); },
+    getFrom: function () { return m.de || ""; },
+    getReplyTo: function () { return m.replyTo || ""; },
+    getTo: function () { return m.para || ""; },
+    getCc: function () { return m.cc || ""; },
+    getSubject: function () { return m.assunto || ""; },
+    getPlainBody: function () { return m.corpo || ""; },
+    getDate: function () { return new Date(m.data); },
+    getAttachments: function () { return proprios.map(vpeAnexoDaPonte_); }
+  };
+}
+
+function vpeThreadDaPonte_(row) {
+  var msgs = vpeJson_(row.MENSAGENS_JSON, []) || [];
+  var anexos = vpeJson_(row.ANEXOS_JSON, []) || [];
+  return {
+    getId: function () { return String(row.THREAD_ID); },
+    getCaixa: function () { return String(row.CAIXA || "SECRETARIA"); },
+    getMessages: function () { return msgs.map(function (m) { return vpeMensagemDaPonte_(m, anexos); }); }
+  };
+}
+
+/** As conversas copiadas pelo leitor, mais recentes primeiro. */
+function vpeFonteConversas_() {
+  return vpeLinhas_(vpePonteAba_("Entrada"))
+    .sort(function (a, b) { return new Date(b.ATUALIZADO_EM).getTime() - new Date(a.ATUALIZADO_EM).getTime(); })
+    .map(vpeThreadDaPonte_);
+}
+
+function vpeFonteConversa_(threadId) {
+  var alvo = String(threadId || "");
+  var row = vpeLinhas_(vpePonteAba_("Entrada")).filter(function (r) { return String(r.THREAD_ID) === alvo; })[0];
+  return row ? vpeThreadDaPonte_(row) : null;
+}
+
+/** As respostas já postas na fila, por conversa — a mais recente por último. */
+function vpeEnviosPorConversa_() {
+  var porThread = {};
+  try {
+    vpeLinhas_(vpePonteAba_("Saida")).forEach(function (r) {
+      var t = String(r.THREAD_ID || "");
+      (porThread[t] = porThread[t] || []).push(r);
+    });
+  } catch (e) {}
+  return porThread;
+}
+
 function vpeEnderecosNossos_() {
-  var nossos = Object.keys(VPE_CAIXAS);
-  try { nossos.push(String(Session.getEffectiveUser().getEmail() || "").toLowerCase()); } catch (e) {}
-  try { GmailApp.getAliases().forEach(function (a) { nossos.push(String(a).toLowerCase()); }); } catch (e) {}
-  return nossos.filter(String);
+  return Object.keys(VPE_CAIXAS).concat([vpeContaLeitor_()]);
 }
 
 function vpeCaixaDe_(msg) {
@@ -796,7 +900,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
   reg = reg || { ID_PEDIDO: vpeNovoId_(), RECEBIDO_EM: primeira.getDate() };
   reg.THREAD_ID = thread.getId();
   reg.ULTIMA_MENSAGEM_ID = ultima.getId();
-  reg.CAIXA = reg.CAIXA || vpeCaixaDe_(primeira);
+  reg.CAIXA = reg.CAIXA || (thread.getCaixa ? thread.getCaixa() : vpeCaixaDe_(primeira));
   reg.REMETENTE_EMAIL = vpeEmailDe_(ultima.getReplyTo ? (ultima.getReplyTo() || ultima.getFrom()) : ultima.getFrom());
   reg.REMETENTE_NOME = vpeNomeDe_(ultima.getFrom());
   reg.ASSUNTO = primeira.getSubject() || "(sem assunto)";
@@ -886,7 +990,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
 }
 
 /**
- * Lê a caixa. Roda no gatilho e no botão "Ler agora".
+ * Lê a PONTE (o que o leitor da Secretaria copiou). Gatilho e "Ler agora".
  * @return {{lidas, novos, atualizados, ignorados, erros}}
  */
 function vpeLerCaixa_(opcoes) {
@@ -904,12 +1008,8 @@ function vpeLerCaixa_(opcoes) {
     vpeLinhas_(sh).forEach(function (x) { porThread[String(x.THREAD_ID)] = x; });
     var nossos = vpeEnderecosNossos_();
     var buscar = vpeCriarBuscaAssociado_();
-    /* Sem os avisos de devolução: o bounce cita o assunto do certificado e
-       passaria na peneira, gastando uma chamada de IA para nada. 100 conversas
-       porque, com a secretaria@ importada, a caixa recebe TODO o
-       administrativo — com 40 um pedido antigo podia ficar fora da janela. */
-    var threads = GmailApp.search(opcoes.consulta ||
-      ("in:inbox newer_than:" + dias + "d -from:mailer-daemon -from:postmaster"), 0, opcoes.max || 100);
+    if (!vpePonteId_()) { r.semPonte = true; return r; }
+    var threads = vpeFonteConversas_().slice(0, opcoes.max || 200);
 
     for (var i = 0; i < threads.length; i++) {
       if (Date.now() - inicio > limiteMs) { r.interrompido = true; break; }
@@ -938,7 +1038,8 @@ function vpeLerCaixa_(opcoes) {
            sem remetente — e-mail administrativo não é assunto deste módulo. */
         vpeGravar_({
           __linha: reg && reg.__linha, ID_PEDIDO: (reg && reg.ID_PEDIDO) || vpeNovoId_(),
-          THREAD_ID: th.getId(), ULTIMA_MENSAGEM_ID: ultima.getId(), CAIXA: vpeCaixaDe_(entrantes[0]),
+          THREAD_ID: th.getId(), ULTIMA_MENSAGEM_ID: ultima.getId(),
+          CAIXA: th.getCaixa ? th.getCaixa() : vpeCaixaDe_(entrantes[0]),
           RECEBIDO_EM: entrantes[0].getDate(), ATUALIZADO_EM: new Date(), ESTADO: VPE_ESTADOS.IGNORADO
         }, sh);
         r.ignorados++;
@@ -1024,27 +1125,38 @@ function vpeChecarDestinoAmbiente_(para) {
   }
 }
 
-function vpeResponderThread_(reg, htmlCorpo, anexos) {
+/**
+ * Põe a resposta na FILA da ponte. Quem envia é o leitor da Secretaria, na
+ * conversa do associado, como secretaria@ — o SISGEP não toca em caixa.
+ *
+ * @param {string[]} anexosIds  arquivos do Drive (só PDF). São compartilhados
+ *   com a conta do leitor, que precisa abri-los para anexar.
+ */
+function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem) {
   var para = String(reg.REMETENTE_EMAIL || "").trim();
   if (!para) throw new Error("O pedido não tem e-mail do remetente.");
   vpeChecarDestinoAmbiente_(para);
-  var msg = GmailApp.getMessageById(String(reg.ULTIMA_MENSAGEM_ID));
-  if (!msg) throw new Error("A mensagem original não foi encontrada na caixa.");
+  var html = htmlCorpo + vpeAssinaturaHtml_(reg.CAIXA);
+  /* Célula de planilha guarda até 50.000 caracteres. */
+  if (html.length > 49000) throw new Error("A resposta ficou grande demais para a fila (" + html.length + " caracteres).");
+  var sh = vpePonteAba_("Saida");
 
-  var caixaEnd = reg.CAIXA === "FINANCEIRO" ? "financeiro@sindeducacao.com" : "secretaria@sindeducacao.com";
-  var op = {
-    htmlBody: htmlCorpo + vpeAssinaturaHtml_(reg.CAIXA),
-    name: "SindEducação-ES",
-    replyTo: caixaEnd
-  };
-  /* `from` só quando a caixa é alias da conta executora — forçar um alias que
-     não existe faz o Gmail recusar o envio (lição dos ofícios, 02/09/2026). */
-  try {
-    var aliases = GmailApp.getAliases().map(function (a) { return String(a).toLowerCase(); });
-    if (aliases.indexOf(caixaEnd) > -1) op.from = caixaEnd;
-  } catch (e) {}
-  if (anexos && anexos.length) op.attachments = anexos;
-  msg.reply("", op);
+  var conta = vpeContaLeitor_();
+  (anexosIds || []).forEach(function (id) {
+    try { DriveApp.getFileById(String(id)).addViewer(conta); }
+    catch (e) { Logger.log("Não compartilhou " + id + " com " + conta + ": " + e.message); }
+  });
+
+  vpeGravar_({
+    ID: "ENV_" + Utilities.getUuid().replace(/-/g, "").slice(0, 20).toUpperCase(),
+    THREAD_ID: String(reg.THREAD_ID),
+    MENSAGEM_ID: String(reg.ULTIMA_MENSAGEM_ID),
+    HTML: html,
+    ANEXOS_FILE_IDS: (anexosIds || []).join(","),
+    STATUS: "PENDENTE",
+    CRIADO_EM: new Date(),
+    CRIADO_POR: String(quem || "")
+  }, sh);
   return para;
 }
 
@@ -1060,7 +1172,12 @@ function vpeCaixasDoUsuario_(sessao) {
   return ["SECRETARIA"];
 }
 
-function vpeResumoItem_(r) {
+function vpeRotuloEnvio_(st) {
+  return { PENDENTE: "na fila de envio", ENVIADO: "enviada", ERRO: "erro no envio",
+           RECUSADO: "envio recusado pelo leitor" }[String(st || "")] || String(st || "");
+}
+
+function vpeResumoItem_(r, envios) {
   var d = vpeJson_(r.DADOS_JSON, {});
   var c = d.campos || {};
   function v(k) { return c[k] ? String(c[k].valor || "") : ""; }
@@ -1081,6 +1198,11 @@ function vpeResumoItem_(r) {
     pendencias: pend.map(function (p) { return p.tipo + "|" + p.texto; }),
     protocolo: String(r.PROTOCOLO || ""),
     acao: String(r.ACAO || ""),
+    envio: (function () {
+      var lista = (envios || {})[String(r.THREAD_ID)] || [];
+      var u = lista[lista.length - 1];
+      return u ? { status: String(u.STATUS || ""), rotulo: vpeRotuloEnvio_(u.STATUS), detalhe: String(u.DETALHE || "") } : null;
+    })(),
     erro: String(r.ERRO || ""),
     recebidoEm: r.RECEBIDO_EM ? Utilities.formatDate(new Date(r.RECEBIDO_EM), "America/Sao_Paulo", "dd/MM HH:mm") : "",
     recebidoTs: r.RECEBIDO_EM ? new Date(r.RECEBIDO_EM).getTime() : 0
@@ -1096,6 +1218,7 @@ function voucherPedidosPainel(caixa, tokenSessao) {
 
     var cont = { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, CONCLUIDO_HOJE: 0 };
     var itens = [];
+    var envios = vpePonteId_() ? vpeEnviosPorConversa_() : {};
     vpeLinhas_().forEach(function (r) {
       if (String(r.CAIXA || "") !== alvo) return;
       var e = String(r.ESTADO || "");
@@ -1103,12 +1226,12 @@ function voucherPedidosPainel(caixa, tokenSessao) {
       if (e === VPE_ESTADOS.CONCLUIDO) {
         if (r.DECIDIDO_EM && Utilities.formatDate(new Date(r.DECIDIDO_EM), "America/Sao_Paulo", "yyyyMMdd") === hojeTxt) {
           cont.CONCLUIDO_HOJE++;
-          itens.push(vpeResumoItem_(r));
+          itens.push(vpeResumoItem_(r, envios));
         }
         return;
       }
       if (cont[e] !== undefined) cont[e]++;
-      itens.push(vpeResumoItem_(r));
+      itens.push(vpeResumoItem_(r, envios));
     });
     itens.sort(function (a, b) { return b.recebidoTs - a.recebidoTs; });
 
@@ -1122,7 +1245,8 @@ function voucherPedidosPainel(caixa, tokenSessao) {
     return {
       ok: true, caixa: alvo, caixas: permitidas, contagens: cont, itens: itens,
       ultimaLeitura: ultima ? Utilities.formatDate(new Date(ultima), "America/Sao_Paulo", "dd/MM HH:mm") : "",
-      gatilhoInstalado: gatilho, periodosAbertos: vpePeriodosAbertos_()
+      gatilhoInstalado: gatilho, periodosAbertos: vpePeriodosAbertos_(),
+      ponteConfigurada: !!vpePonteId_(), contaLeitor: vpeContaLeitor_()
     };
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -1133,12 +1257,13 @@ function voucherPedidosLerAgora(tokenSessao) {
   try {
     exigirModulo_(tokenSessao, "beneficios", false);
     var r = vpeLerCaixa_({});
-    if (r.ocupado) return { ok: false, mensagem: "A caixa já está sendo lida. Tente de novo em um minuto." };
+    if (r.ocupado) return { ok: false, mensagem: "A leitura já está rodando. Tente de novo em um minuto." };
+    if (r.semPonte) return { ok: false, mensagem: "A ponte da Secretaria ainda não foi ligada (VOUCHER_PEDIDOS_PONTE_ID)." };
     r.ok = true;
     r.mensagem = r.lidas
       ? (r.novos + " pedido(s) novo(s), " + r.atualizados + " atualizado(s), " + r.ignorados +
          " e-mail(s) que não são pedido de voucher" + (r.erros ? ", " + r.erros + " com erro" : "") + ".")
-      : "Nenhum e-mail novo na caixa.";
+      : "Nada novo copiado pelo leitor da Secretaria.";
     return r;
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -1161,25 +1286,34 @@ function voucherPedidosDetalhe(id, tokenSessao) {
     var d = vpeJson_(reg.DADOS_JSON, {});
     var mensagens = [];
     try {
-      var th = GmailApp.getThreadById(String(reg.THREAD_ID));
+      var th = vpeFonteConversa_(reg.THREAD_ID);
       if (th) {
-        var nossos = vpeEnderecosNossos_();
         th.getMessages().forEach(function (m) {
           mensagens.push({
-            de: m.getFrom() || "",
-            nossa: nossos.indexOf(vpeEmailDe_(m.getFrom())) > -1,
+            de: m.getFrom() || "", nossa: false, ts: m.getDate().getTime(),
             data: Utilities.formatDate(m.getDate(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm"),
             assunto: m.getSubject() || "",
             corpo: vpeSemCitacao_(m.getPlainBody()).substring(0, 4000)
           });
         });
       }
+      /* As nossas respostas vêm da fila, com a situação do envio. */
+      (vpeEnviosPorConversa_()[String(reg.THREAD_ID)] || []).forEach(function (e) {
+        var quando = new Date(e.PROCESSADO_EM || e.CRIADO_EM);
+        mensagens.push({
+          de: "Secretaria (" + vpeRotuloEnvio_(e.STATUS) + ")", nossa: true, ts: quando.getTime(),
+          data: Utilities.formatDate(quando, "America/Sao_Paulo", "dd/MM/yyyy HH:mm"),
+          assunto: "", corpo: String(e.HTML || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
+            .replace(/&nbsp;/g, " ").substring(0, 4000) + (e.DETALHE ? "\n\n[" + e.DETALHE + "]" : "")
+        });
+      });
+      mensagens.sort(function (a, b) { return a.ts - b.ts; });
     } catch (e) {
       mensagens.push({ de: "", data: "", assunto: "", corpo: "(não foi possível abrir a conversa: " + e.message + ")" });
     }
     return {
       ok: true,
-      item: vpeResumoItem_(reg),
+      item: vpeResumoItem_(reg, vpeEnviosPorConversa_()),
       assunto: String(reg.ASSUNTO || ""),
       campos: d.campos || {},
       percentual: d.percentual || null,
@@ -1216,7 +1350,7 @@ function voucherPedidosAnexo(id, indice, tokenSessao) {
 }
 
 function vpeBlobAnexo_(reg, info) {
-  var th = GmailApp.getThreadById(String(reg.THREAD_ID));
+  var th = vpeFonteConversa_(reg.THREAD_ID);
   if (!th) return null;
   var entrantes = vpeEntrantes_(th, vpeEnderecosNossos_());
   var m = entrantes[info.msg];
@@ -1297,8 +1431,8 @@ function voucherPedidosResponder(id, tipo, texto, tokenSessao) {
     texto = String(texto || "").trim();
     if (texto.length < 20) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
 
-    var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto));
     var quem = sessao.email || sessao.usuario || "";
+    var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto), [], quem);
     reg.ACAO = tipo === "SEDE" ? "ENCAMINHADO_SEDE" : "COMPLEMENTO_PEDIDO";
     reg.ESTADO = tipo === "SEDE" ? VPE_ESTADOS.CONCLUIDO : VPE_ESTADOS.AGUARDANDO;
     reg.DECIDIDO_POR = quem;
@@ -1308,7 +1442,7 @@ function voucherPedidosResponder(id, tipo, texto, tokenSessao) {
     vpeGravar_(reg);
     vpeAuditar_(reg.ACAO, reg, "Resposta enviada para " + para, sessao);
     return { ok: true, mensagem: (tipo === "SEDE" ? "Orientação para a sede" : "Pedido de complemento") +
-      " enviado para " + para + "." };
+      " para " + para + " na fila da Secretaria — sai em até 15 minutos." };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
@@ -1437,21 +1571,21 @@ function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
     var anexos = [];
     try {
       var idPdf = voucherIdDoLink_(pronto.linkPdf);
-      if (idPdf) anexos.push(DriveApp.getFileById(idPdf).getBlob());
+      if (idPdf) anexos.push(idPdf);
     } catch (e) { Logger.log("PDF não anexado (o link vai no corpo): " + e.message); }
 
     var para;
     try {
-      para = vpeResponderThread_(reg, voucherCorpoEmail_(pronto), anexos);
+      para = vpeResponderThread_(reg, voucherCorpoEmail_(pronto), anexos, quem);
     } catch (e) {
-      reg.ERRO = "Certificado " + protocolo + " emitido, mas o e-mail não saiu: " + e.message;
+      reg.ERRO = "Certificado " + protocolo + " emitido, mas a resposta não entrou na fila: " + e.message;
       vpeGravar_(reg);
       return { ok: false, protocolo: protocolo, mensagem: reg.ERRO };
     }
-    voucherRegistrarEnvio_(protocolo, "EMAIL", para + " (resposta ao pedido por e-mail)", sessao);
+    voucherRegistrarEnvio_(protocolo, "EMAIL", para + " (resposta ao pedido por e-mail, pela caixa da Secretaria)", sessao);
 
     reg.ESTADO = VPE_ESTADOS.CONCLUIDO;
-    reg.ACAO = "CERTIFICADO_ENVIADO";
+    reg.ACAO = "CERTIFICADO_NA_FILA";
     reg.DECIDIDO_POR = quem;
     reg.DECIDIDO_EM = new Date();
     reg.ERRO = "";
@@ -1459,7 +1593,8 @@ function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
     vpeAuditar_("VALIDAR_ENVIAR", reg, "Certificado " + protocolo + " enviado para " + para +
       (opcoes.forcar ? " — validado com pendência: " + opcoes.justificativa : ""), sessao);
     return { ok: true, protocolo: protocolo, comAnexo: anexos.length > 0,
-             mensagem: "Certificado " + protocolo + " emitido e enviado para " + para + "." };
+             mensagem: "Certificado " + protocolo + " emitido. A resposta para " + para +
+               " sai pela caixa da Secretaria em até 15 minutos." };
   } catch (e) {
     Logger.log("voucherPedidosValidarEnviar: " + e.message);
     return { ok: false, mensagem: e.message };

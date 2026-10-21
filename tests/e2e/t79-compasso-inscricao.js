@@ -346,9 +346,14 @@ ok(/rr\.reservadas = Math\.max\(0, Number\(rr\.reservadas \|\| 0\) - 1\)/.test(c
 /* ─── 5. lê a planilha do ambiente certo ─── */
 passo("de onde vêm os 8.000");
 
-const busca = corpoDe(insc, "compasso_buscarAssociado_");
+/* A ABERTURA DA PLANILHA MUDOU DE FUNÇÃO EM 15/09/2026, e a regra não mudou.
+   `compasso_buscarAssociado_` lia a base inteira a cada CPF; agora ela
+   consulta um índice que `compasso_indiceAssociados_` monta uma vez por
+   execução. Quem abre a planilha é o índice — e é lá que a exigência do
+   ambiente certo passa a valer. */
+const busca = corpoDe(insc, "compasso_indiceAssociados_");
 ok(/SpreadsheetApp\.openById\(getPlanilhaId\(\)\)/.test(busca),
-   "a busca usa getPlanilhaId()",
+   "quem monta o índice usa getPlanilhaId()",
    "buscarAssociadoPorCPF_ usa getActiveSpreadsheet, que num web app não " +
    "garante a planilha do ambiente — homologação leria a base real");
 

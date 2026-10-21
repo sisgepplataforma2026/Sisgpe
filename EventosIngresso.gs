@@ -53,6 +53,67 @@ function compasso_ingressoArteDataUri_() {
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
 }
 
+/**
+ * NOME DE GENTE SE ESCREVE COM MAIUSCULA SO NA PRIMEIRA LETRA — 15/09/2026.
+ *
+ * "Pode ajustar o nome, maiúscula somente na primeira letra, ajuste para
+ *  ficar bom."
+ *
+ * A base vem de planilha e de formulário, onde quase tudo está em caixa alta.
+ * MARCELHA ALINE PINTO GOMES em caixa alta não é só feio: ocupa mais espaço
+ * do que a mesma frase em caixa mista — as maiúsculas são todas largas, e não
+ * há letra baixa para o olho apoiar. Era isso que empurrava o nome para a
+ * terceira linha e fazia ele encostar na caixa da escola.
+ *
+ * As partículas ficam minúsculas porque é assim que se escreve nome em
+ * português: Maria DA Silva está errado, Maria da Silva está certo. Sem a
+ * lista, a "correção" trocaria um erro por outro.
+ *
+ * O que NÃO se toca: siglas de duas ou três letras em caixa alta continuam
+ * como estão — UVV é UVV, não Uvv. Escola tem muita sigla.
+ */
+var COMPASSO_PARTICULAS_NOME = ['da','de','di','do','das','dos','e','du','della'];
+
+/* As siglas que aparecem em nome de escola no cadastro do sindicato. Lista, e
+   não regra, porque nenhuma regra de forma separa UVV de VILA. */
+var COMPASSO_SIGLAS_NOME = ['UVV','UFES','IFES','EMEF','EMEI','EEEF','EEEM',
+  'CMEI','CEIM','ES','EJA','SESI','SENAI','SESC','APAE','CEEP','ETEC'];
+
+function compasso_nomeProprio_(texto) {
+  var t = String(texto == null ? '' : texto).trim();
+  if (!t) return '';
+  /* Nome já escrito em caixa mista se respeita: quem digitou "McDonald" ou
+     "d'Ávila" sabia o que estava fazendo. Só se reescreve o que veio todo em
+     caixa alta ou todo em minúscula, que é como sai de planilha e formulário. */
+  if (t !== t.toUpperCase() && t !== t.toLowerCase()) return t;
+
+  return t.split(/(\s+)/).map(function (palavra, i) {
+    if (/^\s+$/.test(palavra) || !palavra) return palavra;
+    var baixa = palavra.toLowerCase();
+
+    /* A ORDEM IMPORTA, e a primeira versão errou nela: a regra de sigla vinha
+       antes e engolia as partículas — "DA" tem duas letras e está em caixa
+       alta, então voltava como "DA". Partícula primeiro. */
+    if (i > 0 && COMPASSO_PARTICULAS_NOME.indexOf(baixa) > -1) return baixa;
+
+    /* SIGLA. Aqui a heurística não serve, e a primeira tentativa provou: eu
+       usei "sem vogal" para separar sigla de palavra, e UVV começa com U.
+       Não há regra de forma que distinga UVV de VILA — as duas têm quatro
+       letras ou menos e as duas chegam em caixa alta.
+       Então é LISTA, explícita e conferível, mais a regra de quem não tem
+       vogal nenhuma (CNPJ, SMS), que essa sim é segura. Sigla que faltar aqui
+       vira caixa mista, e o conserto é acrescentar uma palavra nesta linha. */
+    if (COMPASSO_SIGLAS_NOME.indexOf(palavra) > -1) return palavra;
+    if (palavra.length <= 4 && palavra === palavra.toUpperCase() &&
+        /^[A-Z]+$/.test(palavra) && !/[AEIOU]/.test(palavra)) return palavra;
+
+    /* Hífen e apóstrofo também começam palavra: Ana-Maria, D'Ávila. */
+    return baixa.replace(/(^|[-'\u2019])([a-z\u00e0-\u00ff])/g, function (m, antes, letra) {
+      return antes + letra.toUpperCase();
+    });
+  }).join('');
+}
+
 function compasso_categoriaLabel_(cat) {
   cat = String(cat || '').toLowerCase();
   if (cat === 'associado') return 'ASSOCIADO';
@@ -75,8 +136,8 @@ function compasso_ingressoDados(ingressoId, tokenSessao) {
   return {
     ingressoId: ingressoId,
     numero: ing.numero || '',
-    nome: ing.nome || '',
-    escola: ing.escola || '',
+    nome: compasso_nomeProprio_(ing.nome),
+    escola: compasso_nomeProprio_(ing.escola),
     categoria: compasso_categoriaLabel_(ing.categoria),
     status: ing.status || '',
     email: ing.email || '',

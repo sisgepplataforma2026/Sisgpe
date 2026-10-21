@@ -1311,6 +1311,31 @@ body { margin: 0; padding: 0; }
 .hist-enviado { background: #dbeafe; color: #1d4ed8; }
 .hist-confirmado { background: var(--green-lt); color: var(--green-dk); }
 .hist-pendente { background: var(--amber-lt); color: #92400e; }
+/* OS TRES QUE FALTAVAM - 10/09/2026. Sem eles, ERRO, FALHA_ENTREGA e
+   ERRO_PERMANENTE caiam todos no ambar de "pendente" pelo else do
+   badgeClass. O usuario viu ERRO_PERMANENTE pintado de pendente e disse que
+   a tela precisava estar no padrao: ambar promete espera, e encerrado e o
+   contrario de esperar - a fila nao volta a pegar aquele oficio sozinha.
+   O encerrado e o unico chip escuro da tabela, de proposito: ele para o olho. */
+.hist-erro      { background: #ffedd5; color: #9a3412; }
+.hist-falha     { background: var(--red-lt); color: #991b1b; }
+.hist-encerrado { background: #1e293b; color: #f8fafc; }
+
+/* AS OPCOES DO MODAL DE ALTERAR STATUS.
+   Cada uma e um alvo grande e clicavel com a consequencia escrita embaixo do
+   nome. O estado marcado vem de uma classe posta por JS, e nao de :has(): o
+   Apps Script serve a tela dentro de iframe e nao ha por que apostar o
+   feedback de selecao em seletor recente. */
+.hist-st-op { display:flex; align-items:flex-start; gap:10px; padding:10px 12px;
+  border:1.5px solid #e2e8f0; border-radius:12px; cursor:pointer;
+  transition:background .12s ease, border-color .12s ease; }
+.hist-st-op + .hist-st-op { margin-top:6px; }
+.hist-st-op:hover { background:#f8fafc; border-color:#cbd5e1; }
+.hist-st-op.sel { border-color: var(--blue, #1565C0); background:#eff6ff; }
+.hist-st-op input { margin-top:3px; flex:none; accent-color: var(--navy, #001f4d); }
+.hist-st-op-txt { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.hist-st-op-txt b { font-size:12.5px; font-weight:700; color:#1e293b; }
+.hist-st-op-txt i { font-style:normal; font-size:11.5px; color:#64748b; line-height:1.45; }
 .of-table-empty { padding: 36px; text-align: center; color: var(--g400); font-size: 13px; font-weight: 500; }
 
 /* ════════════════════════════════════════

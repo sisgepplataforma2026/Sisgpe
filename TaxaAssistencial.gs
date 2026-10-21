@@ -278,6 +278,33 @@ function enviarOficioTaxaAssistencialPRO_(params) {
       detalhesErros.push(nomeEscola + ": Nenhum e-mail válido."); erros++; continue;
     }
 
+    /* ESCOLA QUE NAO CABE NO LOTE NAO COMECA — 11/09/2026.
+
+       O laco tinha `break` por limite DENTRO do envio de cada endereco. Escola
+       com dois e-mails que pegava a virada mandava para o primeiro e parava no
+       segundo — e o status ficava PENDENTE, porque a escrita do veredito era
+       condicional e nao cobria esse caso (ver o bloco de status mais abaixo).
+       PENDENTE significa "nunca recebeu": no lote seguinte a escola inteira
+       saia de novo, e o primeiro endereco recebia o MESMO numero de oficio
+       duas vezes.
+
+       Reproduzido no emulador: fila de 3 enderecos, limite virando no meio da
+       primeira escola, resultado 4 envios — `alfa1@` duas vezes. E a mensagem
+       da rodada dizia "Restam 2 escola(s) pendente(s)", contando como se nada
+       tivesse saido para ela.
+
+       Conferir o orcamento ANTES de comecar a escola resolve na origem: ou ela
+       sai inteira, ou nao sai nada e a linha continua PENDENTE com verdade. A
+       checagem vem antes do gerarPDFUniversal_ de proposito — escola adiada
+       nao gasta copia de Docs nem arquivo no Drive.
+
+       A guarda `emailsEnviadosHora > 0` existe para o caso extremo: escola com
+       mais enderecos que o lote inteiro nunca caberia, e sem ela a campanha
+       travaria para sempre nessa linha. Com ela, a escola comeca no lote limpo
+       e o veredito abaixo registra o que aconteceu. */
+    if (emailsEnviadosHora > 0 &&
+        (emailsEnviadosHora + listaEmails.length) > LIMITE_EMAILS_HORA) break;
+
     var pdfBlob = null;
     try {
       var corpoEscola = corpoPersonalizado
@@ -347,9 +374,32 @@ function enviarOficioTaxaAssistencialPRO_(params) {
       }
     }
 
-    if      (enviadosEscola === listaEmails.length)         shFila.getRange(linhaReal, 5, 1, 3).setValues([["ENVIADO", "", new Date()]]);
-    else if (enviadosEscola > 0 && errosEscola.length > 0)  shFila.getRange(linhaReal, 5, 1, 3).setValues([["ERRO", "Envio parcial. " + errosEscola.join(" | "), new Date()]]);
-    else if (errosEscola.length > 0)                         shFila.getRange(linhaReal, 5, 1, 3).setValues([["ERRO", errosEscola.join(" | "), new Date()]]);
+    /* TODA LINHA QUE O LACO TOCOU SAI COM VEREDITO ESCRITO.
+
+       A versao anterior era uma cadeia de tres `if` SEM `else`. O quarto caso
+       — enviou parte, sem erro nenhum — nao casava com nenhum deles e a linha
+       ficava como estava: PENDENTE. Silencio aqui nao e ausencia de decisao, e
+       uma decisao errada, porque PENDENTE quer dizer "nunca recebeu" e faz o
+       proximo lote reenviar tudo.
+
+       O residual grava ERRO, nao PENDENTE: a fila automatica so pega PENDENTE
+       e ERRO — mas o reenvio de ERRO passa por gente (reenviarFalhasTaxa-
+       Assistencial), que e quem consegue olhar quais enderecos ja receberam.
+       Devolver para PENDENTE seria reintroduzir a duplicidade. */
+    var statusEscola, notaEscola;
+    if (enviadosEscola === listaEmails.length) {
+      statusEscola = "ENVIADO";
+      notaEscola   = "";
+    } else if (errosEscola.length > 0) {
+      statusEscola = "ERRO";
+      notaEscola   = (enviadosEscola > 0 ? "Envio parcial. " : "") + errosEscola.join(" | ");
+    } else {
+      statusEscola = "ERRO";
+      notaEscola   = "Envio parcial: " + enviadosEscola + " de " + listaEmails.length +
+        " endereco(s) receberam. O limite do lote virou no meio desta escola. " +
+        "Confira quais ja receberam antes de reenviar — o numero do oficio e o mesmo.";
+    }
+    shFila.getRange(linhaReal, 5, 1, 3).setValues([[statusEscola, notaEscola, new Date()]]);
   }
 
   var pendentes = contarPendentesFilaTaxaAssistencial_();

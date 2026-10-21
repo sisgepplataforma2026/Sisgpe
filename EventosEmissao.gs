@@ -542,6 +542,24 @@ function emissao_cancelarIngresso(id, tokenSessao) {
         ultimoNumero: c.ultimoNumero
       });
     }
+
+    /* A VAGA DA INSCRICAO. Este caminho nem tocava na inscricao: baixava o
+       contador de ingressos e ia embora, deixando a cadeira ocupada aos olhos
+       da pagina publica e o CPF preso no indice de duplicidade. */
+    if (!jaUsou && ing.inscricaoId) {
+      try {
+        var insV1 = fs_get_('inscricoesEventos', ing.inscricaoId);
+        if (insV1) {
+          insV1.ingressoStatus = 'CANCELADO';
+          insV1.ingressoCanceladoEm = new Date();
+          compasso_liberarReservaDaInscricao_(insV1, 'CANCELADA');
+          fs_set_('inscricoesEventos', ing.inscricaoId, insV1);
+        }
+      } catch (e) {
+        Logger.log('emissao_cancelarIngresso: vaga da inscricao nao liberada — ' + (e.message || e));
+      }
+    }
+
     return { ok: true, id: id, avisoJaEntrou: jaUsou };
   } finally {
     lock.releaseLock();

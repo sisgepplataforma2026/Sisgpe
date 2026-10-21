@@ -228,7 +228,7 @@ function gerarHtmlOficioDocumentacaoFiscal_(params, isPreview) {
     + '</div>';
 
   var textoOficio = "Prezados(as) Senhores(as),\n\n"
-    + "O SindEducação/ES — Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular "
+    + "O SindEducação-ES — Sindicato dos Educadores Técnico-Administrativos em Estabelecimentos de Ensino Particular "
     + "no Estado do Espírito Santo — encaminha, para fins de conferência, registro e processamento contábil, "
     + descricao.replace(/\.$/, "") + " devidamente registradas nos controles internos desta entidade.\n\n"
     + "Solicitamos a conferência dos documentos relacionados e sua incorporação aos registros contábeis do período correspondente.\n\n"

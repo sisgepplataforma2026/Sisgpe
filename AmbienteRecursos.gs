@@ -89,6 +89,50 @@ var RECURSOS_AMBIENTE = {
     rotulo:      "Documentos anexados ao voucher/bolsa",
     producao:    "1PyMA0bm0FZuyYONlY4dNNo3pgJRiI63n",
     homologacao: "1sNj2mcvuS8Cl7nojHMmdlIFyVZProPDu"
+  },
+
+  /* Acervo dos ingressos da Festa Compasso da Vida 2026 — 09/09/2026.
+     IDs informados pelo usuário: as pastas INGRESSOS_FESTA_PRODUCAO e
+     INGRESSOS_FESTA_HOMOLOGACAO que ele criou no Drive do sindicato.
+     Copiados dos links que ele mandou, não redigitados — ver a nota do
+     cabeçalho sobre `I` e `l`.
+
+     A separação aqui é o que impede o ensaio de homologação gravar ingresso
+     de teste no meio dos 2.000 de verdade. Ver EventosArquivoIngresso.gs. */
+  INGRESSOS_FESTA: {
+    rotulo:      "Ingressos emitidos — Festa Compasso da Vida 2026",
+    producao:    "1bNDz0F3VoKbYmU8YyfzEvbXgStWCHdOs",
+    homologacao: "1fK5Kdi8-Fk339iQSv2YUWbdXjm8f2UMa"
+  },
+
+  /* NASCEU SEM ID, E AGORA TEM — 16/09/2026.
+
+     A nota anterior dizia que a linha ficava vazia de propósito: Declarações
+     foi o primeiro recurso criado depois desta tabela existir, e preencher
+     por conta própria significaria escolher uma pasta do Drive em nome do
+     sindicato. Continuo achando que era a decisão certa naquele dia.
+
+     O QUE MUDOU: o usuário autorizou a criação das duas pastas, uma por
+     ambiente, e elas existem. Registrar o ID aqui não é mais escolher por
+     ele — é anotar o que ele mandou criar.
+
+     E ISSO IMPORTA MAIS DO QUE PARECE. Enquanto a linha esteve vazia, a
+     produção recebeu o módulo sem a Script Property configurada: a emissão
+     falhava dizendo o que faltava, e a tela engolia a mensagem. O usuário
+     passou duas rodadas achando que o sistema tinha travado. Configuração
+     que mora só na Script Property é configuração que alguém esquece de
+     levar na promoção — no código ela viaja junto.
+
+     A Script Property SISGEP_PASTA_DECLARACOES continua valendo e continua
+     tendo precedência, para apontar a homologação a uma pasta descartável
+     durante um teste sem mexer em código.
+
+     IDs copiados dos links do Drive, não redigitados — ver a nota do
+     cabeçalho sobre `I` e `l`. */
+  DECLARACOES: {
+    rotulo:      "Declarações emitidas (pasta raiz, subpasta por ano)",
+    producao:    "1CWfhJ8s-qV21hnOO4va2LyUVnl5fHkpt",
+    homologacao: "1JlTnNi6yoLHKJo4xKZTh_L7WC5Ntt8Zk"
   }
 };
 

@@ -131,3 +131,49 @@ gravado, essa informação não existe em lugar nenhum.
 
 `design/` — as telas medidas nos valores reais do design system, aprovadas
 pelo usuário em 25/08/2026.
+
+## O ingresso do Compasso 2026 muda de forma — 21/09/2026
+
+**"Não será mais esse ingresso"** — decisão do usuário, apontando o bilhete
+deitado com canhoto (`Compasso_2026_Arte_Base_Oficial.jpg`).
+
+O que passa a valer:
+
+| | Quem faz |
+|---|---|
+| Emitir o ingresso e dar o número | plataforma de bilheteria (Blueticket) |
+| Ler na portaria e contar entrada | aplicativo da bilheteria |
+| Desenhar o cartão do associado | SISGEP (`EventosCartaoExterno.gs`) |
+| Enviar ao associado | SISGEP, pelo WhatsApp |
+
+A razão está no cabeçalho de `EventosCartaoExterno.gs` e é curta: o
+aplicativo deles já foi testado em festa de verdade, e o SISGEP não pode
+virar ponto único de falha na noite do evento. Se o módulo inteiro parar na
+véspera, a secretaria imprime o PDF da bilheteria e a festa acontece igual.
+
+### Três consequências, e nenhuma é detalhe
+
+**1. O canhoto do sorteio deixa de existir no que o associado recebe** — e o
+sorteio **não será pelo SISGEP**. O bilhete grande trazia "deposite este
+canhoto na urna para participar dos sorteios"; o cartão não tem canhoto (o
+usuário mandou tirar em 19/09), e em 21/09 ele fechou a questão: *"o sorteio
+não será pelo SISGEP"*.
+
+Ponta encerrada, então — mas fica registrado o que foi descartado, para
+ninguém reabrir achando que é esquecimento: chegou a ser desenhado um sorteio
+que tirava da lista de quem entrou (importada do aplicativo da bilheteria) ou,
+se ela não existisse, de uma urna digital por QR no telão. Nada disso foi
+implementado, e não há código a remover.
+
+**2. A emissão própria do SISGEP fica sem uso — e NÃO foi removida.**
+`compasso_ingressoPdf_` (EventosEntrega.gs), `EventosIngressoTemplate.html`,
+`EventosArquivoIngresso.gs` e `EventosIngresso.gs` continuam onde estão, e
+ninguém os apagou. Pela REGRA Nº 1, o veredito aqui é **"sem uso previsto
+para 2026"**, não "morto": a decisão vale para este evento e pode ser
+revista no próximo, e as medidas de campo acertadas em 14 e 15/09 levariam
+dias para serem refeitas. Remoção, se um dia for pedida, em commit separado.
+
+**3. O que a bilheteria emitir é a verdade.** Número, cancelamento e entrada
+passam a ser de lá. O SISGEP guarda o número para desenhar o cartão e
+registrar que enviou — e nada mais. Qualquer funcionalidade nova que queira
+"marcar como usado" aqui está criando uma segunda verdade sobre quem entrou.

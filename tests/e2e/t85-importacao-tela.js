@@ -360,10 +360,15 @@ ok(c.naoUsadas.some(x => /Matr/i.test(x.titulo)),
    ───────────────────────────────────────────────────────────────────────*/
 passo("o passo 4, o único que grava");
 
+/* O LACO SAIU DA PORTA E VIROU FAIXA — 15/09/2026. `compassoImp_importar`
+   continua com a mesma assinatura e o mesmo resultado, mas o trabalho mora em
+   `compassoImp_rodarFaixa_`, que a porta de lotes tambem usa. Entao a faixa
+   e montada aqui com as MESMAS pecas e entregue como dependencia — assim este
+   arquivo continua medindo o caminho inteiro, e nao meia porta. */
 function importar(limite, mapaManual, gridUsado) {
   const criadas = [];
   const auditado = [];
-  const r = fn(tela, "compassoImp_importar", {
+  const pecas = {
     exigirAdminOuSessao_: () => "",
     compasso_assertHomologacao_: () => {},
     compasso_importarMapear_: mapear,
@@ -373,7 +378,11 @@ function importar(limite, mapaManual, gridUsado) {
     compassoImp_abrir_: () => ({ grid: gridUsado || GRID, nomeAba: "Inscritos", abas: ["Inscritos"] }),
     compasso_criarInscricaoAssociado_publica_: p => { criadas.push(p); return { ok: true }; },
     compasso_auditar_: (a, t, i, extra) => auditado.push({ a, extra })
-  })({ base64: "x", nome: "a.xlsx" }, "Inscritos", limite, mapaManual, "");
+  };
+  const rodarFaixa = fn(tela, "compassoImp_rodarFaixa_", pecas);
+  const r = fn(tela, "compassoImp_importar",
+    Object.assign({ compassoImp_rodarFaixa_: rodarFaixa }, pecas)
+  )({ base64: "x", nome: "a.xlsx" }, "Inscritos", limite, mapaManual, "");
   return { r, criadas, auditado };
 }
 

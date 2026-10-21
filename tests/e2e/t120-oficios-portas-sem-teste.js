@@ -181,4 +181,34 @@ b.naoTestavel(
   "47 registra que a frente A não terminou"
 );
 
+b.fluxo("MÓDULO 03 · o preview do e-mail é o e-mail de verdade");
+/* Até 15/09/2026 o preview do modal de envio era redigido de novo no
+   JavaScript da tela: duas versões da mesma mensagem, envelhecendo
+   separadas. Mudar a cláusula da CCT no servidor e esquecer da tela fazia o
+   preview mostrar um texto que o envio não usaria. */
+const prev = g.oficioPreviaEmail({ numero: "040/" + ANO, tipo: "Filiação", quantidade: 1 }, ADMIN);
+b.ok(prev.ok && !!prev.html, "a porta responde com o e-mail montado");
+b.ok(prev.assunto === "Ofício de Filiação Nº 040/" + ANO, "com o assunto do envio", prev.assunto);
+
+/* A PROVA QUE IMPORTA: byte a byte igual ao que o envio monta. */
+const doEnvio = g.montarEmailHTML_("Ofício de Filiação", "040/" + ANO, "Filiação", 1, "");
+b.ok(prev.html === doEnvio, "e o corpo é IDÊNTICO ao que montarEmailHTML_ entrega ao envio");
+
+b.ok(/Cláusula 56/.test(prev.html), "o texto de Filiação traz a cláusula da CCT");
+b.ok(/Taxa Negocial/.test(g.oficioPreviaEmail({ numero: "9/" + ANO, tipo: "Taxa Negocial" }, ADMIN).html),
+  "e cada tipo devolve o seu próprio texto");
+b.ok(g.oficioPreviaEmail({ tipo: "Filiação" }, ADMIN).ok === false, "sem número, recusa");
+b.ok(g.oficioPreviaEmail({ numero: "1/" + ANO, tipo: "Tipo Inventado" }, ADMIN).ok === false,
+  "tipo inválido não monta e-mail nenhum");
+
+/* Texto do Ofício Livre é escapado, como no envio — a tela não injeta HTML. */
+const livre = g.oficioPreviaEmail({
+  numero: "10/" + ANO, tipo: "Ofício Livre",
+  textoPrincipal: '<img src=x onerror="alert(1)">'
+}, ADMIN);
+b.ok(livre.ok && !/<img src=x/.test(livre.html), "texto digitado é escapado antes de virar e-mail");
+
+b.bloqueia(() => g.oficioPreviaEmail({ numero: "040/" + ANO, tipo: "Filiação" }, SEM_DOCS),
+  "usuário sem Documentos não vê o preview");
+
 b.resumo();

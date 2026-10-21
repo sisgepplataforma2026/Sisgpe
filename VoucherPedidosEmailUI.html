@@ -202,7 +202,14 @@ var VPE = (function () {
       el("vpeSub").innerHTML = "Semestres abertos: <b>" + esc((r.periodosAbertos || []).join(" e ")) + "</b>" +
         " · Última leitura: " + esc(r.ultimaLeitura || "nenhuma ainda") +
         (r.gatilhoInstalado ? " · leitura automática a cada 15 min" : "");
-      el("vpeAvisoGatilho").style.display = r.gatilhoInstalado ? "none" : "";
+      var aviso = el("vpeAvisoGatilho");
+      if (!r.ponteConfigurada) {
+        aviso.style.display = "";
+        aviso.textContent = "O leitor da Secretaria ainda não foi ligado. Os pedidos só aparecem aqui depois " +
+          "de instalar o leitor na conta " + (r.contaLeitor || "da Secretaria") + " (ver leitor-secretaria/README.md).";
+      } else {
+        aviso.style.display = r.gatilhoInstalado ? "none" : "";
+      }
       desenharCards(); desenharLista();
     });
   }
@@ -236,6 +243,8 @@ var VPE = (function () {
       }).join("");
       if (i.erro) chips += "<span class='vpe-chip ERRO'>" + esc(i.erro) + "</span>";
       if (i.protocolo) chips += "<span class='vpe-chip'>Protocolo " + esc(i.protocolo) + "</span>";
+      if (i.envio) chips += "<span class='vpe-chip " + (i.envio.status === "ENVIADO" ? "" : i.envio.status === "PENDENTE" ? "INTERNO" : "ERRO") +
+        "'>Resposta: " + esc(i.envio.rotulo) + (i.envio.detalhe ? " — " + esc(i.envio.detalhe) : "") + "</span>";
       return "<div class='vpe-item'><div><div class='vpe-item-nome'>" + r[0] + " " + esc(i.nome || i.remetente) +
         "</div><div class='vpe-item-meta'>" + meta + " · " + esc(i.remetente) + "</div><div class='vpe-chips'>" + chips +
         "</div></div><button type='button' class='btn btn-navy' data-vpe='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></div>";

@@ -111,6 +111,14 @@ var TEMPLATES = {
   FILIACAO: "1TzI9RheOqO1tnsq9hDwrIFxHv3CB9jGpA3EpMhWKKRM",
   DESFILIACAO: "1T9vo_-4zB-j5uShElpCZqcKzmVqSGp10OsJyr6T4rUE",
   TAXA: "1flP0xsAaTjhACQWzlroM8RGmRtsMHCORmXU27J39AAA",
+  /* CAMPANHA INFORMATIVA DE TAXA NEGOCIAL — documento PROPRIO.
+     Vazio de proposito ate existir. O TEMPLATES.TAXA acima e o oficio de
+     OPOSICAO (pede para NAO descontar, e lista pessoas em {{COLABORADORES}});
+     a campanha informa a escola de que ela DEVE recolher. Apontar a campanha
+     para aquele Doc foi o que fez o oficio 524/2026 sair dizendo o contrario
+     do que a campanha existe para dizer. Enquanto esta constante estiver
+     vazia, liberar e testar recusam — ver ComunicacaoTaxaNegocial.gs. */
+  TAXA_NEGOCIAL_CAMPANHA: "1LcEvGXUtdDw0JwOkJYykZ68v2qzzbPyqEOlqxst5byM",
   RECIBO: "1sfpKSySoY1kRWSIuVh819Qqjb7c1o_LepVSs2Cdtcuo",
   LIVRE: "11W2FEgT4gPkCxkuQnhkbJpKd2NFIX_XI",
   TAXA_ASSISTENCIAL: "1Awpat0OhOSadMYni7696JVLGXU40dP6mCwBpWXoqJgs",
@@ -329,7 +337,21 @@ function getAmbienteAtual(forcarLeitura) {
   try {
     var props = PropertiesService.getScriptProperties();
     var ambiente = props.getProperty(cfgAmbiente.PROPRIEDADE_CHAVE);
-    var resultado = ambiente === "homologacao" ? "homologacao" : "producao";
+
+    /* NORMALIZA ANTES DE COMPARAR — 09/09/2026.
+       A comparação era `ambiente === "homologacao"`, crua. Então "HOMOLOGACAO",
+       "Homologacao" e " homologacao" com um espaço colado resolviam para
+       PRODUÇÃO, calados. E o silêncio era total: a trava do AmbienteRecursos.gs
+       só dispara quando o ambiente É homologação, então ela não pegaria — a
+       homologação gravaria na pasta de produção sem nada avisar, que é
+       exatamente o defeito que aquele arquivo existe para impedir.
+       Achado ao montar o acervo de ingressos da festa: quatro testes do próprio
+       repositório declaravam "HOMOLOGACAO" em maiúsculas e vinham rodando como
+       produção há semanas, dizendo que testavam homologação.
+       O que NÃO muda: valor desconhecido continua caindo em produção. É a
+       convenção do sistema (t149) — homologação se declara. */
+    var normalizado = String(ambiente || "").trim().toLowerCase();
+    var resultado = normalizado === "homologacao" ? "homologacao" : "producao";
     getAmbienteAtual._cache = resultado;
     return resultado;
   } catch (e) {

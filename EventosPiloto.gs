@@ -115,10 +115,21 @@ function diagnosticoPilotoCompasso_() {
         'O piloto ainda roda — só não vai preencher pelo CPF.');
 
   /* 5. cota de e-mail — o piloto manda um de verdade */
+  /* ESTE NÚMERO NÃO PREVÊ A FALHA DE ENVIO — descoberto no ar em 09/09/2026.
+     Às 11:53 ele disse "96 restantes". Às 11:56 o envio falhou com
+     "Service invoked too many times for one day: gmail". Os dois estão certos:
+     getRemainingDailyQuota conta DESTINATÁRIOS, e o que estourou foi o limite
+     de CHAMADAS ao serviço Gmail — outro contador, consumido também por quem
+     só LÊ a caixa, como o gatilho de monitoramento de ofícios de 3 em 3 horas.
+     Medimos um e gastamos os dois. Dizer isso na cara evita que alguém leia o
+     ✅ e conclua que o e-mail vai sair. */
   var cota = -1;
   try { cota = MailApp.getRemainingDailyQuota(); } catch (e) {}
-  linha('Cota de e-mail', cota >= 0 ? cota + ' restante(s) hoje' : 'não foi possível ler',
+  linha('Cota de e-mail', cota >= 0 ? cota + ' destinatário(s) hoje' : 'não foi possível ler',
         cota > 0, 'A cota diária de e-mail acabou. O piloto roda, mas o e-mail não sai.');
+  L.push('       ⚠️  este número conta DESTINATÁRIOS. Existe um segundo limite,');
+  L.push('           o de chamadas ao serviço Gmail, que NÃO aparece aqui e que');
+  L.push('           já derrubou envio com este mostrador em 96 (09/09/2026).');
 
   /* 6. arte do ingresso — opcional em modo teste */
   var arte = compasso_statusArteBase();
@@ -132,6 +143,18 @@ function diagnosticoPilotoCompasso_() {
   linha('Inscrições', cfg.aberta ? 'ABERTAS · ' + cfg.vagas.restantes + ' vagas'
                                  : 'fechadas — ' + cfg.motivoFechada, cfg.aberta,
         'Inscrições fechadas: a tela pública vai mostrar o aviso em vez do formulário.');
+
+  /* 8. pasta do acervo — onde o ingresso emitido fica gravado (09/09/2026).
+     A trava de AmbienteRecursos.gs bloqueia gravação quando a homologação cai
+     na pasta de produção; se o bloqueio existir, é aqui que ele aparece ANTES
+     de alguém emitir 2.000 ingressos e descobrir na pasta errada. */
+  var acervo = compasso_diagnosticoAcervo_();
+  linha('Pasta dos ingressos', acervo.ok ? acervo.pasta + ' (' + acervo.pastaId + ')'
+                                         : acervo.erro, acervo.ok,
+        'A pasta do acervo não resolve neste ambiente. O ingresso continua sendo ' +
+        'emitido, mas NÃO fica gravado em arquivo — e a entrega de novembro ' +
+        'depende dele. Corrija em RECURSOS_AMBIENTE.INGRESSOS_FESTA ou na ' +
+        'Script Property SISGEP_PASTA_INGRESSOS_FESTA.');
 
   var base = '';
   try { base = getSistemaUrlBase() || ScriptApp.getService().getUrl(); }

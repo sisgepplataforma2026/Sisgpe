@@ -160,6 +160,89 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    /* ── A PORTARIA, POR URL — 09/09/2026 ──────────────────────────────────
+       A tela de leitura de QR (EventosPortaria.html) existia e funcionava, mas
+       o ÚNICO jeito de abri-la era `abrirPainelCheckinCompasso`, que a mostra
+       como caixa de diálogo DENTRO da planilha (`SpreadsheetApp.getUi()`).
+
+       Isso não serve para a porta. Quem vai conferir ingresso na entrada
+       precisa de um endereço para abrir no aparelho — não de "abra a planilha,
+       ache o menu, e espere a câmera funcionar dentro de um diálogo". Pior:
+       `getUi()` só existe no contexto da planilha; pelo app publicado a função
+       nem roda.
+
+       Achado quando o usuário testou o QR em 09/09 e disse: "a câmera
+       reconhece o QR code mas não acontece nada". Não era o QR — era não haver
+       para onde levá-lo.
+
+       Mesma trava do painel de check-in logo abaixo: sem sessão válida, cai no
+       Login. O token vem na URL porque é assim que os outros painéis fazem. */
+    /* ── CARTÕES DE INGRESSO, POR URL ─────────────────────────────────────
+       A tela que vira ingresso de bilheteria em cartão do SISGEP. Mesma
+       trava dos outros painéis: sem sessão válida, cai no Login.
+
+       O token vai INJETADO, não lido da URL: dentro do sandbox do Apps
+       Script a página roda num iframe interno com endereço próprio, e
+       `location.search` ali é sempre vazio — foi o que derrubou a portaria
+       em 15/09/2026. */
+    if (p.painel === "cartoes") {
+      var tokenCartoes = String(p.sessao || "").trim();
+      var sessaoCartoes = getSessaoUsuario(tokenCartoes);
+      if (!sessaoCartoes) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      var tCartoes = HtmlService.createTemplateFromFile("EventosCartaoBlueticket");
+      tCartoes.tokenSessao = sessaoCartoes.token;
+      return tCartoes.evaluate()
+        .setTitle("Cartões de ingresso — SISGEP")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
+    if (p.painel === "portaria") {
+      var tokenPortaria = String(p.sessao || "").trim();
+      var sessaoPortaria = getSessaoUsuario(tokenPortaria);
+      if (!sessaoPortaria) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      /* O TOKEN VAI INJETADO, NÃO LIDO DA URL — 15/09/2026.
+         Ele abriu a portaria no celular e leu "Sem sessão". Não era o link:
+         dentro do sandbox do Apps Script a página roda num iframe interno com
+         endereço próprio, e `location.search` ali é SEMPRE vazio. Nenhum link
+         de painel com `&sessao=` jamais entregou token a ninguém — os outros
+         painéis não quebraram porque, abertos por dentro do portal, caem no
+         token que o `index` injeta.
+         Aqui a sessão já foi conferida duas linhas acima; ela desce para a
+         página como template, e a leitura da URL fica só de reserva. */
+      var tPortaria = HtmlService.createTemplateFromFile("EventosPortaria");
+      tPortaria.tokenSessao = sessaoPortaria.token;
+      return tPortaria.evaluate()
+        .setTitle("Portaria — Compasso da Vida")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+    /* ── O REGISTRO DE ENTRADA, POR URL — 15/09/2026 ──────────────────────
+       "Preciso ver como vai ficar o registro do ingresso lido."
+       A portaria mostra a leitura por 2,5 segundos e esquece. Esta tela é a
+       memória: quem entrou, quando, por qual aparelho, e quem foi barrado e
+       por quê. Fica no computador da secretaria durante a festa, enquanto a
+       portaria fica no celular da porta — são duas pessoas e dois aparelhos,
+       por isso são dois endereços. */
+    if (p.painel === "credenciamento") {
+      var tokenCred = String(p.sessao || "").trim();
+      var sessaoCred = getSessaoUsuario(tokenCred);
+      if (!sessaoCred) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      exigirModulo_(tokenCred, "eventos", false);
+      /* Token injetado, pelo mesmo motivo da portaria: location.search dentro
+         do sandbox é vazio. Esta tela nasceu hoje com o mesmo defeito, e só
+         não apareceu porque ninguém a abriu antes da portaria. */
+      var tCred = HtmlService.createTemplateFromFile("CompassoCredenciamento");
+      tCred.tokenSessao = sessaoCred.token;
+      return tCred.evaluate()
+        .setTitle("Quem já entrou — Compasso da Vida 2026")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    }
+
     if (p.painel === "checkin") {
       var tokenCheckin = String(p.sessao || "").trim();
       var sessaoCheckin = getSessaoUsuario(tokenCheckin);
@@ -314,13 +397,25 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   } catch (erro) {
-    Logger.log("Erro no doGet SISGEP: " + erro);
+    /* O RASTRO FICA NO LOG, NÃO NA TELA — 15/09/2026.
+       Esta página imprimia o stack trace inteiro. Enquanto o app abria só para
+       o dono, era diagnóstico conveniente. No momento em que ele passa a
+       atender a internet — e passa, porque é o que faz o link da inscrição e
+       do ingresso funcionar —, vira um mapa do sistema entregue a quem só
+       precisou provocar um erro: nome de arquivo, nome de função, linha.
+       Quem precisa do detalhe é quem tem o log de execução, e esse continua
+       recebendo tudo, com o mesmo código curto que aparece na tela — é ele
+       que liga o que a pessoa viu à linha exata no registro. */
+    var codigo = String(new Date().getTime()).slice(-6);
+    Logger.log("Erro no doGet SISGEP [" + codigo + "]: " +
+               (erro && erro.stack ? erro.stack : erro));
     return HtmlService.createHtmlOutput(
-      "<div style='font-family:sans-serif;padding:40px;background:#fff;color:#111;'>" +
-      "<h2 style='color:#c00;'>Erro ao abrir o SISGEP</h2>" +
-      "<pre style='white-space:pre-wrap;background:#f5f5f5;padding:16px;border-radius:8px;'>" +
-      (erro && erro.stack ? erro.stack : (erro && erro.message ? erro.message : String(erro))) +
-      "</pre></div>")
+      "<div style='font-family:sans-serif;max-width:520px;margin:60px auto;padding:28px;" +
+      "border-radius:14px;background:#fff5f5;border:1px solid #fecaca;color:#7f1d1d'>" +
+      "<h2 style='margin:0 0 10px'>Não foi possível abrir esta página</h2>" +
+      "<p style='margin:0 0 10px;line-height:1.5'>Tente novamente em alguns instantes. " +
+      "Se continuar, avise a secretaria do SindEducação-ES informando o código abaixo.</p>" +
+      "<p style='margin:0;font:700 15px monospace'>" + codigo + "</p></div>")
       .setTitle("Erro — SISGEP")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -361,7 +456,7 @@ function include(nomeArquivo) {
 function servirFichaSindicalizacao(p) {
   try {
     return HtmlService.createHtmlOutputFromFile("Fichasindicalizacao")
-      .setTitle("Ficha de Sindicalização — SindEducação/ES")
+      .setTitle("Ficha de Sindicalização — SindEducação-ES")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
@@ -370,7 +465,7 @@ function servirFichaSindicalizacao(p) {
     return HtmlService.createHtmlOutput(
       "<div style='font-family:sans-serif;padding:40px;text-align:center;'>" +
       "<h2>Não foi possível abrir a ficha</h2>" +
-      "<p>Tente novamente em alguns instantes ou procure o SindEducação/ES.</p></div>")
+      "<p>Tente novamente em alguns instantes ou procure o SindEducação-ES.</p></div>")
       .setTitle("Ficha de Sindicalização");
   }
 }

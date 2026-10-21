@@ -83,8 +83,23 @@ function compasso_validacaoListar_interno_(filtros) {
        Sem ele, "participante" só existiria como a soma de dois cards. */
     if(entrega==='COM_INGRESSO' && !x.ingressoId) return false;
     if(busca){
-      var hay=[x.nome,x.cpf,x.escola,x.cidade,x.regiao,x.inscricaoId].join(' ').toLowerCase();
-      if(hay.indexOf(busca)<0) return false;
+      /* TELEFONE ENTROU EM 14/09/2026, a pedido: "deveria ter filtro para eu
+         filtrar por nome, por escola, por cidade, filtrar por telefone".
+         E-mail e número do ingresso vêm junto pelo mesmo motivo — é por eles
+         que a secretaria procura quando a pessoa liga perguntando do ingresso. */
+      var hay=[x.nome,x.cpf,x.escola,x.cidade,x.regiao,x.inscricaoId,
+               x.email,x.whatsapp,x.numeroIngresso].join(' ').toLowerCase();
+      /* Telefone e CPF são digitados de qualquer jeito: com traço, com ponto,
+         com parêntese, com o 55 na frente. Comparar só o texto cru faria
+         "(27) 99916-1454" não encontrar quem digitou 27999161454. Por isso a
+         segunda comparação é só de dígitos — e cada campo entra separado por
+         espaço, para o fim de um não colar no começo do outro e casar por
+         acaso. Menos de 3 dígitos não busca: "2" acharia a base inteira. */
+      var digitos=[x.cpf,x.whatsapp,x.matricula,x.numeroIngresso]
+        .map(function(v){ return String(v==null?'':v).replace(/\D+/g,''); }).join(' ');
+      var buscaDig=busca.replace(/\D+/g,'');
+      if(hay.indexOf(busca)<0 &&
+         !(buscaDig.length>=3 && digitos.indexOf(buscaDig)>-1)) return false;
     }
     return true;
   });
@@ -172,8 +187,22 @@ function compasso_contarChegada_(chegada, criadoEm, hoje) {
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) / 86400000);
   if (diasAtras >= 0 && diasAtras <= 6) chegada.porDia[6 - diasAtras]++;
 
+  /* TEXTO, NUNCA O OBJETO Date — 14/09/2026.
+     Esta linha guardava `d`, um Date recém-criado, e ele viajava dentro do
+     retorno de compasso_validacaoResumo. O google.script.run serializa o
+     retorno para o navegador e, quando algo no pacote não serializa, o
+     cliente recebe NULL: sem erro, sem log, sem handler de falha. É o mesmo
+     mecanismo que derrubou o envio do voucher em 18/08 (VoucherEnvio.gs:173)
+     e a listagem do histórico (HistoricoOficios.gs:80).
+
+     O detalhe cruel: com a base VAZIA, ultimaEm ficava nulo e tudo
+     funcionava. Bastava UMA inscrição existir para os cards do painel irem a
+     zero — e zero, ali, parece calmaria, não defeito.
+
+     Tudo que vem do Firestore já é texto (fs_fromFields_ devolve
+     timestampValue como string), então o ISO mantém o formato do resto. */
   if (!chegada.ultimaEm || d.getTime() > new Date(chegada.ultimaEm).getTime())
-    chegada.ultimaEm = d;
+    chegada.ultimaEm = d.toISOString();
 }
 
 function compasso_validacaoSalvarDados(inscricaoId, patch, atualizarCadastroMestre, tokenSessao) {

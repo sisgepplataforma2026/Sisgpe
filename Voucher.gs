@@ -319,9 +319,12 @@ function percentualPorExtensoVoucher_(n) {
  * reemissão de documento antigo na operação.
  */
 function dataExtensoVoucher_(data) {
-  /* MINÚSCULA, e sem ponto no fim — é assim nos dois certificados que o
-     usuário mandou em 18/08/2026 ("Vitória/ES, 18 de agosto de 2026") e é
-     assim em português: nome de mês não é nome próprio. */
+  /* MINÚSCULA no mês — em português nome de mês não é nome próprio.
+     E COM PONTO NO FIM: os dois modelos marcados pelo usuário em 23/09/2026
+     escrevem "Vitória/ES, 23 de setembro de 2026." A versão anterior desta
+     função dizia que era sem ponto, lendo os certificados de 18/08; os
+     modelos de agora mostram o ponto nos dois, e a regra dita em 23/09 é
+     "o texto tem que ser idêntico quando for emitido". */
   const meses = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
@@ -334,7 +337,53 @@ function dataExtensoVoucher_(data) {
     " de " +
     meses[dt.getMonth()] +
     " de " +
-    dt.getFullYear();
+    dt.getFullYear() +
+    ".";
+}
+
+/**
+ * O SEXO DO ASSOCIADO, para o certificado flexionar "portador/portadora".
+ *
+ * Ordem de busca, da mais confiável para a menos: o que já está gravado na
+ * própria solicitação, depois a ficha de sindicalização daquele CPF. Nunca
+ * se deduz do nome — "Darci", "Valdeci" e mil outros não dizem nada, e errar
+ * o gênero de alguém num documento oficial com o nome da pessoa é pior do
+ * que a forma neutra.
+ *
+ * @return {string} "M", "F" ou "" quando não se sabe.
+ */
+function sexoAssociadoVoucher_(cpf, jaGravado) {
+  var direto = String(jaGravado || "").trim().toUpperCase().charAt(0);
+  if (direto === "M" || direto === "F") return direto;
+
+  var doc = String(cpf || "").replace(/\D/g, "");
+  if (!doc) return "";
+
+  try {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    var aba = ss.getSheetByName(typeof SINDICALIZACAO_ABA !== "undefined"
+      ? SINDICALIZACAO_ABA : "SISGEP_Sindicalizacao");
+    if (!aba || aba.getLastRow() < 2) return "";
+
+    var cab = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
+      .map(function (c) { return String(c || "").trim(); });
+    var iCpf = cab.indexOf("CPF");
+    var iSexo = cab.indexOf("SEXO");
+    if (iCpf < 0 || iSexo < 0) return "";
+
+    var linhas = aba.getRange(2, 1, aba.getLastRow() - 1, aba.getLastColumn()).getValues();
+    for (var i = 0; i < linhas.length; i++) {
+      if (String(linhas[i][iCpf] || "").replace(/\D/g, "") === doc) {
+        var v = String(linhas[i][iSexo] || "").trim().toUpperCase().charAt(0);
+        if (v === "M" || v === "F") return v;
+      }
+    }
+  } catch (e) {
+    /* Ficha inacessível não impede a emissão: o texto cai na forma neutra. */
+    Logger.log("sexoAssociadoVoucher_: " + e.message);
+  }
+
+  return "";
 }
 
 function escHtmlVoucher_(t) {
@@ -546,7 +595,54 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
          * como coluna, e não apenas como texto na observação, para a pergunta
          * "quantas exceções foram autorizadas e quais" ter resposta por
          * filtro. O que sai da regra é o que mais precisa ser encontrável. */
-        "EXCECAO_DUPLICIDADE"
+        "EXCECAO_DUPLICIDADE",
+        /* QUANDO O ASSOCIADO PEDIU × QUANDO A SECRETARIA DIGITOU — 30/09/2026,
+         * pedido seu: "na observação tem que constar a data da solicitação e a
+         * informação".
+         *
+         * Aqui havia UMA data só. `DATA_SOLICITACAO` recebia `new Date()` no
+         * instante da gravação, o que numa solicitação manual é o momento em
+         * que a secretaria transcreve — e não quando o associado pediu. O
+         * pedido chegou por e-mail dias antes.
+         *
+         * Isso não era detalhe de registro: a DATA_SOLICITACAO existe desde
+         * 22/09 para medir o PRAZO DE ATENDIMENTO, a distância até a
+         * DATA_EMISSAO. Com as duas nascendo do mesmo clique, esse prazo dava
+         * sempre perto de zero. O número existia e mentia, que é pior do que
+         * não existir.
+         *
+         * Agora `DATA_SOLICITACAO` é a data do PEDIDO, digitável para trás
+         * pela secretaria, e `DATA_REGISTRO` é o instante da digitação. Quem
+         * digitou já estava em USUARIO_CADASTRO. */
+        "DATA_REGISTRO",
+        "DATA_REGISTRO_TEXTO",
+        /* O QUE FOI PEDIDO NA COMPLEMENTAÇÃO — 22/09/2026.
+         *
+         * "Essa complementação eu deveria informar quais documentos estariam
+         * pendentes" — o usuário, depois de clicar no botão e ver a
+         * solicitação seguir sem que ninguém dissesse o que falta.
+         *
+         * Fica em COLUNA, e não só no texto da observação, por duas razões:
+         * quando o associado responder, a Secretaria precisa conferir item a
+         * item o que foi pedido; e "quantas complementações pediram
+         * contracheque" só tem resposta por filtro se o dado for estruturado.
+         * A lista vai separada por " | ", que é o mesmo separador já usado nas
+         * observações automáticas do módulo. */
+        "DOCUMENTOS_PENDENTES",
+        "DATA_COMPLEMENTACAO",
+        /* O SEXO DO TITULAR, e ele existe por causa de uma palavra do
+         * certificado — 23/09/2026, "flexibiliza no sexo".
+         *
+         * Os dois modelos do sindicato escrevem "portadora do CPF nº" quando
+         * a associada é mulher e "portador" quando é homem. Sem este dado o
+         * documento trataria toda associada no masculino, num papel que leva
+         * o nome dela e vai para a escola.
+         *
+         * Guardado NA SOLICITAÇÃO, e não buscado na hora de emitir: a ficha
+         * de sindicalização pode ser corrigida, arquivada ou não existir, e o
+         * certificado reemitido daqui a um ano tem que sair igual ao de hoje.
+         * Vazio é resposta legítima — aí o texto usa a forma neutra. */
+        "SEXO_SOLICITANTE"
   ];
 }
 
@@ -614,7 +710,28 @@ function setupVoucherModuleFase1() {
         "CODIGO_VALIDACAO",
         "LINK_ARQUIVO",
         "PERCENTUAL",
-        "USUARIO"
+        "USUARIO",
+        /* PARA QUEM FOI O VOUCHER, E DE QUANDO ERA O PEDIDO — 22/09/2026,
+           pedido do usuário: "tem que salvar a data da solicitação, e colocar
+           a informação para quem".
+
+           A aba guardava só o NOME_SOLICITANTE, que numa bolsa de dependente é
+           o pai. Olhando o histórico de emissões não havia como saber se o
+           voucher saiu para o Guilherme ou para o Bernardo — e o CPF é o mesmo
+           nas duas linhas. Sem o nome do beneficiário, o registro de emissão
+           não responde a pergunta para a qual ele existe.
+
+           A DATA_SOLICITACAO é outra coisa que a DATA_EMISSAO: uma diz quando
+           o associado pediu, a outra quando a secretaria emitiu. A distância
+           entre as duas é o prazo de atendimento, e sem guardar as duas não há
+           como medi-lo.
+
+           Entram no FIM da lista de propósito: ensureHeaders_ acrescenta
+           coluna que falta sem tocar nas que existem, então a aba em produção
+           ganha as três sem nenhuma linha antiga mudar de lugar. */
+        "NOME_BENEFICIARIO",
+        "TIPO_BENEFICIARIO",
+        "DATA_SOLICITACAO"
       ]
     },
     {
@@ -724,7 +841,8 @@ function seedVoucherRules_() {
    * `if (existingData.length > 1) return;` logo acima). Alterar percentual
    * de planilha que já opera é mudança de dinheiro e exige migração
    * própria, com prévia — nunca de passagem por um seed. */
-  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL", "ENSINO_MEDIO", "TECNICO"];
+  const BASICO = ["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
+                  "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"];
   const POR_ORDEM = { "1": 100, "2": 100, "3": 60 };
   const AREAS = { "HUMANAS": 70, "SAUDE": 50, "ENGENHARIA": 60 };
   const PARENTES = ["TITULAR", "CONJUGE", "FILHO", "ENTEADO"];
@@ -977,8 +1095,11 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
    * nas regras do voucher" lá no fim — pedido recusado por um buraco no
    * código, não por regra da convenção. Segue os mesmos 100/100/60 das
    * demais modalidades do ensino básico. */
+  /* PRE_VESTIBULAR entra aqui junto com as demais do ensino básico —
+     confirmado pelo usuário em 17/09/2026: mesma regra, 100/100/60 por ordem
+     do filho, e contando no teto de três por associado. */
   if (["EDUCACAO_INFANTIL", "CRECHE", "ENSINO_FUNDAMENTAL",
-       "ENSINO_MEDIO", "TECNICO"].indexOf(modalidade) > -1) {
+       "ENSINO_MEDIO", "PRE_VESTIBULAR", "TECNICO"].indexOf(modalidade) > -1) {
     let percentual = "";
 
     if (ordemFilho === "1" || ordemFilho === "2") percentual = "100";
@@ -1081,10 +1202,91 @@ function calcularRegraVoucherConvencao_(dados, idadeBeneficiario) {
 
 /* ================= ESCOLAS ================= */
 
+/**
+ * A ABA DO CADASTRO DE ESCOLAS — e por que ela precisa de um resolvedor.
+ *
+ * 23/09/2026, você: "acho que deve buscar da aba Controle". Estava certo, e
+ * isso explica um sintoma que eu vinha atribuindo a dado faltando.
+ *
+ * Na planilha de produção o cadastro das escolas vive na aba **Controle**,
+ * com as colunas "Escola (Razão Social)", "CNPJ", "Unidade" e "Cidade" — os
+ * mesmos nomes que este módulo já procura. Só que ele procurava só numa aba
+ * chamada "Escolas". Quando ela não existe, a busca devolve vazio SEMPRE: a
+ * solicitação nasce sem CNPJ, a observação recebe "Escola não localizada no
+ * cadastro de escolas" e o certificado sai sem a mantenedora e sem o CNPJ —
+ * sem erro em lugar nenhum, porque "não achei" é resposta válida.
+ *
+ * Outros módulos do sistema já caíam para "Controle" (TaxaAssistencial,
+ * BuscaEscola, RelatoriosOficios). O de Bolsas ficou de fora, e ninguém
+ * percebeu porque a falha é silenciosa.
+ *
+ * A ordem tenta os nomes mais específicos primeiro e só então o Controle,
+ * que é a aba de registro geral: onde existir uma aba dedicada, ela ganha.
+ */
+function abaEscolasVoucher_(ss) {
+  const nomes = ["Escolas", "ESCOLAS", "escolas"];
+  for (let i = 0; i < nomes.length; i++) {
+    const sh = ss.getSheetByName(nomes[i]);
+    if (sh) return sh;
+  }
+  /* PLANILHA_REGISTRO é "Controle" (SistemaConfig.gs). Referenciado por
+     typeof para o módulo não depender da ordem de carga dos arquivos. */
+  const registro = (typeof PLANILHA_REGISTRO !== "undefined" && PLANILHA_REGISTRO)
+    ? PLANILHA_REGISTRO : "Controle";
+  return ss.getSheetByName(registro) || null;
+}
+
+/**
+ * ACHA A COLUNA PELO NOME, TOLERANDO COMO ELA FOI DIGITADA.
+ *
+ * 23/09/2026. A busca de escola procurava a coluna por nome EXATO
+ * (`headers.indexOf("Escola (Razão Social)")`). Isso quebra com qualquer
+ * diferença que ninguém enxerga numa planilha: caixa alta ("ESCOLA"), til
+ * faltando ("Razao Social"), um espaço a mais, ou o rótulo escrito de forma
+ * um pouco diferente.
+ *
+ * E quebra do pior jeito: a coluna não é encontrada, a função devolve vazio
+ * para TODA escola, e nada indica erro — "não achei" é resposta válida. O
+ * sintoma aparece três passos adiante, num certificado sem CNPJ.
+ *
+ * A comparação agora é sem acento, sem caixa e por conteúdo, na ordem em que
+ * os nomes forem passados — o primeiro que casar ganha, então o chamador
+ * continua controlando a precedência. É a mesma tolerância que
+ * TaxaAssistencial.gs já usa neste sistema.
+ */
+function acharColunaVoucher_(headers, nomes) {
+  const norm = (typeof normalizarTextoVoucher_ === "function")
+    ? normalizarTextoVoucher_
+    : function (t) { return String(t || "").trim().toLowerCase(); };
+
+  const cab = (headers || []).map(function (h) { return norm(h); });
+
+  /* Primeiro a igualdade exata (já normalizada): "Escola" não deve casar com
+     "Escola (Razão Social)" quando as duas colunas existem. */
+  for (let i = 0; i < nomes.length; i++) {
+    const alvo = norm(nomes[i]);
+    if (!alvo) continue;
+    const pos = cab.indexOf(alvo);
+    if (pos > -1) return pos;
+  }
+
+  /* Só então o conteúdo parcial, para "ESCOLA (RAZAO SOCIAL)" achar
+     "Escola (Razão Social)" e variações de pontuação. */
+  for (let i = 0; i < nomes.length; i++) {
+    const alvo = norm(nomes[i]);
+    if (!alvo) continue;
+    for (let j = 0; j < cab.length; j++) {
+      if (cab[j] && (cab[j].indexOf(alvo) > -1 || alvo.indexOf(cab[j]) > -1)) return j;
+    }
+  }
+
+  return -1;
+}
+
 function buscarEscolaPorNome_(nomeEscola) {
   try {
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
-    const sh = ss.getSheetByName("Escolas");
+    const sh = abaEscolasVoucher_(ss);
 
     if (!sh || !nomeEscola) {
       return {
@@ -1110,12 +1312,9 @@ function buscarEscolaPorNome_(nomeEscola) {
       return String(h).trim();
     });
 
+    /* Tolerante a caixa, acento e pontuação — ver acharColunaVoucher_. */
     function findCol() {
-      for (let i = 0; i < arguments.length; i++) {
-        const idx = headers.indexOf(arguments[i]);
-        if (idx > -1) return idx;
-      }
-      return -1;
+      return acharColunaVoucher_(headers, Array.prototype.slice.call(arguments));
     }
 
     const idxUnidade = findCol("Unidade", "CodigoInterno", "Campus");
@@ -1134,18 +1333,78 @@ function buscarEscolaPorNome_(nomeEscola) {
 
     const busca = normalizarTextoVoucher_(nomeEscola);
 
+    function montar(linha) {
+      return {
+        escola:  String(linha[idxEscola] || "").trim(),
+        unidade: idxUnidade > -1 ? String(linha[idxUnidade] || "") : "",
+        cnpj:    idxCnpj > -1 ? String(linha[idxCnpj] || "") : "",
+        cidade:  idxCidade > -1 ? String(linha[idxCidade] || "") : ""
+      };
+    }
+
+    /* PRIMEIRA PASSADA: igualdade ou um nome contido no outro. É o que já
+       existia, e resolve a maioria. */
     for (let i = 1; i < dados.length; i++) {
       const nome = normalizarTextoVoucher_(dados[i][idxEscola]);
+      if (!nome) continue;
 
       if (nome === busca || nome.indexOf(busca) > -1 || busca.indexOf(nome) > -1) {
-        return {
-          escola:  String(dados[i][idxEscola] || "").trim(),
-          unidade: idxUnidade > -1 ? String(dados[i][idxUnidade] || "") : "",
-          cnpj:    idxCnpj > -1 ? String(dados[i][idxCnpj] || "") : "",
-          cidade:  idxCidade > -1 ? String(dados[i][idxCidade] || "") : ""
-        };
+        return montar(dados[i]);
       }
     }
+
+    /* SEGUNDA PASSADA: AS MESMAS PALAVRAS, EM OUTRA ORDEM — 23/09/2026.
+     *
+     * ESTE É O DEFEITO DO CASO DO BERNARDO, e ele só apareceu com a aba real
+     * na mão. A solicitação guarda "UVV - VILA VELHA"; a aba Escolas guarda
+     * "Sociedade Educacao e Gestao de Excelencia I Vila Velha S.a - UVV".
+     * Nenhum dos dois está contido no outro — a sigla está no fim de um e no
+     * começo do outro —, então a busca devolvia vazio, a solicitação nascia
+     * sem CNPJ, e o certificado saía sem a mantenedora e sem o CNPJ. Sem erro
+     * nenhum: "não achei" é resposta válida.
+     *
+     * A regra aqui é conservadora de propósito: TODAS as palavras do que foi
+     * digitado precisam aparecer no nome cadastrado. "UVV VILA VELHA" acha a
+     * UVV; não acha a "Canadian School Vila Velha", que não tem "uvv".
+     * Palavras de até duas letras e conectores ficam de fora porque não
+     * distinguem nada ("de", "da", "e", "i", "s", "a").
+     *
+     * Quando mais de uma linha satisfaz, ganha a de nome MAIS CURTO: ela é a
+     * que tem menos palavra sobrando, ou seja, a mais específica para o que
+     * se procurou. */
+    const CONECTORES = { "de": 1, "da": 1, "do": 1, "das": 1, "dos": 1,
+                         "e": 1, "em": 1, "ltda": 1, "sa": 1, "s": 1, "a": 1,
+                         "me": 1, "epp": 1, "eireli": 1 };
+
+    function palavras(txt) {
+      return String(txt || "").split(/[^a-z0-9]+/)
+        .filter(function (t) { return t.length > 2 && !CONECTORES[t]; });
+    }
+
+    const tokensBusca = palavras(busca);
+    let melhor = null;
+    let melhorTam = Infinity;
+
+    if (tokensBusca.length) {
+      for (let i = 1; i < dados.length; i++) {
+        const nome = normalizarTextoVoucher_(dados[i][idxEscola]);
+        if (!nome) continue;
+
+        const tokensNome = palavras(nome);
+        if (!tokensNome.length) continue;
+
+        const cabem = tokensBusca.every(function (t) {
+          return tokensNome.indexOf(t) > -1;
+        });
+
+        if (cabem && nome.length < melhorTam) {
+          melhor = dados[i];
+          melhorTam = nome.length;
+        }
+      }
+    }
+
+    if (melhor) return montar(melhor);
 
     return {
       unidade: "",
@@ -1166,7 +1425,7 @@ function buscarEscolaPorNome_(nomeEscola) {
 
 function listarEscolasVoucher_() {
   const ss = SpreadsheetApp.openById(PLANILHA_ID);
-  const sh = ss.getSheetByName("Escolas");
+  const sh = abaEscolasVoucher_(ss);
 
   if (!sh || sh.getLastRow() < 2) return [];
 
@@ -1175,12 +1434,9 @@ function listarEscolasVoucher_() {
     return String(h).trim();
   });
 
+  /* Tolerante a caixa, acento e pontuação — ver acharColunaVoucher_. */
   function findCol() {
-    for (let i = 0; i < arguments.length; i++) {
-      const idx = headers.indexOf(arguments[i]);
-      if (idx > -1) return idx;
-    }
-    return -1;
+    return acharColunaVoucher_(headers, Array.prototype.slice.call(arguments));
   }
 
   const idxEscola  = findCol("NomeEscola", "Escola (Razão Social)", "Escola");
@@ -1259,14 +1515,36 @@ function salvarDocumentoVoucher_(idSolicitacao, cpf, arquivo, tipoDocumento, obs
     const pasta = obterPastaVoucherDocumentos_();
     const nomeOriginal = sanitizarNomeArquivoVoucher_(arquivo.nome || (tipoDocumento + ".bin"));
     const nomePessoa = sanitizarNomeArquivoVoucher_(nomeSolicitante || cpf);
+    /* A DATA ENTRA NO NOME — 22/09/2026, seu pedido: "inclui a data tb".
+     *
+     * Todos os anexos de todas as bolsas caem na MESMA pasta do Drive, e o
+     * nome do arquivo era a única coisa que os separava: pessoa, tipo, CPF e
+     * o ID da solicitação. O ID ninguém decora, e sem data não dava para
+     * responder "o que chegou esta semana?" nem distinguir o contracheque
+     * deste semestre do que a mesma pessoa mandou no semestre passado —
+     * mesma pessoa, mesmo tipo, mesmo CPF, nomes praticamente iguais.
+     *
+     * yyyy-MM-dd, não dd/MM/yyyy: a barra é separador de pasta e o Drive a
+     * recusa, e o formato ISO ordena certo quando alguém ordena por nome.
+     * O fuso é o do script, o mesmo das outras datas do módulo. */
+    let dataArquivo = "";
+    try {
+      dataArquivo = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+    } catch (eData) {
+      /* Nunca deixar a falta da data impedir a gravação do documento: o
+         arquivo do associado vale muito mais que o rótulo dele. */
+      dataArquivo = "";
+    }
+
     const nomeFinal = [
       "Voucher",
       nomePessoa,
       String(tipoDocumento || "").toUpperCase(),
+      dataArquivo,
       cpf,
       idSolicitacao,
       nomeOriginal
-    ].join(" - ");
+    ].filter(function (p) { return String(p || "").trim() !== ""; }).join(" - ");
 
     const bytes = Utilities.base64Decode(arquivo.base64);
     const blob = Utilities.newBlob(bytes, arquivo.tipo || MimeType.PDF, nomeFinal);
@@ -1342,7 +1620,13 @@ function registrarDocumentosPayloadVoucher_(idSolicitacao, cpf, payload) {
       payload.docPessoal,
       "DOCUMENTO_PESSOAL",
       "Documento pessoal.",
-      nomeSolicitante
+      /* O DOCUMENTO PESSOAL É DE QUEM RECEBE A BOLSA, não de quem pede.
+         Nas solicitações de dependente o arquivo saía com o nome do titular
+         no rótulo — "Voucher - WANDERSON - DOCUMENTO_PESSOAL - … - ana.pdf" —
+         e quem abre a pasta do Drive para conferir o documento da Ana lê o
+         nome do pai. O contracheque continua no nome do titular, porque é
+         dele que ele é. */
+      valorSeguroVoucher_(payload && payload.nomeBeneficiario) || nomeSolicitante
     );
 
     if (doc) documentos.push(doc);
@@ -1402,13 +1686,44 @@ function buscarSolicitacaoPorProtocolo_(protocolo) {
 /* ================= PORTAL — DADOS INICIAIS ================= */
 
 function getPortalVoucherInitData() {
+  /* O LOGO VAI EMBUTIDO, NÃO LINKADO — 22/09/2026, a pedido do usuário:
+     "acho que falta a logo do SindEducação aqui".
+
+     É o mesmo motivo do QR e da assinatura no certificado: imagem do Drive
+     apontada por URL depende de o navegador de QUEM ABRE conseguir baixá-la,
+     e o portal é público — quem entra não está logado em conta nenhuma do
+     sindicato. Linkar daria um cabeçalho que funciona na máquina de quem
+     testou e mostra ícone quebrado para o associado.
+
+     `logoSindicatoVoucher_()` já resolve isso e guarda em cache por 6 horas,
+     então o custo é de uma leitura a cada seis horas, não por visita.
+
+     E FALHAR AQUI NÃO PODE DERRUBAR O PORTAL: sem logo o cabeçalho continua
+     de pé com o nome do sindicato. Um formulário de bolsa que não abre por
+     causa de uma figura seria péssimo negócio. */
+  var logo = "";
+  try { logo = logoSindicatoVoucher_() || ""; }
+  catch (eLogo) { Logger.log("Logo do portal não carregou: " + eLogo.message); }
+
   return {
+    logo: logo,
     escolas: listarEscolasVoucher_(),
     modalidades: [
       { value: "EDUCACAO_INFANTIL",  label: "Educação Infantil (4–5 anos)" },
       { value: "CRECHE",             label: "Creche (0–3 anos)" },
       { value: "ENSINO_FUNDAMENTAL", label: "Ensino Fundamental (6–14 anos)" },
       { value: "ENSINO_MEDIO",       label: "Ensino Médio (15–17 anos)" },
+      /* PRÉ-VESTIBULAR FALTAVA NO MENU — 17/09/2026, apontado pelo usuário:
+         "tem pré-vestibular também". Ele existia numa tabela de percentual do
+         painel (100%) e em lugar nenhum mais: não estava aqui, então ninguém
+         conseguia pedir, e não estava na regra, então quem pedisse por outro
+         caminho levaria "Modalidade não reconhecida".
+
+         É o MESMO defeito que o Ensino Médio teve, e que está documentado
+         vinte linhas abaixo em calcularRegraVoucherConvencao_. Duas vezes a
+         mesma falha: uma modalidade que existe num lugar do sistema e não
+         existe nos outros dois. */
+      { value: "PRE_VESTIBULAR",     label: "Pré-Vestibular (17–18 anos)" },
       { value: "TECNICO",            label: "Técnico (15–25 anos)" },
       { value: "GRADUACAO",          label: "Graduação" },
       { value: "POS_GRADUACAO",      label: "Pós-Graduação" }
@@ -1451,6 +1766,40 @@ function listarSolicitacoesVoucher() {
 
     const dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
 
+    /* QUEM EMITIU O CERTIFICADO — 30/09/2026, "controle de quem fez o voucher".
+     *
+     * Quem REGISTROU e quem APROVOU estão na própria linha da solicitação
+     * (USUARIO_CADASTRO e USUARIO_VALIDACAO). Quem EMITIU não: mora em
+     * Voucher_Emitidos, porque a emissão é outro evento — pode haver mais de
+     * uma para o mesmo protocolo, e a reemissão tem autor próprio.
+     *
+     * A aba é lida UMA vez e vira mapa, em vez de uma busca por linha. Com
+     * uma busca por linha, 300 solicitações dariam 300 varreduras da aba de
+     * emissões — e este painel já foi lento por leitura repetida uma vez
+     * nesta semana (o cache das escolas, em 24/09). A última emissão vence:
+     * é a que vale, e é a que o certificado no Drive reflete. */
+    const quemEmitiu = {};
+    try {
+      const shEmi = ss.getSheetByName("Voucher_Emitidos");
+      if (shEmi && shEmi.getLastRow() > 1) {
+        const cabEmi = obterHeaders_(shEmi).map(function (h) { return String(h || "").trim(); });
+        const iProt = cabEmi.indexOf("PROTOCOLO");
+        const iUsu  = cabEmi.indexOf("USUARIO");
+        const iData = cabEmi.indexOf("DATA_EMISSAO");
+        if (iProt > -1) {
+          shEmi.getRange(2, 1, shEmi.getLastRow() - 1, shEmi.getLastColumn()).getValues()
+            .forEach(function (le) {
+              const prot = String(le[iProt] || "").trim();
+              if (!prot) return;
+              quemEmitiu[prot] = {
+                usuario: iUsu  > -1 ? String(le[iUsu] || "").trim() : "",
+                data:    iData > -1 ? le[iData] : ""
+              };
+            });
+        }
+      }
+    } catch (eEmi) { Logger.log("[listarSolicitacoesVoucher] emitidos: " + eEmi); }
+
     function idx() {
       for (let i = 0; i < arguments.length; i++) {
         const nome = String(arguments[i] || "").trim();
@@ -1487,7 +1836,21 @@ function listarSolicitacoesVoucher() {
         id: String(val(l, "ID_SOLICITACAO", "ID", "ID_SOL", "SOLICITACAO_ID") || ""),
         protocolo: String(val(l, "NUMERO_PROTOCOLO", "PROTOCOLO", "Nº PROTOCOLO", "NUMERO DO PROTOCOLO", "NÚMERO_PROTOCOLO") || ""),
         nome: String(val(l, "NOME_SOLICITANTE", "NOME", "NOME COMPLETO", "SOLICITANTE", "NOME_ASSOCIADO") || ""),
-        cpf: String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || ""),
+        /* FORMATADO, NÃO CRU — 16/09/2026.
+         *
+         * A planilha guarda CPF_SOLICITANTE como NÚMERO, e número não tem
+         * zero à esquerda: o CPF 085.381.047-80 virou "8538104780" na célula.
+         * O certificado e o e-mail já saíam certos, porque passam por
+         * `formatarCpfVoucher_` — que completa os zeros e PROVA o resultado
+         * pelo dígito verificador antes de aceitar. A lista do painel era o
+         * único lugar que ainda mostrava o número cru.
+         *
+         * Isso não era só feio: a busca por solicitante procura no nome E no
+         * CPF, e quem digitasse o CPF de verdade (com o zero, ou pontuado)
+         * não achava a solicitação. */
+        cpf: (typeof formatarCpfVoucher_ === "function"
+          ? formatarCpfVoucher_(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO"))
+          : String(val(l, "CPF_SOLICITANTE", "CPF", "CPF_ASSOCIADO", "DOCUMENTO") || "")),
 
         email: String(val(l, "EMAIL", "E-MAIL", "E_MAIL") || ""),
         telefone: String(val(l, "TELEFONE", "WHATSAPP", "CELULAR") || ""),
@@ -1499,6 +1862,15 @@ function listarSolicitacoesVoucher() {
 
         tipoBeneficiario: String(val(l, "TIPO_BENEFICIARIO", "BENEFICIARIO", "TIPO BENEFICIÁRIO") || ""),
         nomeBeneficiario: String(val(l, "NOME_BENEFICIARIO", "NOME DO BENEFICIARIO", "NOME_BENEF") || ""),
+        /* A IDADE VIAJA ATÉ O PAINEL — 16/09/2026.
+         *
+         * Era medida na entrada, gravada na planilha, e parava ali: a tela de
+         * análise não tinha o número. Quem conferia via o status
+         * BLOQUEADA_POR_REGRA e precisava abrir a observação para descobrir
+         * que o motivo era idade. O pedido do usuário é o contrário — "o
+         * sistema automaticamente tem que informar: dependente fora da
+         * idade". Informar exige o dado do lado de cá. */
+        idade: String(val(l, "IDADE_BENEFICIARIO", "IDADE") || ""),
 
         nivel: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),
         modalidade: String(val(l, "MODALIDADE", "NIVEL", "NÍVEL") || ""),
@@ -1525,6 +1897,23 @@ function listarSolicitacoesVoucher() {
         status: String(val(l, "STATUS_SOLICITACAO", "STATUS_SOLICITAÇÃO", "STATUS") || "PENDENTE"),
         data: String(dataTexto || formatarDataBrVoucher_(dataSolicitacao) || ""),
         observacao: String(val(l, "OBSERVACOES", "OBSERVAÇÕES", "OBS") || ""),
+
+        /* QUEM FEZ CADA ETAPA — 30/09/2026, pedido seu.
+         *
+         * Os três já eram GRAVADOS; nenhum aparecia na tela. O painel
+         * mostrava o que foi pedido e não mostrava quem atendeu — e "quem
+         * aprovou essa bolsa de 70%?" só tinha resposta abrindo a planilha.
+         *
+         * Vão vazios quando a etapa não aconteceu, e a tela some com a linha:
+         * "Aprovado por —" numa solicitação pendente afirmaria uma aprovação
+         * que não houve. */
+        registradoPor: String(val(l, "USUARIO_CADASTRO", "USUARIO_CRIACAO") || ""),
+        dataRegistro: String(val(l, "DATA_REGISTRO_TEXTO") ||
+                             formatarDataBrVoucher_(val(l, "DATA_REGISTRO")) || ""),
+        aprovadoPor: String(val(l, "USUARIO_VALIDACAO") || ""),
+        dataAprovacao: String(formatarDataBrVoucher_(val(l, "DATA_VALIDACAO")) || ""),
+        emitidoPor: String((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).usuario || ""),
+        dataEmissao: String(formatarDataBrVoucher_(val(l, "DATA_EMISSAO")) || ""),
 
         linkContracheque: String(val(l, "LINK_CONTRACHEQUE", "CONTRACHEQUE", "LINK DOCUMENTO VINCULO") || ""),
         linkDocPessoal: String(val(l, "LINK_DOC_PESSOAL", "DOC_PESSOAL", "DOCUMENTO_PESSOAL") || ""),

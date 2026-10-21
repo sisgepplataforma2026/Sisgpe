@@ -166,6 +166,29 @@ function montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, desti
    ══════════════════════════════════════════════════════════════════════════ */
 function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, corpoTexto) {
   var opcoes = montarOpcoesEmailSISGEP_(emailUsuario, htmlBody, anexos, assunto, destino);
+  return enviarComoRascunhoSISGEP_(opcoes, corpoTexto || "Segue ofício em anexo.");
+}
+
+/**
+ * O ÚNICO caminho de envio do SISGEP — 16/09/2026.
+ *
+ * POR QUE VIROU FUNÇÃO PRÓPRIA. A Declaração de Diretor enviava com
+ * `MailApp.sendEmail(opcoes)`, e o `MailApp` IGNORA a opção `from` — em
+ * silêncio, sem erro nenhum. O `montarOpcoesEmailSISGEP_` montava
+ * `from: secretaria@sindeducacao.com` corretamente, e o MailApp jogava fora:
+ * a declaração saiu da conta executora MESMO com o alias já configurado no
+ * Gmail. Quem lesse só o código concluiria que estava certo — foi preciso
+ * abrir o e-mail recebido e olhar o "De:" para descobrir. Mesma lição do
+ * aviso de alias logo acima, pela segunda vez.
+ *
+ * Só o `GmailApp` respeita o `from`, e só quando o endereço é alias
+ * verificado da conta executora — ver validarRemetenteInstitucionalOficios_.
+ *
+ * FICA UMA IMPLEMENTAÇÃO para os dois módulos. Duas cópias do caminho de
+ * envio envelhecem separadas, que é exatamente o que tinha acontecido com a
+ * prévia do e-mail do ofício.
+ */
+function enviarComoRascunhoSISGEP_(opcoes, corpoTexto) {
   var opcoesGmail = {
     htmlBody:    opcoes.htmlBody,
     attachments: opcoes.attachments || [],
@@ -173,16 +196,20 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
     replyTo:     opcoes.replyTo
   };
   if (opcoes.from) opcoesGmail.from = opcoes.from;
+  /* O ofício não usa cópia (ver a nota "Sem BCC" em montarOpcoesEmailSISGEP_),
+     mas o envio do voucher usa — e sem isto a cópia sumia em silêncio. */
+  if (opcoes.cc)  opcoesGmail.cc  = opcoes.cc;
+  if (opcoes.bcc) opcoesGmail.bcc = opcoes.bcc;
 
   var rascunho = GmailApp.createDraft(
-    opcoes.to, opcoes.subject, corpoTexto || "Segue ofício em anexo.", opcoesGmail);
+    opcoes.to, opcoes.subject, corpoTexto || "Segue documento em anexo.", opcoesGmail);
 
   var msg;
   try {
     msg = rascunho.send();
   } catch (eEnvio) {
     /* Sem isto, cada falha de envio deixaria um rascunho na caixa — que para
-       quem olha parece ofício pendente de mandar. */
+       quem olha parece documento pendente de mandar. */
     try { rascunho.deleteDraft(); } catch (eLimpeza) {}
     throw eEnvio;
   }
@@ -193,7 +220,59 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
   return opcoes;
 }
 
-function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom) {
+/**
+ * O E-MAIL QUE A TELA MOSTRA NO PREVIEW — o de verdade.
+ *
+ * POR QUE EXISTE (15/09/2026). O modal de envio do ofício monta o preview no
+ * JavaScript da tela, com os textos de Filiação, Desfiliação e das Taxas
+ * escritos DE NOVO em OficiosFormulario.html. São duas redações da mesma
+ * mensagem, e elas envelhecem separadas: mudar a cláusula da CCT aqui e
+ * esquecer lá faz o preview mostrar um texto que o servidor não vai enviar.
+ * Prévia que mente é pior do que prévia nenhuma — quem confere confia nela.
+ *
+ * Aqui a tela recebe o retorno de `montarEmailHTML_`, a MESMA função que o
+ * envio usa. Só lê e monta: não grava, não envia, não consome numeração.
+ *
+ * A tela mantém o desenho antigo como reserva. Se esta chamada falhar, o
+ * preview continua aparecendo com o texto embutido — num módulo que a
+ * secretaria usa todo dia, uma falha de rede não pode virar modal vazio.
+ */
+function oficioPreviaEmail(dados, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
+  try {
+    dados = dados || {};
+    var numero = String(dados.numero || "").trim();
+    if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
+
+    var cfg = resolverConfigTipoOficio_(dados.tipo);
+
+    /* Mesmo tratamento do envio (Oficios.gs): o texto digitado no Ofício
+       Livre é escapado ANTES de entrar no e-mail; os textos padrão são
+       montados lá dentro e usam <strong> de propósito. */
+    var textoCustom = String(dados.textoPrincipal || "").trim();
+    if (textoCustom && typeof escapeHtml_ === "function") textoCustom = escapeHtml_(textoCustom);
+
+    return {
+      ok: true,
+      assunto: cfg.tituloEmail + " Nº " + numero,
+      html: montarEmailHTML_(cfg.tituloEmail, numero, cfg.assuntoTipo,
+                             Number(dados.quantidade || 0), textoCustom, dados.assinatura)
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Não consegui montar o preview: " + e.message };
+  }
+}
+
+/* A ASSINATURA E PARAMETRO — 14/09/2026.
+
+   O rodape era fixo: Marcela / Administrativo & Secretaria / secretaria@. Na
+   campanha de Taxa Negocial isso virou contradicao — o e-mail SAI de
+   financeiro@ (exigencia do usuario) e se ASSINAVA como secretaria@. A escola
+   que respondesse ou ligasse ia para a pessoa errada.
+
+   O padrao continua sendo a Marcela: quem nao passa nada recebe exatamente o
+   rodape de antes, e os oficios que ela emite todo dia nao mudam em nada. */
+function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalCustom, assinatura) {
   var textoPrincipal = textoPrincipalCustom || "";
 
   if (!textoPrincipal) {
@@ -240,6 +319,17 @@ function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalC
 
   var textoPrincipalHtml = formatarCorpoEmailHTML_(textoPrincipal);
   var saudacao = saudacaoHoraBR_();
+
+  /* Sem parametro, o rodape de sempre — nenhum oficio em uso muda. */
+  var assina = assinatura && assinatura.nome ? {
+    nome:    String(assinatura.nome || ""),
+    cargo:   String(assinatura.cargo || ""),
+    contato: String(assinatura.contato || "")
+  } : {
+    nome:    "MARCELHA ALINE PINTO GOMES",
+    cargo:   "Administrativo &amp; Secretaria — SindEducação-ES",
+    contato: "(27) 99735-8900 • secretaria@sindeducacao.com"
+  };
   var badgeCor = "rgba(201,168,76,.15)", badgeBorda = "rgba(201,168,76,.35)", badgeTexto = "#C9A84C";
   if (assuntoTipo === "Filiação")          { badgeCor="rgba(217,119,6,.15)";  badgeBorda="rgba(217,119,6,.4)";   badgeTexto="#fbbf24"; }
   if (assuntoTipo === "Desfiliação")       { badgeCor="rgba(185,28,28,.2)";   badgeBorda="rgba(220,38,38,.4)";   badgeTexto="#fca5a5"; }
@@ -267,12 +357,12 @@ function montarEmailHTML_(tipo, numero, assuntoTipo, quantidade, textoPrincipalC
     "⚠️ Solicitamos, por gentileza, a confirmação do recebimento respondendo a este e-mail.</div></div>" +
     "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
     "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);margin-bottom:18px;'></div>" +
-    "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
-    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>Administrativo & Secretaria — SindEducação-ES</div>" +
+    "<div style='font-size:16px;font-weight:900;color:#fff;'>" + assina.nome + "</div>" +
+    "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" + assina.cargo + "</div>" +
     "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
     "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
     "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
-    "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
+    assina.contato + " • www.sindeducacao.com.br" +
     "</div>" +
     "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>Documento gerado pelo SISGEP · SindEducação-ES</div>" +
     "</div></div>"
@@ -534,6 +624,219 @@ function obterDestinoReenvioOficio(numero, tokenSessao) {
    DEVOLVE TAMBÉM `itens`, com nome e origem de cada anexo. É o que a tela
    mostra — e é medição, não promessa: são os blobs que realmente vão.
    ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   ANEXO ACRESCENTADO NA HORA DO REENVIO — 11/09/2026
+
+   DE ONDE VEIO. O usuário abriu o reenvio do ofício 388/2026 (Oposição à Taxa
+   Negocial, Centro Educacional Linus Pauling) e a tela mostrou o aviso
+   vermelho: a carta de oposição não foi encontrada, e o corpo do ofício afirma
+   que ela segue em anexo. O sistema detectava certo e avisava certo — e não
+   oferecia jeito nenhum de resolver. A pessoa só podia mandar assim mesmo ou
+   cancelar e ir caçar o arquivo por fora.
+
+   Pedido dele, textual: *"Para todos, a possibilidade de anexar quando
+   precisar reenviar e assim não precisaria fazer novamente"* — e, logo
+   depois, *"todos até mesmo o enviado"*. Vale para qualquer ofício e qualquer
+   status, não só para os que exigem ficha e não só para os que falharam.
+
+   POR QUE COLUNA PRÓPRIA, E NÃO DENTRO DO ANEXOS_JSON. Aquela coluna da fila é
+   o registro do que DE FATO SAIU na emissão — é dela que o comprovante e a
+   reconstrução do pacote dependem. Escrever ali um arquivo que não estava no
+   envio original faria a planilha mentir sobre o passado, e o próximo que
+   fosse auditar o ofício 388 leria a carta como se ela tivesse ido junto no
+   dia 27/08. Não foi.
+
+   Então o acrescentado mora em coluna separada do Controle, com QUEM e
+   QUANDO. As duas verdades ficam preservadas: o que saiu na origem, e o que
+   foi anexado depois — cada uma no seu lugar, e as duas à vista na tela.
+
+   E É PERMANENTE DE PROPÓSITO. Guardado uma vez, todo reenvio seguinte já
+   encontra — que é exatamente o "não precisaria fazer novamente" do pedido.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var OFICIO_COL_ANEXOS_EXTRAS = "ANEXOS_EXTRAS_JSON";
+
+/* Tetos. O Gmail recusa mensagem acima de ~25 MB, e a recusa chega como falha
+   de envio genérica — o operador veria "erro ao reenviar" sem saber que o
+   motivo foi tamanho. Barrar aqui permite dizer a frase certa. */
+var OFICIO_ANEXO_EXTRA_MAX_MB       = 10;
+var OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB = 20;
+
+/* Documento, não qualquer arquivo. A lista segue o que a tela de ficha do
+   trabalhador já aceita, mais os formatos de planilha e texto que o Financeiro
+   usa em relação nominal. */
+var OFICIO_ANEXO_EXTRA_EXTENSOES = ["pdf","jpg","jpeg","png","doc","docx","xls","xlsx"];
+
+function oficio_extensaoDe_(nome) {
+  var m = String(nome || "").trim().toLowerCase().match(/\.([a-z0-9]+)$/);
+  return m ? m[1] : "";
+}
+
+/* Nome de arquivo não pode carregar caminho: o Drive aceita, e depois ninguém
+   acha o arquivo pelo nome que a tela mostrou. */
+function oficio_nomeArquivoSeguro_(nome) {
+  var limpo = String(nome || "").trim().replace(/[\/\\]+/g, "-").replace(/\s+/g, " ");
+  return limpo.slice(0, 180) || "anexo";
+}
+
+/** A linha do ofício no Controle, com o mapa de cabeçalho. Null se não achar. */
+function oficio_linhaNoControle_(numero) {
+  var alvo = String(numero || "").trim();
+  if (!alvo) return null;
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(PLANILHA_REGISTRO);
+  if (!sh || sh.getLastRow() < 2) return null;
+  var hm = getHeaderMap_(sh);
+  var cNum = hm["Número do Ofício"];
+  if (!cNum) return null;
+  var col = sh.getRange(2, cNum, sh.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < col.length; i++) {
+    if (String(col[i][0] || "").trim() === alvo) {
+      return { sh: sh, hm: hm, linha: i + 2 };
+    }
+  }
+  return null;
+}
+
+/**
+ * Os anexos que alguém acrescentou a este ofício em reenvios anteriores.
+ *
+ * Devolve sempre lista — JSON corrompido vira lista vazia e um aviso no log,
+ * nunca exceção: um acréscimo ilegível não pode impedir o ofício de sair.
+ */
+function oficio_lerAnexosExtras_(numero) {
+  try {
+    var alvo = oficio_linhaNoControle_(numero);
+    if (!alvo) return [];
+    var col = alvo.hm[OFICIO_COL_ANEXOS_EXTRAS];
+    if (!col) return [];
+    var texto = String(alvo.sh.getRange(alvo.linha, col).getValue() || "").trim();
+    if (!texto) return [];
+    var lista = JSON.parse(texto);
+    return Array.isArray(lista) ? lista : [];
+  } catch (e) {
+    Logger.log("⚠ ANEXOS_EXTRAS_JSON ilegível no ofício " + numero + ": " + e.message);
+    return [];
+  }
+}
+
+/**
+ * Guarda no Drive os arquivos que a pessoa acrescentou e registra no Controle.
+ *
+ * Chamado ANTES de reunir o pacote, para o arquivo entrar no envio desta vez
+ * pelo mesmo caminho por onde entrará nas próximas — uma origem só, como manda
+ * a nota do `reunirAnexosReenvioOficio_`.
+ *
+ * @param {Array} novos  [{nome, tipo, base64}]
+ * @return {{guardados:Array, avisos:Array}}
+ */
+function oficio_guardarAnexosExtras_(numero, tipo, novos, quem) {
+  var guardados = [], avisos = [];
+  if (!Array.isArray(novos) || !novos.length) return { guardados: guardados, avisos: avisos };
+
+  var totalBytes = 0;
+  var limiteArquivo = OFICIO_ANEXO_EXTRA_MAX_MB * 1024 * 1024;
+  var limiteTotal   = OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB * 1024 * 1024;
+
+  var preparados = [];
+  for (var i = 0; i < novos.length; i++) {
+    var item = novos[i] || {};
+    var nome = oficio_nomeArquivoSeguro_(item.nome);
+    var b64  = String(item.base64 || "");
+    if (!b64) { avisos.push(nome + ": arquivo vazio."); continue; }
+
+    var ext = oficio_extensaoDe_(nome);
+    if (OFICIO_ANEXO_EXTRA_EXTENSOES.indexOf(ext) === -1) {
+      avisos.push(nome + ": tipo de arquivo não aceito (aceitos: " +
+                  OFICIO_ANEXO_EXTRA_EXTENSOES.join(", ") + ").");
+      continue;
+    }
+
+    /* base64 carrega ~4 caracteres por 3 bytes. Medir aqui evita decodificar
+       um arquivo gigante só para descobrir que ele não cabe. */
+    var bytes = Math.floor(b64.length * 3 / 4);
+    if (bytes > limiteArquivo) {
+      avisos.push(nome + ": tem mais de " + OFICIO_ANEXO_EXTRA_MAX_MB + " MB.");
+      continue;
+    }
+    totalBytes += bytes;
+    if (totalBytes > limiteTotal) {
+      avisos.push(nome + ": o total passa de " + OFICIO_ANEXO_EXTRA_MAX_TOTAL_MB +
+                  " MB e o Gmail recusaria a mensagem.");
+      break;
+    }
+    preparados.push({ nome: nome, tipo: String(item.tipo || "application/octet-stream"),
+                      base64: b64, ehFicha: item.ehFicha === true });
+  }
+
+  if (!preparados.length) return { guardados: guardados, avisos: avisos };
+
+  var alvo = oficio_linhaNoControle_(numero);
+  if (!alvo) {
+    avisos.push("Ofício " + numero + " não encontrado no Controle — o anexo não pôde ser guardado.");
+    return { guardados: guardados, avisos: avisos };
+  }
+
+  var pasta;
+  try {
+    pasta = obterPastaPorTipo_(normalizarTipoOficio_(tipo));
+  } catch (ePasta) {
+    avisos.push("Pasta do Drive indisponível: " + (ePasta.message || ePasta));
+    return { guardados: guardados, avisos: avisos };
+  }
+
+  var quando = new Date();
+  preparados.forEach(function (a) {
+    try {
+      var blob = Utilities.newBlob(Utilities.base64Decode(a.base64), a.tipo, a.nome);
+      var arq  = pasta.createFile(blob);
+      guardados.push({
+        fileId: arq.getId(),
+        nome:   a.nome,
+        /* A DECLARACAO VIAJA COM O ARQUIVO — 11/09/2026.
+
+           Sem guardar isto, o reenvio seguinte perderia a informacao e o aviso
+           vermelho voltaria para um oficio que ja tem a carta: a pessoa
+           resolveria o mesmo problema toda vez. Guardado, vale para sempre. */
+        ehFicha: a.ehFicha === true,
+        quem:   String(quem || "").trim(),
+        quando: Utilities.formatDate(quando, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")
+      });
+    } catch (eArq) {
+      avisos.push(a.nome + ": falhou ao guardar no Drive — " + (eArq.message || eArq));
+    }
+  });
+
+  if (!guardados.length) return { guardados: guardados, avisos: avisos };
+
+  var col = oficio_garantirColuna_(alvo.sh, OFICIO_COL_ANEXOS_EXTRAS);
+  var antes = oficio_lerAnexosExtras_(numero);
+  alvo.sh.getRange(alvo.linha, col).setValue(JSON.stringify(antes.concat(guardados)));
+
+  try {
+    registrarLogSistema_({
+      usuario: String(quem || "").trim(),
+      numero:  numero + " (ANEXO ACRESCENTADO)",
+      tipo:    "OFICIOS_ANEXO_ACRESCENTADO",
+      escola:  "",
+      cnpj:    "",
+      email:   "",
+      codigo:  guardados.map(function (x) { return x.nome; }).join(", ")
+    });
+  } catch (eLog) {}
+
+  return { guardados: guardados, avisos: avisos };
+}
+
+/** "acrescentada em 11/09 por fulano@" — o que a tela mostra como origem. */
+function oficio_origemAnexoExtra_(extra) {
+  var quando = String((extra && extra.quando) || "").trim();
+  var dia = quando ? quando.slice(8, 10) + "/" + quando.slice(5, 7) : "";
+  var quem = String((extra && extra.quem) || "").trim();
+  return "acrescentada" + (dia ? " em " + dia : "") + (quem ? " por " + quem : "") +
+         (extra && extra.ehFicha === true ? " · marcada como ficha/carta" : "");
+}
+
 function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, linkFicha) {
   var itens = [];
   var pacote = obterAnexosOriginaisFilaOficio_(numero, idOficio);
@@ -577,6 +880,29 @@ function reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvio, l
       }
     }
   }
+
+  /* 4ª CAMADA — o que alguém acrescentou a este ofício num reenvio anterior.
+
+     Vem POR ÚLTIMO de propósito: se o mesmo documento já entrou pelo pacote
+     original ou pelo resgate no Drive, ele não precisa entrar de novo, e a
+     deduplicação por nome evita mandar a mesma carta duas vezes. */
+  oficio_lerAnexosExtras_(numero).forEach(function (extra) {
+    if (!extra || !extra.fileId) return;
+    try {
+      var nomesAtuais = anexos.map(function (b) { return String(b.getName() || ""); });
+      var arq = DriveApp.getFileById(String(extra.fileId));
+      var nomeArq = String(extra.nome || arq.getName() || "").trim();
+      if (nomesAtuais.indexOf(nomeArq) > -1) return;
+      anexos.push(arq.getBlob().setName(nomeArq));
+      itens.push({ nome: nomeArq, origem: oficio_origemAnexoExtra_(extra),
+                   ehFicha: extra.ehFicha === true });
+    } catch (eExtra) {
+      /* Arquivo apagado do Drive depois de acrescentado. Não pode derrubar o
+         reenvio — o ofício ainda tem o que mandar. */
+      Logger.log("⚠ Anexo acrescentado indisponível no ofício " + numero + ": " +
+                 (eExtra.message || eExtra));
+    }
+  });
 
   return { blobs: anexos, itens: itens, reconstruido: pacote.reconstruido === true };
 }
@@ -631,6 +957,11 @@ var OFICIO_COL_JA_FALHOU = "JA_FALHOU";
    a cada três horas. Ver o bloco grande em MonitoramentoOficios.gs. */
 var OFICIO_COL_REENVIADO_EM = "REENVIADO_EM";
 
+/* O ID da mensagem do Gmail gerada pelo REENVIO. Coluna própria, e não a
+   MENSAGEM_ID do envio original: sobrescrever a original apagaria o rastro da
+   primeira tentativa, que é o que prova que houve uma. */
+var OFICIO_COL_MENSAGEM_ID_REENVIO = "MENSAGEM_ID_REENVIO";
+
 /** Garante a coluna, criando-a no fim se não existir. Mesmo padrão do
     escolaGarantirColunaId_ — acrescentar coluna não mexe em dado nenhum. */
 function oficio_garantirColuna_(sh, nome) {
@@ -662,7 +993,7 @@ function oficio_garantirColunaJaFalhou_(sh) {
  * Vai inteira em try/catch: falhar em atualizar o registro não pode desfazer
  * um e-mail que já saiu, nem transformar um reenvio bom em erro na tela.
  */
-function oficio_marcarReenviado_(numero) {
+function oficio_marcarReenviado_(numero, mensagemId) {
   try {
     var ss = SpreadsheetApp.openById(
       typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID);
@@ -699,6 +1030,35 @@ function oficio_marcarReenviado_(numero) {
         if (cReenv) sh.getRange(linha, cReenv).setValue(new Date());
       } catch (eData) {
         Logger.log("oficio_marcarReenviado_ (data): " + (eData && eData.message || eData));
+      }
+
+      /* O ID DA MENSAGEM DO REENVIO — 09/09/2026.
+         ══════════════════════════════════════════════════════════════════
+         O usuario perguntou por que o oficio reenviado nao aparecia em
+         Enviados. O caminho de envio e o MESMO do envio normal
+         (createDraft().send(), que grava em Enviados), mas o sistema nao
+         tinha COMO PROVAR isso: `enviarEmailOficio_` devolve o ID real da
+         mensagem e o reenvio jogava fora.
+
+         Duas consequencias, e a segunda e a grave:
+
+         1. "esta em Enviados?" so se respondia cacando na caixa;
+
+         2. o verificador de confirmacao procura a THREAD pelo ID. Sem ID, ele
+            cai na busca larga por numero e nome de escola — que foi
+            exatamente o que fez uma resposta automatica do Outlook confirmar
+            um oficio que tinha quicado (item 49). Ou seja: todo reenvio
+            devolvia o oficio para a condicao que originou aquele defeito.
+
+         A troca de `sendEmail` por rascunho-e-envia em 02/09 foi feita PARA
+         ter esse ID. Descarta-lo no reenvio desfazia o motivo da troca. */
+      if (mensagemId) {
+        try {
+          var cMsg = oficio_garantirColuna_(sh, OFICIO_COL_MENSAGEM_ID_REENVIO);
+          if (cMsg) sh.getRange(linha, cMsg).setValue(String(mensagemId));
+        } catch (eMsg) {
+          Logger.log("oficio_marcarReenviado_ (id): " + (eMsg && eMsg.message || eMsg));
+        }
       }
 
       SpreadsheetApp.flush();
@@ -794,21 +1154,45 @@ function oficio_reconciliarReenvios_(simular) {
              mensagem: "LOG_SISTEMA vazio — nenhum reenvio registrado." };
   }
 
-  /* ── quais números o log diz que foram reenviados ── */
+  /* ── QUAIS números o log diz que foram reenviados, E QUANDO ──────────────
+     O "quando" é o conserto de 11/09/2026, e ele é o que quebra um laço que
+     rodava 8 vezes por dia havia uma semana.
+
+     Guardar só `true` bastava para virar o status, e era o que se fazia. Só
+     que quem vem depois — a verificação de bounce, na MESMA execução — decide
+     comparando a data do bounce com a do último envio conhecido. Sem
+     REENVIADO_EM, o último envio conhecido era o ORIGINAL, de maio; o bounce
+     guardado no Gmail era de setembro; setembro é maior que maio, e o ofício
+     voltava para FALHA_ENTREGA doze segundos depois de ser reconciliado.
+
+     A data certa é a do LOG, não a de agora: ela diz quando o reenvio
+     aconteceu de verdade. Gravar "agora" quebraria o laço do mesmo jeito e
+     mentiria sobre a data — e essa data é exatamente o que alguém vai olhar
+     para decidir se um bounce novo é notícia. */
   var hmLog = getHeaderMap_(log);
   var cNumLog = hmLog["NUMERO"];
+  var cDataLog = hmLog["DATA_HORA"];
   if (!cNumLog) {
     return { ok: false, mensagem: "Coluna NUMERO não encontrada no LOG_SISTEMA." };
   }
-  var linhasLog = log.getRange(2, cNumLog, log.getLastRow() - 1, 1).getValues();
+  var totalColsLog = Math.max(cNumLog, cDataLog || 0);
+  var linhasLog = log.getRange(2, 1, log.getLastRow() - 1, totalColsLog).getValues();
   var reenviados = {};
   for (var i = 0; i < linhasLog.length; i++) {
-    var texto = String(linhasLog[i][0] || "");
+    var texto = String(linhasLog[i][cNumLog - 1] || "");
     if (texto.indexOf("(REENVIO") === -1) continue;
     /* O campo é "144/2026 (REENVIO - ENDERECO SUBSTITUIDO)": o número é o que
        vem antes do parêntese. */
     var numero = texto.split("(")[0].trim();
-    if (numero) reenviados[numero] = true;
+    if (!numero) continue;
+    var quando = cDataLog ? linhasLog[i][cDataLog - 1] : null;
+    if (!(quando instanceof Date) || isNaN(quando.getTime())) quando = null;
+    /* Fica o reenvio MAIS RECENTE: é ele que um bounce precisa superar. */
+    var jaTinha = reenviados[numero];
+    if (!jaTinha || (quando && jaTinha instanceof Date && quando > jaTinha) ||
+        (quando && !(jaTinha instanceof Date))) {
+      reenviados[numero] = quando || true;
+    }
   }
 
   var sh = ss.getSheetByName(PLANILHA_REGISTRO);
@@ -825,6 +1209,8 @@ function oficio_reconciliarReenvios_(simular) {
   /* A coluna só é criada quando houver algo a gravar — simular não deve
      alterar a estrutura da planilha. */
   var cJa = simular ? (hm[OFICIO_COL_JA_FALHOU] || 0) : oficio_garantirColunaJaFalhou_(sh);
+  var cReenv = simular ? (hm[OFICIO_COL_REENVIADO_EM] || 0)
+                       : oficio_garantirColuna_(sh, OFICIO_COL_REENVIADO_EM);
 
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
   var ajustar = [], ajustados = 0;
@@ -840,6 +1226,14 @@ function oficio_reconciliarReenvios_(simular) {
 
     if (!simular) {
       if (cJa) sh.getRange(j + 2, cJa).setValue("SIM");
+      /* SEM ESTA LINHA O STATUS VOLTA SOZINHO. Ver a nota grande acima: é a
+         data que a verificação de bounce compara para saber se a falha é
+         notícia nova ou eco de um endereço já aposentado. Só grava quando o
+         log soube dizer quando — data inventada aqui vira decisão errada
+         depois. */
+      if (cReenv && reenviados[num] instanceof Date) {
+        sh.getRange(j + 2, cReenv).setValue(reenviados[num]);
+      }
       sh.getRange(j + 2, cSt).setValue("ENVIADO");
       /* A fila também, pelo mesmo motivo do oficio_marcarReenviado_: é ela que
          a tela lê e que o reenvio em lote consulta. Reconciliar só o Registro
@@ -1001,6 +1395,27 @@ function reenviarOficio(registro, tokenSessao) {
     var idOficio = extrairIdDriveOficio_(url);
     if (!idOficio) return { erro: true, mensagem: "Não foi possível identificar o arquivo PDF na URL informada." };
 
+    /* GUARDAR ANTES DE REUNIR — 11/09/2026.
+
+       O arquivo que a pessoa acabou de escolher é salvo no Drive e registrado
+       no Controle ANTES do pacote ser montado, para entrar no envio de hoje
+       pelo MESMO caminho por onde entrará nos próximos reenvios. Se fosse
+       concatenado direto aqui, o envio de hoje e a prévia de amanhã veriam
+       listas diferentes — que é justamente o que a nota do
+       `reunirAnexosReenvioOficio_` existe para impedir.
+
+       E persiste mesmo que o envio falhe depois: o anexo passa a fazer parte
+       do ofício de qualquer jeito, que é o pedido do usuário — não ter de
+       anexar de novo na próxima tentativa. */
+    var avisosAnexo = [];
+    if (Array.isArray(registro.anexosNovos) && registro.anexosNovos.length) {
+      var guarda = oficio_guardarAnexosExtras_(numero, tipo, registro.anexosNovos, emailUsuario);
+      avisosAnexo = guarda.avisos || [];
+      if (!guarda.guardados.length && avisosAnexo.length) {
+        return { erro: true, mensagem: "Nenhum anexo pôde ser guardado. " + avisosAnexo.join(" ") };
+      }
+    }
+
     var reuniao = reunirAnexosReenvioOficio_(numero, idOficio, tipo, escola, dataEnvioOficio, linkFicha);
     var anexos  = reuniao.blobs;
     var pacote  = { reconstruido: reuniao.reconstruido };
@@ -1017,8 +1432,10 @@ function reenviarOficio(registro, tokenSessao) {
       "Segue reenvio do ofício em anexo."
     );
 
-    /* Sai da caixa de falha, sem apagar a memória de que falhou. */
-    var marcado = oficio_marcarReenviado_(numero);
+    /* Sai da caixa de falha, sem apagar a memória de que falhou. O ID da
+       mensagem vai junto: é a prova de que o reenvio chegou ao Gmail, e é o
+       que o verificador de confirmação usa para achar a thread certa. */
+    var marcado = oficio_marcarReenviado_(numero, opcoes && opcoes.mensagemId);
 
     /* A TRILHA PRECISA DIZER QUE SAIU DO CADASTRO. Este recurso permite mandar
        um oficio, com dado pessoal dentro, para um endereco que ninguem
@@ -1055,12 +1472,80 @@ function reenviarOficio(registro, tokenSessao) {
                 " sincronizada — ele ainda vai aparecer como falha na tela.")
           : " ATENÇÃO: o status no Controle não pôde ser atualizado" +
             (marcado && marcado.motivo ? " (" + marcado.motivo + ")" : "") +
-            " — o ofício vai continuar aparecendo como falha.")
+            " — o ofício vai continuar aparecendo como falha.") +
+        /* Arquivo recusado não pode sumir numa mensagem de sucesso: a pessoa
+           anexou pensando que ia, e o ofício saiu sem ele. */
+        (avisosAnexo.length ? " ATENÇÃO, anexo(s) não incluído(s): " +
+                              avisosAnexo.join(" ") : "")
     };
 
   } catch(e) {
-    return { erro: true, mensagem: "Erro ao reenviar: " + e.message };
+    return { erro: true, mensagem: oficio_explicarFalhaDeEnvio_(e, numero) };
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   O ERRO QUE O OPERADOR PRECISA ENTENDER — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário reenviou o ofício 407 e nada apareceu em Enviados, nem na caixa do
+   financeiro nem na da secretaria. Em 04/09 os reenvios saíram normalmente —
+   242, 236, 203, 172, 168 e 144, todos com assunto "Reenvio:". Hoje, não.
+
+   O QUE MUDOU está no log do próprio sistema, às 11:56 de hoje:
+
+       Service invoked too many times for one day: gmail
+
+   A conta que executa o script esgotou o limite de operações do Gmail. Isso
+   derruba o createDraft().send(), e o ofício simplesmente não sai. O código já
+   fazia a coisa certa — a exceção sobe, o status NÃO vira ENVIADO, o rascunho
+   é apagado. O que ele fazia errado era CONTAR isso ao operador como
+
+       "Erro ao reenviar: Service invoked too many times for one day: gmail"
+
+   Uma frase em inglês, sobre um limite do Google, para quem quer mandar um
+   ofício. Não diz que o problema passa sozinho, não diz quando tentar de novo,
+   e não diz que o ofício continua intacto — então a reação natural é tentar de
+   novo agora, o que só gasta mais.
+
+   E há uma armadilha a mais, que é o motivo de isto virar função própria: o
+   medidor NÃO PREVÊ essa falha. Às 11:53, três minutos antes, o diagnóstico
+   dizia "Cota de e-mail: 96 restantes". `MailApp.getRemainingDailyQuota()`
+   conta DESTINATÁRIOS; o que estourou foi o limite de CHAMADAS ao serviço
+   Gmail — outro contador, que o gatilho de monitoramento consome varrendo a
+   caixa de três em três horas. Medimos um e gastamos o outro.
+
+   Por isso a mensagem diz o que fazer, e não só o que houve. */
+function oficio_explicarFalhaDeEnvio_(e, numero) {
+  var bruto = String((e && e.message) || e || "");
+  var oficio = String(numero || "").trim();
+
+  if (oficio_ehLimiteDoGmail_(e)) {
+    return "O ofício " + (oficio ? oficio + " " : "") + "NÃO foi enviado: o " +
+           "limite diário de e-mail do Google se esgotou na conta que envia. " +
+           "O ofício continua intacto e segue marcado como pendente — não é " +
+           "preciso refazer nada. Tente de novo amanhã, quando o limite zera. " +
+           "Tentar agora só gasta o que ainda resta. " +
+           "(Mensagem do Google: " + bruto + ")";
+  }
+
+  return "Erro ao reenviar: " + bruto;
+}
+
+/* O MESMO LIMITE APARECE EM DOIS LUGARES, E A REGRA TEM DE SER UMA SÓ.
+   09/09/2026, ao publicar a conferência da caixa de Enviados. Quem envia
+   ofício e quem confere ofício batem no mesmo teto de chamadas ao Gmail, e
+   pelo mesmo motivo: "ler e enviar saem do mesmo orçamento" (item 77). Se
+   cada lado tivesse sua própria lista de trechos para reconhecer a falha, um
+   deles reconheceria e o outro não — e o que não reconhecesse trataria um
+   apagão de cota como se fosse notícia sobre UM ofício.
+
+   O Google escreve a mensagem em inglês e ela cobre os dois limites — o de
+   destinatários por dia e o de chamadas ao serviço. Casar pelo trecho é o que
+   dá para fazer: não existe código de erro a checar. */
+function oficio_ehLimiteDoGmail_(e) {
+  var bruto = String((e && e.message) || e || "");
+  return /too many times for one day|limite de uso|quota|Service invoked/i.test(bruto);
 }
 
 /* ── Helpers de formatação de corpo ── */
@@ -1082,4 +1567,306 @@ function formatarCorpoEmailHTML_(texto) {
     var html = String(paragrafo).replace(/\n/g,"<br>");
     return "<p style='margin:0 0 14px 0;text-align:justify;line-height:1.7;'>" + html + "</p>";
   }).join("");
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RASCUNHOS ÓRFÃOS — A VARREDURA QUE LISTA, E NÃO APAGA
+
+   POR QUE EXISTE. O envio do SISGEP cria um rascunho e manda em seguida; se
+   o `send()` falha, o `catch` apaga o rascunho antes de deixar o erro subir.
+   O que NENHUM dos dois caminhos cobre é a execução ser INTERROMPIDA entre
+   uma coisa e outra — o timeout de 6 minutos do Apps Script, ou a execução
+   cancelada. Ali o `catch` nunca roda, e sobra um rascunho na caixa que, para
+   quem olha, parece documento pendente de mandar.
+
+   POR QUE ELA SÓ LISTA — decisão de 17/09/2026, com o usuário dizendo "caso
+   ache necessário". Duas razões, e as duas pesam mais do que a conveniência
+   de apagar sozinho:
+
+   1. NÃO DÁ PARA SABER COM CERTEZA o que o sistema criou. A caixa do
+      financeiro tem 31 rascunhos, vários escritos à mão, alguns de junho, com
+      assuntos de trabalho — "Relação de filiados atualizados", "Filiação -
+      Gabriel - UNISALES". Qualquer regra que eu escrevesse para reconhecer "o
+      que é do sistema" acertaria quase sempre e erraria um dia. Apagar
+      rascunho é irreversível, e o dia do erro seria o dia em que ele perde
+      um texto que estava escrevendo.
+
+   2. O CAMINHO DE ENVIO NÃO PODE SER INSTRUMENTADO POR ISSO. A alternativa
+      segura seria registrar o id do rascunho antes de mandar e apagar o
+      registro depois — aí a varredura saberia exatamente o que é do sistema.
+      Mas isso põe duas escritas de PropertiesService dentro do envio do
+      OFÍCIO, que é a única operação viva do sindicato. Trocar um risco raro
+      (rascunho sobrando quando o script morre no meio) por um risco no
+      caminho crítico de todo dia é mau negócio.
+
+   O QUE ELA RESOLVE: o problema real não é o rascunho existir, é NINGUÉM
+   SABER que ele existe. Listado, quem decide é quem conhece a caixa.
+
+   Roda pelo editor do Apps Script (botão Run) ou por uma tela com sessão —
+   ver escolaExigirAdminOuSessao_, o mesmo padrão de porta dupla.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Assuntos que o SISGEP produz. Usado só para CLASSIFICAR na listagem. */
+var OFICIOS_MARCAS_ASSUNTO_ = [
+  "Ofício de ", "Ofício ", "Certificado de Bolsa", "Voucher de Bolsa",
+  "Solicitação de Bolsa", "Complementação de documentos", "Bolsa aprovada",
+  "Taxa Negocial", "Declaração de ", "Atendimento presencial necessário"
+];
+
+function oficiosRascunhosOrfaos(minutosMinimos, tokenSessao) {
+  escolaExigirAdminOuSessao_(tokenSessao, "oficiosRascunhosOrfaos", true);
+
+  /* O PISO DE IDADE EXISTE PARA NÃO ACUSAR QUEM ESTÁ ENVIANDO AGORA.
+   * Entre createDraft e send passam segundos; um rascunho de 30 segundos
+   * atrás provavelmente está a caminho, não órfão. 15 minutos é folga
+   * confortável sobre o teto de 6 minutos de execução do Apps Script. */
+  var minutos = Number(minutosMinimos);
+  if (!minutos || minutos < 1) minutos = 15;
+  var limite = Date.now() - minutos * 60 * 1000;
+
+  try {
+    var rascunhos = GmailApp.getDrafts();
+    var achados = [];
+
+    rascunhos.forEach(function (d) {
+      var msg, assunto = "", quando = null, anexos = 0, para = "";
+      try {
+        msg = d.getMessage();
+        assunto = String(msg.getSubject() || "");
+        quando = msg.getDate();
+        para = String(msg.getTo() || "");
+        anexos = (msg.getAttachments() || []).length;
+      } catch (eLeitura) { return; }
+
+      if (!quando || quando.getTime() > limite) return;
+
+      /* PARECE do sistema — e "parece" é a palavra certa. Nenhuma marca aqui
+       * é prova; é por isso que esta função não apaga nada. */
+      var pareceDoSistema = false;
+      for (var i = 0; i < OFICIOS_MARCAS_ASSUNTO_.length; i++) {
+        if (assunto.indexOf(OFICIOS_MARCAS_ASSUNTO_[i]) > -1) { pareceDoSistema = true; break; }
+      }
+
+      achados.push({
+        assunto: assunto || "(sem assunto)",
+        para: para,
+        quando: Utilities.formatDate(quando, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+        idadeHoras: Math.floor((Date.now() - quando.getTime()) / 3600000),
+        anexos: anexos,
+        pareceDoSistema: pareceDoSistema,
+        id: d.getId()
+      });
+    });
+
+    achados.sort(function (a, b) { return b.idadeHoras - a.idadeHoras; });
+
+    var doSistema = achados.filter(function (a) { return a.pareceDoSistema; });
+
+    var linhas = [];
+    linhas.push("RASCUNHOS COM MAIS DE " + minutos + " MINUTOS: " + achados.length);
+    linhas.push("Dos quais PARECEM do SISGEP (pelo assunto): " + doSistema.length);
+    linhas.push("");
+    linhas.push("ATENÇÃO: 'parece' não é prova. Esta função NÃO apaga nada.");
+    linhas.push("Confira um a um antes de apagar qualquer coisa no Gmail.");
+    linhas.push("");
+    achados.forEach(function (a) {
+      linhas.push((a.pareceDoSistema ? "[SISGEP?] " : "[manual?] ") +
+        a.quando + " · " + a.idadeHoras + "h · " +
+        (a.anexos ? a.anexos + " anexo(s) · " : "") +
+        (a.para ? "para " + a.para + " · " : "sem destinatário · ") +
+        a.assunto);
+    });
+
+    var relatorio = linhas.join("\n");
+    Logger.log(relatorio);
+
+    return {
+      ok: true,
+      total: achados.length,
+      doSistema: doSistema.length,
+      minutos: minutos,
+      rascunhos: achados,
+      relatorio: relatorio,
+      mensagem: achados.length === 0
+        ? "Nenhum rascunho com mais de " + minutos + " minutos."
+        : achados.length + " rascunho(s), " + doSistema.length + " com cara de SISGEP. Nada foi apagado."
+    };
+
+  } catch (e) {
+    Logger.log("oficiosRascunhosOrfaos: " + e.message + "\n" + (e.stack || ""));
+    return { ok: false, mensagem: "Erro ao varrer os rascunhos: " + e.message };
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A CASCA ÚNICA DE E-MAIL DO SISGEP — 17/09/2026
+
+   "O padrão SISGEP é o único, independente se é para a instituição ou para o
+    associado. Então tem que ter um padrão único: um padrão de escrita, um
+    padrão de cores, um padrão que o SISGEP já utiliza." — o usuário.
+
+   O QUE HAVIA. Seis funções diferentes montavam casca de e-mail, e dezesseis
+   arquivos desenhavam cabeçalho navy por conta própria. Cada módulo com o
+   seu: uns com CNPJ, outros sem; uns com rodapé institucional, outros com uma
+   linha solta; saudação diferente em cada um. Quem recebe dois e-mails do
+   sindicato via duas identidades.
+
+   DE ONDE VEM ESTE DESENHO. Da casca do OFÍCIO — não foi escolha de gosto:
+   é a única que o usuário já validou em produção, olhando um ofício real
+   recebido, e é a da operação viva. As outras se alinham a ela, nunca o
+   contrário.
+
+   AS PARTES, e por que cada uma existe:
+
+     cabeçalho   nome + descrição + CNPJ, com régua dourada à esquerda.
+                 O CNPJ está ali porque instituição de ensino confere.
+     número      à direita, com rótulo. "OFÍCIO Nº 540/2026" no ofício,
+                 "PROTOCOLO BOLSA-2026-187653" em Bolsas. Quem não tem
+                 número passa vazio e o canto fica limpo — sem buraco.
+     badge       o assunto em uma palavra: FILIAÇÃO, SOLICITAÇÃO, APROVADA.
+                 É o que a pessoa lê antes de ler o texto.
+     corpo       branco, o conteúdo de cada módulo.
+     rodapé      régua dourada + endereço e contato.
+
+   O `escaparTitulo` existe porque título e badge quase sempre vêm de código,
+   mas o número às vezes vem de dado — e dado não entra em HTML sem escapar.
+   ══════════════════════════════════════════════════════════════════════════ */
+function sisgepEmailHtml_(o) {
+  o = o || {};
+
+  function esc(t) {
+    return String(t === null || t === undefined ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  var numero      = String(o.numero || "").trim();
+  var rotuloNum   = String(o.rotuloNumero || "").trim();
+  var badge       = String(o.badge || "").trim();
+  var corpo       = String(o.corpo || "");
+
+  /* O TOM DO BADGE É VOCABULÁRIO, NÃO EXCEÇÃO — 17/09/2026.
+   *
+   * O certificado de bolsa usava badge VERDE, com uma razão registrada no
+   * arquivo dele: "o dourado é identidade, não estado; concessão de benefício
+   * é notícia boa, e o badge diz isso antes de a pessoa ler o texto". O
+   * argumento é bom, e o Design System do projeto já separa as cores
+   * semânticas do dourado institucional.
+   *
+   * Então o tom entra como OPÇÃO NOMEADA, e não como cada módulo escolhendo
+   * um hex. Três tons, os mesmos do resto do sistema. Quem não pede nada
+   * recebe o dourado. */
+  /* O TOM VERDE SE CHAMA "sucesso", e não pela sigla curta de duas letras que
+   * se usaria por reflexo. A razão é boa de registrar, porque é sutil:
+   *
+   * t138 varre TODOS os literais deste arquivo procurando palavra que pareça
+   * confirmação de recebimento — é o que impede o monitoramento de ofícios de
+   * dar por confirmado um ofício que ninguém respondeu. Aquela sigla está na
+   * lista, e a chave do mapa casava. O teste reprovou na hora.
+   *
+   * E reprovou DUAS vezes: na primeira correção eu citei a sigla aqui no
+   * comentário, entre aspas, e o varredor a encontrou de novo. Por isso ela
+   * não aparece escrita em lugar nenhum deste arquivo.
+   *
+   * "sucesso" é o vocabulário do Design System de qualquer forma. */
+  var TONS = {
+    ouro:    { fundo: "transparent",          borda: "rgba(201,168,76,.5)",  texto: "#C9A84C" },
+    sucesso: { fundo: "rgba(16,185,129,.18)", borda: "rgba(52,211,153,.42)", texto: "#6ee7b7" },
+    alerta:  { fundo: "rgba(251,191,36,.15)", borda: "rgba(251,191,36,.45)", texto: "#fcd34d" }
+  };
+  var tom = TONS[String(o.badgeTom || "ouro")] || TONS.ouro;
+
+  var blocoNumero = numero
+    ? "<div style='text-align:right;white-space:nowrap;'>" +
+        (rotuloNum
+          ? "<div style='font-size:9.5px;font-weight:800;letter-spacing:.14em;" +
+            "color:rgba(255,255,255,.55);text-transform:uppercase;'>" + esc(rotuloNum) + "</div>"
+          : "") +
+        "<div style='font-size:19px;font-weight:900;color:#C9A84C;margin-top:3px;'>" +
+          esc(numero) + "</div>" +
+      "</div>"
+    : "";
+
+  var blocoBadge = badge
+    ? "<div style='margin-top:14px;'>" +
+        "<span style='display:inline-block;background:" + tom.fundo + ";" +
+        "border:1px solid " + tom.borda + ";color:" + tom.texto + ";" +
+        "font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;" +
+        "padding:5px 12px;border-radius:20px;'>" + esc(badge) + "</span>" +
+      "</div>"
+    : "";
+
+  /* A ASSINATURA DE QUEM MANDA, quando o módulo quer — o certificado de bolsa
+   * fecha com o nome e o cargo da Marcelha, e isso é informação real: diz a
+   * quem responder. Fica ACIMA do endereço, separada por uma linha, para não
+   * se misturar com o dado institucional. */
+  var assin = o.assinatura || null;
+  var blocoAssinatura = (assin && assin.nome)
+    ? "<div style='font-size:15px;font-weight:900;color:#ffffff;'>" + esc(assin.nome) + "</div>" +
+      (assin.cargo
+        ? "<div style='font-size:11.5px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
+          esc(assin.cargo) + "</div>"
+        : "") +
+      "<div style='margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.10);'></div>"
+    : "";
+
+  return "" +
+    "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:640px;color:#0f172a;'>" +
+
+      "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);" +
+        "padding:22px 26px 20px;border-radius:8px 8px 0 0;'>" +
+        /* A tabela em vez de flex: cliente de e-mail antigo (e o Outlook em
+           particular) ignora flexbox, e o número iria parar embaixo do nome.
+           Tabela com duas células alinha nos dois mundos. */
+        "<table role='presentation' cellpadding='0' cellspacing='0' border='0' style='width:100%;'>" +
+          "<tr>" +
+            "<td style='vertical-align:top;'>" +
+              "<div style='border-left:4px solid #C9A84C;padding-left:14px;'>" +
+                "<div style='font-size:19px;font-weight:900;color:#ffffff;'>SINDEDUCAÇÃO-ES</div>" +
+                "<div style='font-size:10.5px;color:rgba(255,255,255,.62);margin-top:5px;line-height:1.5;'>" +
+                  "Sindicato dos Educadores Técnico-Administrativos<br>" +
+                  "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
+                "<div style='font-size:10px;font-weight:800;color:#C9A84C;margin-top:6px;'>" +
+                  "CNPJ: 31.815.780/0001-51</div>" +
+              "</div>" +
+            "</td>" +
+            "<td style='vertical-align:top;text-align:right;'>" + blocoNumero + "</td>" +
+          "</tr>" +
+        "</table>" +
+        blocoBadge +
+      "</div>" +
+
+      "<div style='background:#ffffff;padding:26px;border:1px solid #e2e8f0;border-top:none;" +
+        "line-height:1.7;font-size:14px;'>" + corpo + "</div>" +
+
+      "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);" +
+        "border-radius:0 0 8px 8px;padding:18px 26px;text-align:center;'>" +
+        "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
+          "margin-bottom:13px;border-radius:2px;'></div>" +
+        blocoAssinatura +
+        "<div style='font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.7;'>" +
+          "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
+          "Enseada do Suá - Vitória/ES<br>" +
+          "(27) 3222-2706 &bull; secretaria@sindeducacao.com" +
+        "</div>" +
+        /* A LINHA DE ORIGEM veio do rodapé do certificado, e quase se perdeu
+         * na migração — t60 a exigia e reprovou. Ela diz que a mensagem saiu
+         * de um sistema, não de alguém digitando: quem recebe sabe que
+         * responder ali chega na Secretaria, e não num robô. */
+        "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>" +
+          "Documento gerado pelo SISGEP &middot; SindEducação-ES</div>" +
+      "</div>" +
+
+    "</div>";
+}
+
+/** A saudação do SISGEP, uma só. "Olá, Marcelha! Tudo bem?" */
+function sisgepSaudacaoEmail_(nomeCompleto) {
+  var t = String(nomeCompleto || "").trim();
+  if (!t) return "<p style='margin:0 0 16px;'>Olá! Tudo bem?</p>";
+  var p = t.split(/\s+/)[0];
+  var nome = p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+  return "<p style='margin:0 0 16px;'>Olá, <strong>" +
+    nome.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+    "</strong>! Tudo bem?</p>";
 }

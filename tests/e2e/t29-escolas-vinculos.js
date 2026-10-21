@@ -51,7 +51,7 @@ function montarEscolas() {
     escola("ESC-000008", "Colégio Gêmeo Dois",        "66.777.888/0001-81")
   ];
   sh.getRange(2, 1, linhas.length, CAB_ESCOLAS.length).setValues(linhas);
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   return sh;
 }
 

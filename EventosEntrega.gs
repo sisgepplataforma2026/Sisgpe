@@ -189,8 +189,8 @@ function compasso_paginaIngressoPublica_(token) {
   t.dados = {
     ingressoId: ing.ingressoId,
     numero: ing.numero || '',
-    nome: ing.nome || '',
-    escola: ing.escola || '',
+    nome: compasso_nomeProprio_(ing.nome),
+    escola: compasso_nomeProprio_(ing.escola),
     categoria: compasso_categoriaLabel_(ing.categoria),
     status: ing.status || '',
     email: '', whatsapp: '',   /* a página pública não repete contato */
@@ -229,6 +229,41 @@ function compasso_qrPngDataUri_(texto) {
  * porcentagem sobre a arte e depende de viewport, o que não sobrevive à
  * conversão. Aqui o que importa é ser legível na portaria e no papel.
  */
+/**
+ * QUANTO A LETRA PRECISA ENCOLHER PARA O TEXTO CABER — no PDF.
+ *
+ * "Se for muito longo, diminui a fonte ou coloque em duas linhas" (15/09).
+ *
+ * Na TELA isso é medido depois de desenhado: o navegador compara a altura do
+ * conteúdo com a da caixa. Aqui não há navegador — o conversor recebe HTML
+ * pronto e não devolve medida nenhuma. Então a conta é ESTIMADA, e fica
+ * declarada como estimativa, não como medição.
+ *
+ * Arial bold em caixa alta ocupa por volta de 0,62em por caractere. Com isso
+ * dá para saber quantos cabem por linha e quantas linhas o texto ocupa. A
+ * estimativa erra para mais em nome cheio de I e L, e para menos em nome
+ * cheio de M e W — por isso as linhas arredondam para cima e o piso é o mesmo
+ * da tela: 55%. Abaixo disso o texto cabe e ninguém lê, e quem confere o
+ * ingresso na portaria lê no papel.
+ *
+ * As duas contas não precisam dar o mesmo número: precisam obedecer à mesma
+ * REGRA — encolher em vez de transbordar, e nunca abaixo do piso.
+ */
+function compasso_fontePdfQueCabe_(texto, larguraPx, alturaPx, fontePx) {
+  var t = String(texto == null ? '' : texto);
+  if (!t || !(larguraPx > 0) || !(alturaPx > 0)) return fontePx;
+  var piso = fontePx * 0.55;
+  var f = fontePx;
+  for (var i = 0; i < 12; i++) {
+    var porLinha = Math.max(1, Math.floor(larguraPx / (f * 0.62)));
+    var linhas = Math.ceil(t.length / porLinha);
+    if (linhas * f * 1.12 <= alturaPx) return f;
+    f = f * 0.95;
+    if (f <= piso) return piso;
+  }
+  return f;
+}
+
 function compasso_ingressoPdf_(ing, qrToken) {
   var qr = compasso_qrPngDataUri_(qrToken);
   var arte = compasso_ingressoArteDataUri_();
@@ -251,6 +286,21 @@ function compasso_ingressoPdf_(ing, qrToken) {
     return '<div class="f ' + classe + '" style="' + estilo + '">' + esc(texto) + '</div>';
   };
 
+  /* O MESMO MODELO NOS DOIS LUGARES. As caixas de texto do template da tela
+     têm ALTURA; aqui não tinham, e era por isso que o nome longo se comportava
+     diferente nos dois: na tela encolhia, no PDF escorria para fora da caixa e
+     entrava na de baixo. Agora a altura é a mesma (% da ALTURA do bilhete) e a
+     fonte encolhe pela mesma regra. */
+  var caixa = function (esquerdaPct, topoPct, largPct, altPct, fonteVw, cor, texto, classe) {
+    var largPx  = L * largPct / 100;
+    var altPx   = A * altPct / 100;
+    var fontePx = L * fonteVw / 100;
+    var f = compasso_fontePdfQueCabe_(texto, largPx, altPx, fontePx);
+    return campo(classe || '', 'left:' + esquerdaPct + '%;top:' + topoPct + '%;width:' + largPct +
+                 '%;height:' + altPct + '%;font-size:' + f.toFixed(1) + 'px' +
+                 (cor ? ';color:' + cor : ''), texto);
+  };
+
   var html =
     '<html><head><meta charset="utf-8"><style>' +
     '@page{size:' + L + 'px ' + A + 'px;margin:0}' +
@@ -258,7 +308,10 @@ function compasso_ingressoPdf_(ing, qrToken) {
     '.t{position:relative;width:' + L + 'px;height:' + A + 'px;overflow:hidden;background:#071a38}' +
     '.art{position:absolute;left:0;top:0;width:' + L + 'px;height:' + A + 'px}' +
     '.f{position:absolute;font-family:Arial,Helvetica,sans-serif;font-weight:bold;' +
-      'text-transform:uppercase;line-height:1.12;overflow:hidden;color:#fff}' +
+      'line-height:1.12;overflow:hidden;color:#fff}' +
+    /* Categoria e numero continuam em caixa alta; nome e escola nao — o texto
+       ja chega pronto de compasso_nomeProprio_, o mesmo que a tela usa. */
+    '.alta{text-transform:uppercase}' +
     '.qrBox{position:absolute;left:65.4%;top:57.7%;width:12.4%;height:' +
       (L * 0.124).toFixed(1) + 'px;background:#fff;padding:0.6%}' +
     '.qrBox img{width:100%;height:100%;display:block}' +
@@ -269,23 +322,27 @@ function compasso_ingressoPdf_(ing, qrToken) {
     (emissao_modoTeste_() ? '<div class="teste">HOMOLOGAÇÃO</div>' : '') +
 
     /* Frente do bilhete */
-    campo('', 'left:67.35%;top:25.7%;width:10.2%;font-size:' + px(1.05), ing.nome) +
-    campo('', 'left:67.35%;top:34.4%;width:10.4%;font-size:' + px(1),    ing.escola || '-') +
-    campo('', 'left:67.35%;top:43.4%;width:10.3%;font-size:' + px(1.05),
-          compasso_categoriaLabel_(ing.categoria)) +
-    campo('', 'left:65.3%;top:49.7%;width:12.8%;height:4.6%;color:#111827;font-size:' + px(1.2) +
-              ';letter-spacing:.02em;display:flex;align-items:center;justify-content:center',
+    caixa(67.35, 25.7, 10.2, 7.6, 1.05, '', compasso_nomeProprio_(ing.nome)) +
+    caixa(67.35, 34.4, 10.4, 7.8, 1,    '', compasso_nomeProprio_(ing.escola) || '-') +
+    caixa(67.35, 43.4, 10.3, 5.4, 1.05, '', compasso_categoriaLabel_(ing.categoria), 'alta') +
+    /* O numero e de UMA linha: o excesso vai para o lado, nao para baixo.
+       A conta de caber ja resolve isso sozinha, porque ela mede quantos
+       caracteres cabem na largura antes de contar linhas. */
+    /* Mesmas medidas da tela: 12,2% e 1,05. A caixa anterior era mais larga
+       que o retangulo branco da arte, e o numero vazava para fora dele. */
+    campo('alta', 'left:65.6%;top:49.7%;width:12.2%;height:4.6%;color:#111827;font-size:' +
+              compasso_fontePdfQueCabe_(ing.numero, L*0.122, A*0.046, L*1.05/100).toFixed(1) + 'px' +
+              ';letter-spacing:.01em;display:flex;align-items:center;justify-content:center',
           ing.numero) +
     '<div class="qrBox"><img src="' + qr + '"></div>' +
 
     /* Canhoto */
-    campo('', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' + px(1.1) +
+    campo('alta', 'left:83.3%;top:30.5%;width:14.4%;height:4.8%;color:#b90f3d;font-size:' +
+              compasso_fontePdfQueCabe_(ing.numero, L*0.144, A*0.048, L*1.1/100).toFixed(1) + 'px' +
               ';display:flex;align-items:center;justify-content:center', ing.numero) +
-    campo('', 'left:84.7%;top:46.7%;width:13.1%;color:#172033;font-size:' + px(1), ing.nome) +
-    campo('', 'left:84.7%;top:58.2%;width:13.1%;color:#172033;font-size:' + px(0.95),
-          ing.escola || '-') +
-    campo('', 'left:84.7%;top:69.1%;width:13.1%;color:#172033;font-size:' + px(1),
-          compasso_categoriaLabel_(ing.categoria)) +
+    caixa(84.7, 49.3, 13.1, 7.2, 1,    '#172033', compasso_nomeProprio_(ing.nome)) +
+    caixa(84.7, 60.9, 13.1, 6.8, 0.95, '#172033', compasso_nomeProprio_(ing.escola) || '-') +
+    caixa(84.7, 71.8, 13.1, 6.2, 1,    '#172033', compasso_categoriaLabel_(ing.categoria), 'alta') +
 
     '</div></body></html>';
 
@@ -316,7 +373,11 @@ function compasso_ingressoArquivo(inscricaoId, tokenSessao) {
   var ctx = compasso_contextoEntrega_(inscricaoId);
   if (!ctx.ok) return ctx;
 
-  var pdf = compasso_ingressoPdf_(ctx.ing, ctx.qrToken);
+  /* Do ACERVO (EventosArquivoIngresso.gs), não gerado na hora: o que se baixa
+     e o que se imprime tem que ser o mesmo arquivo que a portaria vai ver.
+     Se ainda não estiver gravado, grava — arquivar não é entregar, então a
+     ressalva acima sobre não registrar entrega continua valendo. */
+  var pdf = compasso_ingressoPdfDoAcervo_(ctx.ing, ctx.qrToken);
   return {
     ok: true,
     numero: String(ctx.ing.numero || ''),
@@ -512,8 +573,134 @@ function compasso_emailIngressoHtml_(ing, url, temPdf) {
   '</div></div>';
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   A ENTREGA É PELO WHATSAPP — 09/09/2026
+
+   Decisão do usuário, nestas palavras: *"os ingressos serão enviados pelo zap
+   / somente por esse caminho"*, e antes disso *"não é enviado nada sozinho"*.
+
+   POR QUE UM INTERRUPTOR E NÃO UM `return` CRAVADO. É a mesma lição da data de
+   abertura da inscrição, aprendida quatro dias antes: decisão de operação não
+   pode custar uma publicação de versão. Se um dia a conta virar Workspace, ou
+   se um associado sem WhatsApp precisar do ingresso por e-mail, quem decide é
+   quem opera — não quem tem acesso ao editor.
+
+   O PADRÃO É DESLIGADO. Ausente a propriedade, o e-mail não sai. Ligar é ato
+   deliberado, com nome e valor explícitos:
+
+       COMPASSO_EMAIL_LIGADO = true
+
+   O QUE ISTO NÃO FAZ: apagar o caminho de e-mail. Ele continua inteiro,
+   testado e pronto — só recusa executar. Apagar seria jogar fora a única saída
+   para quem não tem WhatsApp, e essa gente existe.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* DOIS INTERRUPTORES, PORQUE SÃO DUAS DECISÕES DIFERENTES — 09/09/2026.
+ *
+ * O usuário descreveu a operação inteira e ela separa as duas coisas:
+ *
+ *   COMPROVANTE — sai na hora, por e-mail, para TODO mundo que se inscrever.
+ *     "ele faz a inscrição, recebe uma confirmação: sua inscrição foi
+ *      recebida com sucesso, aguarde a equipe do SindEducação". São ~2.000
+ *      ao longo de setembro e outubro, ~32 por dia. Cabe nos 100 da cota.
+ *
+ *   INGRESSO — só depois da validação individual, guardado, e enviado a
+ *     partir de novembro PELO WHATSAPP, aos poucos: "ninguém vai enviar
+ *     duzentos, trezentos, quinhentos ingressos no mesmo dia".
+ *
+ * Um interruptor só forçaria as duas a andarem juntas, e elas não andam.
+ * Por isso cada uma tem o seu, com o padrão que a operação pede. */
+var COMPASSO_PROP_EMAIL_COMPROVANTE = 'COMPASSO_EMAIL_COMPROVANTE';
+var COMPASSO_PROP_EMAIL_INGRESSO    = 'COMPASSO_EMAIL_INGRESSO';
+
+/* Mantido por compatibilidade: quem já tiver declarado a chave única continua
+   valendo, para as duas. Não é legado morto — é a chave que existiu por
+   algumas horas hoje, e alguém pode tê-la posto no ambiente. */
+var COMPASSO_PROP_EMAIL_LIGADO = 'COMPASSO_EMAIL_LIGADO';
+
+function compasso_propLigada_(nome, padrao) {
+  try {
+    var v = String(PropertiesService.getScriptProperties()
+                   .getProperty(nome) || '').trim().toLowerCase();
+    if (v === 'true')  return true;
+    if (v === 'false') return false;
+    return padrao;
+  } catch (e) { return padrao; }
+}
+
+/** O COMPROVANTE de inscrição sai por e-mail? Padrão: SIM.
+    É uma mensagem curta, ~32 por dia, e sem ela a pessoa fica sem nada na
+    mão — que é o problema que o comprovante existe para resolver. */
+/**
+ * O COMPROVANTE sai por e-mail? Padrão: NÃO. Nada desta festa sai por e-mail.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * POR QUE ISTO MUDOU DE LIGADO PARA DESLIGADO — 09/09/2026
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Nasceu LIGADO na madrugada de hoje (commit eb9cfa4, "o comprovante sai por
+ * e-mail, o ingresso sai pelo zap"), porque o usuário tinha dito: "Comprovante
+ * de inscrição não sai - É UMA MENSAGEM E DEVE sair".
+ *
+ * Eu li "DEVE sair" como "deve sair POR E-MAIL". Não era: era "a pessoa tem de
+ * receber alguma coisa". Duas coisas provaram isso no mesmo dia —
+ *
+ *   1. o envio falhou de verdade, no ar, no primeiro teste:
+ *      "Service invoked too many times for one day: gmail". Ninguém recebeu
+ *      comprovante nenhum, e a tela ainda prometia um e-mail;
+ *
+ *   2. ele repetiu, direto: "não sairá nenhum convite por email e todos serão
+ *      pelo zap enviados" e "tira esse comprovante".
+ *
+ * O QUE SUBSTITUI O E-MAIL, e é o que torna esta mudança segura: o PROTOCOLO
+ * agora aparece na própria tela de inscrição, grande, para a pessoa fotografar
+ * (CompassoInscricaoPublica.html). Ela sai da inscrição com número na mão, na
+ * hora, sem depender de cota, de caixa de spam ou de ter e-mail. O "DEVE sair"
+ * continua cumprido — só que na tela, e não no Gmail.
+ *
+ * PADRÃO NO CÓDIGO, E NÃO SÓ PROPRIEDADE NO AMBIENTE. Uma propriedade resolve
+ * onde alguém lembrar de declará-la; produção continuaria ligada até isso
+ * acontecer. Padrão errado é o que volta sozinho.
+ *
+ * O interruptor CONTINUA existindo: declarar COMPASSO_EMAIL_COMPROVANTE = true
+ * religa, sem publicar versão. Se a conta virar Workspace, ou se aparecer um
+ * público que só tem e-mail, a decisão é de quem opera.
+ */
+function compasso_emailComprovanteLigado_() {
+  return compasso_propLigada_(COMPASSO_PROP_EMAIL_COMPROVANTE,
+         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, false));
+}
+
+/** O INGRESSO sai por e-mail? Padrão: NÃO — a entrega é pelo WhatsApp. */
+function compasso_emailIngressoLigado_() {
+  return compasso_propLigada_(COMPASSO_PROP_EMAIL_INGRESSO,
+         compasso_propLigada_(COMPASSO_PROP_EMAIL_LIGADO, false));
+}
+
+/* Nome antigo, preservado para quem já chamava. Responde pelo INGRESSO, que
+   era o caso de uso que o criou. */
+function compasso_emailLigado_() { return compasso_emailIngressoLigado_(); }
+
+/** A recusa, dita de um jeito que explica o que fazer em vez de só negar. */
+function compasso_recusaEmail_(oQue) {
+  return {
+    ok: false,
+    codigo: 'ENTREGA_SOMENTE_WHATSAPP',
+    erro: oQue + ' por e-mail está desligado: a entrega desta festa é pelo ' +
+          'WhatsApp. Use o botão de WhatsApp na linha da inscrição. Se for ' +
+          'mesmo necessário mandar por e-mail, declare ' +
+          COMPASSO_PROP_EMAIL_INGRESSO + ' = true nas Propriedades do script.'
+  };
+}
+
 function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar ingresso por e-mail', false);
+  if (!compasso_emailIngressoLigado_()) {
+    try {
+      compasso_auditar_('ENTREGA_EMAIL_RECUSADA', 'inscricao', String(inscricaoId || ''),
+                        { motivo: COMPASSO_PROP_EMAIL_INGRESSO + ' != true' });
+    } catch (eAud) {}
+    return compasso_recusaEmail_('O envio do ingresso');
+  }
 
   var ctx = compasso_contextoEntrega_(inscricaoId);
   if (!ctx.ok) return ctx;
@@ -525,7 +712,8 @@ function compasso_enviarIngressoEmail(inscricaoId, tokenSessao) {
   var anexos = [];
   var avisoPdf = '';
   try {
-    anexos.push(compasso_ingressoPdf_(ctx.ing, ctx.qrToken));
+    /* Do acervo — o anexo é o arquivo conferido, não uma segunda geração. */
+    anexos.push(compasso_ingressoPdfDoAcervo_(ctx.ing, ctx.qrToken));
   } catch (ePdf) {
     /* O PDF é o extra; o link é o essencial. Se a conversão falhar, o e-mail
        sai mesmo assim — mas a pessoa fica sabendo que foi sem anexo. */
@@ -695,6 +883,15 @@ function compasso_capacidadeEnvio(tokenSessao) {
  */
 function compasso_enviarLoteEmail(inscricaoIds, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — enviar lote por e-mail', false);
+
+  if (!compasso_emailIngressoLigado_()) {
+    try {
+      compasso_auditar_('ENTREGA_EMAIL_LOTE_RECUSADA', 'evento', EMISSAO_CFG.EVENTO_ID,
+                        { motivo: COMPASSO_PROP_EMAIL_INGRESSO + ' != true',
+                          quantidade: (inscricaoIds || []).length });
+    } catch (eAud) {}
+    return compasso_recusaEmail_('O envio em lote');
+  }
 
   var fila = (inscricaoIds || []).map(function (x) { return String(x || '').trim(); })
                                  .filter(function (x) { return !!x; });

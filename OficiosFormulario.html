@@ -617,6 +617,10 @@
       <div class="of-card-body">
         <div class="fg fg-2" style="margin-bottom:14px;">
           <div class="fld"><label for="filtroEscola">FILTRAR POR ESCOLA</label><input type="text" id="filtroEscola" placeholder="Nome da escola"></div>
+          <!-- BUSCA POR PESSOA — 11/09/2026. A escola liga dizendo "nao recebi
+               o oficio do fulano": digitar o nome acha o oficio, e o botao de
+               reenviar ja esta na linha. Antes era abrir um por um. -->
+          <div class="fld"><label for="filtroPessoa">FILTRAR POR PESSOA</label><input type="text" id="filtroPessoa" placeholder="Nome de quem está no ofício"></div>
           <div class="fld"><label>&nbsp;</label><div class="row-btns"><button type="button" id="btnAplicarFiltroHist" class="btn btn-navy btn-sm">🔎 Filtrar</button><button type="button" id="btnLimparFiltros" class="btn btn-ghost btn-sm">✕ Limpar</button></div></div>
         </div>
         <div class="fg fg-3" style="margin-bottom:14px;">
@@ -630,6 +634,12 @@
               <option value="PENDENTE">Pendente</option>
               <option value="ERRO">Erro</option>
               <option value="FALHA_ENTREGA">Falha de entrega</option>
+              <!-- ERRO_PERMANENTE nao era opcao, e a comparacao dos dois
+                   filtros (servidor e tela) e exata: nem "Erro" alcancava.
+                   Os oficios que mais precisam de gente eram os unicos que a
+                   lista nao sabia mostrar. Achado em 10/09/2026, com o
+                   usuario procurando os quatro que a cota derrubou. -->
+              <option value="ERRO_PERMANENTE">Encerrado (esgotou tentativas)</option>
             </select>
           </div>
           <div class="fld">
@@ -662,11 +672,85 @@
           <button type="button" class="btn btn-navy btn-sm" id="btnHistLote" onclick="Historico.lotePreparar()">&#8635; Preparar reenvio</button>
         </div>
 
+        <!-- CONFERIR RECEBIMENTO, SOB DEMANDA — 09/09/2026.
+             Antes isto rodava sozinho de 2 em 2 horas, e cada rodada faz UMA
+             busca no Gmail POR OFICIO PENDENTE. Ler e enviar saem do mesmo
+             orcamento, entao a conferencia comia a cota do envio de oficio —
+             foi o que derrubou o reenvio do 407.
+             Decisao do usuario: "quem envia e voce, quem confere e voce".
+             Barra propria, e nao junto da de reenvio: aquela so aparece quando
+             ha FALHA, e conferir recebimento e o contrario disso — sao oficios
+             que sairam e estao esperando resposta. -->
+        <div id="histConfBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#9989;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histConfResumo" style="font-size:13px;font-weight:800;color:#1e40af;">&mdash;</div>
+            <div style="font-size:11.5px;color:#1e3a8a;margin-top:2px;">Procura no Gmail a resposta de cada escola. Cada of&iacute;cio marcado &eacute; uma consulta &mdash; por isso confere s&oacute; o que voc&ecirc; escolher.</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btnHistConf" onclick="Historico.conferirRecebimento()">&#9989; Conferir recebimento</button>
+        </div>
+
+        <!-- COMPROVANTE DE ENVIO — 10/09/2026.
+             "como vou provar que foi enviado". Terceira acao sobre a MESMA
+             selecao, ao lado do reenvio em lote e da conferencia — e nao uma
+             tela nova: procurar o oficio duas vezes, num lugar e depois no
+             outro, e o que a barra unica evita.
+             Nao consulta o Gmail: le so o que a fila ja guarda. -->
+        <div id="histCompBarra" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:#f5f3ff;border:1.5px solid #ddd6fe;border-radius:var(--rad);margin-bottom:12px;">
+          <span style="font-size:20px;line-height:1;">&#128196;</span>
+          <div style="flex:1;min-width:220px;">
+            <div id="histCompResumo" style="font-size:13px;font-weight:800;color:#5b21b6;">&mdash;</div>
+            <div style="font-size:11.5px;color:#4c1d95;margin-top:2px;">Monta a prova de envio a partir do que o sistema registrou. N&atilde;o consulta o Gmail e n&atilde;o gasta cota.</div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" id="btnHistComp" onclick="Historico.comprovante()">&#128196; Comprovante de envio</button>
+        </div>
+
+        <div id="histConfResultado" style="display:none;margin-bottom:12px;padding:12px 14px;border-radius:var(--rad);font-size:13px;"></div>
+
         <!-- RESULTADO DO LOTE — 04/09/2026. "Quando reenviar tem que fechar":
              o modal fecha ao terminar, e o resultado item a item fica AQUI, na
              pagina. Um toast de "4 reenviados" some em segundos e leva junto a
              unica informacao que importa depois — qual falhou e por que. -->
         <div id="histLoteResultado" style="display:none;margin-bottom:12px;"></div>
+
+        <!-- MODAL DO COMPROVANTE — 10/09/2026.
+             Dois botoes no rodape porque o usuario pediu os dois caminhos e
+             eles resolvem coisas diferentes: IMPRIMIR serve para mostrar
+             agora; ARQUIVAR serve para poder mostrar de novo daqui a um ano,
+             sem depender de a fila ainda ter a linha. -->
+        <div id="histCompOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:820px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--navy,#001f4d);">
+              <div>
+                <div class="of-modal-head-title">&#128196; Comprovante de envio</div>
+                <div class="of-modal-head-sub" id="histCompSub">&mdash;</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.compFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:12px;">
+              <!-- Navegacao entre os selecionados. Fica escondida quando ha um
+                   so — seta que nao leva a lugar nenhum e ruido. -->
+              <div id="histCompNav" style="display:none;align-items:center;justify-content:center;gap:14px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="Historico.compIr(-1)">&#9664;</button>
+                <span id="histCompPos" style="font-size:12.5px;font-weight:700;color:#334155;">&mdash;</span>
+                <button type="button" class="btn btn-outline btn-sm" onclick="Historico.compIr(1)">&#9654;</button>
+              </div>
+
+              <div id="histCompCorpo" style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;background:#fff;max-height:52vh;overflow:auto;">
+                <span style="color:#94a3b8;">montando&hellip;</span>
+              </div>
+
+              <div id="histCompArquivo" style="display:none;font-size:12.5px;"></div>
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.compFechar()">Fechar</button>
+              <button type="button" class="btn-outline" id="btnCompArquivar" onclick="Historico.compArquivar()">&#128190; Arquivar no Drive</button>
+              <button type="button" class="btn-navy" id="btnCompImprimir" onclick="Historico.compImprimir()">&#128424; Imprimir</button>
+            </div>
+          </div>
+        </div>
 
         <div id="histLoteOverlay" class="of-modal-overlay">
           <div class="of-modal" style="max-width:880px;">
@@ -743,6 +827,24 @@
                 <div id="histReenvAnexos" style="font-size:12px;color:#475569;">
                   <span style="color:#94a3b8;">conferindo…</span>
                 </div>
+
+                <!-- ANEXAR NA HORA — 11/09, "para todos, a possibilidade de
+                     anexar quando precisar reenviar e assim nao precisaria
+                     fazer novamente". O arquivo escolhido aqui e guardado no
+                     oficio: o proximo reenvio ja encontra sozinho. -->
+                <div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <input id="histReenvArquivo" type="file" multiple
+                         accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                         style="display:none;"
+                         onchange="Historico.anexoEscolher(this)">
+                  <button type="button" class="btn btn-outline btn-sm"
+                          onclick="document.getElementById('histReenvArquivo').click()">
+                    &#43; Anexar documento
+                  </button>
+                  <span style="font-size:11px;color:#64748b;">
+                    fica guardado neste ofício — o próximo reenvio já encontra
+                  </span>
+                </div>
               </div>
 
               <div id="histReenvAviso" style="display:none;font-size:11.5px;padding:8px 10px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;"></div>
@@ -751,6 +853,95 @@
             <div class="of-modal-foot">
               <button type="button" class="btn-outline" onclick="Historico.reenvioFechar()">Cancelar</button>
               <button type="button" class="btn-navy" id="histReenvOk" onclick="Historico.reenvioConfirmar()">Reenviar &#9656;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALTERAR STATUS — 10/09/2026, no padrao SISGEP.
+             O usuario, vendo o dialogo do navegador: "Essa tela precisa estar
+             no padrao Sisgep". Eram DOIS window.prompt em sequencia, com o
+             "Uma pagina incorporada em ...googleusercontent.com diz" em cima,
+             pedindo para DIGITAR um numero de 1 a 5 de cabeca.
+
+             O que muda alem da aparencia, e importa mais: o dialogo do
+             navegador nao tinha como mostrar o estado atual. A pessoa
+             escolhia sem ver de onde o oficio estava vindo nem por que tinha
+             parado - e as consequencias sao opostas conforme o motivo.
+             Aqui o status atual e o ultimo erro ficam a vista, cada opcao diz
+             o que faz, e a combinacao perigosa (endereco que recusou +
+             devolver para a fila) avisa antes. -->
+        <div id="histStatusOverlay" class="of-modal-overlay">
+          <div class="of-modal" style="max-width:560px;">
+            <div class="of-modal-head" style="border-bottom:3px solid var(--navy,#001f4d);">
+              <div>
+                <div class="of-modal-head-title">&#9999;&#65039; Alterar status</div>
+                <div class="of-modal-head-sub" id="histStatusSub">&mdash;</div>
+              </div>
+              <button type="button" class="of-modal-close" onclick="Historico.statusFechar()">&times;</button>
+            </div>
+
+            <div class="of-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+
+              <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f8fafc;">
+                <div style="font-size:11.5px;font-weight:800;color:#64748b;letter-spacing:.4px;padding-top:3px;">ATUAL</div>
+                <div style="flex:1;min-width:0;">
+                  <span class="hist-badge hist-pendente" id="histStatusAtual">&mdash;</span>
+                  <div id="histStatusMotivo" style="display:none;font-size:12px;color:#475569;margin-top:6px;line-height:1.45;"></div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:8px;">Alterar para</div>
+                <label class="hist-st-op" data-valor="PENDENTE">
+                  <input type="radio" name="histStatusOpcao" value="PENDENTE">
+                  <span class="hist-st-op-txt">
+                    <b>🕐 PENDENTE &mdash; devolver para a fila</b>
+                    <i>As tentativas voltam a zero e o ofício sai na próxima rodada, em até 5 minutos.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="ENVIADO">
+                  <input type="radio" name="histStatusOpcao" value="ENVIADO">
+                  <span class="hist-st-op-txt">
+                    <b>📤 ENVIADO</b>
+                    <i>Registra que saiu. Não envia nada.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="CONFIRMADO">
+                  <input type="radio" name="histStatusOpcao" value="CONFIRMADO">
+                  <span class="hist-st-op-txt">
+                    <b>✅ CONFIRMADO</b>
+                    <i>A escola respondeu.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="FALHA_ENTREGA">
+                  <input type="radio" name="histStatusOpcao" value="FALHA_ENTREGA">
+                  <span class="hist-st-op-txt">
+                    <b>❌ FALHA DE ENTREGA</b>
+                    <i>O endereço recusou. A fila não tenta de novo.</i>
+                  </span>
+                </label>
+                <label class="hist-st-op" data-valor="ERRO">
+                  <input type="radio" name="histStatusOpcao" value="ERRO">
+                  <span class="hist-st-op-txt">
+                    <b>⚠️ ERRO</b>
+                    <i>Falhou, e a fila tenta de novo na próxima rodada.</i>
+                  </span>
+                </label>
+              </div>
+
+              <div id="histStatusAviso" style="display:none;font-size:12px;padding:10px 12px;border-radius:10px;background:#fffbeb;border:1.5px solid #fde68a;color:#92400e;line-height:1.5;"></div>
+
+              <label style="font-size:12px;font-weight:700;color:#334155;">
+                Observa&ccedil;&atilde;o
+                <input id="histStatusObs" type="text" placeholder="por que est&aacute; alterando"
+                       style="width:100%;margin-top:5px;padding:9px 11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:12.5px;font-weight:500;">
+              </label>
+
+            </div>
+
+            <div class="of-modal-foot">
+              <button type="button" class="btn-outline" onclick="Historico.statusFechar()">Cancelar</button>
+              <button type="button" class="btn-navy" id="histStatusOk" onclick="Historico.statusConfirmar()">Confirmar</button>
             </div>
           </div>
         </div>
@@ -999,7 +1190,46 @@ window.modalSwitchTab = function(tab) {
   else { tD.style.cssText=inativoStyle; tP.style.cssText=ativoStyle; pD.style.display="none"; pP.style.display="block"; if(!_modalPreviewCarregado) _carregarPreviewEmail(); }
 };
 
+/* O PREVIEW VEM DO SERVIDOR — 15/09/2026.
+ *
+ * Os textos abaixo continuam aqui, mas como RESERVA. Antes eles eram a única
+ * fonte: o preview era redigido de novo no JavaScript, então existiam duas
+ * versões da mesma mensagem — mudar a cláusula da CCT no EmailOficios.gs e
+ * esquecer daqui fazia o preview mostrar o que o servidor não ia enviar.
+ *
+ * Agora a tela pede a `oficioPreviaEmail`, que devolve o retorno de
+ * `montarEmailHTML_` — a mesma função do envio. Se a chamada falhar, cai no
+ * desenho de reserva: num módulo que a secretaria usa todo dia, rede ruim
+ * não pode virar modal vazio. */
 function _carregarPreviewEmail() {
+  var container=document.getElementById("modalEmailPreviewContainer"); if(!container) return;
+  var p=_modalPayload||{};
+  container.innerHTML='<div style="text-align:center;padding:40px;color:var(--g400);font-size:13px;">Montando o e-mail…</div>';
+  try {
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||!r.ok||!r.html) return _previewEmailReserva();
+        container.innerHTML =
+          '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 16px rgba(0,20,60,.1);">'+
+            '<div style="background:#fafcff;border-bottom:1px solid #e2e8f0;padding:10px 16px;font-size:11.5px;color:#475569;">'+
+              '<b>Assunto:</b> '+String(r.assunto||"").replace(/</g,"&lt;")+
+            '</div>'+
+            '<div style="padding:4px 0;">'+r.html+'</div>'+
+          '</div>'+
+          '<div style="padding:9px 16px;font-size:11px;color:var(--g400);text-align:center;">montado pela mesma função que o envio usa</div>';
+        _modalPreviewCarregado=true;
+      })
+      .withFailureHandler(function(){ _previewEmailReserva(); })
+      .oficioPreviaEmail({
+        numero: p.numero, tipo: p.tipo, quantidade: p.quantidade || 0,
+        textoPrincipal: p.textoPrincipal || ""
+      }, (typeof SISGEP_TOKEN_SESSAO!=="undefined"?SISGEP_TOKEN_SESSAO:""));
+  } catch(e) { _previewEmailReserva(); }
+}
+
+/* Desenho de reserva — o que existia antes, mantido para o caso de a
+   chamada ao servidor não voltar. */
+function _previewEmailReserva() {
   var container=document.getElementById("modalEmailPreviewContainer"); if(!container) return;
   var p=_modalPayload||{}, numero=p.numero||"???", tipo=p.tipo||"Ofício", escola=p.escola||"";
   var textos={"Filiação":"Encaminhamos, em anexo, o <strong>Ofício de Filiação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos a realização dos descontos mensais de <strong>2%</strong> sobre o salário-base, a título de Mensalidade Sindical.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Desfiliação":"Encaminhamos, em anexo, o <strong>Ofício de Desfiliação nº "+numero+"</strong>.<br><br>Nos termos da <strong>Cláusula 56ª da CCT 2026/2027</strong>, solicitamos que sejam <strong>cessados imediatamente os descontos</strong> de 2% sobre os salários-base.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Negocial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Negocial</strong>, conforme <strong>Cláusula 57ª da CCT 2026/2027</strong>.<br><br>Solicitamos os descontos e repasse até o <strong>10º dia útil do mês subsequente</strong>.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Taxa Assistencial":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> referente à <strong>Taxa Assistencial – Assistência Médica</strong>, conforme a <strong>Cláusula 58ª da CCT 2026/2027</strong>.<br><br>O repasse deverá ser realizado em <strong>duas parcelas de 2%</strong> sobre o salário-base bruto dos colaboradores técnico-administrativos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail.","Ofício Livre":"Encaminhamos, em anexo, o <strong>Ofício nº "+numero+"</strong> conforme descrito no documento.<br><br>Permanecemos à disposição para quaisquer esclarecimentos.<br><br>Solicitamos a <strong>confirmação do recebimento</strong> respondendo a este e-mail."};

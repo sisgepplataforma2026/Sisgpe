@@ -78,35 +78,91 @@ var COMPASSO_TERMO_PADRAO = [
  * Colunas conforme a aba Associados: A nome fantasia (escola), B nome,
  * C CPF, D filiado, H cidade, J celular, L e-mail.
  */
-function compasso_buscarAssociado_(cpfLimpo) {
-  cpfLimpo = String(cpfLimpo || '').replace(/\D/g, '');
-  if (cpfLimpo.length !== 11) return { encontrado: false };
+/**
+ * A BASE DE ASSOCIADOS, LIDA UMA VEZ POR EXECUÇÃO — 15/09/2026.
+ *
+ * "Mas demora muito para importar?"
+ *
+ * Demorava, e a conta é constrangedora. Esta função lia a aba inteira de
+ * Associados — cerca de 8.000 linhas por 12 colunas, algo como 96 mil células
+ * — e varria tudo à procura de UM CPF. A cada chamada.
+ *
+ * A importação chama duas vezes por linha: uma para o selo de situação, outra
+ * dentro do caminho público de criação. Em 201 linhas isso dá 402 leituras da
+ * base inteira. Dezenove milhões de células lidas para encontrar 201 pessoas.
+ * O mesmo vale para o "Conferir contra a base" da tela de gestão, que faz uma
+ * por inscrição.
+ *
+ * Agora a base entra UMA vez e vira índice por CPF. A segunda chamada em
+ * diante é uma consulta em memória.
+ *
+ * POR QUE UMA VARIÁVEL GLOBAL É SEGURA AQUI: no Apps Script cada execução tem
+ * o seu próprio escopo global, criado do zero. O índice não atravessa de uma
+ * execução para outra, então não há risco de alguém ler dado velho na próxima
+ * inscrição — e dentro de uma execução a base não muda, porque quem a
+ * alteraria é outra execução.
+ *
+ * CPF REPETIDO NA PLANILHA: fica o PRIMEIRO, que é o que o laço original
+ * devolvia ao parar no primeiro achado. Não é detalhe — trocar para o último
+ * mudaria em silêncio de quem é o cadastro que o sistema enxerga.
+ */
+var COMPASSO_INDICE_ASSOCIADOS_ = null;
+
+function compasso_indiceAssociados_() {
+  if (COMPASSO_INDICE_ASSOCIADOS_) return COMPASSO_INDICE_ASSOCIADOS_;
+
+  var idx = { porCpf: {}, erro: '' };
   try {
     var ss = SpreadsheetApp.openById(getPlanilhaId());
     var sh = ss.getSheetByName(EMISSAO_CFG.ABA_ASSOCIADOS);
-    if (!sh || sh.getLastRow() < 2) return { encontrado: false };
-
-    var dados = sh.getRange(2, 1, sh.getLastRow() - 1, 12).getValues();
-    for (var i = 0; i < dados.length; i++) {
-      if (String(dados[i][2] || '').replace(/\D/g, '') !== cpfLimpo) continue;
-      return {
-        encontrado: true,
-        nome:     String(dados[i][1] || '').trim(),
-        escola:   String(dados[i][0] || '').trim(),
-        cidade:   String(dados[i][7] || '').trim(),
-        whatsapp: String(dados[i][9] || '').trim(),
-        email:    String(dados[i][11] || '').trim(),
-        /* S/N na coluna D. É o que decide o selo da tela de gestão. */
-        filiado:  String(dados[i][3] || 'N').trim().toUpperCase().charAt(0) === 'S'
-      };
+    if (sh && sh.getLastRow() >= 2) {
+      var dados = sh.getRange(2, 1, sh.getLastRow() - 1, 12).getValues();
+      for (var i = 0; i < dados.length; i++) {
+        var cpf = String(dados[i][2] || '').replace(/\D/g, '');
+        if (cpf.length !== 11) continue;
+        if (Object.prototype.hasOwnProperty.call(idx.porCpf, cpf)) continue;
+        idx.porCpf[cpf] = {
+          encontrado: true,
+          nome:     String(dados[i][1] || '').trim(),
+          escola:   String(dados[i][0] || '').trim(),
+          cidade:   String(dados[i][7] || '').trim(),
+          whatsapp: String(dados[i][9] || '').trim(),
+          email:    String(dados[i][11] || '').trim(),
+          /* S/N na coluna D. É o que decide o selo da tela de gestão. */
+          filiado:  String(dados[i][3] || 'N').trim().toUpperCase().charAt(0) === 'S'
+        };
+      }
     }
-    return { encontrado: false };
   } catch (e) {
     /* Falha de leitura NÃO pode virar "não encontrado" silencioso: a pessoa
        preencheria tudo à mão sem saber que o sistema quebrou, e a equipe veria
-       um ❌ que não é verdade. O erro sobe. */
-    return { encontrado: false, erro: e.message };
+       um ❌ que não é verdade. O erro viaja junto e sobe na resposta.
+       O índice com erro NÃO é memorizado: se a falha foi de rede ou de cota, a
+       próxima chamada tenta de novo em vez de repetir a mentira. */
+    return { porCpf: {}, erro: e.message };
   }
+
+  COMPASSO_INDICE_ASSOCIADOS_ = idx;
+  return idx;
+}
+
+function compasso_buscarAssociado_(cpfLimpo) {
+  cpfLimpo = String(cpfLimpo || '').replace(/\D/g, '');
+  if (cpfLimpo.length !== 11) return { encontrado: false };
+
+  var idx = compasso_indiceAssociados_();
+  if (idx.erro) return { encontrado: false, erro: idx.erro };
+
+  var achado = idx.porCpf[cpfLimpo];
+  if (!achado) return { encontrado: false };
+  /* Cópia, não a referência guardada: quem recebe às vezes completa campos
+     vazios com o que a pessoa digitou, e isso não pode contaminar o índice
+     para as próximas linhas da mesma importação. */
+  return {
+    encontrado: true, nome: achado.nome, escola: achado.escola,
+    cidade: achado.cidade, whatsapp: achado.whatsapp,
+    email: achado.email, filiado: achado.filiado
+  };
 }
 
 /**
@@ -338,19 +394,85 @@ function compasso_inscrever(dados) {
 
      NUNCA derruba a inscrição: ela já está gravada acima, e uma falha de
      e-mail não pode virar "não deu certo" para quem fez tudo certo. */
-  compasso_confirmarInscricaoPorEmail_(r.inscricaoId, {
+  var conf = compasso_confirmarInscricaoPorEmail_(r.inscricaoId, {
     nome: nome, cpf: cpf, escola: String(dados.escola || '').trim(),
     cidade: String(dados.cidade || '').trim(), email: email, whatsapp: whats
   });
 
+  /* O PROTOCOLO VOLTA PARA A TELA, E A MENSAGEM PARA DE PROMETER E-MAIL.
+     ══════════════════════════════════════════════════════════════════════
+     09/09/2026. O usuário, pela terceira vez: "não sairá nenhum convite por
+     email e todos serão pelo zap enviados".
+
+     A mensagem antiga dizia "o ingresso será enviado para o seu e-mail e
+     WhatsApp". Duas coisas erradas ao mesmo tempo, multiplicadas por 2.000:
+
+     1. PROMETIA E-MAIL. A entrega do ingresso por e-mail está desligada desde
+        08/09 (COMPASSO_EMAIL_INGRESSO). Seriam 2.000 pessoas esperando um
+        e-mail que não vem, e ligando para a secretaria por causa disso.
+
+     2. NÃO ENTREGAVA NADA NA MÃO. O protocolo era gerado e carimbado no
+        registro, e nunca voltava para a tela. No mesmo dia o Gmail recusou o
+        envio por cota — então a pessoa saía da inscrição sem número nenhum,
+        em lugar nenhum.
+
+     Agora o protocolo aparece na tela, e a mensagem diz o que de fato vai
+     acontecer: a equipe confere, e o ingresso chega pelo WhatsApp mais perto
+     da festa. Prometer menos e cumprir é melhor que o contrário. */
+  var protocolo = (conf && conf.protocolo) || compasso_protocoloInscricao_(r.inscricaoId);
+
   return {
     ok: true,
     inscricaoId: r.inscricaoId,
-    mensagem: 'Inscrição registrada! A equipe do sindicato vai conferir seus dados ' +
-              'e o ingresso será enviado ' +
-              (email && whats ? 'para o seu e-mail e WhatsApp.'
-                              : (email ? 'para o seu e-mail.' : 'pelo seu WhatsApp.'))
+    protocolo: protocolo,          /* gravado e devolvido para a equipe; a tela
+                                      pública não mostra — ver a mensagem */
+    mensagem: compasso_mensagemConclusao_(whats)
   };
+}
+
+/**
+ * A mensagem que a pessoa lê ao terminar a inscrição.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * É A ÚNICA COISA QUE ELA RECEBE — 09/09/2026
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Palavras do usuário, fechando a decisão: "nada por email, ele só recebe uma
+ * mensagem quando finaliza a inscrição pelo link". Então esta mensagem não é
+ * um detalhe da tela: é o comprovante inteiro.
+ *
+ * O QUE ELA NÃO FAZ MAIS. A versão anterior dizia "o ingresso será enviado
+ * para o seu e-mail e WhatsApp". Prometia um e-mail que está desligado por
+ * decisão dele e que, no teste de hoje, nem teria saído — o Gmail recusou por
+ * cota. Promessa que o sistema não cumpre vira ligação para a secretaria,
+ * multiplicada por 2.000.
+ *
+ * POR QUE EM PROPRIEDADE, E NÃO CRAVADA AQUI. Ele disse "podemos até ajustar
+ * esse texto". Texto que a diretoria quer mudar não pode custar uma publicação
+ * de versão — é a mesma regra que já vale para o convite e para o termo, no
+ * topo deste arquivo. Declare COMPASSO_MSG_CONCLUSAO e ela passa a valer na
+ * hora, sem deploy.
+ *
+ * @param {string} whats  WhatsApp informado. Sem ele, o zap não alcança a
+ *                        pessoa e a mensagem precisa dizer o que fazer.
+ */
+function compasso_mensagemConclusao_(whats) {
+  var props = PropertiesService.getScriptProperties();
+  var texto = String(props.getProperty('COMPASSO_MSG_CONCLUSAO') || '').trim();
+
+  if (!texto) {
+    texto = 'Recebemos a sua inscrição. A equipe do sindicato vai conferir ' +
+            'os seus dados e o seu ingresso será enviado pelo WhatsApp mais ' +
+            'perto da festa. Não é preciso fazer mais nada agora.';
+  }
+
+  /* Quem não deixou WhatsApp é a única pessoa que a entrega não alcança.
+     Dizer isso aqui é mais barato que descobrir na véspera do evento. */
+  if (!whats) {
+    texto += ' Como você não informou um WhatsApp, procure a secretaria do ' +
+             'sindicato para combinar a entrega do seu ingresso.';
+  }
+  return texto;
 }
 
 /**
@@ -733,11 +855,56 @@ function compasso_textoConfirmacao_(dados, protocolo) {
  */
 function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
   try {
-    if (!dados || !dados.email) return { ok: false, motivo: 'SEM_EMAIL' };
-    if (typeof enviarEmailSISGEP_ !== 'function')
-      return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL' };
-
+    /* O COMPROVANTE TAMBÉM NÃO SAI SOZINHO — 09/09/2026.
+     *
+     * O usuário: *"não é enviado nada sozinho"*, e depois, direto: o
+     * comprovante de inscrição também não sai por e-mail. A entrega desta
+     * festa é pelo WhatsApp, e WhatsApp aqui é `wa.me` — alguém aperta enviar.
+     *
+     * MAS O PROTOCOLO É GRAVADO DO MESMO JEITO. Se saísse daqui sem carimbar,
+     * a equipe perderia o rastro de quem se inscreveu e ainda não recebeu
+     * aviso nenhum — que é justamente a lista que precisa ser trabalhada no
+     * zap. Não enviar é a decisão; esquecer não é.
+     *
+     * Mesmo interruptor da entrega do ingresso (COMPASSO_EMAIL_LIGADO), para
+     * a decisão ser uma só e mudar num lugar só. */
+    /* O PROTOCOLO VEM PRIMEIRO, E VEM PARA TODO MUNDO — 09/09/2026.
+     *
+     * Antes ele nascia dentro do caminho do e-mail: quem não tinha e-mail
+     * batia no `return {motivo:'SEM_EMAIL'}` da linha de cima e saía SEM
+     * protocolo nenhum. Ou seja, justamente quem só tem WhatsApp — que pela
+     * descrição do usuário é a maioria — ficava sem o número que identifica a
+     * própria inscrição.
+     *
+     * E hoje o defeito saiu do papel: o Gmail recusou o envio
+     * ("Service invoked too many times for one day"), e o comprovante não saiu
+     * para ninguém. Se o protocolo dependesse do e-mail, a inscrição teria
+     * ficado sem identificação.
+     *
+     * Ele é derivado do inscricaoId (últimos 6), então calcular aqui dá o
+     * mesmo valor de calcular em qualquer outro lugar. */
     var protocolo = compasso_protocoloInscricao_(inscricaoId);
+
+    if (typeof compasso_emailComprovanteLigado_ === 'function' &&
+        !compasso_emailComprovanteLigado_()) {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'E-mail desligado — comprovante deve ser enviado pelo WhatsApp.',
+        protocolo, true);
+      return { ok: false, motivo: 'EMAIL_DESLIGADO', protocolo: protocolo };
+    }
+
+    if (!dados || !dados.email) {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'Sem e-mail no cadastro — comprovante deve ser enviado pelo WhatsApp.',
+        protocolo, true);
+      return { ok: false, motivo: 'SEM_EMAIL', protocolo: protocolo };
+    }
+    if (typeof enviarEmailSISGEP_ !== 'function') {
+      compasso_carimbarConfirmacao_(inscricaoId, false,
+        'Camada de e-mail indisponível.', protocolo);
+      return { ok: false, motivo: 'CAMADA_DE_EMAIL_INDISPONIVEL', protocolo: protocolo };
+    }
+
     var r = enviarEmailSISGEP_(
       dados.email,
       'Inscrição recebida — Festa Compasso da Vida 2026 🎶',
@@ -756,17 +923,50 @@ function compasso_confirmarInscricaoPorEmail_(inscricaoId, dados) {
   }
 }
 
-function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo) {
+/**
+ * Carimba na inscrição o que aconteceu com o comprovante.
+ *
+ * TRÊS ESTADOS, NÃO DOIS — 09/09/2026.
+ *
+ * A função tinha só `enviou` sim ou não, e tudo que não fosse "enviou" virava
+ * `confirmacaoErro`. Isso junta duas coisas que a operação precisa separar:
+ *
+ *   ENVIADO         o e-mail saiu.
+ *   PENDENTE        não saiu, e está certo não ter saído — a pessoa não deixou
+ *                   e-mail, ou o comprovante por e-mail está desligado. É a
+ *                   FILA DO WHATSAPP: gente para a equipe avisar, não defeito.
+ *   ERRO            tentamos e falhou. Aí sim é para alguém olhar.
+ *
+ * O t93 pegou isto: "marcar erro aqui encheria o painel de falso alarme". Com
+ * a entrega desta festa sendo toda pelo zap, quase TODA inscrição cairia no
+ * segundo caso — e o painel de erro nasceria com 2.000 falsos alarmes, o que é
+ * o mesmo que não ter painel.
+ *
+ * @param {boolean} enviou       o e-mail saiu de fato.
+ * @param {string}  mensagem     o porquê, quando não saiu.
+ * @param {string}  protocolo    número que identifica a inscrição.
+ * @param {boolean=} porDesenho  true quando NÃO enviar é o comportamento
+ *                               correto. Vira pendência, não erro.
+ */
+function compasso_carimbarConfirmacao_(inscricaoId, enviou, mensagem, protocolo, porDesenho) {
   var ins = fs_get_('inscricoesEventos', inscricaoId);
   if (!ins) return;
   ins.protocolo = protocolo || ins.protocolo || '';
+
   if (enviou) {
     ins.confirmacaoEnviadaEm = new Date();
     ins.confirmacaoVia = 'EMAIL';
     ins.confirmacaoErro = '';
+    ins.confirmacaoPendente = '';
+  } else if (porDesenho) {
+    /* Não é falha. É gente esperando um zap. */
+    ins.confirmacaoErro = '';
+    ins.confirmacaoPendente = String(mensagem || 'Avisar pelo WhatsApp.').slice(0, 300);
   } else {
     ins.confirmacaoErro = String(mensagem || 'falha desconhecida').slice(0, 300);
+    ins.confirmacaoPendente = '';
   }
+
   fs_set_('inscricoesEventos', inscricaoId, ins);
 }
 

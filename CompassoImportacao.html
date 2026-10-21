@@ -114,6 +114,14 @@
   #compassoImportacao .selo-ambiente{display:inline-block;padding:6px 12px;border-radius:999px;
     font-size:11px;font-weight:800;letter-spacing:.06em;
     background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.28);color:#fff}
+/* PORCENTAGEM DE VERDADE — 15/09/2026, a pedido dele.
+   A largura desta barra sai de "quantas linhas ja voltaram do servidor",
+   nunca de um relogio. Barra animada por tempo mostra 60% quando pode estar
+   em 10%, e a pessoa aprende a nao confiar nela. */
+.prog-trilho{height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden}
+.prog-trilho i{display:block;height:100%;width:0;border-radius:999px;
+  background:linear-gradient(90deg,var(--navy,#001f4d),var(--blue,#1565C0));
+  transition:width .25s ease}
 </style>
 
 <!-- CABEÇALHO SÓ QUANDO A TELA É A PÁGINA — 26/08/2026.
@@ -202,6 +210,13 @@
       </div>
       <div class="barra" style="margin-top:14px">
         <button class="b p" onclick="impImportar()" id="btImportar">Importar</button>
+      </div>
+
+      <!-- A BARRA SO APARECE IMPORTANDO. Barra parada em 0% enquanto ninguem
+           pediu nada e ruido: ela e resposta a uma acao, nao decoracao. -->
+      <div id="impProg" hidden style="margin-top:14px">
+        <div class="prog-trilho"><i id="impProgBarra"></i></div>
+        <div class="conta" id="impProgTexto" style="margin-top:7px"></div>
       </div>
       <div class="conta" style="margin-top:10px">
         Começar com 10 é de propósito: importar tudo e descobrir o erro depois
@@ -402,6 +417,32 @@ function pintarPrevia(previa){
 /* ── passo 4 ── */
 function usarTodas(){ if (CONF) g('limite').value = CONF.linhas; }
 
+/* ── A IMPORTAÇÃO EM LOTES ────────────────────────────────────────────────
+   "Tinha que ter um contador de porcentagem quando estiver importando."
+
+   O google.script.run é uma chamada única e bloqueante: o servidor processa
+   tudo e só responde no fim. Não existe meio do caminho para escutar. Então a
+   única barra honesta é esta — a tela pede de 25 em 25 e sabe, a cada
+   resposta, exatamente quantas linhas já voltaram.
+
+   E o ganho maior não é a barra: é que a importação perde o teto de tempo. O
+   caminho antigo carregava uma trava de 4 minutos no meio do laço, e estourar
+   significava parar pela metade sem dizer o que tinha entrado.
+
+   O RELATÓRIO CRESCE A CADA LOTE, de propósito. Quem está olhando vê as
+   ignoradas aparecerem enquanto roda, em vez de descobrir tudo no fim — e
+   pode conferir a planilha antes de terminar, se começar errado. */
+var IMP_LOTE = 25;
+
+function impProgresso(feitas, total){
+  var caixa = g('impProg'); if (!caixa) return;
+  caixa.hidden = false;
+  var pct = total > 0 ? Math.round(feitas / total * 100) : 0;
+  g('impProgBarra').style.width = pct + '%';
+  g('impProgTexto').textContent = pct + '%  ·  ' + feitas + ' de ' + total + ' linha(s)';
+}
+function impProgressoFechar(){ var c = g('impProg'); if (c) c.hidden = true; }
+
 function importar(){
   if (!ORIGEM) return aviso('Escolha a planilha primeiro.');
   var lim = Number(g('limite').value) || 10;
@@ -409,12 +450,48 @@ function importar(){
               texto: 'Isso cria inscrição de verdade e consome vaga das 2.000.',
               icone: '📥', ok: 'Importar' }, function(){
     var bt = g('btImportar'); bt.disabled = true; bt.textContent = 'Importando…';
-    api('compassoImp_importar', [ORIGEM, g('aba').value, lim, MANUAL], function(r){
+
+    var soma = { criadas: 0, ignoradas: [], erros: [], ajustesDeColuna: 0,
+                 mensagem: '' };
+
+    function encerrar(){
+      impProgressoFechar();
       bt.disabled = false; bt.textContent = 'Importar';
-      if (!r || !r.ok) return aviso((r && r.erro) || 'Não consegui importar.');
-      aviso(r.mensagem);
-      g('resultado').innerHTML = relatorio(r);
-    });
+    }
+
+    function proxima(inicio){
+      api('compassoImp_importarLote',
+          [ORIGEM, g('aba').value, MANUAL,
+           { inicio: inicio, tamanho: IMP_LOTE, total: lim }],
+        function(r){
+          if (!r || !r.ok){
+            encerrar();
+            /* O que já entrou ANTES da falha continua na tela: a importação
+               foi parcial, e esconder isso faria alguém importar tudo de
+               novo — e duplicar o que já estava lá. */
+            if (soma.criadas) g('resultado').innerHTML = relatorio(soma);
+            return aviso((r && r.erro) || 'Não consegui importar.');
+          }
+
+          soma.criadas += r.criadas;
+          soma.ignoradas = soma.ignoradas.concat(r.ignoradas || []);
+          soma.erros = soma.erros.concat(r.erros || []);
+          soma.ajustesDeColuna = r.ajustesDeColuna;
+          soma.mensagem = soma.criadas + ' inscrição(ões) criada(s)' +
+            (soma.ignoradas.length ? ' · ' + soma.ignoradas.length + ' ignorada(s)' : '') +
+            (soma.erros.length ? ' · ' + soma.erros.length + ' com erro' : '') + '.';
+
+          impProgresso(r.fim, r.total);
+          g('resultado').innerHTML = relatorio(soma);
+
+          if (!r.terminou) return proxima(r.proximoInicio);
+          encerrar();
+          aviso(soma.mensagem);
+        });
+    }
+
+    impProgresso(0, lim);
+    proxima(0);
   });
 }
 

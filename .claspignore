@@ -11,3 +11,9 @@
 # Apps Script recusa o push INTEIRO — com a mensagem aparecendo so no deploy.
 # Por isso duas travas: esta linha, e a extensao .gs.txt nos arquivos.
 tests/**
+
+# O LEITOR DA SECRETARIA É OUTRO PROJETO, EM OUTRA CONTA (21/10/2026).
+# Se ele entrasse no push do SISGEP, rodaria na conta do Financeiro e leria a
+# caixa errada — o contrário do que o usuário decidiu. Mesmas duas travas dos
+# fixtures: esta linha e a extensão .gs.txt/.json.txt.
+leitor-secretaria/**

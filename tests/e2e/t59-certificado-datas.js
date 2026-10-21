@@ -53,6 +53,15 @@ function certificado(extras) {
     dataEmissao: new Date(2026, 7, 18, 20, 27),
     reg: {
       NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO",
+      /* O CASO BASE VIROU DE DEPENDENTE em 23/09/2026, e não por capricho:
+         com os dois modelos na mão, o usuário confirmou que o certificado do
+         TITULAR não traz período nenhum — termina no curso. Quem imprime
+         período é o do dependente, e é nele que a desconversão da Date da
+         planilha (o defeito que este teste existe para guardar) pode
+         aparecer. Medir isso num documento que não imprime período seria
+         medir o vazio. */
+      NOME_BENEFICIARIO: "BERNARDO SIMOURA CASTELO",
+      TIPO_BENEFICIARIO: "FILHO",
       CPF_SOLICITANTE: "08538104780",
       CURSO: "MARKETING",
       PERIODO_REFERENCIA: "2027/1",
@@ -104,10 +113,11 @@ b.ok(!/Horário Padrão de Brasília/.test(html),
   "nem o nome do fuso, que só aparece quando a Date foi impressa inteira");
 
 b.passo("4");
-/* O caso base é de TITULAR, e o papel do titular escreve o período mais
-   curto: "semestre 2027/1", sem o "letivo de". Ver t61. */
-b.ok(html.indexOf("semestre 2027/1") > -1,
-  "o período sai legível: 'semestre 2027/1'",
+/* O papel do dependente escreve "referente ao semestre letivo de 2027/1" —
+   sempre "semestre letivo", nos dois modelos reais, inclusive naquele cujo
+   período é só o ano. Ver t61. */
+b.ok(html.indexOf("semestre letivo de 2027/1") > -1,
+  "o período sai legível: 'semestre letivo de 2027/1'",
   (html.match(/(semestre|ano) (letivo de )?\d{4}\/\d/) || ["(não achou)"])[0]);
 
 /* ═══════════════════════════════════════════════════════════
@@ -125,12 +135,12 @@ b.passo("5");
    2027" justamente porque a solicitação dele é do 2º semestre. */
 function periodoNoDocumento(data) {
   const h = certificado({
-    reg: { NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO", CURSO: "MARKETING",
-           PERIODO_REFERENCIA: data, ESCOLA_SELECIONADA: "UVV" }
+    reg: { NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO",
+           NOME_BENEFICIARIO: "BERNARDO SIMOURA CASTELO", TIPO_BENEFICIARIO: "FILHO",
+           CURSO: "MARKETING", PERIODO_REFERENCIA: data, ESCOLA_SELECIONADA: "UVV" }
   });
-  /* O titular escreve "semestre 2027/1"; o dependente, "semestre letivo de
-     2027/1". O extrator tem que aceitar as duas formas, senão mede a
-     redação em vez de medir o período. */
+  /* O extrator continua aceitando as duas formas: o que se mede aqui é o
+     PERÍODO desconvertido, não a redação ao redor dele. */
   return { html: h, rotulo: (h.match(/(semestre|ano) (letivo de )?\d{4}\/\d/) || ["(não achou)"])[0] };
 }
 
@@ -138,14 +148,14 @@ const segundoSem = periodoNoDocumento(new Date(2027, 1, 1));
 b.ok(textoDoDocumento(segundoSem.html).indexOf("GMT") === -1,
   "com o período vindo como Date da planilha, nada de GMT no texto",
   "este é EXATAMENTE o caso do PDF que o usuário mandou");
-b.igual(segundoSem.rotulo, "semestre 2027/2",
+b.igual(segundoSem.rotulo, "semestre letivo de 2027/2",
   "1º de fevereiro volta a ser 2027/2 — o semestre estava na casa do mês");
 
 b.passo("6");
 /* Contraprova: janeiro tem que dar OUTRO resultado. Sem isto, uma função
    que devolvesse "2027/2" para tudo passaria na asserção de cima. */
 const primeiroSem = periodoNoDocumento(new Date(2027, 0, 1));
-b.igual(primeiroSem.rotulo, "semestre 2027/1",
+b.igual(primeiroSem.rotulo, "semestre letivo de 2027/1",
   "e 1º de janeiro volta a ser 2027/1, não o mesmo valor");
 
 /* ═══════════════════════════════════════════════════════════
@@ -157,11 +167,26 @@ b.igual(primeiroSem.rotulo, "semestre 2027/1",
    dizer "encontra-se regularmente habilitado", alguém desfez o commit.
    ═══════════════════════════════════════════════════════════ */
 b.passo("7");
-b.ok(html.indexOf("Incentivo ao Aprimoramento") > -1,
-  "o corpo cita a cláusula de Incentivo ao Aprimoramento, como o papel real");
-b.ok(html.indexOf("encontra-se regularmente habilitado") === -1,
-  "e NÃO usa mais a redação antiga, trocada em 8dc6e00",
+/* A CLÁUSULA DE INCENTIVO É DO PAPEL DO TITULAR — e o caso base deste teste
+   passou a ser de dependente (ver a nota em `certificado`). Então a redação
+   se mede num documento de titular, gerado aqui.
+
+   "Encontra-se regularmente habilitado" NÃO É MAIS sinal de versão velha:
+   é a redação legítima do papel do DEPENDENTE, confirmada nos dois modelos
+   de 23/09/2026. O que ela não pode fazer é aparecer no do titular. */
+const htmlTitularRedacao = certificado({
+  reg: { NOME_SOLICITANTE: "WANDERSON NASCIMENTO CASTELO",
+         NOME_BENEFICIARIO: "WANDERSON NASCIMENTO CASTELO",
+         TIPO_BENEFICIARIO: "TITULAR", CURSO: "MARKETING",
+         PERIODO_REFERENCIA: "2027/1", ESCOLA_SELECIONADA: "UVV" }
+});
+b.ok(htmlTitularRedacao.indexOf("Incentivo ao Aprimoramento") > -1,
+  "o corpo do titular cita a cláusula de Incentivo ao Aprimoramento, como o papel real");
+b.ok(htmlTitularRedacao.indexOf("encontra-se regularmente habilitado") === -1,
+  "e o do titular NÃO usa a redação do dependente",
   "era a que estava no PDF do BOLSA-2026-920837");
+b.ok(html.indexOf("encontra-se regularmente habilitado") > -1,
+  "enquanto o do dependente usa — é a redação do papel dele");
 
 /* ═══════════════════════════════════════════════════════════
    5. O arquivo do repositório é o que se está medindo

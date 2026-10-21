@@ -3456,7 +3456,8 @@ window.mostrarAbaOficio = function(aba) {
 
       tbody.innerHTML = ordenada.map(function(item) {
         var status=String(item.status||"").toUpperCase().trim();
-        var badgeClass=status==="CONFIRMADO"?"hist-confirmado":status==="ENVIADO"?"hist-enviado":"hist-pendente";
+        var badgeClass=Historico.statusClasse(status);
+        var badgeTxt=Historico.statusRotulo(status);
         var url=String(item.url||item.linkPdf||"").trim();
         var num=String(item.numero||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
         var abrirBtn=url?'<button type="button" class="btn btn-outline btn-sm" onclick="window.open(\''+url+'\',\'_blank\')">📥 PDF</button>':'<button type="button" class="btn btn-ghost btn-sm" disabled>Sem link</button>';
@@ -3464,9 +3465,14 @@ window.mostrarAbaOficio = function(aba) {
           +'<td><input type="checkbox" class="hist-check" data-numero="'+num+'"></td>'
           +'<td style="font-weight:700;">'+num+'</td>'
           +'<td>'+String(item.tipo||"").replace(/</g,"&lt;")+'</td>'
-          +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</td>'
+          +'<td style="max-width:240px;"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.escola||"").replace(/"/g,"&quot;")+'">'+String(item.escola||"").replace(/</g,"&lt;")+'</div>'
+          /* OS NOMES A VISTA, nao so pesquisaveis: quando a escola tem varios
+             oficios, e o nome que diz qual e o certo — sem isso a busca acha e
+             a pessoa ainda precisa abrir para conferir. */
+          +(item.colaboradores?'<div style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+String(item.colaboradores).replace(/"/g,"&quot;")+'">'+String(item.colaboradores).replace(/</g,"&lt;")+'</div>':'')
+          +'</td>'
           +'<td>'+String(item.data||"")+'</td>'
-          +'<td><span class="hist-badge '+badgeClass+'">'+status+'</span></td>'
+          +'<td><span class="hist-badge '+badgeClass+'">'+badgeTxt+'</span></td>'
           +'<td><div class="row-btns">'+abrirBtn
           +'<button type="button" class="btn btn-outline btn-sm" onclick="Historico.editar(\''+num+'\')" title="Editar status">✏️</button>'
           +'<button type="button" class="btn btn-teal btn-sm" onclick="Historico.reenviar(\''+num+'\')" title="Reenviar">📧</button>'
@@ -3487,6 +3493,7 @@ window.mostrarAbaOficio = function(aba) {
       var fNumero = (document.getElementById("filtroNumero")||{}).value||"";
       var fStatus = ((document.getElementById("filtroStatus")||{}).value||"").toUpperCase();
       var fTipo   = ((document.getElementById("filtroTipo")||{}).value||"").toLowerCase();
+      var fPessoa = (document.getElementById("filtroPessoa")||{}).value||"";
       if(!tbody) return;
       tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">⏳ Carregando...</div></td></tr>';
       Historico.selecionados=[]; Historico.atualizarBarraAcoes();
@@ -3546,15 +3553,16 @@ window.mostrarAbaOficio = function(aba) {
           if(contEl) contEl.textContent="0 registro(s)";
           tbody.innerHTML='<tr><td colspan="7"><div class="of-table-empty">Erro: '+((err&&err.message)||err||"")+'</div></td></tr>';
         })
-        .listarHistoricoOficios({ escola: fEscola, numero: fNumero, status: fStatus, tipo: fTipo }, SISGEP_TOKEN_SESSAO);
+        .listarHistoricoOficios({ escola: fEscola, numero: fNumero, status: fStatus,
+                                  tipo: fTipo, pessoa: fPessoa }, SISGEP_TOKEN_SESSAO);
     },
 
     bindFiltros: function() {
       var btnAplicar=document.getElementById("btnAplicarFiltroHist"), btnLimpar=document.getElementById("btnLimparFiltros");
-      var fEscola=document.getElementById("filtroEscola"), fNumero=document.getElementById("filtroNumero"), fStatus=document.getElementById("filtroStatus"), fTipo=document.getElementById("filtroTipo");
+      var fEscola=document.getElementById("filtroEscola"), fNumero=document.getElementById("filtroNumero"), fStatus=document.getElementById("filtroStatus"), fTipo=document.getElementById("filtroTipo"), fPessoa=document.getElementById("filtroPessoa");
       if(btnAplicar&&!btnAplicar.dataset.bH){btnAplicar.dataset.bH="1";btnAplicar.addEventListener("click",Historico.carregar);}
-      if(btnLimpar&&!btnLimpar.dataset.bH){btnLimpar.dataset.bH="1";btnLimpar.addEventListener("click",function(){[fEscola,fNumero,fStatus,fTipo].forEach(function(el){if(el)el.value="";});Historico.carregar();});}
-      [fEscola,fNumero].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("keyup",function(e){if(e.key==="Enter")Historico.carregar();});}});
+      if(btnLimpar&&!btnLimpar.dataset.bH){btnLimpar.dataset.bH="1";btnLimpar.addEventListener("click",function(){[fEscola,fNumero,fStatus,fTipo,fPessoa].forEach(function(el){if(el)el.value="";});Historico.carregar();});}
+      [fEscola,fNumero,fPessoa].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("keyup",function(e){if(e.key==="Enter")Historico.carregar();});}});
       [fStatus,fTipo].forEach(function(el){if(el&&!el.dataset.bH){el.dataset.bH="1";el.addEventListener("change",function(){ Historico.renderLista(Historico._dadosCache); });}});
     },
 
@@ -3589,12 +3597,13 @@ window.mostrarAbaOficio = function(aba) {
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
 
-      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true};
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true,novos:[]};
       var g=function(id){return document.getElementById(id);};
       if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
       if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
       if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
       if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      if(g("histReenvArquivo")) g("histReenvArquivo").value="";
       if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
       if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
       if(g("histReenvAviso"))    g("histReenvAviso").style.display="none";
@@ -3603,6 +3612,15 @@ window.mostrarAbaOficio = function(aba) {
       /* A previa MEDE: os enderecos vem das duas origens (o oficio e o
          cadastro de hoje) e os anexos sao reunidos pela MESMA funcao que o
          envio usa. Nao e promessa do que deveria ir — e o que vai. */
+      Historico._reenvioPrever();
+    },
+
+    /** A prévia, sempre pelo mesmo caminho — abrindo o modal ou depois de
+     *  anexar. Manda os NOMES do que está na mão para o veredito de ficha ser
+     *  recalculado no backend, onde a regra mora. */
+    _reenvioPrever: function() {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
       google.script.run
         .withSuccessHandler(function(r){ Historico._reenvioMontar(r); })
         .withFailureHandler(function(err){
@@ -3610,7 +3628,66 @@ window.mostrarAbaOficio = function(aba) {
           if(d) d.innerHTML='<span style="color:#b91c1c;">não foi possível carregar os endereços: '+
                             escapeHtml((err&&err.message)||String(err))+'</span>';
         })
-        .preverReenvioOficio({numero:numero,url:url,tipo:tipo,escola:escola}, SISGEP_TOKEN_SESSAO);
+        .preverReenvioOficio({
+          numero:ctx.numero, url:ctx.url, tipo:ctx.tipo, escola:ctx.escola,
+          extras:(ctx.novos||[]).map(function(a){
+            return {nome:a.nome, ehFicha:a.ehFicha===true};
+          })
+        }, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* ANEXAR NA HORA — 11/09/2026.
+
+       O arquivo é lido para base64 aqui e só sobe no envio. A prévia é
+       refeita a cada escolha porque é ela que decide o aviso vermelho: quem
+       anexa a carta que faltava precisa ver o aviso sumir, senão não sabe se
+       resolveu. */
+    anexoEscolher: function(input) {
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var arquivos=(input&&input.files)?Array.prototype.slice.call(input.files):[];
+      if(!arquivos.length) return;
+      ctx.novos=ctx.novos||[];
+
+      var restantes=arquivos.length;
+      arquivos.forEach(function(arq){
+        var reader=new FileReader();
+        reader.onload=function(ev){
+          var jaTem=ctx.novos.some(function(a){return a.nome===arq.name;});
+          if(!jaTem){
+            ctx.novos.push({
+              nome: arq.name,
+              tipo: arq.type||"application/octet-stream",
+              base64: String(ev.target.result||"").split(",")[1]||"",
+              /* NASCE MARCADA QUANDO O AVISO ESTAVA LIGADO. Quem anexa no
+                 momento em que a tela diz "a ficha nao foi encontrada" esta
+                 respondendo aquele aviso — pedir mais um clique para confirmar
+                 o obvio e friccao. Continua editavel: a caixa fica a vista e
+                 desmarcar devolve o aviso. */
+              ehFicha: ctx.anexosOk===false
+            });
+          }
+          if(--restantes===0){ input.value=""; Historico._reenvioPrever(); }
+        };
+        reader.onerror=function(){
+          toast("Não foi possível ler "+arq.name+".","err");
+          if(--restantes===0){ input.value=""; Historico._reenvioPrever(); }
+        };
+        reader.readAsDataURL(arq);
+      });
+    },
+
+    anexoMarcarFicha: function(nome, marcado) {
+      var ctx=Historico._reenvioCtx; if(!ctx||!ctx.novos) return;
+      ctx.novos.forEach(function(a){ if(a.nome===String(nome||"")) a.ehFicha=!!marcado; });
+      /* Refaz a previa em vez de decidir aqui: o veredito de ficha mora no
+         backend, e duas cabecas decidindo a mesma coisa divergem. */
+      Historico._reenvioPrever();
+    },
+
+    anexoRemover: function(nome) {
+      var ctx=Historico._reenvioCtx; if(!ctx||!ctx.novos) return;
+      ctx.novos=ctx.novos.filter(function(a){return a.nome!==String(nome||"");});
+      Historico._reenvioPrever();
     },
 
     _reenvioCtx: null,
@@ -3656,9 +3733,37 @@ window.mostrarAbaOficio = function(aba) {
           cx.innerHTML='<span style="color:#b91c1c;">Nenhum anexo encontrado.</span>';
         } else {
           cx.innerHTML=(a.itens||[]).map(function(it){
-            return '<div style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;">'
+            /* O que a pessoa acabou de escolher ainda pode sair da lista; o
+               que ja esta no oficio, nao — tirar exigiria apagar do Drive, que
+               e outra decisao. */
+            var pendente=String(it.origem||"").indexOf("escolhida agora")===0;
+            var nomeJs=escapeHtml(it.nome).replace(/'/g,"\\'");
+            var x=pendente
+              ? '<button type="button" class="btn btn-ghost btn-sm" title="Tirar este anexo"'
+                +' onclick="Historico.anexoRemover(\''+nomeJs+'\')"'
+                +' style="margin-left:auto;color:#b91c1c;">&times;</button>'
+              : '';
+
+            /* A CAIXA SO APARECE ONDE FAZ DIFERENCA — 11/09/2026.
+
+               Em tipo que nao promete ficha no corpo, perguntar seria ruido.
+               E em anexo que o proprio sistema gerou (`Fichas_...`) o nome ja
+               responde — pedir confirmacao do que ele mesmo sabe ensinaria a
+               pessoa a clicar sem ler. */
+            var perguntar = pendente && a.exigeFicha && !/^fichas?_/i.test(it.nome);
+            var caixa = perguntar
+              ? '<label style="display:flex;gap:6px;align-items:center;margin:2px 0 0 22px;'
+                +'font-size:11px;color:#334155;cursor:pointer;">'
+                +'<input type="checkbox"'+(it.ehFicha?' checked':'')
+                +' onchange="Historico.anexoMarcarFicha(\''+nomeJs+'\', this.checked)">'
+                +'é a ficha/carta deste ofício</label>'
+              : '';
+
+            return '<div style="padding:2px 0;">'
+              +'<div style="display:flex;gap:6px;align-items:flex-start;">'
               +'<span>📎</span><span><strong>'+escapeHtml(it.nome)+'</strong><br>'
-              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span></div>';
+              +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(it.origem||"")+'</span></span>'
+              +x+'</div>'+caixa+'</div>';
           }).join("");
         }
       }
@@ -3676,6 +3781,16 @@ window.mostrarAbaOficio = function(aba) {
         } else {
           aviso.style.display="none";
         }
+      }
+
+      /* ANEXOU O QUE FALTAVA: o botao volta ao normal. Sem isto, quem clicou
+         uma vez, viu o alerta, anexou a carta e clicou de novo continuaria
+         lendo "Enviar mesmo sem a ficha" — e mandaria achando que estava
+         abrindo mao de alguma coisa. */
+      if(Historico._reenvioCtx && Historico._reenvioCtx.anexosOk){
+        Historico._reenvioCtx.cienteSemFicha=false;
+        var btnOk=g("histReenvOk");
+        if(btnOk){ btnOk.textContent="Reenviar \u25B8"; btnOk.style.background=""; }
       }
     },
 
@@ -3742,6 +3857,203 @@ window.mostrarAbaOficio = function(aba) {
       var res=document.getElementById("histLoteResumo");
       if(res && sel) res.textContent=Historico._loteFalhas+" com falha \u00b7 "+sel+" selecionado(s) na tabela";
       else if(res) res.textContent=Historico._loteFalhas+" ofício(s) com falha de entrega";
+      Historico._confRotular();
+    },
+
+    /* A BARRA DE CONFERENCIA SO EXISTE COM SELECAO — 09/09/2026.
+       Sem seleção não há o que conferir, e uma barra vazia na tela é convite
+       para alguém clicar e varrer tudo, que é exatamente o gasto que desligar
+       o gatilho evitou. */
+    _confRotular: function() {
+      var barra=document.getElementById("histConfBarra");
+      var btn=document.getElementById("btnHistConf");
+      var res=document.getElementById("histConfResumo");
+      var sel=(Historico.selecionados||[]).length;
+      if(!barra) return;
+      barra.style.display = sel ? "flex" : "none";
+      if(btn){ btn.disabled=!sel; btn.innerHTML="\u2705 Conferir recebimento ("+sel+")"; }
+      if(res) res.textContent = sel+" of\u00edcio(s) selecionado(s) \u00b7 custo: "+sel+" consulta(s) ao Gmail";
+      Historico._compRotular();
+    },
+
+    /* A BARRA DO COMPROVANTE — 10/09/2026.
+       Mesma regra das outras duas: so aparece com selecao. A diferenca e que
+       esta NAO tem custo, e o rotulo diz isso — a pessoa acabou de aprender,
+       na barra de cima, que conferir gasta cota, e sem uma palavra aqui ela
+       supoe que este botao gasta tambem, e deixa de usar. */
+    _compRotular: function() {
+      var barra=document.getElementById("histCompBarra");
+      var btn=document.getElementById("btnHistComp");
+      var res=document.getElementById("histCompResumo");
+      var sel=(Historico.selecionados||[]).length;
+      if(!barra) return;
+      barra.style.display = sel ? "flex" : "none";
+      if(btn){ btn.disabled=!sel; btn.innerHTML="\uD83D\uDCC4 Comprovante de envio ("+sel+")"; }
+      if(res) res.textContent = sel+" of\u00edcio(s) selecionado(s) \u00b7 sem custo de consulta";
+    },
+
+    /* ── COMPROVANTE DE ENVIO ────────────────────────────────────────────
+       "como vou provar que foi enviado se nao tenho a prova que a escola
+       recebeu". Isto nao prova recebimento — prova ENVIO, com a forca de
+       cada evidencia declarada linha a linha, e o proprio documento diz o
+       que nao prova. Ver o cabecalho de OficiosComprovante.gs. */
+    _comp: { lista: [], i: 0, html: {} },
+
+    comprovante: function() {
+      var numeros=(Historico.selecionados||[]).slice();
+      if(!numeros.length){ toast("Marque ao menos um of\u00edcio na tabela.","err"); return; }
+
+      Historico._comp = { lista: numeros, i: 0, html: {} };
+      var ov=document.getElementById("histCompOverlay"); if(ov) ov.classList.add("aberto");
+      var arq=document.getElementById("histCompArquivo"); if(arq) arq.style.display="none";
+
+      var nav=document.getElementById("histCompNav");
+      if(nav) nav.style.display = numeros.length>1 ? "flex" : "none";
+
+      Historico._compCarregar();
+    },
+
+    _compCarregar: function() {
+      var c=Historico._comp;
+      var numero=c.lista[c.i];
+      var corpo=document.getElementById("histCompCorpo");
+      var pos=document.getElementById("histCompPos");
+      var sub=document.getElementById("histCompSub");
+      if(pos) pos.textContent="Of\u00edcio "+numero+"  \u00b7  "+(c.i+1)+" de "+c.lista.length;
+      if(sub) sub.textContent="Of\u00edcio "+numero;
+      var arq=document.getElementById("histCompArquivo"); if(arq) arq.style.display="none";
+
+      /* Ja buscado? Nao pede de novo — trocar de seta nao pode custar uma
+         ida ao servidor por clique. */
+      if(c.html[numero]){ if(corpo) corpo.innerHTML=c.html[numero]; return; }
+
+      if(corpo) corpo.innerHTML='<span style="color:#94a3b8;">montando o comprovante do of\u00edcio '+numero+'\u2026</span>';
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r || r.ok===false){
+            if(corpo) corpo.innerHTML='<div style="color:#991b1b;font-size:13px;">'
+              +((r && r.mensagem) || "N\u00e3o foi poss\u00edvel montar o comprovante.")+'</div>';
+            return;
+          }
+          c.html[r.numero]=r.html;
+          if(c.lista[c.i]===r.numero && corpo) corpo.innerHTML=r.html;
+        })
+        .withFailureHandler(function(e){
+          if(corpo) corpo.innerHTML='<div style="color:#991b1b;font-size:13px;">'
+            +((e && e.message) || "Falha ao montar o comprovante.")+'</div>';
+        })
+        .comprovanteDeEnvioOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    compIr: function(passo) {
+      var c=Historico._comp;
+      if(!c.lista.length) return;
+      c.i = (c.i + passo + c.lista.length) % c.lista.length;
+      Historico._compCarregar();
+    },
+
+    compFechar: function() {
+      var ov=document.getElementById("histCompOverlay"); if(ov) ov.classList.remove("aberto");
+    },
+
+    /* IMPRIMIR — janela propria com SO o comprovante.
+       window.print() na pagina imprimiria o Historico inteiro por baixo do
+       modal. E o documento que vai ser mostrado a alguem: sair com a tela do
+       sistema em volta o desqualifica. */
+    compImprimir: function() {
+      var c=Historico._comp;
+      var html=c.html[c.lista[c.i]];
+      if(!html){ toast("O comprovante ainda est\u00e1 sendo montado.","info"); return; }
+
+      var j=window.open("", "_blank", "width=820,height=980");
+      if(!j){ toast("O navegador bloqueou a janela de impress\u00e3o.","err"); return; }
+      j.document.open();
+      j.document.write('<!doctype html><html><head><meta charset="utf-8">'
+        +'<title>Comprovante '+c.lista[c.i]+'</title></head><body>'+html+'</body></html>');
+      j.document.close();
+      /* O onload garante que o CSS embutido ja foi aplicado quando o dialogo
+         abre; imprimir antes disso sai sem formatacao. */
+      j.onload=function(){ j.focus(); j.print(); };
+    },
+
+    compArquivar: function() {
+      var c=Historico._comp;
+      var numero=c.lista[c.i];
+      var btn=document.getElementById("btnCompArquivar");
+      if(btn){ btn.disabled=true; btn.textContent="Arquivando\u2026"; }
+      var cx=document.getElementById("histCompArquivo");
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(btn){ btn.disabled=false; btn.innerHTML="\uD83D\uDCBE Arquivar no Drive"; }
+          if(!cx) return;
+          cx.style.display="block";
+          if(!r || r.ok===false){
+            cx.style.color="#991b1b";
+            cx.textContent=(r && r.mensagem) || "N\u00e3o foi poss\u00edvel arquivar.";
+            return;
+          }
+          cx.style.color="#065f46";
+          cx.innerHTML=(r.jaExistia ? "\u2139\uFE0F " : "\u2705 ")+r.mensagem
+            +' <a href="'+r.url+'" target="_blank" rel="noopener" style="color:var(--blue,#1565C0);font-weight:700;">abrir no Drive</a>';
+          toast(r.mensagem, "ok", 5000);
+        })
+        .withFailureHandler(function(e){
+          if(btn){ btn.disabled=false; btn.innerHTML="\uD83D\uDCBE Arquivar no Drive"; }
+          if(cx){ cx.style.display="block"; cx.style.color="#991b1b";
+                  cx.textContent=(e && e.message) || "Falha ao arquivar."; }
+        })
+        .arquivarComprovanteDeEnvioOficio(numero, SISGEP_TOKEN_SESSAO);
+    },
+
+    /* CONFERIR SO O QUE ESTA MARCADO.
+       O botão diz o custo ANTES do clique e o resultado repete DEPOIS. Sem
+       isso, um botão de conferência é um relógio disfarçado: a pessoa clica em
+       300 sem perceber que gastou o mesmo que o gatilho que ela desligou. */
+    conferirRecebimento: function() {
+      var numeros=(Historico.selecionados||[]).slice();
+      if(!numeros.length){ toast("Marque ao menos um ofício na tabela.","err"); return; }
+
+      var btn=document.getElementById("btnHistConf");
+      if(btn){ btn.disabled=true; btn.textContent="Conferindo\u2026"; }
+      var cx=document.getElementById("histConfResultado");
+      if(cx){
+        cx.style.display="block";
+        cx.style.background="#f8fafc"; cx.style.border="1.5px solid #e2e8f0"; cx.style.color="#334155";
+        cx.textContent="Procurando no Gmail a resposta de "+numeros.length+" of\u00edcio(s)\u2026 "
+          +"cada um \u00e9 uma consulta, ent\u00e3o pode levar alguns segundos.";
+      }
+
+      google.script.run
+        .withSuccessHandler(function(r){
+          Historico._confRotular();
+          if(!r || r.ok===false){
+            if(cx){
+              cx.style.background="#fef2f2"; cx.style.border="1.5px solid #fca5a5"; cx.style.color="#991b1b";
+              cx.textContent=(r && r.mensagem) || "N\u00e3o foi poss\u00edvel conferir.";
+            }
+            return;
+          }
+          var houve=Number(r.confirmados||0)>0;
+          if(cx){
+            cx.style.background = houve ? "#ecfdf5" : "#f8fafc";
+            cx.style.border = "1.5px solid " + (houve ? "#a7f3d0" : "#e2e8f0");
+            cx.style.color = houve ? "#065f46" : "#334155";
+            cx.textContent=(houve?"\u2705 ":"")+r.mensagem;
+          }
+          toast(r.mensagem, houve?"ok":"info", 6000);
+          /* Recarrega para os status novos aparecerem na tabela. */
+          if(typeof Historico.carregar==="function") Historico.carregar();
+        })
+        .withFailureHandler(function(e){
+          Historico._confRotular();
+          if(cx){
+            cx.style.background="#fef2f2"; cx.style.border="1.5px solid #fca5a5"; cx.style.color="#991b1b";
+            cx.textContent=(e && e.message) || "Falha ao conferir.";
+          }
+        })
+        .conferirRecebimentoOficios(numeros, SISGEP_TOKEN_SESSAO);
     },
 
     lotePreparar: function() {
@@ -4028,7 +4340,8 @@ window.mostrarAbaOficio = function(aba) {
         })
         .reenviarOficio({
           numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
-          destinatarios: escolhidos
+          destinatarios: escolhidos,
+          anexosNovos: ctx.novos||[]
         }, SISGEP_TOKEN_SESSAO);
     },
 
@@ -4050,15 +4363,135 @@ window.mostrarAbaOficio = function(aba) {
         .excluirRegistrosOficio(Historico.selecionados, SISGEP_TOKEN_SESSAO);
     },
 
+    /* ALTERAR STATUS — eram dois window.prompt em sequencia. Ver a nota do
+       modal em OficiosFormulario. O que o dialogo do navegador nao tinha como
+       fazer, e e o motivo real desta troca: mostrar de onde o oficio vem. */
+    _statusItem: null,
+
+    statusRotulo: function(st) {
+      return st === "ERRO_PERMANENTE" ? "ENCERRADO" : (st || "—");
+    },
+
+    statusClasse: function(st) {
+      if (st === "CONFIRMADO")      return "hist-confirmado";
+      if (st === "ENVIADO")         return "hist-enviado";
+      if (st === "FALHA_ENTREGA")   return "hist-falha";
+      if (st === "ERRO")            return "hist-erro";
+      if (st === "ERRO_PERMANENTE") return "hist-encerrado";
+      return "hist-pendente";
+    },
+
     editar: function(numero) {
-      var novoStatus=window.prompt("Ofício "+numero+"\n\nAlterar status para:\n1 - ENVIADO\n2 - CONFIRMADO\n3 - PENDENTE\n4 - FALHA_ENTREGA\n5 - ERRO\n\nDigite o número:");
-      var mapa={"1":"ENVIADO","2":"CONFIRMADO","3":"PENDENTE","4":"FALHA_ENTREGA","5":"ERRO"};
-      var status=mapa[String(novoStatus||"").trim()]; if(!status){ toast("Opção inválida.","warn"); return; }
-      var obs=window.prompt("Observação (opcional):")||"Alterado manualmente.";
+      var alvo = String(numero || "").trim(), item = null;
+      (Historico._dadosCache || []).forEach(function(i) {
+        if (String(i.numero || "").trim() === alvo) item = i;
+      });
+      if (!item) { toast("Ofício não encontrado na lista carregada.", "warn"); return; }
+      Historico._statusItem = item;
+
+      var st = String(item.status || "").toUpperCase().trim();
+      var sub = document.getElementById("histStatusSub");
+      if (sub) sub.textContent = "Ofício " + alvo + " · " + (item.tipo || "—") + " · " + (item.escola || "—");
+
+      var badge = document.getElementById("histStatusAtual");
+      if (badge) {
+        badge.textContent = Historico.statusRotulo(st);
+        badge.className = "hist-badge " + Historico.statusClasse(st);
+      }
+
+      /* O MOTIVO A VISTA. "Devolver para a fila" tem consequencias opostas
+         conforme o que parou o oficio: com a cota do Google ele sai na
+         proxima rodada; com um endereco que nao existe ele so vai quicar de
+         novo. Quem separa os dois casos e o ULTIMO_ERRO — e ele nao cabia num
+         window.prompt. */
+      var motivo = document.getElementById("histStatusMotivo");
+      var txt = String(item.ultimoErro || "").trim();
+      if (motivo) { motivo.textContent = txt; motivo.style.display = txt ? "block" : "none"; }
+
+      var obs = document.getElementById("histStatusObs");
+      if (obs) obs.value = "";
+
+      var radios = document.querySelectorAll('input[name="histStatusOpcao"]');
+      Array.prototype.forEach.call(radios, function(r) {
+        r.checked = false;
+        if (r.parentNode && r.parentNode.classList) r.parentNode.classList.remove("sel");
+        if (!r.dataset.bSt) { r.dataset.bSt = "1"; r.addEventListener("change", Historico.statusMarcou); }
+      });
+
+      Historico.statusAviso("");
+      var ov = document.getElementById("histStatusOverlay");
+      if (ov) ov.classList.add("aberto");
+    },
+
+    statusMarcou: function() {
+      var escolhido = "";
+      Array.prototype.forEach.call(document.querySelectorAll('input[name="histStatusOpcao"]'), function(r) {
+        if (r.parentNode && r.parentNode.classList) r.parentNode.classList.toggle("sel", r.checked);
+        if (r.checked) escolhido = r.value;
+      });
+
+      /* A COMBINACAO QUE O USUARIO QUASE FEZ, em 10/09/2026: abriu o oficio
+         500, que quicou, para devolver a fila. Devolver manda para o MESMO
+         endereco que ja recusou — quica de novo e some do radar outra vez.
+         Avisa e nao bloqueia: as vezes o endereco foi corrigido no cadastro e
+         a pessoa sabe disso. */
+      var atual = String((Historico._statusItem || {}).status || "").toUpperCase().trim();
+      if (atual === "FALHA_ENTREGA" && escolhido === "PENDENTE") {
+        Historico.statusAviso("Este endereço já recusou a entrega. Devolver para a fila manda " +
+          "de novo para o MESMO endereço. Para trocar o destino, use ↻ Preparar reenvio na " +
+          "barra vermelha do Histórico.");
+      } else {
+        Historico.statusAviso("");
+      }
+    },
+
+    statusAviso: function(msg) {
+      var el = document.getElementById("histStatusAviso");
+      if (!el) return;
+      el.textContent = msg || "";
+      el.style.display = msg ? "block" : "none";
+    },
+
+    statusFechar: function() {
+      var ov = document.getElementById("histStatusOverlay");
+      if (ov) ov.classList.remove("aberto");
+      Historico._statusItem = null;
+    },
+
+    statusConfirmar: function() {
+      var item = Historico._statusItem;
+      if (!item) { Historico.statusFechar(); return; }
+
+      var escolhido = "";
+      Array.prototype.forEach.call(document.querySelectorAll('input[name="histStatusOpcao"]'), function(r) {
+        if (r.checked) escolhido = r.value;
+      });
+      if (!escolhido) { toast("Escolha para qual status alterar.", "warn"); return; }
+
+      var numero = String(item.numero || "").trim();
+      var obsEl = document.getElementById("histStatusObs");
+      var obs = obsEl ? String(obsEl.value || "").trim() : "";
+      if (!obs) obs = "Alterado manualmente.";
+
+      var btn = document.getElementById("histStatusOk");
+      if (btn) { btn.disabled = true; btn.textContent = "Salvando…"; }
+
+      function liberar() {
+        if (btn) { btn.disabled = false; btn.textContent = "Confirmar"; }
+      }
+
       google.script.run
-        .withSuccessHandler(function(r){ toast((r&&!r.erro)?(r.mensagem||"Atualizado."):(r&&r.mensagem)||"Erro.", (r&&!r.erro)?"ok":"err"); if(!r||!r.erro) Historico.carregar(); })
-        .withFailureHandler(function(err){ toast("Erro: "+((err&&err.message)||err),"err"); })
-        .atualizarStatusOficio(numero, status, obs, SISGEP_TOKEN_SESSAO);
+        .withSuccessHandler(function(r) {
+          liberar();
+          var ok = r && !r.erro;
+          toast(ok ? (r.mensagem || "Atualizado.") : ((r && r.mensagem) || "Erro."), ok ? "ok" : "err");
+          if (ok) { Historico.statusFechar(); Historico.carregar(); }
+        })
+        .withFailureHandler(function(err) {
+          liberar();
+          toast("Erro: " + ((err && err.message) || err), "err");
+        })
+        .atualizarStatusOficio(numero, escolhido, obs, SISGEP_TOKEN_SESSAO);
     }
   };
 
