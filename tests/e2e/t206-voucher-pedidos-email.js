@@ -165,10 +165,12 @@ for (let k = 1; k <= 6; k++) {
 }
 const rLote = lerUmClique();
 b.igual(rLote.lidas, 5, "leu 5", rLote.mensagem);
-b.igual(rLote.restantes, 1, "e sobrou 1");
-b.ok(/Faltam 1/.test(rLote.mensagem), "a mensagem diz quantos faltam", rLote.mensagem);
+/* Sobram 2: o sexto lote e o pedido cuja leitura pela IA falhou, que é
+   tentado de novo a cada leitura até a IA voltar. */
+b.igual(rLote.restantes, 2, "e sobraram 2 (o sexto e o que a IA não leu)");
+b.ok(/Faltam 2/.test(rLote.mensagem), "a mensagem diz quantos faltam", rLote.mensagem);
 const rLote2 = lerUmClique();
-b.igual(rLote2.lidas, 1, "o clique seguinte lê o que faltou");
+b.igual(rLote2.lidas, 2, "o clique seguinte lê o que faltou");
 b.ok(!rLote2.restantes, "e não sobra nada");
 const lotes = g.vpeLinhas_().filter(r => /^lote\d@/.test(String(r.REMETENTE_EMAIL)));
 b.igual(lotes.length, 6, "os seis estão na fila");
@@ -199,6 +201,21 @@ b.igual(pedidoDa(thEnteado).ESTADO, "FALTA_DOC", "enteado sem comprovante de IR 
 b.igual(pedidoDa(thFilho).ESTADO, "PRECISA_VOCE", "filho com 26 anos → precisa de você");
 b.igual(pedidoDa(thFalha).ESTADO, "PRECISA_VOCE", "falha da IA não some: vira 'precisa de você'");
 b.ok(String(pedidoDa(thFalha).ERRO).indexOf("sobrecarga") > -1, "com o erro guardado", pedidoDa(thFalha).ERRO);
+/* Caso real de 21/10/2026: "credit balance is too low". Quando a IA volta,
+   o pedido é relido sozinho — a mensagem já constava como lida. */
+const iaAntesRetry = chamadasIA.length;
+ler();
+b.ok(chamadasIA.length > iaAntesRetry, "enquanto a IA está fora, ele tenta de novo a cada leitura");
+b.ok(String(pedidoDa(thFalha).ERRO).length > 0, "e o erro continua à vista");
+EXTRACOES.FALHA = base({ titular: { nome: "Y", cpf: "" } });
+SIM.estadoIA.voltou = true;
+const iaAntesVolta = chamadasIA.length;
+ler();
+b.ok(chamadasIA.length > iaAntesVolta, "quando a IA volta, o pedido que falhou é lido de novo");
+b.ok(!pedidoDa(thFalha).ERRO, "e o erro some", pedidoDa(thFalha).ERRO);
+const iaDepois = chamadasIA.length;
+ler();
+b.igual(chamadasIA.length, iaDepois, "e, lido com sucesso, não é relido de novo");
 
 b.passo("3. O que a conferência diz, em palavras");
 const pAna = g.voucherPedidosDetalhe(pedidoDa(thAna).ID_PEDIDO, TOKEN);

@@ -128,6 +128,7 @@ function instalar(g, amb, opcoes) {
      uma leitura correta daquele e-mail daria. O que se testa é o que o
      sistema faz com ela. */
   const chamadasIA = [];
+  const estadoIA = { voltou: false };   // "credit balance is too low" até alguém pôr crédito
   const EXTRACOES = {};
   const fetchOriginal = g.UrlFetchApp.fetch;
   g.UrlFetchApp.fetch = function (url, params) {
@@ -138,7 +139,7 @@ function instalar(g, amb, opcoes) {
     const casos = (texto.match(/CASO:(\w+)/g) || []).map(s => s.slice(5));
     const caso = casos[casos.length - 1];
     chamadasIA.push({ caso, anexos: blocos.filter(x => x.type !== "text").length, modelo: payload.model });
-    if (caso === "FALHA") {
+    if (caso === "FALHA" && !estadoIA.voltou) {
       return { getResponseCode: () => 500, getContentText: () => JSON.stringify({ error: { message: "sobrecarga" } }) };
     }
     const ext = typeof EXTRACOES[caso] === "function" ? EXTRACOES[caso]() : EXTRACOES[caso];
@@ -157,7 +158,7 @@ function instalar(g, amb, opcoes) {
 
   return { threads, tocadas, chamadasIA, EXTRACOES, novaThread, responder, anexo, CC, RG, base,
            pdf: n => anexo(n, "application/pdf"), jpg: n => anexo(n, "image/jpeg"),
-           leitor, ponte, consultas, tentativasSisgep, PONTE_ID, CONTA_SECRETARIA,
+           leitor, ponte, consultas, tentativasSisgep, PONTE_ID, CONTA_SECRETARIA, estadoIA,
            /** Um ciclo do leitor: copia o que chegou e envia o que está na fila. */
            ciclo: () => leitor.leitorCiclo(),
            aba: nome => ponte.getSheetByName(nome) };

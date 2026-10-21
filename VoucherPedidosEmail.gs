@@ -1027,7 +1027,12 @@ function vpeLerCaixa_(opcoes) {
       if (!entrantes.length) continue;
       var ultima = entrantes[entrantes.length - 1];
       var reg = porThread[String(th.getId())];
-      if (reg && String(reg.ULTIMA_MENSAGEM_ID) === String(ultima.getId())) continue;
+      /* PEDIDO QUE A IA NÃO CONSEGUIU LER É RELIDO — 21/10/2026. O primeiro
+         pedido real chegou com "credit balance is too low": sem isto ele
+         ficaria parado para sempre, porque a mensagem já constava como lida. */
+      var falhouNaIA = reg && reg.ERRO && !reg.PROTOCOLO &&
+        String(reg.ESTADO) === VPE_ESTADOS.PRECISA_VOCE && !(vpeJson_(reg.DADOS_JSON, {}) || {}).extracao;
+      if (reg && !falhouNaIA && String(reg.ULTIMA_MENSAGEM_ID) === String(ultima.getId())) continue;
       /* TETO POR LEITURA — 21/10/2026. Na primeira leitura o leitor trouxe
          os pedidos dos últimos 15 dias, e cada um passa pela IA com os
          anexos (10 a 30 s). Pelo botão, sem teto, a tela ficava minutos em
