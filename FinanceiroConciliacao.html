@@ -297,8 +297,15 @@ window.finConciliacaoInit = function(){
   }
 };
 
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ setTimeout(finConciliacaoInit,150); });
-else setTimeout(finConciliacaoInit, 150);
+/* CARREGAMENTO SOB DEMANDA (auditoria M01, 31/08/2026).
+   Esta tela buscava os dados dela no DOMContentLoaded — ou seja, quando a
+   PÁGINA carregava, não quando o MÓDULO era aberto. Como o index.html inclui
+   as 60 telas de uma vez, isso rodava com o usuário parado no Início.
+   Medido: 40 chamadas ao backend por carga da Home, das quais o Início usa 3.
+   Quem inicializa agora é o initModulo() do index.html, pelo spIr(). */
+/* Esta tela era o único caso do lote SEM ponto de entrada sob demanda: só o
+   DOMContentLoaded a inicializava. A ligação foi criada no initFinanceiro() do
+   index.html, porque ela mora dentro de #mFinanceiro. */
 
 })();
 </script>

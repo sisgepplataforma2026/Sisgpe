@@ -2,130 +2,246 @@
 // ARQUIVO: InicioResumo.gs
 // MÓDULO: Início (Home) — resumo real do dia
 //
-// A tela Início (index.html, div #mInicio) tinha 3 blocos com números e
-// status inteiramente HARDCODED no HTML ("Suas prioridades de hoje",
-// "Saúde do sindicato", "Atividades recentes da SOFIA") — nenhum vinha
-// de google.script.run, então ninguém via dado real ali, só uma
-// maquete estática. Este arquivo religa os 3 blocos a dados de verdade,
-// reaproveitando as funções que cada módulo JÁ usa no próprio
-// dashboard, em vez de reimplementar contagem por conta própria:
-//   - E-mails            → getCockpit (CockpitCore.gs)
-//   - Ofícios            → getDashboardOficiosData (DashboardOficios.gs)
-//   - Jurídico           → jurListarProcessos (Juridico.gs)
-//   - Notas fiscais      → obterResumoDespesas (Despesas.gs)
-//   - Escolas            → listarEscolasCadastro (Escolas.gs)
-//   - Atividades da SOFIA→ aba Sofia_Auditoria (ChatIACore.gs, já gravada
-//                          a cada interação real com a IA)
+// A tela Início reutiliza as fontes canônicas dos próprios módulos em vez
+// de recalcular contagens. Esta versão acrescenta três garantias importantes:
+//   1) o resumo só consulta módulos aos quais a sessão tem acesso;
+//   2) falhas de fonte são registradas separadamente do valor exibido, para
+//      que o frontend possa diferenciar "zero" de "não foi possível atualizar";
+//   3) atividades recentes da SOFIA são filtradas pelo usuário da sessão,
+//      evitando exposição de perguntas de outros usuários na Home.
 //
-// "Saúde do sindicato" não tinha (e ainda não tem) um critério de
-// negócio definido pelo usuário para SAUDÁVEL/ORGANIZADO/ATENÇÃO — em
-// vez de inventar uma fórmula sofisticada, uso uma regra única e
-// simples, documentada aqui: ATENÇÃO se a área tem alguma pendência
-// real contada acima, OK caso contrário. Se o usuário quiser um
-// critério mais elaborado por área, é ajuste futuro.
+// Fontes atuais:
+//   - E-mails             → getCockpit (CockpitCore.gs)
+//   - Ofícios             → getDashboardOficiosData (DashboardOficios.gs)
+//   - Jurídico            → jurListarProcessos (Juridico.gs)
+//   - Notas fiscais       → obterResumoDespesas_interno_ (Despesas.gs)
+//   - Escolas             → listarEscolasCadastro (Escolas.gs)
+//   - Atividades da SOFIA → aba Sofia_Auditoria (ChatIACore.gs)
 //
-// Cada fonte é best-effort (try/catch individual) — se um módulo falhar
-// ao consultar, o card dele mostra 0 (nunca trava a tela toda nem
-// finge sucesso).
+// IMPORTANTE: "Saúde do sindicato" ainda não possui regra de negócio
+// canônica. Mantém-se provisoriamente a regra simples ATENÇÃO/OK somente para
+// fontes disponíveis. Fonte sem acesso ou com falha retorna "—".
 // ================================
 
 function getResumoInicioSISGEP(tokenSessao) {
-  exigirSessaoDocumentos_(tokenSessao, false);
+  var sessao = exigirSessaoDocumentos_(tokenSessao, false);
 
-  var notasFiscais = inicio_contarNotasFiscaisAguardando_();
-  var emails = inicio_contarEmailsUrgentes_(tokenSessao);
-  var oficios = inicio_contarOficiosPendentes_(tokenSessao);
-  var juridico = inicio_contarProcessosJuridicosComPrazo_(tokenSessao);
-  var escolasIncompletas = inicio_contarEscolasCadastroIncompleto_(tokenSessao);
+  var fontes = {};
+
+  fontes.notasFiscais = inicio_executarFonte_(
+    sessao,
+    "financeiro",
+    "Notas fiscais",
+    function () { return inicio_contarNotasFiscaisAguardando_(); }
+  );
+
+  fontes.emails = inicio_executarFonte_(
+    sessao,
+    "comunicacao",
+    "E-mails urgentes",
+    function () { return inicio_contarEmailsUrgentes_(tokenSessao); }
+  );
+
+  // Ofícios pertence ao módulo Documentos no catálogo de acesso.
+  fontes.oficios = inicio_executarFonte_(
+    sessao,
+    "documentos",
+    "Ofícios pendentes",
+    function () { return inicio_contarOficiosPendentes_(tokenSessao); }
+  );
+
+  fontes.juridico = inicio_executarFonte_(
+    sessao,
+    "juridico",
+    "Prazos jurídicos",
+    function () { return inicio_contarProcessosJuridicosComPrazo_(tokenSessao); }
+  );
+
+  fontes.escolasIncompletas = inicio_executarFonte_(
+    sessao,
+    "escolas",
+    "Cadastros de escolas incompletos",
+    function () { return inicio_contarEscolasCadastroIncompleto_(tokenSessao); }
+  );
+
+  var prioridades = {
+    // Compatibilidade com o frontend atual: enquanto a UI não consumir
+    // `statusFontes`, campos indisponíveis continuam numéricos. O status
+    // verdadeiro fica separado e NÃO é perdido.
+    notasFiscais: inicio_valorCompat_(fontes.notasFiscais),
+    emails: inicio_valorCompat_(fontes.emails),
+    oficios: inicio_valorCompat_(fontes.oficios),
+    juridico: inicio_valorCompat_(fontes.juridico),
+    escolasIncompletas: inicio_valorCompat_(fontes.escolasIncompletas)
+  };
 
   return {
     ok: true,
-    prioridades: {
-      notasFiscais: notasFiscais,
-      emails: emails,
-      oficios: oficios,
-      juridico: juridico,
-      escolasIncompletas: escolasIncompletas
-    },
+    atualizadoEm: Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm:ss"),
+    prioridades: prioridades,
+    statusFontes: fontes,
     saude: {
-      financeiro: notasFiscais > 0 ? "ATENÇÃO" : "OK",
-      administrativo: escolasIncompletas > 0 ? "ATENÇÃO" : "OK",
-      juridico: juridico > 0 ? "ATENÇÃO" : "OK",
-      comunicacao: emails > 0 ? "ATENÇÃO" : "OK",
-      oficios: oficios > 0 ? "ATENÇÃO" : "OK"
+      financeiro: inicio_statusSaude_(fontes.notasFiscais),
+      administrativo: inicio_statusSaude_(fontes.escolasIncompletas),
+      juridico: inicio_statusSaude_(fontes.juridico),
+      comunicacao: inicio_statusSaude_(fontes.emails),
+      oficios: inicio_statusSaude_(fontes.oficios)
     },
-    atividadesRecentes: inicio_atividadesRecentesSofia_()
+    atividadesRecentes: inicio_atividadesRecentesSofia_(sessao)
   };
 }
 
-function inicio_contarNotasFiscaisAguardando_() {
+/**
+ * Executa uma fonte respeitando a permissão da sessão e preservando o estado
+ * real da consulta. Nunca transforma "sem acesso" ou "falhou" em sucesso.
+ */
+function inicio_executarFonte_(sessao, modulo, rotulo, fn) {
   try {
-    var r = obterResumoDespesas_interno_();
-    return (r && r.ok && r.resumo) ? Number(r.resumo.totalDocRecebido || 0) : 0;
+    if (typeof sessaoPodeModulo_ === "function" && !sessaoPodeModulo_(sessao, modulo)) {
+      return {
+        ok: false,
+        disponivel: false,
+        semAcesso: true,
+        modulo: modulo,
+        rotulo: rotulo,
+        valor: null,
+        mensagem: "Sem acesso a este módulo."
+      };
+    }
+
+    var valor = Number(fn());
+    if (!isFinite(valor)) throw new Error("valor inválido retornado pela fonte");
+
+    return {
+      ok: true,
+      disponivel: true,
+      semAcesso: false,
+      modulo: modulo,
+      rotulo: rotulo,
+      valor: valor,
+      mensagem: ""
+    };
   } catch (e) {
-    Logger.log("[Início] falha ao contar notas fiscais: " + e.message);
-    return 0;
+    Logger.log("[Início] falha em " + rotulo + ": " + e.message);
+    return {
+      ok: false,
+      disponivel: false,
+      semAcesso: false,
+      modulo: modulo,
+      rotulo: rotulo,
+      valor: null,
+      mensagem: "Não foi possível atualizar esta informação."
+    };
   }
+}
+
+function inicio_valorCompat_(fonte) {
+  return fonte && fonte.ok ? Number(fonte.valor || 0) : 0;
+}
+
+function inicio_statusSaude_(fonte) {
+  if (!fonte || !fonte.ok) return "—";
+  return Number(fonte.valor || 0) > 0 ? "ATENÇÃO" : "OK";
+}
+
+function inicio_contarNotasFiscaisAguardando_() {
+  var r = obterResumoDespesas_interno_();
+  if (!r || !r.ok || !r.resumo) throw new Error("resumo financeiro indisponível");
+  return Number(r.resumo.totalDocRecebido || 0);
 }
 
 function inicio_contarEmailsUrgentes_(tokenSessao) {
-  try {
-    var r = getCockpit(tokenSessao);
-    return (r && r.ok && r.indicadores) ? Number(r.indicadores.urgentes || 0) : 0;
-  } catch (e) {
-    Logger.log("[Início] falha ao contar e-mails urgentes: " + e.message);
-    return 0;
-  }
+  var r = getCockpit(tokenSessao);
+  if (!r || !r.ok || !r.indicadores) throw new Error("cockpit de e-mails indisponível");
+  return Number(r.indicadores.urgentes || 0);
 }
 
+/**
+ * Ofícios que NÃO chegaram ao destino.
+ *
+ * Contava só `resumo.pendentes`, e isso escondia o pior caso. Achado na
+ * auditoria do Módulo 03, 01/09/2026, a partir de um sintoma real: o
+ * acionador `processarFilaEnvioOficios` mostrava 0,26% de erro na produção.
+ *
+ * O que acontecia: esgotadas as 3 tentativas, a linha vira ERRO_PERMANENTE e
+ * a fila para de tentar de propósito (`FilaOficios.gs:304`), para não insistir
+ * em e-mail inválido. Só que ERRO_PERMANENTE não entra em `pendentes` — cai em
+ * `erros`, que é outra conta (`DashboardOficios.gs:339`). O ofício saía da
+ * fila de pendentes, nenhum indicador se mexia, e a Home dizia OK enquanto o
+ * documento nunca havia chegado a ninguém.
+ *
+ * E ninguém era avisado: `FilaOficios.gs` não manda e-mail nem alerta quando
+ * um ofício morre na fila — a única chamada de MailApp lá é a consulta de
+ * cota.
+ *
+ * A inversão que isso produzia: dos três estados, o ÚNICO que se resolve
+ * sozinho — o pendente, que o gatilho leva embora em 5 minutos — era o único
+ * que a Home mostrava. Os dois que precisam de uma pessoa eram invisíveis.
+ *
+ * Por isso os três contam. Para quem opera, "pendente", "deu erro" e "voltou
+ * do servidor" são o mesmo fato: o ofício não chegou.
+ */
 function inicio_contarOficiosPendentes_(tokenSessao) {
-  try {
-    var r = getDashboardOficiosData({}, tokenSessao);
-    return (r && r.resumo) ? Number(r.resumo.pendentes || 0) : 0;
-  } catch (e) {
-    Logger.log("[Início] falha ao contar ofícios pendentes: " + e.message);
-    return 0;
-  }
+  var r = getDashboardOficiosData({}, tokenSessao);
+  if (!r || !r.resumo) throw new Error("dashboard de ofícios indisponível");
+  return Number(r.resumo.pendentes || 0) +
+         Number(r.resumo.erros     || 0) +
+         Number(r.resumo.falhas    || 0);
 }
 
 function inicio_contarProcessosJuridicosComPrazo_(tokenSessao) {
-  try {
-    var r = jurListarProcessos(tokenSessao);
-    if (!r || !r.ok || !Array.isArray(r.itens)) return 0;
-    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    return r.itens.filter(function (x) {
-      if (x.status === "Concluído" || !x.prazo) return false;
-      var d = Math.ceil((new Date(x.prazo + "T00:00:00") - hoje) / 86400000);
-      return d >= 0 && d <= 15;
-    }).length;
-  } catch (e) {
-    Logger.log("[Início] falha ao contar processos jurídicos: " + e.message);
-    return 0;
-  }
+  var r = jurListarProcessos(tokenSessao);
+  if (!r || !r.ok || !Array.isArray(r.itens)) throw new Error("lista jurídica indisponível");
+
+  var hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  return r.itens.filter(function (x) {
+    if (x.status === "Concluído" || !x.prazo) return false;
+    var dataPrazo = new Date(x.prazo + "T00:00:00");
+    if (isNaN(dataPrazo.getTime())) return false;
+    var d = Math.ceil((dataPrazo - hoje) / 86400000);
+    return d >= 0 && d <= 15;
+  }).length;
 }
 
 function inicio_contarEscolasCadastroIncompleto_(tokenSessao) {
-  try {
-    var escolas = listarEscolasCadastro(tokenSessao);
-    if (!Array.isArray(escolas)) return 0;
-    return escolas.filter(function (e) {
-      return !e.CNPJ || String(e.CNPJ).replace(/\D/g, "").length !== 14 || !e.Email;
-    }).length;
-  } catch (e) {
-    Logger.log("[Início] falha ao contar escolas com cadastro incompleto: " + e.message);
-    return 0;
-  }
+  var escolas = listarEscolasCadastro(tokenSessao);
+  if (!Array.isArray(escolas)) throw new Error("cadastro de escolas indisponível");
+
+  return escolas.filter(function (e) {
+    return !e.CNPJ || String(e.CNPJ).replace(/\D/g, "").length !== 14 || !e.Email;
+  }).length;
 }
 
-function inicio_atividadesRecentesSofia_() {
+/**
+ * Retorna somente as atividades recentes da SOFIA pertencentes ao usuário
+ * logado. A aba Sofia_Auditoria é global, portanto jamais deve ser devolvida
+ * diretamente para a Home sem filtro de identidade.
+ */
+function inicio_atividadesRecentesSofia_(sessao) {
   try {
     var ss = SpreadsheetApp.openById(PLANILHA_ID);
     var aba = ss.getSheetByName("Sofia_Auditoria");
     if (!aba || aba.getLastRow() < 2) return [];
+
+    var emailSessao = String((sessao && sessao.email) || "").trim().toLowerCase();
+    var nomeSessao = String((sessao && (sessao.nome || sessao.usuario)) || "").trim().toLowerCase();
+
+    // Lê uma janela recente em vez da planilha inteira. Se houver grande
+    // volume de uso, esta janela pode evoluir para índice/cache específico.
     var ultimaLinha = aba.getLastRow();
-    var inicio = Math.max(2, ultimaLinha - 4); // últimas 5 linhas
-    var dados = aba.getRange(inicio, 1, ultimaLinha - inicio + 1, 7).getValues();
-    return dados.reverse().map(function (l) {
+    var primeiraLinha = Math.max(2, ultimaLinha - 199);
+    var dados = aba.getRange(primeiraLinha, 1, ultimaLinha - primeiraLinha + 1, 7).getValues();
+
+    return dados.reverse().filter(function (l) {
+      var nomeLinha = String(l[1] || "").trim().toLowerCase();
+      var emailLinha = String(l[2] || "").trim().toLowerCase();
+
+      if (emailSessao) return emailLinha === emailSessao;
+      if (nomeSessao) return nomeLinha === nomeSessao;
+      return false;
+    }).slice(0, 5).map(function (l) {
       return {
         dataHora: String(l[0] || ""),
         dominio: String(l[3] || "Geral"),

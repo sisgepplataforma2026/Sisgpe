@@ -70,7 +70,20 @@
         g("cfgUsuario").textContent  = "—";
       })
       .getConfigPainel(cfgToken());
-  };window.initConfig=function(){load();draw();cfgCarregar()};if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initConfig);else setTimeout(initConfig,80)})();
+  };
+  /* O AcessoAdmin é incluído DENTRO desta tela (linha 79) e não tinha ponto de
+     entrada sob demanda: só o DOMContentLoaded dele o inicializava, em toda
+     carga da página. Quem manda no ciclo de vida do filho é o pai — mesmo
+     padrão do initRH com o initRHEventos. (auditoria M01, lote 2) */
+  window.initConfig=function(){
+    load(); draw(); cfgCarregar();
+    if(typeof window.initAcessoAdmin==="function") window.initAcessoAdmin();
+  };
+  /* CARREGAMENTO SOB DEMANDA (auditoria M01, lote 2 — 31/08/2026).
+     Esta tela buscava os dados no DOMContentLoaded, ou seja, em toda carga da
+     página, mesmo com o módulo fechado. Quem inicializa agora é o initModulo()
+     do index.html, pelo spIr(). */
+})();
   </script>
 
   <!-- Usuarios e acesso por modulo. Arquivo separado (AcessoAdmin)

@@ -18,7 +18,7 @@
  *     Oposição à Taxa Negocial .. CORPO VAZIO
  *
  * A escola recebia um e-mail com cabeçalho, selo do tipo e assinatura — e
- * NENHUMA linha de texto. O motivo: montarEmailHTML tinha um if/else por
+ * NENHUMA linha de texto. O motivo: montarEmailHTML_ tinha um if/else por
  * assuntoTipo e "Oposição à Taxa Negocial" não tinha ramo, então
  * textoPrincipal ficava string vazia e ninguém reclamava.
  *
@@ -43,7 +43,7 @@ const TIPOS = ["Filiação", "Desfiliação", "Taxa Negocial",
 
 /** Texto puro do e-mail, sem as tags. */
 function corpo(tipo, quantidade) {
-  const html = g.montarEmailHTML(tipo, "280/2026", tipo, quantidade || 3, "");
+  const html = g.montarEmailHTML_(tipo, "280/2026", tipo, quantidade || 3, "");
   return String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
@@ -172,7 +172,7 @@ b.ok(/fichas de filiação/i.test(corpo("Filiação", 3)),
    outra coisa sem avisar. É o pior tipo de defeito.
    ═══════════════════════════════════════════════════════════ */
 b.passo("9");
-const custom = g.montarEmailHTML("Taxa Negocial", "280/2026", "Taxa Negocial", 3,
+const custom = g.montarEmailHTML_("Taxa Negocial", "280/2026", "Taxa Negocial", 3,
   "Texto escrito pela secretaria, bem diferente do padrão.");
 b.ok(String(custom).indexOf("Texto escrito pela secretaria") > -1,
   "o texto digitado pelo atendente é o que vai no e-mail");

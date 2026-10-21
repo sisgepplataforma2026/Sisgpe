@@ -46,7 +46,7 @@ b.fluxo("OFÍCIOS · Padrão único: individual, lote e IA em todos os tipos");
 if (!dom.jsdomDisponivel || !dom.jsdomDisponivel()) {
   b.naoTestavel("Padrão único na tela", "jsdom não instalado (npm install)");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 const g = b.subir({}).g;
@@ -371,5 +371,25 @@ b.ok(!/6% \(seis por cento\)/.test(txtOpos),
 const txtCobr = corpoDe("Taxa Negocial");
 b.ok(/6% \(seis por cento\)/.test(txtCobr),
   "e a cobrança continua gerando o texto de cobrança");
+
+/* ═══════════════════════════════════════════════════════════
+   10. O card da escola não esmaga a identidade nem exibe ações legadas
+   ═══════════════════════════════════════════════════════════
+
+   Em uma coluna estreita, as três ações consumiam toda a largura e faziam
+   CNPJ/endereço quebrar letra por letra. Além disso, a regra display:flex
+   dos botões anulava o atributo HTML hidden de duas ações de compatibilidade.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("26");
+const fonteCss = require("fs").readFileSync(
+  require("path").join(__dirname, "..", "..", "OficiosStyles.html"), "utf8");
+b.ok(/\.escola-profile-head-premium\s*\{[^}]*flex-wrap:\s*wrap/s.test(fonteCss),
+  "o cabeçalho do card permite levar as ações para uma segunda linha");
+b.ok(/\.escola-profile-main\s*\{[^}]*flex:\s*1\s+1\s+280px/s.test(fonteCss),
+  "a identidade da escola mantém largura legível antes de dividir espaço");
+b.ok(/\.escola-profile-actions\s+button\[hidden\]\s*\{[^}]*display:\s*none\s*!important/s.test(fonteCss),
+  "ações legadas marcadas como hidden continuam realmente ocultas");
+b.ok($("btnConsultarCnpjSmart").hidden && $("btnSalvarEscolaSmart").hidden,
+  "Consultar CNPJ e Salvar cadastro não aparecem duplicados no card compacto");
 
 b.resumo();

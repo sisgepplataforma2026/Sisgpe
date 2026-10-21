@@ -231,20 +231,11 @@
       </div>
     </div>
 
-    <div class="linha3">
-      <div style="flex:2;">
-        <label for="tituloEleitor">Título de eleitor(a) <span class="opc">(opcional)</span></label>
-        <input type="tel" id="tituloEleitor" inputmode="numeric" maxlength="12">
-      </div>
-      <div>
-        <label for="zona">Zona</label>
-        <input type="tel" id="zona" inputmode="numeric" maxlength="4">
-      </div>
-      <div>
-        <label for="secao">Seção</label>
-        <input type="tel" id="secao" inputmode="numeric" maxlength="4">
-      </div>
-    </div>
+    <!-- TITULO DE ELEITOR, ZONA E SECAO REMOVIDOS EM 01/09/2026, por decisao do
+         usuario. Nao existem no formulario de papel oficial e o sistema nao os
+         usava para nada — coletar dado que nao se usa contraria a minimizacao
+         da LGPD. As colunas da planilha e o dado de quem ja preencheu ficam
+         intactos: apagar dado ja coletado e decisao a parte. -->
 
     <label for="escolaridade">Grau de instrução / escolaridade</label>
     <select id="escolaridade">
@@ -256,6 +247,8 @@
       <option>Ensino Superior incompleto</option>
       <option>Ensino Superior completo</option>
       <option>Pós-graduação</option>
+      <option>Mestrado</option>
+      <option>Doutorado</option>
     </select>
 
     <div class="msg-erro" id="erro1"></div>
@@ -769,9 +762,6 @@
       rg: v('rg'),
       orgaoExpedidor: v('orgaoExpedidor'),
       ufRg: v('ufRg'),
-      tituloEleitor: v('tituloEleitor'),
-      zona: v('zona'),
-      secao: v('secao'),
       telefone1: v('telefone1'),
       telefone2: v('telefone2'),
       celular: v('celular'),

@@ -115,7 +115,7 @@ function portalAss_salvarFotoCredencial_(cpf, base64, tipo) {
     var nomeArquivo = 'FOTO_' + String(cpf || '').replace(/\D/g, '') + '_' + Date.now() + '.' + extensao;
     var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, nomeArquivo);
     var arquivo = portalAss_obterPastaFotos_().createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(arquivo, "Portalassociado.gs");
     return 'https://drive.google.com/uc?export=view&id=' + arquivo.getId();
   } catch (e) {
     Logger.log('portalAss_salvarFotoCredencial_: ' + e);

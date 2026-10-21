@@ -17,9 +17,20 @@ var CHAT_MAX_TOKENS_ = 1500;
    ENTRADA PRINCIPAL
 ═══════════════════════════════════════════════════════ */
 function chatSISGEP(payload, tokenSessao) {
-  var sessao = null;
+  /* PERMISSÃO — auditoria do Módulo 02, 31/08/2026.
+     O chat lê mensalidades, escolas e painéis de benefícios e devolve isso em
+     texto. Passava só por exigirSessaoDocumentos_: qualquer sessão válida
+     conversava, mesmo sem nenhum módulo relacionado marcado. O catálogo de
+     acesso tem a chave "sofia" justamente para poder controlar isto.
+
+     FORA do try, de propósito. Dentro, o catch devolvia
+     { ok:false, resposta:"Erro interno: ..." } — e negar acesso não é erro
+     interno: é resposta esperada do sistema. Lançar aqui alinha o chat aos
+     outros 398 usos de exigirModulo_ no projeto, e o withFailureHandler da
+     tela mostra a mensagem certa. */
+  var sessao = exigirModulo_(tokenSessao, "sofia", false);
+
   try {
-    sessao = exigirSessaoDocumentos_(tokenSessao, false);
     payload = payload || {};
     var mensagem = String(payload.mensagem || "").trim();
     var historico = Array.isArray(payload.historico) ? payload.historico : [];
@@ -31,7 +42,7 @@ function chatSISGEP(payload, tokenSessao) {
     if (!apiKey) return { ok: false, resposta: "Chave da API Anthropic não configurada." };
 
     var contextoConversa = historico.slice(-4).map(function(h) { return String(h.content || ""); }).join("\n") + "\n" + mensagem;
-    var contexto = coletarContextoSISGEP_(contextoConversa, dominio);
+    var contexto = coletarContextoSISGEP_(contextoConversa, dominio, sessao);
     var systemPrompt = montarSystemPrompt_(contexto, mensagem);
 
     var messages = [];
@@ -358,7 +369,30 @@ function divergenciasCadastroSofia_(planilha, receita) {
   return lista;
 }
 
-function coletarContextoSISGEP_(mensagem, dominio) {
+/**
+ * PERMISSÃO POR FONTE — auditoria do Módulo 02, 31/08/2026.
+ *
+ * Ter o módulo "sofia" dava acesso a TUDO que a SOFIA alcança: mensalidades,
+ * escolas, benefícios e e-mails institucionais. Quem só devia ver escolas
+ * perguntava e recebia situação de mensalidade de gente com nome e escola.
+ *
+ * A trava é a mesma que o InicioResumo.gs já usa na Home — sessaoPodeModulo_
+ * por fonte, e não um portão único na entrada. Precedente da casa, não
+ * invenção: lá cada card do Início consulta só o que a sessão pode ver.
+ *
+ * Sessão AUSENTE fecha tudo, de propósito. Esta função é privada e só o
+ * chatSISGEP a chama em produção, sempre com sessão; um chamador novo que
+ * esqueça de passá-la recebe contexto vazio em vez de contexto completo. É o
+ * erro seguro.
+ */
+function chatPodeFonte_(sessao, modulo) {
+  if (!sessao) return false;
+  if (typeof sessaoPodeModulo_ !== "function") return true;
+  try { return !!sessaoPodeModulo_(sessao, modulo); }
+  catch (e) { return false; }
+}
+
+function coletarContextoSISGEP_(mensagem, dominio, sessao) {
   var msg = mensagem.toLowerCase();
   var contexto = {
     totalRegistros: 0,
@@ -368,7 +402,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   };
 
   // Fontes específicas por domínio funcional. Somente leituras e resumos.
-  if (contexto.dominio === "Benefícios") {
+  if (contexto.dominio === "Benefícios" && chatPodeFonte_(sessao, "beneficios")) {
     contexto.dados.fontesBeneficios = [];
     try {
       if (typeof dashboardReservaParqueChina === "function") {
@@ -391,7 +425,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
   // ── Carrega emails das escolas (cache em memória) ──
   var mapaEmailEscolas = {};
   try {
-    var listaEsc = listarEscolasCadastro_interno_() || [];
+    var listaEsc = chatPodeFonte_(sessao, "escolas") ? (listarEscolasCadastro_interno_() || []) : [];
     listaEsc.forEach(function(e) {
       var nome = String(e[COL_NOME_ESCOLA] || e.escola || e.NomeEscola || "").trim().toLowerCase();
       var email = String(e[COL_EMAIL] || e.email || e.Email || "").trim();
@@ -414,18 +448,46 @@ function coletarContextoSISGEP_(mensagem, dominio) {
     Logger.log("coletarContexto_ escolas: " + eEsc.message);
   }
 
-  // ── Sempre busca resumo de mensalidades ──
+  /* ── Mensalidades ──
+     CONTAGEM NÃO É PESSOA. Corrigido em 31/08/2026, depois de uma primeira
+     tentativa que barrava o bloco inteiro para quem não tem o módulo
+     financeiro — e deixava a SOFIA respondendo "não consultei" a perguntas
+     que ela podia responder. O usuário apontou, e estava certo.
+
+     O que é sensível pela LGPD (art. 5º, II) é filiação sindical de pessoa
+     IDENTIFICADA: nome + status. "Há 12 pendências nesta escola" não
+     identifica ninguém e não é dado pessoal.
+
+     Então o corte é este, e não no bloco:
+       contadores e totais    → qualquer sessão com o módulo sofia
+       nomes de pessoas       → só com o módulo financeiro
+
+     Assim a assistente continua útil para quem faz gestão, sem virar porta
+     lateral para a lista de quem se desfiliou. */
+  var podeVerPessoas = chatPodeFonte_(sessao, "financeiro");
+
   try {
     var statusGeral = listarMensalidadeStatus({});
     if (statusGeral && statusGeral.ok) {
       contexto.resumo = statusGeral.resumo || {};
+      if (!podeVerPessoas) {
+        /* A IA precisa saber por que não tem nomes — senão inventa que não há
+           ninguém, ou pede desculpa como se fosse falha. */
+        contexto.dados.avisoSemPessoas =
+          "Esta sessão não tem acesso ao módulo Financeiro. Os NÚMEROS abaixo " +
+          "estão completos e podem ser usados; a lista de PESSOAS não foi " +
+          "consultada. Se pedirem nomes, explique que é preciso acesso ao " +
+          "módulo Financeiro — não diga que não há registros.";
+      }
       contexto.totalRegistros = (statusGeral.itens || []).length;
 
       // Pergunta sobre escola específica
       var termoEscola = extrairTermoEscola_(msg);
       if (termoEscola) {
         var precisaLerAnexos = /\b(rela[cç][aã]o|nominal|anexo|arquivo|pdf|planilha|excel|lista|guia)\b/i.test(msg);
-        contexto.dados.emailsInstitucionais = buscarEmailsInstitucionaisRecentes_(termoEscola, { lerAnexos: precisaLerAnexos });
+        /* Caixa de e-mails é do módulo Comunicação. */
+        if (chatPodeFonte_(sessao, "comunicacao"))
+          contexto.dados.emailsInstitucionais = buscarEmailsInstitucionaisRecentes_(termoEscola, { lerAnexos: precisaLerAnexos });
         var filtrado = listarMensalidadeStatus({ escola: termoEscola });
         if (termoEscola === "gestão de excelencia" && (!filtrado || !filtrado.itens || !filtrado.itens.length)) {
           filtrado = listarMensalidadeStatus({ escola: "Gestão de Excelência" });
@@ -480,7 +542,10 @@ function coletarContextoSISGEP_(mensagem, dominio) {
             aguardando: aguardando,
             email: emailDaEscola,
             infoEscola: infoEscola,
-            itens: filtrado.itens.slice(0, 20).map(function(i) {
+            /* Os contadores acima vão para todo mundo; a LISTA NOMINAL, não.
+               Sem o módulo financeiro a SOFIA sabe quantos são e não sabe
+               quem são — que é exatamente a fronteira do dado pessoal. */
+            itens: !podeVerPessoas ? [] : filtrado.itens.slice(0, 20).map(function(i) {
               return {
                 nome: i.nome,
                 status: i.status,
@@ -558,7 +623,7 @@ function coletarContextoSISGEP_(mensagem, dominio) {
 
       // Associado por nome
       var termoNome = extrairTermoNome_(msg);
-      if (termoNome) {
+      if (termoNome && podeVerPessoas) {
         var porNome = listarMensalidadeStatus({ nome: termoNome });
         if (porNome && porNome.ok && porNome.itens && porNome.itens.length > 0) {
           contexto.dados.associadoBuscado = {
@@ -581,6 +646,8 @@ function coletarContextoSISGEP_(mensagem, dominio) {
       // Pergunta sobre CCT / legislação — não precisa de dados extras, o system prompt já tem a CCT
     }
   } catch (e) {
+    /* Recusa por permissão não é erro: é o sistema funcionando. Fica separada
+       no log para não parecer falha de leitura da planilha. */
     Logger.log("coletarContextoSISGEP_ erro mensalidades: " + e.message);
   }
 
@@ -634,6 +701,28 @@ function extrairTermoNome_(msg) {
     var idx = msg.indexOf(padroes[i]);
     if (idx >= 0) {
       var trecho = msg.substring(idx + padroes[i].length).split(/[?,!.]/)[0].trim();
+
+      /* DESCASCA AS PALAVRAS-GATILHO QUE SOBRARAM — auditoria do Módulo 02,
+         31/08/2026.
+         Antes, só o PRIMEIRO padrão era removido, e o resto ficava no termo:
+
+           "buscar joana pereira"            → "joana pereira"       achava
+           "buscar associado joana pereira"  → "associado joana ..." não achava
+
+         A segunda é como uma pessoa pergunta. A busca não encontrava ninguém
+         e a SOFIA respondia que não havia registros — o pior tipo de erro de
+         assistente, porque parece resposta e é falha de leitura. */
+      var mudou = true;
+      while (mudou) {
+        mudou = false;
+        for (var j = 0; j < padroes.length; j++) {
+          if (trecho.indexOf(padroes[j]) === 0) {
+            trecho = trecho.substring(padroes[j].length).trim();
+            mudou = true;
+          }
+        }
+      }
+
       if (trecho.length >= 3 && trecho.length <= 60) return trecho;
     }
   }
@@ -650,23 +739,35 @@ function selecionarContextoIA_(texto, consulta, limite) {
   limite = Number(limite || 30000);
   if (!texto || texto.length <= limite) return texto;
 
-  var normalizar = function(s) {
-    return String(s || "").toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  };
-  var q = normalizar(consulta);
+  var q = normalizarBuscaIA_(consulta);
   var termos = q.split(/[^a-z0-9]+/).filter(function(t) {
     return t.length >= 3 && ["que","qual","quais","sobre","para","com","uma","das","dos"].indexOf(t) < 0;
   });
-  var numeroClausula = q.match(/(?:clausula|cl)\s*(\d+)/);
-  if (numeroClausula) termos.push(numeroClausula[1]);
+  /* Radical de cada termo, para "votação" alcançar "votar" — ver o comentário
+     de radicalBuscaIA_ logo abaixo. */
+  var radicais = termos.map(radicalBuscaIA_).filter(function(r, i, a) {
+    return r && r.length >= 3 && a.indexOf(r) === i;
+  });
 
-  var blocos = texto.split(/\n{2,}/);
+  /* Número citado na pergunta vale muito: quem pergunta "o que diz o art. 88"
+     está pedindo AQUELE artigo, não os que falam de assunto parecido. Antes só
+     cláusula era reconhecida; artigo ficava de fora, que é justamente a forma
+     de perguntar sobre o Estatuto. */
+  var numeros = [];
+  var mClausula = q.match(/(?:clausula|cl)\s*(\d+)/);
+  if (mClausula) numeros.push(mClausula[1]);
+  var mArtigo = q.match(/(?:artigo|art)\.?\s*(\d+)/);
+  if (mArtigo) numeros.push(mArtigo[1]);
+
+  var blocos = agruparPorArtigoIA_(texto);
   var avaliados = blocos.map(function(bloco, indice) {
-    var b = normalizar(bloco);
+    var b = normalizarBuscaIA_(bloco);
     var pontos = 0;
-    termos.forEach(function(t) {
-      if (b.indexOf(t) >= 0) pontos += /^\d+$/.test(t) ? 8 : 2;
+    termos.forEach(function(t) { if (b.indexOf(t) >= 0) pontos += 2; });
+    radicais.forEach(function(r) { if (b.indexOf(r) >= 0) pontos += 1; });
+    numeros.forEach(function(n) {
+      if (new RegExp("(art(igo)?\\.?|clausula)\\s*" + n + "\\b").test(b)) pontos += 40;
+      else if (b.indexOf(n) >= 0) pontos += 8;
     });
     return { texto: bloco, indice: indice, pontos: pontos };
   }).filter(function(x) { return x.pontos > 0; })
@@ -684,6 +785,118 @@ function selecionarContextoIA_(texto, consulta, limite) {
   });
   escolhidos.sort(function(a, b) { return a.indice - b.indice; });
   return escolhidos.map(function(x) { return x.texto; }).join("\n\n").substring(0, limite);
+}
+
+/** Minúscula e sem acento — o mesmo tratamento dos dois lados da comparação. */
+function normalizarBuscaIA_(s) {
+  return String(s || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * RADICAL DE UMA PALAVRA, e por que isto existe.
+ *
+ * Medido em 01/09/2026, na homologação, com a chave da API já configurada.
+ * Perguntando "quem pode participar da votação?", a SOFIA citou os arts. 74,
+ * 76, 82, 94 e 96 — e afirmou, categoricamente, que "o Art. 88 não consta no
+ * Estatuto vigente". O art. 88 existe e é EXATAMENTE sobre o assunto: "a
+ * relação dos associados em condições de VOTAR".
+ *
+ * A causa não era a IA. Era esta função não existir. A pontuação usava
+ * `indexOf` do termo literal: a pergunta gera "votacao", o art. 88 diz
+ * "votar", e `indexOf("votacao")` não acha "votar". O artigo pontuou ZERO e
+ * foi filtrado fora — nunca chegou ao prompt. A IA respondeu com o que
+ * recebeu.
+ *
+ * Um documento jurídico é justamente onde isso dói: quem pergunta usa o
+ * substantivo ("votação", "eleição", "filiação") e a lei escreve o verbo
+ * ("votar", "eleger", "filiar-se").
+ *
+ * O radical vale MENOS que o termo exato (1 ponto contra 2), de propósito: ele
+ * existe para o artigo certo entrar na disputa, não para vencer de quem casou
+ * a palavra inteira.
+ */
+function radicalBuscaIA_(termo) {
+  var t = normalizarBuscaIA_(termo);
+  var sufixos = ["coes","cao","mente","ancia","encia","idade","ismo","ista",
+                 "ando","endo","indo","ados","adas","idos","idas","ado","ada",
+                 "ido","ida","ais","eis","ois","oes","ns",
+                 "ar","er","ir","al","es","os","as","s","o","a","e"];
+  for (var passe = 0; passe < 2; passe++) {
+    for (var i = 0; i < sufixos.length; i++) {
+      var suf = sufixos[i];
+      if (t.length - suf.length >= 3 && t.slice(-suf.length) === suf) {
+        t = t.slice(0, -suf.length);
+        break;
+      }
+    }
+  }
+  return t;
+}
+
+/**
+ * AGRUPA O DOCUMENTO POR ARTIGO — o parágrafo não viaja sozinho.
+ *
+ * O segundo defeito medido em 01/09/2026, e o mais grave dos dois.
+ *
+ * O texto era cortado em linha em branco. Num estatuto, "Art. 88. A relação
+ * dos associados…" e o "§1º Aos associados previstos no art. 5º…" são blocos
+ * SEPARADOS. A seleção escolhia um sem o outro, e chegava à IA um parágrafo
+ * legal SEM NÚMERO DE ARTIGO, encostado no texto de outro artigo qualquer.
+ *
+ * Na medição: 25 dos 62 blocos enviados — 40% — começavam com "§". A IA
+ * pendurava esses parágrafos no último número que enxergava. Foi assim que o
+ * §1º do art. 88 saiu na resposta como "§1º do Art. 82": ela não trocou o
+ * número, ela recebeu o texto sem número nenhum.
+ *
+ * Aqui cada unidade começa num "Art. N" (ou "Cláusula N") e leva junto TUDO
+ * o que vem depois — parágrafos, incisos, alíneas e listas sem marcador —
+ * até o próximo artigo ou um cabeçalho de estrutura. Título, capítulo e
+ * seção quebram a unidade, porque não são parte do artigo.
+ *
+ * Documento sem essa estrutura cai no comportamento antigo — cada bloco é uma
+ * unidade —, então nada que não seja lei muda de tratamento.
+ */
+var RE_ARTIGO_IA_ = /^\s*(art(?:igo)?\.?\s*\d+|cl[\u00e1a]usula\s*\d+)/i;
+var RE_CABECALHO_IA_ = /^\s*(t[\u00edi]tulo|cap[\u00edi]tulo|se[\u00e7c][\u00e3a]o|subse[\u00e7c][\u00e3a]o|anexo|pre[\u00e2a]mbulo)\b/i;
+
+function agruparPorArtigoIA_(texto) {
+  /* `\n\s*\n`, e não `\n{2,}` — no Estatuto os blocos vêm separados por
+     "\n \n \n", com espaço nas linhas em branco. `\n{2,}` exige quebras
+     coladas e não casava: a SEÇÃO seguinte ficava grudada no último parágrafo
+     do artigo anterior. Achado pelo passo 7 do t117. */
+  var blocos = String(texto || "").split(/\n\s*\n/);
+  var unidades = [];
+  var atual = null;
+
+  blocos.forEach(function (bloco) {
+    if (!String(bloco).trim()) return;
+
+    if (RE_ARTIGO_IA_.test(bloco)) {
+      if (atual !== null) unidades.push(atual);
+      atual = bloco;
+      return;
+    }
+    if (RE_CABECALHO_IA_.test(bloco)) {
+      if (atual !== null) { unidades.push(atual); atual = null; }
+      unidades.push(bloco);
+      return;
+    }
+    /* TUDO O MAIS CONTINUA O ARTIGO ABERTO — e esta é a segunda lição do t117.
+       A primeira versão listava as formas de "filho" (§, inciso romano,
+       alínea) e quebrava no que não casasse. Só que o §2º do art. 84 é
+       seguido de uma lista sem marcador nenhum ("07 (sete) Diretores da
+       executiva…"): ela não casava, fechava o artigo, e o §3º seguinte chegava
+       ÓRFÃO — exatamente o defeito que este agrupamento existe para eliminar.
+       Enumerar as formas de filho é apostar em conhecer todas. Dentro de um
+       artigo, o que fecha é o próximo artigo ou um cabeçalho de estrutura;
+       o resto é conteúdo dele. */
+    if (atual !== null) { atual += "\n\n" + bloco; return; }
+    unidades.push(bloco);
+  });
+
+  if (atual !== null) unidades.push(atual);
+  return unidades;
 }
 
 /**
@@ -720,7 +933,9 @@ function blocoDocumentoIA_(rotulo, texto, consulta, limite) {
   if (!trechos) return "";
   return "\n=== " + rotulo + " — TRECHOS RELEVANTES ===\n" +
          (identificacao ? identificacao + "\n" : "") +
-         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n\n" +
+         "(Ao citar, diga o artigo ou a cláusula E de qual destes documentos.)\n" +
+         "(Isto é uma SELEÇÃO de trechos, não o documento inteiro. Se algo não " +
+         "estiver aqui, diga que não veio nos trechos — NUNCA que não existe.)\n\n" +
          trechos + "\n";
 }
 
@@ -926,7 +1141,23 @@ function montarSystemPrompt_(contexto, mensagem, forcar) {
   var precisaEstatuto = forcar.estatuto === true || dominioAtual === "ESTATUTO" ||
     /(estatuto|estatutári|assembleia|assembléia|mandato|diretoria|conselho fiscal|elei(ção|cao|toral)|posse|quórum|quorum|destitui|filia(ção|cao)|desfilia|vot(o|ar|ação|acao|antes)|eleitor|chapa|urna|escrut[íi]nio|delegad|sindical(izad|iza)|art\.\s*\d)/i.test(consulta);
   var conteudoEstatuto = (precisaEstatuto && typeof getEstatutoTexto_ === "function")
-    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 60000) : "";
+    /* 90.000, e não 60.000 — decisão do usuário em 01/09/2026, depois de a
+       correção da seleção ser verificada no ar.
+
+       O Estatuto tem 75.646 caracteres. Com o limite em 60.000 ele era o
+       ÚNICO documento que passava pela seleção — a CCT, com 10.094 contra
+       90.000, sempre foi inteira. Subir o teto do Estatuto para o mesmo
+       valor faz `selecionarContextoIA_` devolvê-lo inteiro (`texto.length
+       <= limite` retorna antes de pontuar qualquer coisa), e a classe de
+       defeito de 01/09 deixa de existir: não há trecho a escolher errado,
+       não há parágrafo a separar do artigo, não há artigo a ficar de fora.
+
+       Custa cerca de 19 mil tokens a mais por pergunta que toque o
+       Estatuto. O contrapeso é conhecido e fica dito: com 134 artigos no
+       prompt, achar o certo passa a depender da atenção do modelo. A
+       seleção continua corrigida e testada (t117) e volta a valer sozinha
+       se o documento passar de 90.000. */
+    ? blocoDocumentoIA_("ESTATUTO", getEstatutoTexto_(), consulta, 90000) : "";
 
   var memoriaRelevante = selecionarContextoIA_(carregarMemoriaOrganizacional(), consulta, 30000);
 
@@ -941,6 +1172,26 @@ var prompt =
     "sobre Estatuto usando a CCT, nem sobre CCT usando o Estatuto: são " +
     "documentos diferentes, e trocá-los produz resposta com a forma certa e a " +
     "fonte errada.\n\n" +
+    /* Acrescentado em 01/09/2026. A SOFIA afirmou que "o Art. 88 não consta
+       no Estatuto vigente" — e ele consta: o que faltava era o trecho, não o
+       artigo. Negá-lo é pior que não achar, porque quem pergunta guarda a
+       negação como fato e para de procurar. */
+    "Os documentos chegam a você em TRECHOS selecionados pela pergunta, nunca " +
+    "inteiros. Por isso: se um artigo ou cláusula não estiver nos trechos, diga " +
+    "que ele NÃO VEIO nos trechos consultados e ofereça buscá-lo pelo número. " +
+    "NUNCA afirme que um artigo não existe, que não consta ou que o documento " +
+    "não o menciona — você não tem o documento inteiro para afirmar isso.\n\n" +
+    /* Acrescentado em 01/09/2026, na conferência da correção anterior. Com o
+       art. 4º chegando inteiro, com os cinco incisos, ela citou "Art. 4º, I"
+       para "pleno gozo dos direitos associativos" — e o inciso I é "utilizar
+       as dependências do sindicato". O artigo estava certo; o algarismo, não.
+       Quem é obrigado a transcrever o texto não erra o número, porque o erro
+       fica visível na própria frase. */
+    "Ao citar um INCISO, uma ALÍNEA ou um PARÁGRAFO, transcreva o texto dele " +
+    "junto do número, entre aspas. Se não puder transcrever porque o texto não " +
+    "está nos trechos, cite só o artigo e diga que o inciso não veio. Número de " +
+    "inciso sem o texto ao lado é o erro mais fácil de cometer e o mais difícil " +
+    "de alguém perceber.\n\n" +
     conteudoCCT +
     "\n" +
     conteudoEstatuto +
@@ -950,6 +1201,13 @@ var prompt =
     "━━━ DADOS REAIS DO SISTEMA — " + hoje + " ━━━\n\n";
 
   // Resumo geral
+  /* O aviso vem ANTES dos números, para a IA ler a ressalva junto com o dado
+     e não depois de já ter concluído. (avisoFonteDominio, definido na coleta
+     desde antes, nunca chegou aqui — fica anotado como achado à parte.) */
+  if (contexto.dados.avisoSemPessoas) {
+    prompt += "AVISO DE ACESSO: " + contexto.dados.avisoSemPessoas + "\n\n";
+  }
+
   if (resumo.total) {
     prompt +=
       "RESUMO DE MENSALIDADES:\n" +
@@ -1076,7 +1334,9 @@ var prompt =
     "4. Quando listar urgentes para cobrança, destaque os que têm email cadastrado.\n" +
     "5. Status: AGUARDANDO, CONFIRMADO, PENDENTE_30D, COBRANCA_ENVIADA, REGULARIZADO, DESFILIADO.\n" +
     "6. O usuário já está autenticado no SISGEP. Nunca pergunte quem ele é, seu cargo ou setor. Continue a tarefa usando o contexto da conversa.\n" +
-    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).";
+    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).\n" +
+    "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.\n" +
+    "9. Ao citar inciso, alínea ou parágrafo, transcreva o texto entre aspas junto do número. Sem o texto à vista, cite só o artigo.";
 
   return prompt;
 }

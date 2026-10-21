@@ -186,4 +186,3 @@ b.naoTestavel("Links criados ANTES desta tela existir",
   "funcionando e não aparecem na lista");
 
 b.resumo();
-process.exit(0);

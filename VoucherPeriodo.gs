@@ -230,6 +230,72 @@ function voucherPeriodoChaveCurso_(modalidade, curso) {
  * `sheet` é opcional e existe para quem já abriu a aba dentro de um lock não
  * abrir de novo — reabrir dentro do lock é caro e desnecessário.
  */
+/* O TETO É POR ASSOCIADO, CONTANDO TUDO — 16/09/2026.
+ *
+ * Regra do usuário: "a gente pode conceder até três vouchers, respeitando: um
+ * infantil, outro médio, outro graduação. Respeita o quantitativo por
+ * associado, é até três."
+ *
+ * NÃO SÃO TRÊS FILHOS — são TRÊS VOUCHERS do mesmo associado no ano, em
+ * qualquer combinação de nível. Dois no Infantil a 100% e um na Graduação a
+ * 70% já fecham a conta, e o quarto pedido não cabe mesmo que seja para uma
+ * pessoa diferente.
+ *
+ * CONTA O QUE OCUPA VAGA, não toda linha: indeferida e cancelada liberam o
+ * lugar. É a mesma lista que a checagem de duplicidade usa, para as duas
+ * regras não discordarem sobre o que "existe".
+ *
+ * CONTA POR ANO, não por semestre: a convenção concede por ano letivo, e
+ * contar por semestre daria seis no ano.
+ */
+function voucherContarAtivosDoAssociado_(cpf, periodoReferencia, sheet) {
+  var digitos = String(cpf || "").replace(/\D/g, "");
+  if (!digitos) return { total: 0, itens: [] };
+
+  var sh = sheet;
+  if (!sh) {
+    var ss = SpreadsheetApp.openById(PLANILHA_ID);
+    sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);
+  }
+  if (!sh || sh.getLastRow() < 2) return { total: 0, itens: [] };
+
+  var ano = String(voucherPeriodoPartes_(periodoReferencia).ano || "").trim();
+  var ocupa = VOUCHER_STATUS_OCUPA_PERIODO_();
+
+  var tudo = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+  var cab = tudo[0].map(function (c) { return String(c || "").trim(); });
+  function col(linha, nome) {
+    var i = cab.indexOf(nome);
+    return i === -1 ? "" : linha[i];
+  }
+
+  var itens = [];
+  for (var i = 1; i < tudo.length; i++) {
+    var l = tudo[i];
+    var cpfLinha = String(col(l, "CPF_SOLICITANTE") || "").replace(/\D/g, "");
+    /* O zero à esquerda que a planilha come: compara pelos últimos dígitos
+       quando o comprimento não bate. Ver formatarCpfVoucher_. */
+    if (cpfLinha !== digitos &&
+        ("00" + cpfLinha).slice(-11) !== ("00" + digitos).slice(-11)) continue;
+
+    var st = String(col(l, "STATUS_SOLICITACAO") || "").toUpperCase();
+    if (ocupa.indexOf(st) === -1) continue;
+
+    var anoLinha = String(voucherPeriodoPartes_(col(l, "PERIODO_REFERENCIA")).ano || "").trim();
+    if (ano && anoLinha && anoLinha !== ano) continue;
+
+    itens.push({
+      protocolo: String(col(l, "NUMERO_PROTOCOLO") || ""),
+      beneficiario: String(col(l, "NOME_BENEFICIARIO") || ""),
+      modalidade: String(col(l, "MODALIDADE") || ""),
+      periodo: String(col(l, "PERIODO_REFERENCIA") || ""),
+      status: st
+    });
+  }
+
+  return { total: itens.length, itens: itens, ano: ano };
+}
+
 function voucherPeriodoHistorico_(dados, sheet) {
   dados = dados || {};
   var vazio = { ok: true, bloqueado: false, bloqueio: null, anteriores: [], vezes: 0, ultima: null };
