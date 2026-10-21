@@ -60,7 +60,19 @@ const SIM = require("./vpe-simulador").instalar(g, amb);
 const { tocadas, chamadasIA, EXTRACOES, novaThread, responder, CC, RG, base } = SIM;
 /* Um ciclo do LEITOR (na conta da Secretaria: copia para a ponte e envia a
    fila) e depois a leitura do SISGEP (que só enxerga a ponte). */
-const ler = () => { SIM.ciclo(); return g.voucherPedidosLerAgora(TOKEN); };
+/* O botão lê 5 por vez; o helper clica até não sobrar nada, somando o que
+   leu — é o que a pessoa faria, e é o que o gatilho faz sem teto. */
+const ler = () => {
+  SIM.ciclo();
+  let tot = null;
+  for (let k = 0; k < 20; k++) {
+    const r = g.voucherPedidosLerAgora(TOKEN);
+    if (!tot) tot = r; else ["lidas", "novos", "atualizados", "ignorados", "erros"].forEach(c => { tot[c] += r[c] || 0; });
+    if (!r.restantes) break;
+  }
+  return tot;
+};
+const lerUmClique = () => { SIM.ciclo(); return g.voucherPedidosLerAgora(TOKEN); };
 const saida = () => g.vpeLinhas_(SIM.aba("Saida"));
 const painel = (caixa, tk) => g.voucherPedidosPainel(caixa || "SECRETARIA", tk || TOKEN);
 const pedidoDa = (th) => g.vpeLinhas_().find(r => r.THREAD_ID === th.id);
@@ -144,6 +156,24 @@ b.igual(SIM.tentativasSisgep, [], "o SISGEP não tocou em caixa de e-mail nenhum
 b.ok(chamadasIA.find(c => c.caso === "ANA").anexos === 2, "os dois anexos da Ana chegaram à IA pela ponte");
 b.ok(JSON.parse(entrada.find(r => r.THREAD_ID === thAna.id).ANEXOS_JSON).every(a => a.fileId),
   "os anexos foram guardados no Drive pelo leitor");
+
+b.passo("1a. O botão lê no máximo 5 por vez e diz quantos faltam");
+/* Seis pedidos novos de uma vez: o "Ler agora" processa 5 e avisa do sexto. */
+for (let k = 1; k <= 6; k++) {
+  EXTRACOES["LOTE" + k] = base({ titular: { nome: "Lote " + k, cpf: "" } });
+  novaThread("voucher lote " + k, "lote" + k + "@exemplo.com", "Voucher, por favor. CASO:LOTE" + k, []);
+}
+const rLote = lerUmClique();
+b.igual(rLote.lidas, 5, "leu 5", rLote.mensagem);
+b.igual(rLote.restantes, 1, "e sobrou 1");
+b.ok(/Faltam 1/.test(rLote.mensagem), "a mensagem diz quantos faltam", rLote.mensagem);
+const rLote2 = lerUmClique();
+b.igual(rLote2.lidas, 1, "o clique seguinte lê o que faltou");
+b.ok(!rLote2.restantes, "e não sobra nada");
+const lotes = g.vpeLinhas_().filter(r => /^lote\d@/.test(String(r.REMETENTE_EMAIL)));
+b.igual(lotes.length, 6, "os seis estão na fila");
+/* Tiram-se da contagem dos cards adiante: descartados aqui mesmo. */
+lotes.forEach(r => g.voucherPedidosDescartar(r.ID_PEDIDO, "teste do teto por leitura", TOKEN));
 
 b.passo("1b. Cada pedido tem ID próprio, mesmo lidos no mesmo segundo");
 /* Math.random travado: com o gerador antigo (segundo + 3 dígitos), todos os

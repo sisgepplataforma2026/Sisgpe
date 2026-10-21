@@ -1028,6 +1028,12 @@ function vpeLerCaixa_(opcoes) {
       var ultima = entrantes[entrantes.length - 1];
       var reg = porThread[String(th.getId())];
       if (reg && String(reg.ULTIMA_MENSAGEM_ID) === String(ultima.getId())) continue;
+      /* TETO POR LEITURA — 21/10/2026. Na primeira leitura o leitor trouxe
+         os pedidos dos últimos 15 dias, e cada um passa pela IA com os
+         anexos (10 a 30 s). Pelo botão, sem teto, a tela ficava minutos em
+         "Lendo…" sem sinal nenhum. Agora lê alguns, diz quantos faltam, e
+         o resto fica para o próximo clique ou para o gatilho. */
+      if (opcoes.maxProcessar && r.lidas >= opcoes.maxProcessar) { r.restantes = (r.restantes || 0) + 1; continue; }
       r.lidas++;
 
       /* A peneira olha só o que é NOVO: mensagens depois da última já lida,
@@ -1266,7 +1272,7 @@ function voucherPedidosPainel(caixa, tokenSessao) {
 function voucherPedidosLerAgora(tokenSessao) {
   try {
     exigirModulo_(tokenSessao, "beneficios", false);
-    var r = vpeLerCaixa_({});
+    var r = vpeLerCaixa_({ maxProcessar: 5, limiteMs: 150000 });
     if (r.ocupado) return { ok: false, mensagem: "A leitura já está rodando. Tente de novo em um minuto." };
     if (r.semPonte) return { ok: false, mensagem: "A ponte da Secretaria ainda não foi ligada (VOUCHER_PEDIDOS_PONTE_ID)." };
     r.ok = true;
@@ -1274,6 +1280,8 @@ function voucherPedidosLerAgora(tokenSessao) {
       ? (r.novos + " pedido(s) novo(s), " + r.atualizados + " atualizado(s), " + r.ignorados +
          " e-mail(s) que não são pedido de voucher" + (r.erros ? ", " + r.erros + " com erro" : "") + ".")
       : "Nada novo copiado pelo leitor da Secretaria.";
+    if (r.restantes) r.mensagem += " Faltam " + r.restantes + " — clique em \"Ler agora\" de novo ou aguarde a leitura automática.";
+    else if (r.interrompido) r.mensagem += " A leitura parou pelo tempo; o restante sai na próxima.";
     return r;
   } catch (e) {
     return { ok: false, mensagem: e.message };

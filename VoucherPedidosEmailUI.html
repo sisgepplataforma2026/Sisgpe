@@ -266,7 +266,7 @@ var VPE = (function () {
   }
 
   function lerAgora() {
-    var b = el("vpeBtnLer"); b.disabled = true; b.textContent = "Lendo a caixa…";
+    var b = el("vpeBtnLer"); b.disabled = true; b.textContent = "Lendo… (até 2 min)";
     rodar("voucherPedidosLerAgora", [], function (r) {
       b.disabled = false; b.textContent = "↻ Ler agora";
       aviso(r.mensagem || (r.ok ? "Leitura concluída." : "Falha na leitura."), r.ok ? "ok" : "err");
