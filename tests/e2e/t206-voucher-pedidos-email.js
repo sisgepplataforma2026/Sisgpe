@@ -58,7 +58,10 @@ shA.appendRow([CPF_DANI, "DANIELA ROCHA", "SIM", "dani@exemplo.com", "2799999000
 
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const { tocadas, chamadasIA, EXTRACOES, novaThread, responder, CC, RG, base } = SIM;
-const ler = () => g.voucherPedidosLerAgora(TOKEN);
+/* Um ciclo do LEITOR (na conta da Secretaria: copia para a ponte e envia a
+   fila) e depois a leitura do SISGEP (que só enxerga a ponte). */
+const ler = () => { SIM.ciclo(); return g.voucherPedidosLerAgora(TOKEN); };
+const saida = () => g.vpeLinhas_(SIM.aba("Saida"));
 const painel = (caixa, tk) => g.voucherPedidosPainel(caixa || "SECRETARIA", tk || TOKEN);
 const pedidoDa = (th) => g.vpeLinhas_().find(r => r.THREAD_ID === th.id);
 const pdf = SIM.pdf, jpg = SIM.jpg;
@@ -120,16 +123,27 @@ const thFin = novaThread("Voucher", "x@exemplo.com", "Quero voucher. CASO:FIN", 
 EXTRACOES.FIN = base({ titular: { nome: "X", cpf: CPF_BIA } });
 const thFalha = novaThread("voucher", "y@exemplo.com", "Voucher por favor. CASO:FALHA", []);
 
-b.passo("1. A leitura roda e separa pedido de e-mail administrativo");
+b.passo("1. O leitor da Secretaria separa pedido de e-mail administrativo");
 const r1 = ler();
-b.ok(r1.ok, "leu a caixa", r1.mensagem);
-b.igual(r1.ignorados, 1, "a reunião de diretoria foi reconhecida como NÃO pedido");
-b.ok(!chamadasIA.some(c => !c.caso), "e não gastou chamada de IA com ela");
+b.ok(r1.ok, "o SISGEP leu a ponte", r1.mensagem);
+const entrada = g.vpeLinhas_(SIM.aba("Entrada"));
+const vistos = g.vpeLinhas_(SIM.aba("Vistos"));
+b.ok(!entrada.some(r => r.THREAD_ID === thAdm.id), "a reunião de diretoria NÃO foi copiada para a ponte");
+b.ok(vistos.some(r => r.THREAD_ID === thAdm.id), "o leitor guardou só o identificador dela, para não reler");
+const ponteTexto = JSON.stringify(entrada) + JSON.stringify(vistos);
+b.ok(!/Reuni[aã]o de diretoria|presidente@exemplo|presta[cç][aã]o de contas/.test(ponteTexto),
+  "nem o assunto, nem o remetente, nem o texto do e-mail administrativo chegam à ponte");
+b.ok(!pedidoDa(thAdm), "e o SISGEP nem sabe que ele existe");
+b.ok(!entrada.some(r => r.THREAD_ID === thFin.id) && !pedidoDa(thFin),
+  "e-mail mandado ao financeiro@ não passa pelo leitor da Secretaria");
+b.ok(/to:secretaria@sindeducacao\.com/.test(SIM.consultas[0] || ""), "o leitor busca só o que foi para a secretaria@",
+  SIM.consultas[0]);
+b.ok(!chamadasIA.some(c => !c.caso), "e não se gastou chamada de IA com e-mail que não é pedido");
 b.igual(tocadas.length, 0, "nenhum e-mail foi marcado como lido ou arquivado");
-b.ok(chamadasIA.find(c => c.caso === "ANA").anexos === 2, "os dois anexos da Ana foram mandados para leitura");
-const regAdm = pedidoDa(thAdm);
-b.ok(regAdm && regAdm.ESTADO === "IGNORADO" && !regAdm.ASSUNTO && !regAdm.REMETENTE_EMAIL,
-  "do e-mail administrativo guarda só o necessário — sem assunto nem remetente");
+b.igual(SIM.tentativasSisgep, [], "o SISGEP não tocou em caixa de e-mail nenhuma");
+b.ok(chamadasIA.find(c => c.caso === "ANA").anexos === 2, "os dois anexos da Ana chegaram à IA pela ponte");
+b.ok(JSON.parse(entrada.find(r => r.THREAD_ID === thAna.id).ANEXOS_JSON).every(a => a.fileId),
+  "os anexos foram guardados no Drive pelo leitor");
 
 b.passo("1b. Cada pedido tem ID próprio, mesmo lidos no mesmo segundo");
 /* Math.random travado: com o gerador antigo (segundo + 3 dígitos), todos os
@@ -205,9 +219,12 @@ const pnSec = painel("FINANCEIRO", TOKEN_SEC);
 b.igual(pnSec.caixa, "SECRETARIA", "a Secretaria pede o Financeiro e recebe a própria caixa");
 b.igual(pnSec.caixas, ["SECRETARIA"], "e só enxerga a dela");
 b.ok(!pnSec.itens.some(i => i.remetente === "x@exemplo.com"), "o pedido que chegou no financeiro@ não aparece para ela");
+/* Um pedido de OUTRA caixa, posto direto na aba — a trava por caixa
+   continua valendo para quando houver um leitor do Financeiro. */
+const regFin = g.vpeGravar_({ ID_PEDIDO: "PED_OUTRA_CAIXA", THREAD_ID: "T_FIN", CAIXA: "FINANCEIRO",
+  ESTADO: "PRONTO", REMETENTE_EMAIL: "x@exemplo.com", RECEBIDO_EM: new Date() });
 const pnFin = painel("FINANCEIRO", TOKEN);
-b.ok(pnFin.itens.some(i => i.remetente === "x@exemplo.com"), "o administrador alterna e vê o do Financeiro");
-const regFin = pedidoDa(thFin);
+b.ok(pnFin.itens.some(i => i.id === "PED_OUTRA_CAIXA"), "o administrador alterna e vê a outra caixa");
 b.bloqueia(() => g.voucherPedidosDetalhe(regFin.ID_PEDIDO, TOKEN_SEC).ok === false
   ? { ok: false, mensagem: "acesso: " + g.voucherPedidosDetalhe(regFin.ID_PEDIDO, TOKEN_SEC).mensagem } : {},
   "a Secretaria não abre pedido de outra caixa pelo ID");
@@ -226,13 +243,21 @@ b.fluxo("PEDIDOS POR E-MAIL · 3. Validar e enviar");
 b.passo("7. O pronto vira solicitação, certificado e resposta na mesma conversa");
 const antes = amb.outbox.length;
 const v1 = g.voucherPedidosValidarEnviar(pedidoDa(thAna).ID_PEDIDO, {}, {}, TOKEN_SEC);
-b.ok(v1.ok, "validou e enviou", v1.mensagem);
+b.ok(v1.ok, "validou", v1.mensagem);
+b.ok(!amb.outbox.slice(antes).some(m => m.via === "reply"), "o SISGEP NÃO enviou nada: a resposta foi para a fila");
+const filaAna = saida().filter(r => r.THREAD_ID === thAna.id);
+b.igual(filaAna.length && filaAna[0].STATUS, "PENDENTE", "na fila da ponte, pendente");
+b.ok(/em até 15 minutos/.test(v1.mensagem), "e a tela diz quando sai", v1.mensagem);
+SIM.ciclo();
 const prot = v1.protocolo;
 const sol = (g.listarSolicitacoesCertBolsa(TOKEN) || []).find(x => x.protocolo === prot);
 b.ok(sol, "a solicitação existe no módulo Voucher");
 b.igual(sol && sol.status, "EMITIDO", "e já está EMITIDA");
 const enviado = amb.outbox.slice(antes).find(m => m.via === "reply");
-b.ok(enviado, "a resposta saiu como RESPOSTA na conversa da Ana");
+b.ok(enviado, "o leitor respondeu NA conversa da Ana");
+b.igual(saida().filter(r => r.THREAD_ID === thAna.id)[0].STATUS, "ENVIADO", "e a fila marcou ENVIADO");
+const itemAna = painel("SECRETARIA", TOKEN_SEC).itens.find(i => i.id === pedidoDa(thAna).ID_PEDIDO);
+b.igual(itemAna && itemAna.envio && itemAna.envio.status, "ENVIADO", "o painel mostra que a resposta saiu");
 b.igual(enviado && enviado.to, "ana@exemplo.com", "para quem pediu");
 b.igual(enviado && enviado.from, "secretaria@sindeducacao.com", "saindo como a Secretaria (alias)");
 b.ok(enviado && enviado.attachments && enviado.attachments.length === 1, "com o PDF anexo");
@@ -264,7 +289,10 @@ b.ok(/último contracheque/.test(pBia.respostaSugerida), "a resposta sugerida pe
 b.ok(!/RG ou CNH/.test(pBia.respostaSugerida.split("Documentos necessários")[0]),
   "e não pede o que ela já mandou");
 const c1 = g.voucherPedidosResponder(pedidoDa(thBia).ID_PEDIDO, "COMPLEMENTO", pBia.respostaSugerida, TOKEN_SEC);
-b.ok(c1.ok, "enviou", c1.mensagem);
+b.ok(c1.ok, "pôs na fila", c1.mensagem);
+SIM.ciclo();
+b.ok(amb.outbox.some(m => m.via === "reply" && m.to === "bia@exemplo.com" && /contracheque/.test(m.htmlBody)),
+  "e o leitor enviou o pedido de complemento à Bia");
 b.igual(pedidoDa(thBia).ESTADO, "AGUARDANDO", "e o pedido fica aguardando a associada");
 
 b.passo("11. Ela responde com o contracheque: o pedido é relido inteiro");
@@ -310,6 +338,9 @@ const naoVal = g.voucherPedidosValidarEnviar(pedidoDa(thFora).ID_PEDIDO, {}, { f
 b.igual(naoVal.ok, false, "não emite para quem não está na relação");
 const sede = g.voucherPedidosResponder(pedidoDa(thFora).ID_PEDIDO, "SEDE", txtSede, TOKEN_SEC);
 b.ok(sede.ok, "encaminhou à sede", sede.mensagem);
+SIM.ciclo();
+b.ok(amb.outbox.some(m => m.via === "reply" && m.to === "fulano@exemplo.com" && /9h às 10h/.test(m.htmlBody)),
+  "e a orientação para a sede saiu para o Fulano");
 b.igual(pedidoDa(thFora).ESTADO, "CONCLUIDO", "e o pedido sai da fila");
 b.igual(pedidoDa(thFora).ACAO, "ENCAMINHADO_SEDE", "com a ação registrada");
 
@@ -336,6 +367,7 @@ const hml = g.voucherPedidosResponder(pedidoDa(thEnteado).ID_PEDIDO, "COMPLEMENT
 b.igual(hml.ok, false, "resposta para associado real é bloqueada");
 b.ok(/\[HML\]/.test(hml.mensagem), "com a mensagem de homologação", hml.mensagem);
 b.igual(amb.outbox.length, envAntes, "e nada saiu");
+b.ok(!saida().some(r => r.THREAD_ID === thEnteado.id), "nem entrou na fila");
 g.PropertiesService.getScriptProperties().setProperty("SISGEP_AMBIENTE", "producao");
 g.getAmbienteAtual(true);
 
@@ -346,11 +378,40 @@ b.ok(/instalado/i.test(t1), "instala", t1);
 b.igual(amb.triggers.filter(t => t.fn === "voucherPedidosLerCaixaAgendado").length, 1, "um gatilho, de 15 em 15 minutos");
 b.igual((amb.triggers.find(t => t.fn === "voucherPedidosLerCaixaAgendado") || { detalhe: {} }).detalhe.minutos, 15, "a cada 15 minutos");
 
-b.passo("19. Nenhum e-mail foi mexido na caixa durante todo o teste");
+b.passo("19. O leitor não responde fora de um pedido, nem anexa o que não é PDF");
+/* A fila é escrita pela conta do SISGEP. Se ela pudesse mandar qualquer
+   coisa, quem tem acesso à ponte usaria a conta da Secretaria para escrever
+   a qualquer pessoa. O leitor só responde em conversa que ele mesmo copiou
+   como pedido, e só como reply — para quem escreveu. */
+const envioAntes = amb.outbox.length;
+const filaCrua = SIM.aba("Saida");
+g.vpeGravar_({ ID: "ENV_INVASOR", THREAD_ID: thAdm.id, MENSAGEM_ID: thAdm.msgs[0].getId(),
+  HTML: "<p>oi</p>", STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
+const naoPdf = g.DriveApp.createFile(g.Utilities.newBlob("x", "text/plain", "planilha.txt"));
+g.vpeGravar_({ ID: "ENV_NAO_PDF", THREAD_ID: thNair.id, MENSAGEM_ID: pedidoDa(thNair).ULTIMA_MENSAGEM_ID,
+  HTML: "<p>oi</p>", ANEXOS_FILE_IDS: naoPdf.getId(), STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
+SIM.ciclo();
+b.igual(saida().find(r => r.ID === "ENV_INVASOR").STATUS, "RECUSADO", "resposta numa conversa que não é pedido: recusada");
+b.igual(saida().find(r => r.ID === "ENV_NAO_PDF").STATUS, "ERRO", "anexo que não é PDF: não sai");
+b.igual(amb.outbox.length, envioAntes, "e nenhum dos dois saiu");
+
+b.passo("20. O leitor não vai no deploy do SISGEP");
+/* No push do SISGEP ele rodaria na conta do Financeiro e leria a caixa
+   errada. Duas travas, como nos fixtures de produção. */
+const fsT = require("fs"), pathT = require("path");
+const pastaLeitor = pathT.resolve(__dirname, "..", "..", "leitor-secretaria");
+b.igual(fsT.readdirSync(pastaLeitor).filter(f => /\.(gs|html)$|^appsscript\.json$/.test(f)), [],
+  "nenhum .gs, .html ou appsscript.json na pasta do leitor (só .txt)");
+b.ok(/^leitor-secretaria\/\*\*$/m.test(fsT.readFileSync(pathT.resolve(__dirname, "..", "..", ".claspignore"), "utf8")),
+  "e a pasta está no .claspignore");
+
+b.passo("21. Nenhum e-mail foi mexido na caixa, e o SISGEP nunca abriu uma");
 b.igual(tocadas.length, 0, "nem lido, nem arquivado");
+b.igual(SIM.tentativasSisgep, [], "nenhuma chamada do SISGEP ao GmailApp");
 
 b.naoTestavel("a IA real lendo contracheque escaneado", "a IA está simulada aqui — testar no ar com pedidos reais");
-b.naoTestavel("a importação POP da secretaria@ no Gmail do sistema", "configuração do Gmail, fora do emulador");
+b.naoTestavel("o leitor rodando na conta da Secretaria e saindo como secretaria@",
+  "projeto Apps Script separado — instalar com o README de leitor-secretaria/ e testar no ar");
 b.naoTestavel("o PDF de verdade anexado e a entrega do e-mail", "o emulador registra a chamada, não entrega");
 b.naoTestavel("a tela no navegador", "o painel é HTML — roteiro manual");
 b.resumo();

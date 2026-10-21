@@ -51,6 +51,7 @@ novaThread("Bolsa", "bia@exemplo.com", "Voucher 2027/1 Enfermagem. CASO:BIA", [S
 EXTRACOES.FORA = base({ titular: { nome: "Fulano Fora", cpf: "15350946056" },
   anexos: [CC("FULANO FORA", "15350946056", "09/2026", "ESCOLA Z"), RG(2, "FULANO FORA", "15350946056")] });
 novaThread("voucher", "fulano@exemplo.com", "Voucher da faculdade. CASO:FORA", [SIM.pdf("a.pdf"), SIM.pdf("b.pdf")]);
+SIM.ciclo();                       // o leitor, na conta da Secretaria, copia para a ponte
 g.voucherPedidosLerAgora(TOKEN);
 const idDe = email => g.vpeLinhas_().find(r => r.REMETENTE_EMAIL === email).ID_PEDIDO;
 
@@ -130,6 +131,7 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   const resp = t.chamadas.filter(c => c.fn === "voucherPedidosResponder").pop();
   b.igual(resp && resp.args[1], "COMPLEMENTO", "tipo complemento");
   b.igual(resp && resp.args[2], "Olá, Beatriz! Falta só o contracheque de setembro. Obrigada!", "com o texto editado");
+  SIM.ciclo();                     // e o leitor envia o que ficou na fila
   const saiu = amb.outbox.filter(m => m.via === "reply" && m.to === "bia@exemplo.com").pop();
   b.ok(saiu && /contracheque de setembro/.test(saiu.htmlBody), "e foi isso que saiu no e-mail");
 

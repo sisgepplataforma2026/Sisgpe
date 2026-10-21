@@ -316,7 +316,11 @@ function blob(content, type, name) {
     getContentType() { return this._type; },
     getName() { return this._name; },
     setName(n) { this._name = n; return this; },
-    getAs() { return this; },
+    /* getAs CONVERTE: o blob devolvido tem o tipo pedido. Devolver o mesmo
+       objeto deixava um "PDF" com tipo text/html — e quem confere o tipo do
+       arquivo antes de anexar (o leitor da Secretaria, 21/10/2026) recusava
+       um certificado que no ar é PDF de verdade. */
+    getAs(t) { return t ? blob(this._content, t, this._name) : this; },
     copyBlob() { return blob(this._content, this._type, this._name); }
   };
 }

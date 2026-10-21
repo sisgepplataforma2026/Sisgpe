@@ -57,7 +57,7 @@ esperado: a aba só nasce na primeira exclusão. Limite por lote confirmado: 50.
 
 | Nº | Item |
 |---|---|
-| 128 | 🟡 Pedidos de voucher por e-mail — a IA lê, você valida (falta ligar a caixa e ver no ar) |
+| 128 | 🟡 Pedidos de voucher por e-mail — leitor na conta da Secretaria; falta instalar e ver no ar |
 | 121 | 🔴 abrir solicitação nova não traz a escola nem o e-mail da anterior |
 | 120 | 🔴 a sugestão de instituição mostra o CNPJ pontuado ao lado do nome |
 | 119 | 🔴 escola sem e-mail avisa em vez de passar por sucesso |
@@ -202,20 +202,55 @@ um mostraria o de outra pessoa. Apareceu como falha intermitente (1 em ~30
 rodadas); virou UUID, com asserção que trava o `Math.random` para forçar a
 colisão.
 
+**MUDANÇA DE DESENHO EM 21/10/2026 — o SISGEP não lê caixa nenhuma.**
+O usuário vetou a importação da secretaria@ para o Gmail do sistema: *"os
+e-mails da secretaria não devem ser acessados pelo financeiro"* (o SISGEP
+roda na conta do Financeiro). E o Gmail também já não oferece a busca por
+POP de outras contas — a opção não aparece mais na tela. Ficou assim:
+
+```
+secretaria@ (KingHost) ──cópia──► sindeducacaosecretaria@gmail.com
+                                     │ LEITOR (projeto separado, NA CONTA DELA)
+                                     ▼ só pedidos de voucher + anexos
+                              planilha-ponte (Entrada / Saida / Vistos)
+                                     │
+SISGEP (conta do Financeiro) ◄───────┘ lê a ponte, confere, painel da Marcela
+       └── respostas vão para a aba Saida ──► o leitor envia como secretaria@
+```
+
+Código: `leitor-secretaria/` (`.gs.txt`, fora do push do SISGEP — duas
+travas, `.claspignore` e extensão). Testado no emulador com o leitor REAL em
+contexto separado e o `GmailApp` do SISGEP armado para explodir se usado:
+`t206` (115 asserções), `t207` (40). O leitor recusa responder em conversa
+que não copiou como pedido e recusa anexo que não é PDF.
+
+**✅ FEITO PELO USUÁRIO EM 21/10/2026 (conferido nos prints):**
+
+| | |
+|---|---|
+| Gmail da Secretaria criado | `sindeducacaosecretaria@gmail.com` |
+| Redirecionamento com cópia na KingHost | "Redirecionamento configurado"; teste do Financeiro chegou na Caixa de entrada |
+| "Enviar e-mail como" secretaria@ nesse Gmail | "Confirmado", via `smtp.kinghost.net` |
+
 **NÃO TESTADO — depende do sistema no ar:**
 
 | | Como testar |
 |---|---|
-| 🔴 **a caixa da secretaria@ chegar ao Gmail do sistema** | é pré-requisito. Gmail da conta dona do SISGEP → Configurações → Contas e importação → *Verificar e-mails de outras contas* → `secretaria@sindeducacao.com`, POP `pop.kinghost.net`, **"Deixar uma cópia no servidor" marcado**. Mesmo passo do item da confirmação de ofícios. |
-| 🟡 a IA real lendo contracheque e RG escaneados | mandar 3 pedidos reais (completo, sem contracheque, filho) e conferir no painel se os campos e a origem batem com os anexos |
-| 🟡 o gatilho de 15 minutos | rodar `instalarGatilhoVoucherPedidosEmail` no editor, uma vez |
-| 🟡 o certificado chegando como RESPOSTA, com PDF, saindo como secretaria@ | em homologação, mandar o pedido **a partir da própria secretaria@** — a trava só deixa responder para ela |
+| 🔴 **instalar o leitor na conta da Secretaria** | `leitor-secretaria/README.md`, passos 1 a 5 (`configurarLeitor`) |
+| 🔴 **ligar a ponte no SISGEP** | propriedade `VOUCHER_PEDIDOS_PONTE_ID` + `instalarGatilhoVoucherPedidosEmail` (README, 6 e 7) |
+| 🟡 a IA real lendo contracheque e RG escaneados | 3 pedidos reais (completo, sem contracheque, filho) e conferir campos e origem no painel |
+| 🟡 a resposta saindo COMO secretaria@, na conversa, com o PDF | validar um pedido de teste e olhar o e-mail recebido |
+| 🟡 o compartilhamento do PDF com a conta do leitor | se o leitor marcar ERRO "não abre o arquivo", é aqui |
 | 🟡 a tela no navegador | aparência, prévia do PDF no iframe, celular |
 
-**Propriedades do script que o módulo lê** (todas opcionais menos a primeira):
-`ANTHROPIC_API_KEY` (já existe — a Central de E-mails usa),
-`VOUCHER_PEDIDOS_PERIODOS` (ex.: `2026/2,2027/1`; sem ela, semestre corrente
-e o seguinte), `VOUCHER_PEDIDOS_MODELO` (padrão: o mesmo modelo da Central).
+**Propriedades do script que o SISGEP lê:** `ANTHROPIC_API_KEY` (já
+existe), `VOUCHER_PEDIDOS_PONTE_ID` (obrigatória — sem ela o painel avisa e
+não lê nada), `VOUCHER_PEDIDOS_CONTA_LEITOR` (padrão
+`sindeducacaosecretaria@gmail.com`), `VOUCHER_PEDIDOS_PERIODOS` e
+`VOUCHER_PEDIDOS_MODELO` (opcionais).
+
+**Achado no caminho e corrigido no emulador:** `blob.getAs(PDF)` devolvia o
+mesmo blob com tipo `text/html`. No ar o tipo muda; o emulador agora também.
 
 **Achado no caminho, NÃO corrigido (fora do escopo):** a emissão
 (`atualizarStatusSolicitacao_`) sobrescreve a coluna OBSERVACOES da
