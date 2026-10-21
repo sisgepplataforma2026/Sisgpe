@@ -312,7 +312,7 @@
             <div class="spHeroGlow"></div>
 
             <div class="spHeroText">
-              <h1 id="spGreet">Bom dia, <span>Wanderson!</span> 👋</h1>
+              <h1 id="spGreet"><span id="spGreetSaud">Olá</span><span id="spGreetNome"></span>! 👋</h1>
               <p>Eu sou a <b>SOFIA</b>, sua assistente inteligente.<br>Analisei toda a movimentação do sindicato e preparei um resumo do seu dia.</p>
 
               <div class="spSpeech">
@@ -2545,6 +2545,19 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
       if(dropdownNm)dropdownNm.textContent=nome;
       if(pf)pf.textContent=s.perfil||"Administrador";
       if(dropdownPf)dropdownPf.textContent=s.perfil||"Administrador";
+      /* A SAUDAÇÃO É DE QUEM ENTROU — 21/10/2026. Estava escrita fixa
+         "Bom dia, Wanderson!" no HTML, e a Marcelha entrava pela conta da
+         Secretaria e era recebida pelo nome do Financeiro. O primeiro nome
+         vem da sessão (coluna NOME da aba de usuários). */
+      var primeiro=String(s.nome||s.usuario||"").trim().split(/\s+/)[0]||"";
+      primeiro=primeiro?primeiro.charAt(0).toUpperCase()+primeiro.slice(1).toLowerCase():"";
+      window.SISGEP_USUARIO_PRIMEIRO_NOME=primeiro;
+      var hh=new Date().getHours();
+      var gS=document.getElementById("spGreetSaud"), gN=document.getElementById("spGreetNome");
+      if(gS)gS.textContent=hh<12?"Bom dia":hh<18?"Boa tarde":"Boa noite";
+      if(gN)gN.textContent=primeiro?", "+primeiro:"";
+      var chatN=document.getElementById("chatSaudacaoNome");
+      if(chatN)chatN.textContent=primeiro?", "+primeiro:"";
     }).getSessaoUsuario(SISGEP_TOKEN_SESSAO);
 
     spAplicarAcessoModulos_();
