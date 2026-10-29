@@ -6394,3 +6394,22 @@ parece erro e não é:
 
 Os dois viraram asserção no t61 justamente porque parecem esquecimento e não
 são.
+
+## 🔴 CCT na numeração do MTE — publicado em homologação 29/10/2026 (run #187)
+
+Regra sua: *"Sempre o MTE."* Ofícios, e-mails de ofício, ficha de filiação,
+e-mails de sindicalização, IA/Sofia e rótulos de tela passaram de 56/57/58
+para **38ª** (mensalidade), **40ª** (taxa negocial) e **38ª – Assistência
+Médica**. Testado no emulador (t209, t47, t48, t53, t120, t135; suíte verde).
+
+**NÃO TESTADO no sistema no ar** — conferir em homologação:
+- [ ] emitir um ofício de **Filiação** e um de **Taxa Negocial** e ler o PDF e
+      o e-mail: devem citar 38ª e 40ª;
+- [ ] abrir a **ficha de filiação**: a autorização cita a Cláusula 38ª;
+- [ ] perguntar à Sofia *"o que diz a cláusula 38?"*.
+
+Só depois disso publicar em produção — é o texto que a Marcela emite todo dia.
+
+Observação: os valores-padrão de memória (`MemoriaCore.gs`) só são gravados
+quando a memória é criada; se a planilha de produção já tiver "Cláusula 56ª"
+gravado em ESTILO_OFICIO, ele continua lá até alguém editar.
