@@ -10,9 +10,12 @@ Projeto Apps Script **separado do SISGEP**. Roda na conta
 O SISGEP roda na conta do Financeiro, e o usuário decidiu em 21/10/2026 que
 *"os e-mails da secretaria não devem ser acessados pelo financeiro"*. Então:
 
-- **o leitor** (este projeto, na conta da Secretaria) olha a caixa e copia
-  para uma planilha-ponte **só** as conversas que parecem pedido de voucher.
-  Do resto guarda só o número da conversa, sem assunto, remetente nem texto;
+- **o leitor** (este projeto, na conta da Secretaria) olha a caixa e, com a
+  IA, **entende o que é cada e-mail**. Copia para uma planilha-ponte **só** os
+  pedidos de voucher. Os outros ganham uma etiqueta no Gmail desta conta
+  ("SISGEP/Filiação", "SISGEP/Propaganda"…) e, na ponte, só o número da
+  conversa — sem assunto, remetente, texto nem tipo. Propaganda e notificação
+  automática nem chegam à IA. Sem IA (sem crédito), não copia nada;
 - **o SISGEP** lê a ponte, confere e mostra o pedido no painel da Marcela;
 - **as respostas** voltam pela ponte, e o leitor envia como `secretaria@`, na
   conversa do associado. Ele só responde em conversa que ele mesmo copiou
@@ -43,6 +46,24 @@ O `configurarLeitor` já deixa a planilha-ponte e a pasta de anexos
 compartilhadas com `financeirosindecucacao@gmail.com` e liga o gatilho de 15
 minutos. Rodar de novo não duplica nada.
 
+## Atualização de 29/10/2026 — o leitor passa a entender o e-mail
+
+A primeira versão separava por palavra e copiou propaganda (Leroy Merlin,
+Sam's Club…) para a ponte. Para trocar pela versão que entende o e-mail,
+**logado na conta `sindeducacaosecretaria@gmail.com`**:
+
+1. No projeto **Leitor da Secretaria**, apague o conteúdo de `LeitorSecretaria`
+   e cole o novo `LeitorSecretaria.gs.txt`. Substitua também o
+   `appsscript.json` pelo novo `appsscript.json.txt` (ele ganhou a permissão de
+   chamar a IA).
+2. ⚙️ **Configurações do projeto** → **Propriedades do script** → adicione
+   `ANTHROPIC_API_KEY` com **a mesma chave** que está no SISGEP.
+3. **Com crédito na Anthropic**, escolha `leitorLimparCopiasIndevidas` e
+   **Executar**. O Google vai pedir autorização de novo (por causa da
+   permissão nova): autorize. O registro diz quantas conversas saíram da ponte.
+   Sem crédito ela para sem apagar nada — pode rodar de novo depois.
+4. No SISGEP, **Ler agora**: o que saiu da ponte some do painel.
+
 ## Conferir que funcionou
 
 1. De outro e-mail, mande para `secretaria@sindeducacao.com` um pedido de
@@ -54,5 +75,7 @@ minutos. Rodar de novo não duplica nada.
 
 ## O que este projeto NÃO faz
 
-Não chama IA, não confere documento e não decide resposta. Ele só transporta.
+Não confere documento e não decide resposta. A IA aqui só responde "o que é
+este e-mail" — para separar o voucher do resto antes de copiar. A conferência
+do pedido e a validação humana ficam no SISGEP.
 A conferência e a validação humana ficam no SISGEP (`VoucherPedidosEmail.gs`).

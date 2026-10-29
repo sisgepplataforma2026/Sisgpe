@@ -1018,7 +1018,8 @@ function vpeLerCaixa_(opcoes) {
     var nossos = vpeEnderecosNossos_();
     var buscar = vpeCriarBuscaAssociado_();
     if (!vpePonteId_()) { r.semPonte = true; return r; }
-    var threads = vpeFonteConversas_().slice(0, opcoes.max || 200);
+    var todas = vpeFonteConversas_();
+    var threads = todas.slice(0, opcoes.max || 200);
 
     for (var i = 0; i < threads.length; i++) {
       if (Date.now() - inicio > limiteMs) { r.interrompido = true; break; }
@@ -1087,11 +1088,42 @@ function vpeLerCaixa_(opcoes) {
         Logger.log("vpeLerCaixa_ thread " + th.getId() + ": " + e.message);
       }
     }
+    r.retirados = vpeLimparForaDaPonte_(sh, todas);
     PropertiesService.getScriptProperties().setProperty("VOUCHER_PEDIDOS_ULTIMA_LEITURA", new Date().toISOString());
   } finally {
     lock.releaseLock();
   }
   return r;
+}
+
+/**
+ * O QUE SAIU DA PONTE SAI DAQUI — 29/10/2026.
+ *
+ * A primeira versão do leitor copiou propaganda e outros assuntos da
+ * Secretaria para a ponte (a peneira era por palavra). O leitor novo entende
+ * o e-mail e, na limpeza (leitorLimparCopiasIndevidas), tira da ponte o que
+ * não é voucher. Aqui o SISGEP faz o mesmo com a cópia dele: a conversa que
+ * não está mais na ponte perde remetente, assunto, texto, anexos e leitura
+ * da IA, e vira IGNORADO — fica só o número, para não reler.
+ *
+ * NÃO toca no que já virou solicitação (tem PROTOCOLO): isso é registro de
+ * atendimento, com histórico próprio.
+ */
+function vpeLimparForaDaPonte_(sh, conversasNaPonte) {
+  var naPonte = {};
+  (conversasNaPonte || []).forEach(function (th) { naPonte[String(th.getId())] = true; });
+  var n = 0;
+  vpeLinhas_(sh).forEach(function (reg) {
+    if (naPonte[String(reg.THREAD_ID)] || reg.PROTOCOLO) return;
+    if (String(reg.ESTADO) === VPE_ESTADOS.IGNORADO && !reg.REMETENTE_EMAIL && !reg.ASSUNTO) return;
+    ["REMETENTE_EMAIL", "REMETENTE_NOME", "ASSUNTO", "PENDENCIAS_JSON", "DADOS_JSON", "ANEXOS_JSON",
+     "RESPOSTA_SUGERIDA", "ERRO"].forEach(function (c) { reg[c] = ""; });
+    reg.ESTADO = VPE_ESTADOS.IGNORADO;
+    reg.ATUALIZADO_EM = new Date();
+    vpeGravar_(reg, sh);
+    n++;
+  });
+  return n;
 }
 
 /** Handler do gatilho. Não devolve dado nenhum. */

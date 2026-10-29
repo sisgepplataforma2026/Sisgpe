@@ -6445,3 +6445,23 @@ a tela). Suíte verde.
 
 Não provado em lugar nenhum ainda: o gatilho das 8h que manda o que passou da
 cota (o emulador registra o agendamento, não espera o horário).
+
+## 🔴 Leitor da Secretaria entende o que é cada e-mail — 29/10/2026
+
+O leitor por palavra copiou para a ponte propaganda (Leroy Merlin, Sam's
+Club, TikTok…) e outros assuntos da Secretaria. Agora: propaganda e
+notificação automática nem chegam à IA; a IA diz o que é cada e-mail; só o
+voucher é copiado; os outros ganham etiqueta "SISGEP/…" no Gmail da
+Secretaria. Sem IA, nada é copiado. A limpeza tira da ponte e do SISGEP o que
+foi copiado errado. Testado no emulador: t212 (42), t206, t207; suíte verde.
+
+**Depende de você, na conta da Secretaria** (ver leitor-secretaria/README.md,
+"Atualização de 29/10/2026"):
+- [ ] colar o novo LeitorSecretaria e o novo appsscript.json;
+- [ ] Propriedade `ANTHROPIC_API_KEY` no projeto do leitor;
+- [ ] pôr crédito na Anthropic;
+- [ ] rodar `leitorLimparCopiasIndevidas` uma vez;
+- [ ] no SISGEP, Ler agora: Leroy Merlin, Sam's Club, TikTok etc. somem do painel.
+
+NÃO TESTADO no ar: a qualidade da leitura da IA de verdade (o emulador simula a
+resposta) e as etiquetas aparecendo no Gmail.

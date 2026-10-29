@@ -88,8 +88,10 @@ function instalar(g, amb, opcoes) {
   function vpeEmail(s) { const m = String(s).match(/[^<\s]+@[^>\s]+/); return m ? m[0] : s; }
   function novaThread(assunto, de, corpo, anexos, para) {
     const th = { id: "T" + (threads.length + 1), assunto, msgs: [] };
+    th.etiquetas = [];
     th.obj = { getId: () => th.id, getMessages: () => th.msgs.slice(), getFirstMessageSubject: () => assunto,
-               markRead: () => tocadas.push("markRead " + th.id), moveToArchive: () => tocadas.push("archive " + th.id) };
+               markRead: () => tocadas.push("markRead " + th.id), moveToArchive: () => tocadas.push("archive " + th.id),
+               addLabel: et => { th.etiquetas.push(et.getName()); return th.obj; } };
     th.msgs.push(mensagem(th, de, corpo, anexos, para));
     threads.push(th);
     return th;
@@ -108,6 +110,32 @@ function instalar(g, amb, opcoes) {
     return null;
   };
   leitor.GmailApp.getAliases = () => (opcoes.semAlias ? [] : ["secretaria@sindeducacao.com"]);
+  const etiquetasCriadas = {};
+  leitor.GmailApp.getUserLabelByName = n => etiquetasCriadas[n] || null;
+  leitor.GmailApp.createLabel = n => (etiquetasCriadas[n] = { getName: () => n });
+
+  /* A IA DO LEITOR (29/10/2026): ela diz o que é cada e-mail, dentro da conta
+     da Secretaria. No simulador: "voucher"/"bolsa" no texto é VOUCHER; o
+     marcador TIPO:XXX força outro tipo (propaganda que fala em desconto…);
+     estadoIALeitor.fora simula "sem crédito". */
+  const chamadasIALeitor = [];
+  const estadoIALeitor = { fora: false };
+  leitor.PropertiesService.getScriptProperties().setProperty("ANTHROPIC_API_KEY", "chave-de-teste");
+  leitor.UrlFetchApp.fetch = function (url, params) {
+    const payload = JSON.parse(params.payload);
+    const texto = String(payload.messages[0].content);
+    const email = texto.slice(texto.indexOf("E-MAIL:"));
+    chamadasIALeitor.push({ modelo: payload.model, texto: email });
+    if (estadoIALeitor.fora) {
+      return { getResponseCode: () => 400,
+               getContentText: () => JSON.stringify({ error: { message: "Your credit balance is too low" } }) };
+    }
+    const forcado = (email.match(/TIPO:(\w+)/) || [])[1];
+    const tipo = forcado || (/voucher|bolsa/i.test(email) ? "VOUCHER" : "OUTRO");
+    const resp = { tipo, resposta: tipo === "VOUCHER" ? "SIM" : "NAO", pedido: "", motivo: "simulado" };
+    return { getResponseCode: () => 200,
+             getContentText: () => JSON.stringify({ content: [{ type: "text", text: JSON.stringify(resp) }] }) };
+  };
   const consultas = [];
 
   /* O SISGEP NÃO PODE TOCAR EM CAIXA NENHUMA. */
@@ -159,6 +187,7 @@ function instalar(g, amb, opcoes) {
   return { threads, tocadas, chamadasIA, EXTRACOES, novaThread, responder, anexo, CC, RG, base,
            pdf: n => anexo(n, "application/pdf"), jpg: n => anexo(n, "image/jpeg"),
            leitor, ponte, consultas, tentativasSisgep, PONTE_ID, CONTA_SECRETARIA, estadoIA,
+           chamadasIALeitor, estadoIALeitor,
            /** Um ciclo do leitor: copia o que chegou e envia o que está na fila. */
            ciclo: () => leitor.leitorCiclo(),
            aba: nome => ponte.getSheetByName(nome) };
