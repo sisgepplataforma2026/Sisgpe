@@ -60,8 +60,15 @@ b.ok(/Pós-graduação com 50%/.test(perguntadas), "a propaganda que parece pedi
 
 b.passo("3. O que não é voucher fica só com o número da conversa");
 const v = vistos();
-[thLeroy, thLista, thCurso, thFiliacao].forEach(th =>
+[thLeroy, thLista, thCurso].forEach(th =>
   b.ok(v.some(r => String(r.THREAD_ID) === th.id), "em Vistos: " + th.assunto));
+/* 29/10/2026: o que é assunto da Secretaria (e não propaganda/automático)
+   vai para a CAIXA DA SECRETARIA, com o tipo. */
+const caixaL = () => SIM.leitor.leitorLinhas_(SIM.leitor.leitorAba_(SIM.leitor.leitorPonte_(), "Caixa"));
+const cFil = caixaL().find(r => String(r.THREAD_ID) === thFiliacao.id);
+b.ok(cFil && cFil.TIPO === "FILIACAO", "a desfiliação foi para a Caixa da Secretaria, com o tipo FILIACAO", cFil && cFil.TIPO);
+b.ok(!caixaL().some(r => [thLeroy.id, thLista.id, thCurso.id].indexOf(String(r.THREAD_ID)) > -1),
+  "propaganda e boletim não vão para a Caixa");
 const colunasVistos = Object.keys(v[0] || {}).filter(k => k !== "__linha").sort().join(",");
 b.igual(colunasVistos, "THREAD_ID,ULTIMA_MENSAGEM_ID,VISTO_EM", "e Vistos não guarda assunto, remetente, texto nem tipo");
 
@@ -257,6 +264,41 @@ const iaAntes15c = SIM.chamadasIALeitor.length;
 SIM.leitor.PropertiesService.getScriptProperties().deleteProperty("PENDENTES_PASTAS_DIA");
 SIM.ciclo();
 b.igual(SIM.chamadasIALeitor.length, iaAntes15c, "na passada seguinte, o que não é pedido não volta à IA (não gasta crédito)");
+
+b.fluxo("LEITOR · Caixa da Secretaria (29/10/2026)");
+b.passo("15e. Mensagem nova numa conversa da Caixa: atualiza, sem perguntar de novo à IA");
+const ia15e = SIM.chamadasIALeitor.length;
+SIM.responder(thFiliacao, "joao@exemplo.com", "Reforçando: quero me desfiliar ainda este mês.");
+SIM.ciclo();
+const cFil2 = caixaL().find(r => String(r.THREAD_ID) === thFiliacao.id);
+b.ok(/ainda este m[eê]s/.test(cFil2.MENSAGENS_JSON), "a mensagem nova está na Caixa");
+b.igual(cFil2.TIPO, "FILIACAO", "o tipo continua");
+b.igual(SIM.chamadasIALeitor.length, ia15e, "sem nova pergunta à IA");
+
+b.passo("15f. Resposta numa conversa da Caixa sai, como resposta, para quem escreveu");
+const shSaida = SIM.leitor.leitorAba_(SIM.leitor.leitorPonte_(), "Saida");
+SIM.leitor.leitorGravar_(shSaida, { ID: "ENV_CAIXA_1", THREAD_ID: thFiliacao.id, MENSAGEM_ID: thFiliacao.msgs[thFiliacao.msgs.length - 1].getId(),
+  HTML: "<p>Recebemos seu pedido de desfiliação.</p>", STATUS: "PENDENTE", CRIADO_EM: new Date() });
+const out15f = amb.outbox.length;
+SIM.ciclo();
+const env15f = SIM.leitor.leitorLinhas_(shSaida).find(r => r.ID === "ENV_CAIXA_1");
+b.igual(env15f.STATUS, "ENVIADO", "enviado", env15f.DETALHE);
+b.ok(amb.outbox.slice(out15f).some(m => m.via === "reply" && m.to === "joao@exemplo.com"), "como resposta ao João");
+
+b.passo("15g. Os e-mails de antes da Caixa (já com etiqueta) entram uma vez, sem IA");
+const thAntigo = novaThread("Homologação de rescisão", "rh@escola.exemplo.com", "Precisamos agendar a homologação.");
+thAntigo.etiquetas.push("SISGEP/" + SIM.leitor.LEITOR_TIPOS.JURIDICO);
+SIM.leitor.GmailApp.createLabel("SISGEP/" + SIM.leitor.LEITOR_TIPOS.JURIDICO);
+thAntigo.arquivada = true;   // fora da busca normal: só a passada das etiquetas acha
+thAntigo.msgs[0].getDate = () => new Date(Date.now() - 3 * 86400000);
+SIM.leitor.PropertiesService.getScriptProperties().deleteProperty("CAIXA_PREENCHIDA_OK");
+const ia15g = SIM.chamadasIALeitor.length;
+const r15g = SIM.ciclo();
+const cAnt = caixaL().find(r => String(r.THREAD_ID) === thAntigo.id);
+b.ok(cAnt && cAnt.TIPO === "JURIDICO", "entrou na Caixa com o tipo da etiqueta", JSON.stringify(r15g.caixaPreenchida));
+b.igual(SIM.chamadasIALeitor.length, ia15g, "sem IA");
+const r15g2 = SIM.ciclo();
+b.ok(!r15g2.caixaPreenchida, "e não repete");
 
 b.passo("16. Cada rodada fica anotada na aba Status da ponte (só números)");
 const st = SIM.aba("Status").getRange(1, 1, 3, 2).getValues();

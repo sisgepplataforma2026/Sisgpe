@@ -112,7 +112,10 @@ function instalar(g, amb, opcoes) {
   leitor.GmailApp.getAliases = () => (opcoes.semAlias ? [] : ["secretaria@sindeducacao.com"]);
   const etiquetasCriadas = {};
   leitor.GmailApp.getUserLabelByName = n => etiquetasCriadas[n] || null;
-  leitor.GmailApp.createLabel = n => (etiquetasCriadas[n] = { getName: () => n, getThreads: () => [] });
+  /* Como no Gmail: a etiqueta devolve as conversas que a têm. */
+  leitor.GmailApp.createLabel = n => (etiquetasCriadas[n] = { getName: () => n,
+    getThreads: (ini, max) => threads.filter(t => (t.etiquetas || []).indexOf(n) > -1)
+      .slice(ini || 0, (ini || 0) + (max || 100)).map(t => t.obj) });
   /* As PASTAS importadas da KingHost viram etiquetas no Gmail (importação
      única). Conversa de pasta fica ARQUIVADA: não aparece na busca da caixa. */
   const pastasImportadas = {};

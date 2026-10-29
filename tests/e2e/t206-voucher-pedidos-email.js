@@ -130,6 +130,8 @@ const thFilho = novaThread("Bolsa filho", "dani@exemplo.com", "Voucher pro meu f
 
 const thAdm = novaThread("Reunião de diretoria", "presidente@exemplo.com",
   "Pauta da reunião de quinta: prestação de contas e assembleia.", []);
+const thProp = novaThread("Ofertas da semana", "Loja <ofertas@loja.exemplo.com>",
+  "Tudo com 30% de desconto! TIPO:PROPAGANDA", []);
 const thFin = novaThread("Voucher", "x@exemplo.com", "Quero voucher. CASO:FIN", [],
   "financeiro@sindeducacao.com");
 EXTRACOES.FIN = base({ titular: { nome: "X", cpf: CPF_BIA } });
@@ -140,11 +142,17 @@ const r1 = ler();
 b.ok(r1.ok, "o SISGEP leu a ponte", r1.mensagem);
 const entrada = g.vpeLinhas_(SIM.aba("Entrada"));
 const vistos = g.vpeLinhas_(SIM.aba("Vistos"));
-b.ok(!entrada.some(r => r.THREAD_ID === thAdm.id), "a reunião de diretoria NÃO foi copiada para a ponte");
-b.ok(vistos.some(r => r.THREAD_ID === thAdm.id), "o leitor guardou só o identificador dela, para não reler");
+b.ok(!entrada.some(r => r.THREAD_ID === thAdm.id), "a reunião de diretoria NÃO foi para a entrada de pedidos de voucher");
+/* Regra mudada pelo usuário em 29/10/2026: os e-mails que não são voucher
+   vão para a CAIXA DA SECRETARIA (aba Caixa da ponte), que só a Secretaria
+   e o administrador abrem no SISGEP. Propaganda continua de fora. */
+const caixaPonte = g.vpeLinhas_(SIM.aba("Caixa"));
+b.ok(caixaPonte.some(r => r.THREAD_ID === thAdm.id), "ela vai para a Caixa da Secretaria (regra de 29/10/2026)");
+b.ok(!caixaPonte.some(r => r.THREAD_ID === thProp.id) && !entrada.some(r => r.THREAD_ID === thProp.id),
+  "propaganda não vai para lugar nenhum");
 const ponteTexto = JSON.stringify(entrada) + JSON.stringify(vistos);
 b.ok(!/Reuni[aã]o de diretoria|presidente@exemplo|presta[cç][aã]o de contas/.test(ponteTexto),
-  "nem o assunto, nem o remetente, nem o texto do e-mail administrativo chegam à ponte");
+  "a entrada de voucher e Vistos não carregam o e-mail administrativo");
 b.ok(!pedidoDa(thAdm), "e o SISGEP nem sabe que ele existe");
 b.ok(!entrada.some(r => r.THREAD_ID === thFin.id) && !pedidoDa(thFin),
   "e-mail mandado ao financeiro@ não passa pelo leitor da Secretaria");
@@ -461,13 +469,13 @@ b.passo("19. O leitor não responde fora de um pedido, nem anexa o que não é P
    como pedido, e só como reply — para quem escreveu. */
 const envioAntes = amb.outbox.length;
 const filaCrua = SIM.aba("Saida");
-g.vpeGravar_({ ID: "ENV_INVASOR", THREAD_ID: thAdm.id, MENSAGEM_ID: thAdm.msgs[0].getId(),
+g.vpeGravar_({ ID: "ENV_INVASOR", THREAD_ID: thProp.id, MENSAGEM_ID: thProp.msgs[0].getId(),
   HTML: "<p>oi</p>", STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
 const naoPdf = g.DriveApp.createFile(g.Utilities.newBlob("x", "text/plain", "planilha.txt"));
 g.vpeGravar_({ ID: "ENV_NAO_PDF", THREAD_ID: thNair.id, MENSAGEM_ID: pedidoDa(thNair).ULTIMA_MENSAGEM_ID,
   HTML: "<p>oi</p>", ANEXOS_FILE_IDS: naoPdf.getId(), STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
 SIM.ciclo();
-b.igual(saida().find(r => r.ID === "ENV_INVASOR").STATUS, "RECUSADO", "resposta numa conversa que não é pedido: recusada");
+b.igual(saida().find(r => r.ID === "ENV_INVASOR").STATUS, "RECUSADO", "resposta numa conversa que o leitor não copiou: recusada");
 b.igual(saida().find(r => r.ID === "ENV_NAO_PDF").STATUS, "ERRO", "anexo que não é PDF: não sai");
 b.igual(amb.outbox.length, envioAntes, "e nenhum dos dois saiu");
 
