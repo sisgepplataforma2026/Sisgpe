@@ -127,6 +127,32 @@ function instalar(g, amb, opcoes) {
     return th;
   }
 
+  /* O ROBÔ DA KINGHOST (tools/kinghost-pendentes) deixa cada pendente como
+     .eml numa pasta do Drive; o leitor põe no Gmail pelo serviço avançado.
+     Aqui: a pasta é uma lista de {nome, raw}; o import vira conversa na
+     etiqueta pedida — como o Gmail faz (sem INBOX: fica arquivada). */
+  const drivePendentes = { existe: false, arquivos: [] };
+  const importados = [];
+  leitor.DriveApp.searchFolders = () => {
+    let dado = !drivePendentes.existe;
+    return { hasNext: () => !dado, next: () => { dado = true; return {
+      getFiles: () => { let i = 0; const l = drivePendentes.arquivos.slice();
+        return { hasNext: () => i < l.length, next: () => { const a = l[i++];
+          return { getName: () => a.nome, getBlob: () => ({ getBytes: () => Buffer.from(a.raw) }) }; } }; } }; } };
+  };
+  leitor.Gmail = { Users: {
+    Labels: { list: () => ({ labels: Object.keys(etiquetasCriadas).concat(Object.keys(pastasImportadas))
+      .map(n => ({ name: n, id: "L:" + n })) }) },
+    Messages: { import: (rec, user, blob, op) => {
+      const texto = Buffer.from(rec.raw, "base64url").toString("utf8");
+      const cab = n => ((texto.match(new RegExp("^" + n + ":\\s*(.*)$", "mi")) || [])[1] || "").trim();
+      const nome = String(rec.labelIds[0]).replace(/^L:/, "");
+      delete etiquetasCriadas[nome];   // a etiqueta vira "pasta" (com conversas)
+      importados.push({ etiqueta: nome, op });
+      return pasta(nome, novaThread(cab("Subject"), cab("From"), texto.split(/\r?\n\r?\n/).slice(1).join("\n"),
+        [], cab("To")));
+    } } } };
+
   /* A IA DO LEITOR (29/10/2026): ela diz o que é cada e-mail, dentro da conta
      da Secretaria. No simulador: "voucher"/"bolsa" no texto é VOUCHER; o
      marcador TIPO:XXX força outro tipo (propaganda que fala em desconto…);
@@ -200,7 +226,7 @@ function instalar(g, amb, opcoes) {
   return { threads, tocadas, chamadasIA, EXTRACOES, novaThread, responder, anexo, CC, RG, base,
            pdf: n => anexo(n, "application/pdf"), jpg: n => anexo(n, "image/jpeg"),
            leitor, ponte, consultas, tentativasSisgep, PONTE_ID, CONTA_SECRETARIA, estadoIA,
-           chamadasIALeitor, estadoIALeitor, pasta,
+           chamadasIALeitor, estadoIALeitor, pasta, drivePendentes, importados,
            /** Um ciclo do leitor: copia o que chegou e envia o que está na fila. */
            ciclo: () => leitor.leitorCiclo(),
            aba: nome => ponte.getSheetByName(nome) };

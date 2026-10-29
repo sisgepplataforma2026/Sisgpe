@@ -1,0 +1,53 @@
+# PEDIDOS DE VOUCHER SEM RESPOSTA NA KINGHOST → LEITOR DA SECRETARIA
+#
+# O robô (tools/kinghost-pendentes/pendentes.py) lê, SÓ LEITURA, as pastas
+# "CERTIFICADO 2026-2" e "CERTIFICADO 2027-1" da caixa secretaria@ na
+# KingHost, separa o que ninguém respondeu e deixa cada pendente (.eml) numa
+# pasta do Drive compartilhada com a conta da Secretaria. O leitor põe no
+# Gmail dela e daí segue o caminho normal até o SISGEP.
+#
+# Sem o segredo KINGHOST_SECRETARIA_SENHA, o robô sai sem fazer nada.
+# A senha fica SÓ no segredo do GitHub — nunca no código, nunca no chat.
+# O log mostra só contagens (nem nome, nem endereço, nem assunto).
+
+name: Importar pendentes da KingHost
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/kinghost-pendentes/**'
+      - '.github/workflows/importar-pendentes-kinghost.yml'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'conferir = so conta | importar = deixa no Drive para o leitor'
+        required: true
+        default: importar
+        type: choice
+        options: [conferir, importar]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: importar-pendentes-kinghost
+  cancel-in-progress: false
+
+jobs:
+  importar:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Testar a regra (KingHost falsa)
+        run: python3 tools/kinghost-pendentes/teste_pendentes.py
+
+      - name: Ler a KingHost e entregar ao leitor
+        env:
+          KINGHOST_SECRETARIA_SENHA: ${{ secrets.KINGHOST_SECRETARIA_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          SO_CONFERIR: ${{ github.event.inputs.modo == 'conferir' && '1' || '0' }}
+        run: python3 tools/kinghost-pendentes/pendentes.py

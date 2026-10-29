@@ -114,3 +114,14 @@ Não confere documento e não decide resposta. A IA aqui só responde "o que é
 este e-mail" — para separar o voucher do resto antes de copiar. A conferência
 do pedido e a validação humana ficam no SISGEP.
 A conferência e a validação humana ficam no SISGEP (`VoucherPedidosEmail.gs`).
+
+### O robô da KingHost (29/10/2026)
+
+A importação do Gmail só aceita POP, que não enxerga pastas. Por isso o
+workflow `importar-pendentes-kinghost.yml` lê a KingHost pelo IMAP (só
+leitura), separa os pendentes de "CERTIFICADO 2026-2" e "CERTIFICADO 2027-1"
+e deixa cada um como `.eml` na pasta do Drive "SISGEP — Pendentes KingHost
+(temporário)", compartilhada com a conta da Secretaria. O leitor, no ciclo,
+põe cada `.eml` no Gmail dela (serviço avançado Gmail, `Messages.import`) na
+etiqueta da pasta, e a passada das pastas leva à ponte. Depende do segredo
+`KINGHOST_SECRETARIA_SENHA` no GitHub; sem ele, o robô não faz nada.

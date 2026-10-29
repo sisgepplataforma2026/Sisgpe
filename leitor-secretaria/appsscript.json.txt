@@ -11,5 +11,14 @@
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/userinfo.email"
   ],
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
+      }
+    ]
+  }
 }

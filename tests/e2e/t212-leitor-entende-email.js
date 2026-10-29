@@ -184,4 +184,40 @@ b.igual(entrada().length, antesPastas + 2, "o ciclo do mesmo dia não copiou de 
 g.vpeLerCaixa_({});
 b.ok(!!pedidoDa(thPend) && !!pedidoDa(thPend2), "os dois pendentes aparecem no SISGEP");
 
+b.fluxo("LEITOR · pendentes que o robô da KingHost deixou no Drive");
+b.passo("12. Sem a pasta no Drive, o ciclo segue normal");
+const r12 = SIM.ciclo();
+b.ok(r12.importados && r12.importados.semPasta, "sem pasta: nada importado, sem erro", JSON.stringify(r12.importados));
+
+b.passo("13. Com a pasta: cada .eml vai para o Gmail na etiqueta da pasta e daí para a ponte");
+const eml = (de, assunto, corpo) => "From: " + de + "\r\nTo: Marcelha <secretaria@sindeducacao.com>\r\nSubject: " + assunto +
+  "\r\nDate: Mon, 05 Oct 2026 10:00:00 -0300\r\n\r\n" + corpo;
+SIM.drivePendentes.existe = true;
+SIM.drivePendentes.arquivos.push(
+  { nome: "CERTIFICADO-2027-1__aaa111.eml", raw: eml("Paula <paula@exemplo.com>", "Bolsa de estudo 2027/1", "Peço o certificado de bolsa.") },
+  { nome: "CERTIFICADO-2026-2__bbb222.eml", raw: eml("Igor <igor@exemplo.com>", "Voucher 2026/2", "Aguardo o voucher.") },
+  { nome: "leia-me.txt", raw: "não é e-mail" });
+const antes13 = entrada().length;
+const r13 = SIM.ciclo();
+b.igual(r13.importados.importados, 2, "dois importados (o .txt fica de fora)", JSON.stringify(r13.importados));
+b.igual(SIM.importados.map(x => x.etiqueta).sort().join(" | "), "CERTIFICADO 2026-2 | CERTIFICADO 2027-1",
+  "cada um na etiqueta da sua pasta");
+b.ok(SIM.importados.every(x => x.op && x.op.internalDateSource === "dateHeader"), "com a data original do e-mail");
+b.igual(entrada().length, antes13 + 2, "e os dois chegaram à ponte no mesmo ciclo", JSON.stringify(r13.pendentesPastas));
+b.ok(SIM.tentativasSisgep.length === 0, "o SISGEP não tocou em caixa nenhuma");
+
+b.passo("14. O robô rodar de novo não duplica nada");
+const r14 = SIM.ciclo();
+b.igual(r14.importados.importados, 0, "nada importado de novo");
+b.igual(entrada().length, antes13 + 2, "a ponte não cresceu");
+
+b.passo("15. Serviço Gmail indisponível: o ciclo não para");
+SIM.drivePendentes.arquivos.push({ nome: "CERTIFICADO-2027-1__ccc333.eml", raw: eml("x <x@exemplo.com>", "Bolsa", "y") });
+const gmailOk = SIM.leitor.Gmail;
+SIM.leitor.Gmail = undefined;
+const r15 = SIM.ciclo();
+SIM.leitor.Gmail = gmailOk;
+b.ok(r15.importados && r15.importados.erro, "o erro fica no relatório", JSON.stringify(r15.importados));
+b.ok(r15.lidas !== undefined, "e o resto do ciclo rodou");
+
 b.resumo();
