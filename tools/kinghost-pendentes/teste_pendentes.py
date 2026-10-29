@@ -87,6 +87,17 @@ enviado5 = eml(SEC, "edu@exemplo.com", "Seu certificado", "<s5@x>", pdf=True, da
 # ...mas um PDF mandado ANTES do pedido não conclui o pedido novo.
 antigo_pdf = eml(SEC, "fabi@exemplo.com", "Certificado 2026/1", "<s6@x>", pdf=True, data="Mon, 02 Feb 2026 09:00:00 -0300")
 pedido_fabi = eml("Fabi <fabi@exemplo.com>", SEC, "Voucher 2027/1", "<a10@x>", data="Mon, 05 Oct 2026 10:00:00 -0300")
+# Pasta CERTIFICADO 2026-1 também é lida.
+p2026_1 = eml("Gil <gil@exemplo.com>", SEC, "Voucher 2026/1", "<a11@x>")
+# CAIXA DE ENTRADA: pedido que ninguém separou; propaganda; assunto qualquer.
+na_entrada = eml("Hugo <hugo@exemplo.com>", SEC, "Solicitação", "<a12@x>", corpo="Gostaria do certificado de bolsa do meu filho.")
+propaganda = eml("Loja <ofertas@loja.com>", SEC, "Bolsa de couro em promoção", "<a13@x>").replace(
+    b"Date:", b"List-Unsubscribe: <mailto:sair@loja.com>\r\nDate:", 1)
+outro_assunto = eml("Ivo <ivo@exemplo.com>", SEC, "Homologação da rescisão", "<a14@x>", corpo="Preciso homologar.")
+# Voucher mandado SEM PDF reconhecível, mas o texto diz que foi: conclui.
+pedido_jo = eml("Jo <jo@exemplo.com>", SEC, "Bolsa 2027/1 Letras", "<a15@x>", data="Mon, 05 Oct 2026 10:00:00 -0300")
+enviado_texto = eml(SEC, "jo@exemplo.com", "Re: Bolsa 2027/1 Letras", "<s7@x>", reply_to_id="<a15@x>",
+                    corpo="Bom dia! Segue em anexo o certificado de bolsa.")
 # A resposta-padrão da Secretaria a todo pedido (texto real, 29/10/2026):
 # orienta e lista os documentos — NÃO leva voucher, não conclui.
 padrao = eml("Davi <davi@exemplo.com>", SEC, "Voucher bolsa 2026/2", "<a8@x>")
@@ -105,7 +116,7 @@ print("━━━ ROBÔ DE PENDENTES DA KINGHOST ━━━")
 pastas = P.listar_pastas(imap)
 alvo = [p for p in pastas if P.PASTAS.search(p["nome"]) and "EMITID" not in p["nome"].upper()]
 env = [p for p in pastas if P.ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
-ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2026-2", "CERTIFICADO 2027-1"], "acha só as duas pastas, sem a EMITIDOS")
+ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2026-2", "CERTIFICADO 2027-1"], "acha as pastas CERTIFICADO, sem a EMITIDOS")
 ok([p["nome"] for p in env] == ["INBOX.Sent"], "acha a pasta de enviados")
 
 pedidos = {p["nome"]: P.mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
@@ -151,6 +162,42 @@ ok(arq == "CERTIFICADO-2027-1__abc.eml", "o prefixo INBOX. da KingHost sai do no
 
 ok(P.decodificar_utf7("Itens &AOk-nviados") == "Itens énviados", "nome de pasta em UTF-7 é decodificado")
 ok(P.assunto_base("RES: Fwd: ENC: Bolsa 2026/2") == "bolsa 2026/2", "assunto sem RES/Fwd/ENC")
+
+print("\n━━━ A CAIXA INTEIRA: entrada + CERTIFICADO 2026-1/2026-2/2027-1 (pela função do robô) ━━━")
+caixa = ImapFalso({
+    "INBOX": [na_entrada, propaganda, outro_assunto, pedido_jo],
+    "INBOX.CERTIFICADO 2026-1": [p2026_1],
+    "INBOX.CERTIFICADO 2027-1": [pend],
+    "INBOX.CERTIFICADOS 2026-2 - EMITIDOS": [emitido],
+    "INBOX.Sent": [enviado_texto, enviado3],
+})
+import io, contextlib
+with contextlib.redirect_stdout(io.StringIO()) as saida_log:
+    ped, bruto_de2, env2 = P.coletar(caixa)
+log = saida_log.getvalue()
+ok("INBOX.CERTIFICADO 2026-1" in ped, "lê a pasta CERTIFICADO 2026-1")
+ok(not any("EMITID" in k for k in ped), "e continua sem a EMITIDOS")
+ok(P.ROTULO_ENTRADA in ped, "lê a caixa de entrada")
+de_entrada = sorted(P.endereco(P.email.message_from_bytes(r).get("From")) for u, r in ped[P.ROTULO_ENTRADA])
+ok(de_entrada == ["hugo@exemplo.com", "jo@exemplo.com"],
+   "da entrada, só o que fala de voucher (Hugo pediu no corpo; Jo no assunto) — " + ", ".join(de_entrada))
+ok("ofertas@loja.com" not in de_entrada, "propaganda com 'bolsa' no assunto fica na KingHost (é automática)")
+ok("ivo@exemplo.com" not in de_entrada, "e-mail de outro assunto (rescisão) fica na KingHost")
+ok(any("SINCE" in a and P.ENTRADA_DESDE in a for a in caixa.buscas), "a entrada é lida desde " + P.ENTRADA_DESDE)
+ok(all(m is True for m in caixa.modos), "tudo em modo SÓ LEITURA")
+ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in caixa.comandos), "nenhum comando que altere a caixa")
+pend3, cont3 = P.separar_pendentes(ped, env2, {"secretaria@sindeducacao.com"})
+quem3 = sorted(P.endereco(P.email.message_from_bytes(p["raw"]).get("From")) for p in pend3)
+ok("jo@exemplo.com" not in quem3, "Jo: a Secretaria escreveu 'segue em anexo o certificado' — concluído pelo texto")
+ok(quem3 == ["gil@exemplo.com", "hugo@exemplo.com", "lucia@exemplo.com"], "pendentes: Gil (2026-1), Hugo (entrada), Lúcia — " + ", ".join(quem3))
+ok("1 dizem no texto que mandaram o voucher" in log, "o log conta quantos foram reconhecidos pelo texto")
+ok(P.nome_arquivo({"pasta": P.ROTULO_ENTRADA, "chave": "z"}) == "KINGHOST-ENTRADA__z.eml", "o da entrada vai com a etiqueta KINGHOST ENTRADA")
+ok(not P.TEXTO_VOUCHER_ENVIADO.search("Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher"),
+   "a resposta-padrão (que fala em voucher) NÃO conta como voucher enviado")
+ok(not P.TEXTO_VOUCHER_ENVIADO.search("Falta o contracheque para emitirmos o certificado."), "nem o pedido de documento")
+ok(P.TEXTO_VOUCHER_ENVIADO.search("Prezada, o voucher segue anexo."), "'o voucher segue anexo' conta")
+ok(P.texto_legivel(b"Segue em anexo o certifica=\r\ndo de bolsa") == "Segue em anexo o certificado de bolsa",
+   "texto quebrado em quoted-printable é juntado")
 
 print("\nResumo: %d falha(s)" % len(falhas))
 sys.exit(1 if falhas else 0)

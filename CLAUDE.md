@@ -203,6 +203,18 @@ Quando houver dúvida entre remover e manter, a recomendação padrão é **mant
 
 **Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
 
+## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
+
+Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
+algum"*, e o sistema *"tem que aprender vendo a gente fazer"*.
+
+- Nenhuma mensagem (pedido de documento, resposta-padrão, voucher) sai sem
+  o clique de uma pessoa. Não propor envio automático até o usuário pedir.
+- Toda correção humana antes de enviar (campo editado, pendência derrubada,
+  texto mudado) fica registrada como exemplo — é com isso que o sistema
+  aprende e é com esses números que um dia se discute automatizar.
+- Nunca voucher para quem não tem direito: filiação conferida sempre.
+
 ## 📜 CCT — CITAR SEMPRE A NUMERAÇÃO DO REGISTRO NO MTE
 
 Definida pelo usuário em 2026-10-29: *"Sempre o MTE."*

@@ -225,6 +225,30 @@ SIM.leitor.Gmail = gmailOk;
 b.ok(r15.importados && r15.importados.erro, "o erro fica no relatório", JSON.stringify(r15.importados));
 b.ok(r15.lidas !== undefined, "e o resto do ciclo rodou");
 
+b.passo("15b. Caixa de entrada da KingHost e pasta 2026-1: a IA confere o que veio da entrada");
+SIM.drivePendentes.arquivos.length = 0;
+SIM.drivePendentes.arquivos.push(
+  { nome: "KINGHOST-ENTRADA__e1.eml", raw: eml("Hugo <hugo@exemplo.com>", "Solicitação", "Gostaria do certificado de bolsa do meu filho.") },
+  { nome: "KINGHOST-ENTRADA__e2.eml", raw: eml("Ivo <ivo@exemplo.com>", "Desconto", "TIPO:JURIDICO Sobre o desconto indevido na rescisão.") },
+  { nome: "CERTIFICADO-2026-1__g1.eml", raw: eml("Gil <gil@exemplo.com>", "Voucher 2026/1", "Peço o voucher.") });
+const antes15b = entrada().length;
+const iaAntes15b = SIM.chamadasIALeitor.length;
+const r15b = SIM.ciclo();
+const deNaPonte = () => entrada().map(r => String(r.MENSAGENS_JSON));
+b.igual(r15b.importados.importados, 3, "os três entram no Gmail", JSON.stringify(r15b.importados));
+b.ok(deNaPonte().some(t => /hugo@exemplo\.com/.test(t)), "Hugo (entrada, pedido de verdade) foi para o SISGEP");
+b.ok(!deNaPonte().some(t => /ivo@exemplo\.com/.test(t)), "Ivo (entrada, fala de 'desconto' mas é jurídico) NÃO foi");
+b.ok(deNaPonte().some(t => /gil@exemplo\.com/.test(t)), "Gil (pasta CERTIFICADO 2026-1) foi");
+b.igual(entrada().length, antes15b + 2, "a ponte cresceu só dois");
+const iaUsadas = SIM.chamadasIALeitor.slice(iaAntes15b).map(c => c.texto).join(" | ");
+b.ok(/hugo|bolsa do meu filho/i.test(iaUsadas) && /rescis/i.test(iaUsadas), "a IA leu os dois da entrada");
+b.ok(!/Peço o voucher/.test(iaUsadas), "o da pasta separada pela Marcela não passa pela IA");
+b.igual(r15b.pendentesPastas.naoVoucher, 1, "o relatório conta o que a IA viu que não é pedido");
+const iaAntes15c = SIM.chamadasIALeitor.length;
+SIM.leitor.PropertiesService.getScriptProperties().deleteProperty("PENDENTES_PASTAS_DIA");
+SIM.ciclo();
+b.igual(SIM.chamadasIALeitor.length, iaAntes15c, "na passada seguinte, o que não é pedido não volta à IA (não gasta crédito)");
+
 b.passo("16. Cada rodada fica anotada na aba Status da ponte (só números)");
 const st = SIM.aba("Status").getRange(1, 1, 3, 2).getValues();
 b.ok(st[0][0] === "ULTIMA_RODADA" && /\d{2}\/\d{2}\/\d{4}/.test(st[0][1]), "a hora da última rodada", String(st[0][1]));

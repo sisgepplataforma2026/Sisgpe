@@ -38,7 +38,23 @@ import urllib.request
 CAIXA = "secretaria@sindeducacao.com"
 CONTA_LEITOR = "sindeducacaosecretaria@gmail.com"
 NOME_PASTA_DRIVE = "SISGEP — Pendentes KingHost (temporário)"
-PASTAS = re.compile(r"CERTIFICADO\s*(2026\s*[-/]?\s*2|2027\s*[-/]?\s*1)", re.I)
+PASTAS = re.compile(r"CERTIFICADO\s*(2026\s*[-/.]?\s*[12]|2027\s*[-/.]?\s*1)", re.I)
+# A CAIXA DE ENTRADA também (usuário, 29/10/2026: "tem que analisar toda a
+# caixa de entrada"): pedido que ninguém separou em pasta. Ali chega de tudo,
+# então só sai da KingHost o que fala de voucher — e a IA do leitor ainda
+# confere. Desde 01/06/2026 (os pedidos de 2026/2 começam aí).
+ENTRADA_DESDE = "01-Jun-2026"
+ROTULO_ENTRADA = "KINGHOST ENTRADA"
+FALA_DE_VOUCHER = re.compile(
+    r"voucher|bolsa|certificado\s+(de\s+)?(bolsa|desconto)|desconto\s+(de|para)\s+funcion|"
+    r"declara[cç][aã]o\s+(para|de)\s+(a\s+)?(concess|desconto)", re.I)
+AUTOMATICO = re.compile(r"^(no-?reply|nao-?responda|naoresponda|mailer|bounce|news|newsletter|marketing|notifica)", re.I)
+# Texto de quem MANDOU o voucher (não de quem pede documento): "segue em
+# anexo o certificado", "o voucher segue anexo".
+TEXTO_VOUCHER_ENVIADO = re.compile(
+    r"seg(ue|uem)\s+(em\s+)?anex\w*\s+(o|os|seu|seus|a)?\s*(voucher|certificado)|"
+    r"(voucher|certificado)s?\s+(de\s+\w+\s+)?(segue|seguem|em\s+anexo|anexad)", re.I)
+TEXTO_ITEM = "(BODY.PEEK[TEXT]<0.3000>)"
 ENVIADOS = re.compile(r"(^|[./])(sent|enviad|itens enviados)", re.I)
 
 
@@ -72,7 +88,7 @@ def listar_pastas(imap):
     return pastas
 
 
-CAB_PEDIDO = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)])"
+CAB_PEDIDO = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE)])"
 
 
 def mensagem_inteira(imap, bruto, uid):
@@ -91,6 +107,18 @@ def mensagem_inteira(imap, bruto, uid):
 # modelo já aprovado; então a prova é um PDF anexado à resposta. O
 # BODYSTRUCTURE diz isso sem baixar o arquivo.
 CAB_ENVIADO = "(BODYSTRUCTURE BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT DATE IN-REPLY-TO REFERENCES)])"
+
+
+def texto_legivel(trecho):
+    """O começo do corpo vem cru (MIME, quoted-printable). Basta para achar
+    uma frase: tira as quebras '=\\r\\n', decodifica =XX, e junta."""
+    t = trecho.decode("latin-1", "replace") if isinstance(trecho, bytes) else str(trecho or "")
+    t = re.sub(r"=\r?\n", "", t)
+    try:
+        t = re.sub(r"(=[0-9A-Fa-f]{2})+", lambda m: bytes.fromhex(m.group(0).replace("=", "")).decode("utf-8", "replace"), t)
+    except Exception:
+        pass
+    return re.sub(r"\s+", " ", t)
 
 
 def tem_pdf_anexo(estrutura):
@@ -133,10 +161,24 @@ def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False
     return saida
 
 
+def filtrar_entrada(cabecalhos, textos):
+    """Da caixa de entrada, só o que fala de voucher e não é automático."""
+    sel = []
+    for uid, raw in cabecalhos:
+        m = email.message_from_bytes(raw, policy=email.policy.compat32)
+        de = endereco(m.get("From"))
+        if AUTOMATICO.search(de) or m.get("List-Unsubscribe"):
+            continue
+        alvo = str(m.get("Subject", "") or "") + " " + texto_legivel(textos.get(uid, b""))
+        if FALA_DE_VOUCHER.search(alvo):
+            sel.append((uid, raw))
+    return sel
+
+
 def _fechar(m, saida, so_cabecalho, com_uid):
     uid = (re.search(rb"UID (\d+)", m["meta"]) or [None, None])[1]
     if so_cabecalho:
-        saida.append((m["raw"], tem_pdf_anexo(m["meta"])))
+        saida.append((uid, m["raw"], tem_pdf_anexo(m["meta"])) if com_uid else (m["raw"], tem_pdf_anexo(m["meta"])))
     else:
         saida.append((uid, m["raw"]) if com_uid else m["raw"])
 
@@ -175,6 +217,7 @@ def ids_referenciados(msg):
 def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
     """pedidos_brutos: {nome_da_pasta: [bytes | (uid, bytes)]}.
     enviados_brutos: [(bytes, levou_pdf)] — bytes sozinho conta como SEM anexo.
+    levou_pdf já vem True quando o TEXTO do enviado diz que mandou o voucher.
     Devolve (pendentes, contagem)."""
     concluido_id, concluido_par = set(), set()      # resposta COM o voucher
     pdf_para = {}                                   # endereço → datas em que recebeu PDF
@@ -296,6 +339,47 @@ def nome_arquivo(p):
 
 # ── PRINCIPAL ────────────────────────────────────────────────────────────
 
+def coletar(imap):
+    """Lê as pastas e devolve (pedidos, bruto_de, enviados) — só cabeçalhos e
+    o começo do texto; nada de anexo. Separado do main para o teste rodar
+    exatamente isto."""
+    pastas = listar_pastas(imap)
+    alvo = [p for p in pastas if PASTAS.search(p["nome"]) and not re.search(r"EMITID", p["nome"], re.I)]
+    entrada = [p for p in pastas if p["nome"].upper() == "INBOX"]
+    enviados = [p for p in pastas if ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
+    print("Pastas de pedido: %s · pastas de enviados: %s" % (
+        ", ".join(p["nome"] for p in alvo) or "NENHUMA", ", ".join(p["nome"] for p in enviados) or "NENHUMA"))
+    if not alvo and not entrada:
+        print("Nenhuma pasta CERTIFICADO nem caixa de entrada encontrada. Nomes vistos: " +
+              ", ".join(p["nome"] for p in pastas))
+        return None
+    # Primeiro só os CABEÇALHOS: decidir o que é pendente não pede anexo.
+    bruto_de = {p["nome"]: p["bruto"] for p in alvo}
+    pedidos = {}
+    for p in alvo:
+        pedidos[p["nome"]] = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True)
+        print("  %s: %d mensagem(ns)" % (p["nome"], len(pedidos[p["nome"]])))
+    for p in entrada:
+        cab = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True, desde=ENTRADA_DESDE)
+        txt = dict(mensagens_da_pasta(imap, p["bruto"], item=TEXTO_ITEM, com_uid=True, desde=ENTRADA_DESDE))
+        sel = filtrar_entrada(cab, txt)
+        pedidos[ROTULO_ENTRADA] = sel
+        bruto_de[ROTULO_ENTRADA] = p["bruto"]
+        print("  caixa de entrada desde %s: %d mensagem(ns), %d falam de voucher" % (ENTRADA_DESDE, len(cab), len(sel)))
+    env = []
+    por_texto = 0
+    for p in enviados:
+        cabs = mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True, desde=ENVIADOS_DESDE, com_uid=True)
+        txt = dict(mensagens_da_pasta(imap, p["bruto"], item=TEXTO_ITEM, com_uid=True, desde=ENVIADOS_DESDE))
+        for uid, raw, pdf in cabs:
+            pelo_texto = bool(TEXTO_VOUCHER_ENVIADO.search(texto_legivel(txt.get(uid, b""))))
+            if pelo_texto and not pdf:
+                por_texto += 1
+            env.append((raw, pdf or pelo_texto))
+    print("  enviados: %d mensagem(ns) · %d dizem no texto que mandaram o voucher (sem PDF reconhecido)" % (len(env), por_texto))
+    return pedidos, bruto_de, env
+
+
 def main():
     senha = os.environ.get("KINGHOST_SECRETARIA_SENHA", "")
     if not senha:
@@ -308,25 +392,10 @@ def main():
     print("Conectado. Entrando na caixa…")
     imap.login(CAIXA, senha)
     print("Login feito (só leitura).")
-    pastas = listar_pastas(imap)
-    alvo = [p for p in pastas if PASTAS.search(p["nome"]) and not re.search(r"EMITID", p["nome"], re.I)]
-    enviados = [p for p in pastas if ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
-    print("Pastas de pedido: %s · pastas de enviados: %s" % (
-        ", ".join(p["nome"] for p in alvo) or "NENHUMA", ", ".join(p["nome"] for p in enviados) or "NENHUMA"))
-    if not alvo:
-        print("Nenhuma pasta CERTIFICADO 2026-2 / 2027-1 encontrada. Nomes vistos: " +
-              ", ".join(p["nome"] for p in pastas))
+    col = coletar(imap)
+    if col is None:
         return 0
-    # Primeiro só os CABEÇALHOS: decidir o que é pendente não pede anexo.
-    bruto_de = {p["nome"]: p["bruto"] for p in alvo}
-    pedidos = {}
-    for p in alvo:
-        pedidos[p["nome"]] = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True)
-        print("  %s: %d mensagem(ns)" % (p["nome"], len(pedidos[p["nome"]])))
-    env = []
-    for p in enviados:
-        env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True, desde=ENVIADOS_DESDE))
-    print("  enviados: %d mensagem(ns)" % len(env))
+    pedidos, bruto_de, env = col
     pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
     print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · concluídos (voucher anexado): "
           "%(respondidos)d · pendentes: %(pendentes)d (destes, %(sem_voucher)d tiveram resposta sem o voucher)" % cont)
