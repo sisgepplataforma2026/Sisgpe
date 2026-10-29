@@ -387,6 +387,7 @@ const comJust = g.voucherPedidosValidarEnviar(pedidoDa(thVelho).ID_PEDIDO, {},
 b.ok(comJust.ok, "com justificativa, emite", comJust.mensagem);
 const lVelho = g.voucherLinhaPorProtocolo_(ss, g.VOUCHER_ABA_SOLICITACOES, comJust.protocolo);
 b.ok(/escola atrasou/.test(lVelho.OBSERVACOES), "e a justificativa fica na solicitação");
+b.ok(/Documentos e filiação conferidos por /.test(lVelho.OBSERVACOES), "e quem conferiu", lVelho.OBSERVACOES);
 
 b.passo("13. Mesmo semestre de novo: a trava de duplicidade do Voucher vale aqui também");
 const thDup = novaThread("voucher de novo", "ana@exemplo.com", "Outro voucher 2026/2. CASO:VELHO2",

@@ -151,12 +151,14 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.ok(/lido no documento anexo/.test(cpfCampo.parentNode.textContent), "com a origem ao lado");
   b.ok(/70%/.test(t.texto("#vpeMPct")), "percentual pela regra da convenção");
   b.ok(/Tudo conferido/.test(t.texto("#vpeMPend")), "sem pendência, diz que está tudo conferido");
-  b.ok(botao("Validar e enviar certificado"), "botão de validar e enviar", rotulos().join(", "));
+  b.ok(botao("Conferir e enviar certificado"), "um botão só: conferir e enviar", rotulos().join(", "));
+  b.ok(/confirma que conferiu os documentos e a filiação/.test(t.texto("#vpeMNotaEnvio") || "") &&
+    /ana@exemplo\.com/.test(t.texto("#vpeMNotaEnvio") || ""), "o aviso diz o que o clique significa e para quem vai");
   b.ok(!botao("Encaminhar à sede"), "sem botão de sede num associado");
 
   b.passo("4. Validar manda o que está NO CAMPO");
   t.digitar(doc.querySelector("#vpeMCampos [data-k='rg']"), "9.999.999");
-  t.clicar(botao("Validar e enviar certificado"));
+  t.clicar(botao("Conferir e enviar certificado"));
   await t.assentar(80);
   const val = t.chamadas.filter(c => c.fn === "voucherPedidosValidarEnviar").pop();
   b.ok(val, "a tela chamou voucherPedidosValidarEnviar");
@@ -171,11 +173,11 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   await t.assentar(60);
   b.ok(/último contracheque/.test(el("vpeMResposta").value), "a resposta pede o contracheque");
   b.ok(/Comprovante de vínculo não anexado/.test(t.texto("#vpeMPend")), "a pendência aparece");
-  b.ok(botao("Enviar pedido de complemento") && botao("Validar mesmo assim"), "os dois caminhos", rotulos().join(", "));
+  b.ok(botao("Enviar pedido de complemento") && botao("Conferir e enviar mesmo assim"), "os dois caminhos", rotulos().join(", "));
 
   b.passo("6. Validar com pendência pede justificativa antes");
   const antes = t.chamadas.filter(c => c.fn === "voucherPedidosValidarEnviar").length;
-  t.clicar(botao("Validar mesmo assim"));
+  t.clicar(botao("Conferir e enviar mesmo assim"));
   await t.assentar(30);
   b.igual(t.chamadas.filter(c => c.fn === "voucherPedidosValidarEnviar").length, antes, "o primeiro clique NÃO envia");
   b.ok(el("vpeMJustBox").style.display !== "none", "mostra o campo de justificativa");
@@ -196,7 +198,7 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.passo("8. Sem Validar; com sede e confirmar associado");
   win.VPE.abrir(idDe("fulano@exemplo.com"));
   await t.assentar(60);
-  b.ok(!botao("Validar e enviar certificado") && !botao("Validar mesmo assim"), "não há botão de validar",
+  b.ok(!botao("Conferir e enviar certificado") && !botao("Conferir e enviar mesmo assim"), "não há botão de validar",
     rotulos().join(", "));
   b.ok(botao("Encaminhar à sede") && botao("Confirmar que é associado"), "há sede e confirmar associado");
   b.ok(/9h às 10h/.test(el("vpeMResposta").value), "a resposta traz o horário da sede");

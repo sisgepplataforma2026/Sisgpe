@@ -437,11 +437,18 @@ var VPE = (function () {
         add("Encaminhar à sede", "btn-red", "responder", "SEDE");
       } else {
         if (st !== "PRONTO") add("Enviar pedido de complemento", "btn-outline", "responder", "COMPLEMENTO");
-        add(st === "PRONTO" ? "Validar e enviar certificado" : "Validar mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validar");
+        add(st === "PRONTO" ? "Conferir e enviar certificado" : "Conferir e enviar mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validar");
       }
     }
     b.push("<button type='button' class='btn btn-outline' data-vpe='fechar'>Fechar</button>");
-    el("vpeMAcoes").innerHTML = b.join("");
+    /* Um botão só confere e envia (usuário, 29/10/2026): o aviso diz o que
+       o clique significa e para onde vai — fica registrado quem conferiu. */
+    var nota = (st !== "CONCLUIDO" && st !== "NAO_ENCONTRADO")
+      ? "<div id='vpeMNotaEnvio' style='flex-basis:100%;font-size:12px;color:#64748b;margin-bottom:6px;'>" +
+        "Ao clicar em <b>Conferir e enviar</b>, você confirma que conferiu os documentos e a filiação. " +
+        "O certificado sai datado de hoje para <b>" + esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") +
+        "</b>, e fica registrado que foi você quem conferiu.</div>" : "";
+    el("vpeMAcoes").innerHTML = nota + b.join("");
   }
 
   function camposDaTela() {

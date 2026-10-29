@@ -1661,6 +1661,7 @@ function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
     var obs = "Pedido por e-mail (" + reg.REMETENTE_EMAIL + ", " +
         Utilities.formatDate(new Date(reg.RECEBIDO_EM || new Date()), "America/Sao_Paulo", "dd/MM/yyyy HH:mm") +
         ", pedido " + reg.ID_PEDIDO + ")." +
+        " Documentos e filiação conferidos por " + (quem || "—") + "." +
         (reg.ASSOCIADO_CONFIRMADO_POR ? " Associado confirmado manualmente por " + reg.ASSOCIADO_CONFIRMADO_POR + "." : "") +
         (opcoes.forcar ? " Validado com pendência: " + String(opcoes.justificativa).trim() : "");
     if (!protocolo) {
