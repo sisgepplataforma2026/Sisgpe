@@ -6465,3 +6465,23 @@ foi copiado errado. Testado no emulador: t212 (42), t206, t207; suíte verde.
 
 NÃO TESTADO no ar: a qualidade da leitura da IA de verdade (o emulador simula a
 resposta) e as etiquetas aparecendo no Gmail.
+
+## Pedidos antigos da KingHost e regras novas do voucher por e-mail — 29/10/2026
+
+**Rodou no ar (robô da KingHost, GitHub Actions):** login só leitura ok;
+237 pedidos nas pastas CERTIFICADO 2026-2 (116) e 2027-1 (121); 30
+concluídos (resposta com o voucher em PDF); **207 pendentes**, dos quais 72
+tiveram resposta sem o voucher (pedido de documento, resposta-padrão). Os 207
+estão na pasta do Drive "SISGEP — Pendentes KingHost (temporário)".
+
+**NÃO TESTADO no ar:**
+- [ ] o leitor trazer os 207 do Drive para o Gmail da Secretaria e daí para o
+      SISGEP (às 20h30 de 29/10 a ponte ainda não tinha nenhum — o leitor
+      parece parado; conferir a aba Status da ponte);
+- [ ] conferir à mão uns 5 dos 207: a regra casa resposta por "Re:" ou pelo
+      mesmo assunto para o mesmo endereço. Voucher mandado num e-mail NOVO,
+      com outro assunto, aparece como pendente sem estar;
+- [ ] HML: pedido só com a declaração da escola ou a carteira de trabalho
+      chega PRONTO; contracheque antigo pede o último; pedido só com texto
+      recebe a resposta-padrão; pedido com parte dos documentos recebe só o
+      que falta.
