@@ -285,14 +285,20 @@ b.igual(pn.contagens.PRECISA_VOCE, 2, "2 precisam de você (CPF divergente e fil
 
 b.passo("6b. Só escreveu, sem anexo: vai a resposta-padrão do sindicato, não fica para a equipe");
 const pY = g.voucherPedidosDetalhe(pedidoDa(thFalha).ID_PEDIDO, TOKEN_SEC);
-b.ok(/Encaminhamos abaixo as informações necessárias/.test(pY.respostaSugerida), "a resposta é a padrão");
-b.ok(/Para não associados/.test(pY.respostaSugerida) && /CNH ou RG/.test(pY.respostaSugerida),
-  "com a parte de não associados e a lista de documentos");
-b.ok(/2026\/2 ou 2027\/1/.test(pY.respostaSugerida), "e os semestres abertos de verdade");
-b.ok(/declaração da escola/.test(pY.respostaSugerida), "o comprovante de vínculo nas três formas aceitas");
+const ry = pY.respostaSugerida;
+b.ok(/Recebemos sua solicitação de voucher de bolsa de estudos\./.test(ry) && /Tudo bem\?/.test(ry),
+  "a resposta é o texto padrão escrito pelo usuário");
+b.ok(/1\. Documentação do solicitante/.test(ry) && /2\. Informações sobre o curso/.test(ry) &&
+  /3\. Documentação do dependente/.test(ry), "nos três blocos");
+b.ok(/Declaração da escola, em caso de contratação recente/.test(ry) && /Registro do contrato de trabalho/.test(ry),
+  "com as três formas de comprovar vínculo");
+b.ok(/Semestre desejado: 2026\/2 ou 2027\/1\./.test(ry), "e os semestres abertos de verdade");
+b.ok(/Ainda não é associado\(a\)\?/.test(ry) && /até 15 dias úteis/.test(ry), "com a parte de não associados");
+b.ok(/Marcelha Aline\nAdministrativo \/ Secretaria/.test(ry), "e a assinatura da Secretaria");
 const pBia6 = g.voucherPedidosDetalhe(pedidoDa(thBia).ID_PEDIDO, TOKEN_SEC);
-b.ok(!/Para não associados/.test(pBia6.respostaSugerida) && !/CNH ou RG/.test(pBia6.respostaSugerida),
+b.ok(!/Ainda não é associado/.test(pBia6.respostaSugerida) && !/RG ou CNH/.test(pBia6.respostaSugerida),
   "quem mandou parte recebe SÓ o que falta (a Bia já mandou o RG)");
+b.ok(/Marcelha Aline/.test(pBia6.respostaSugerida), "também assinado");
 b.igual(pn.periodosAbertos, ["2026/2", "2027/1"], "semestres abertos em out/2026: 2026/2 e 2027/1");
 
 /* ══════════════════════════════════════════════════════════════════════ */

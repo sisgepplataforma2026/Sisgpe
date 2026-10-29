@@ -586,26 +586,58 @@ function vpeBlocoDocumentos_() {
   ].join("\n");
 }
 
-/** A resposta-padrão da Secretaria a quem pede sem mandar nada — o texto
- *  que ela já usa (enviado pelo usuário em 29/10/2026), com o comprovante de
- *  vínculo nas três formas aceitas e os semestres abertos de verdade. */
+/** A resposta-padrão da Secretaria a quem pede sem mandar nada — o TEXTO
+ *  DO USUÁRIO, escrito por ele em 29/10/2026, palavra por palavra. Só o nome
+ *  ("Olá, Maria!") e os semestres abertos são preenchidos pelo sistema. */
+var VPE_ASSINATURA = [
+  "Atenciosamente,",
+  "Marcelha Aline",
+  "Administrativo / Secretaria – SINDEDUCAÇÃO-ES",
+  "(27) 99735-8900",
+  "secretaria@sindeducacao.com"
+].join("\n");
+
 function vpeTextoPadrao_(ola, abertos) {
   return [
-    ola, "",
-    "Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher de bolsa de estudos:",
+    ola,
+    "Tudo bem?",
+    "Recebemos sua solicitação de voucher de bolsa de estudos.",
+    "Para darmos andamento ao seu pedido, caso seja associado(a) ao SINDEDUCAÇÃO-ES, pedimos que responda a " +
+      "este e-mail com as seguintes informações e documentos:",
     "",
-    "✅ Associados ao SINDEDUCAÇÃO-ES possuem atendimento prioritário e benefícios exclusivos.",
-    "Caso seja associado(a), gentileza encaminhar, respondendo a este e-mail, toda a documentação listada abaixo. " +
-      "Após o recebimento, o voucher será emitido e enviado por este canal, com prioridade no atendimento.",
+    "1. Documentação do solicitante",
+    "• RG ou CNH;",
+    "• Comprovante de vínculo com a instituição de ensino onde trabalha, sendo aceita uma das seguintes opções:",
+    "   ◦ Último contracheque;",
+    "   ◦ Declaração da escola, em caso de contratação recente;",
+    "   ◦ Registro do contrato de trabalho na Carteira de Trabalho.",
     "",
-    "❌ Para não associados:",
-    "A solicitação deverá ser realizada presencialmente na sede do SINDEDUCAÇÃO-ES, mediante apresentação de " +
-      "toda a documentação exigida. O prazo para retirada do voucher é de até 15 (quinze) dias úteis após a solicitação.",
-    "👉 Aproveite a oportunidade de se associar e ter acesso a benefícios exclusivos e atendimento diferenciado.",
-    "🕘 Horário de atendimento presencial: " + VPE_HORARIO_SEDE + ".",
+    "2. Informações sobre o curso",
+    "• Nome do curso;",
+    "• Nome da instituição de ensino;",
+    "• Semestre desejado: " + abertos.join(" ou ") + ".",
     "",
-    "📄 " + vpeBlocoDocumentos_().replace("o semestre desejado no momento da solicitação.",
-      "o semestre desejado no momento da solicitação: " + abertos.join(" ou ") + ".")
+    "3. Documentação do dependente (quando necessário)",
+    "Caso o voucher seja destinado a um dependente, encaminhe também:",
+    "• Filho(a): RG, certidão de nascimento ou CNH;",
+    "• Enteado(a): documento de identidade e comprovante de dependência na declaração do Imposto de Renda;",
+    "• Cônjuge: certidão de casamento.",
+    "",
+    "Como funciona o atendimento?",
+    "✅ Associados: após o recebimento e a conferência da documentação e da filiação, o voucher será " +
+      "encaminhado por este mesmo e-mail, com prioridade no atendimento.",
+    "",
+    "Ainda não é associado(a)?",
+    "Nesse caso, a solicitação deve ser realizada presencialmente na sede do SINDEDUCAÇÃO-ES, apresentando a " +
+      "documentação indicada acima.",
+    "• Prazo: até 15 dias úteis para disponibilização do voucher.",
+    "• Horários de atendimento: das 9h às 10h e das 15h às 16h.",
+    "",
+    "Aproveite a oportunidade para conhecer as vantagens de se associar ao sindicato e ter acesso ao " +
+      "atendimento prioritário e a benefícios exclusivos.",
+    "Estamos à disposição para esclarecer qualquer dúvida!",
+    "",
+    VPE_ASSINATURA
   ].join("\n");
 }
 
@@ -626,7 +658,8 @@ function vpeTextoResposta_(estado, aval, abertos) {
       "Recebemos sua solicitação de voucher de bolsa de estudos. Para darmos andamento, " +
         "precisamos que nos envie, respondendo a este e-mail:",
       itens.join("\n"), "",
-      "Assim que recebermos, o voucher será emitido e enviado por este canal, com prioridade no atendimento."
+      "Assim que recebermos, o voucher será emitido e enviado por este canal, com prioridade no atendimento.",
+      "", VPE_ASSINATURA
     ];
     return t.join("\n");
   }
