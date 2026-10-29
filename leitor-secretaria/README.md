@@ -64,6 +64,26 @@ Sam's Club…) para a ponte. Para trocar pela versão que entende o e-mail,
    Sem crédito ela para sem apagar nada — pode rodar de novo depois.
 4. No SISGEP, **Ler agora**: o que saiu da ponte some do painel.
 
+## Publicação automática (29/10/2026 — "Faça vc")
+
+O leitor passou a ser publicado pelo GitHub
+(`.github/workflows/deploy-leitor-secretaria.yml`), sem colar à mão. Para
+isso, UMA vez, na conta da Secretaria:
+
+1. Abra o projeto **Leitor da Secretaria** → botão **Compartilhar** (ícone de
+   pessoa, no alto) → adicione `financeirosindecucacao@gmail.com` como
+   **Editor**.
+2. ⚙️ **Configurações do projeto** → copie o **ID do script** e mande para o
+   Claude. Ele grava em `leitor-secretaria/SCRIPT_ID.txt`, e daí em diante
+   cada mudança no leitor é publicada sozinha.
+
+O leitor continua RODANDO como a Secretaria (o gatilho é dela). A troca
+aceita: a conta do Financeiro passa a poder alterar o código do leitor.
+
+Quando uma versão pedir permissão nova (o `appsscript.json` mudar), o leitor
+para até alguém da Secretaria abrir o editor, rodar qualquer função e
+autorizar — parado, ele não copia nada.
+
 ## Conferir que funcionou
 
 1. De outro e-mail, mande para `secretaria@sindeducacao.com` um pedido de
