@@ -121,6 +121,8 @@ L.leitorLimparCopiasIndevidas();
 /* A do Sam's Club é automática (noreply) e não precisa da IA; a da
    contabilidade precisa — então ela fica. Apagar só depois de decidir. */
 b.ok(entrada().some(r => r.THREAD_ID === "T-ANTIGA-2"), "a que dependia da IA continua na ponte");
+b.ok(!entrada().some(r => r.THREAD_ID === "T-ANTIGA-1"), "mas a do Sam's Club (noreply) saiu mesmo sem IA");
+b.ok(naPonte(thVoucher), "e os pedidos de voucher não foram tocados");
 SIM.estadoIALeitor.fora = false;
 
 const r = L.leitorLimparCopiasIndevidas();
@@ -129,7 +131,7 @@ b.ok(!entrada().some(r => r.THREAD_ID === "T-ANTIGA-2"), "homologação (outro a
 b.ok(naPonte(thVoucher) && naPonte(thNovo), "os pedidos de voucher continuam");
 b.ok(anexoVelho.trashed === true, "o anexo da propaganda foi para a lixeira do Drive da Secretaria");
 b.ok(vistos().some(x => x.THREAD_ID === "T-ANTIGA-1"), "e a conversa ficou só como número em Vistos");
-b.ok(r.removidas >= 1, "a limpeza informa quantas saíram", JSON.stringify(r));
+b.ok(r.removidas >= 1 && !r.iaFora, "a limpeza informa quantas saíram", JSON.stringify(r));
 b.ok(antesLimpeza > entrada().length, "a ponte encolheu");
 
 g.vpeLerCaixa_({});
