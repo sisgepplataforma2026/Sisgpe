@@ -170,7 +170,7 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   win.VPE.abrir(idDe("bia@exemplo.com"));
   await t.assentar(60);
   b.ok(/último contracheque/.test(el("vpeMResposta").value), "a resposta pede o contracheque");
-  b.ok(/Último contracheque não anexado/.test(t.texto("#vpeMPend")), "a pendência aparece");
+  b.ok(/Comprovante de vínculo não anexado/.test(t.texto("#vpeMPend")), "a pendência aparece");
   b.ok(botao("Enviar pedido de complemento") && botao("Validar mesmo assim"), "os dois caminhos", rotulos().join(", "));
 
   b.passo("6. Validar com pendência pede justificativa antes");

@@ -359,11 +359,20 @@ function vpeAvaliar_(ext, ctx) {
     }
   });
 
-  /* ── CPF: e-mail, documento, contracheque — e se não bater, ninguém escolhe ── */
+  /* ── a PROVA DE VÍNCULO — 29/10/2026. O usuário: "a gente pede um
+     comprovante da escola, ou às vezes uma carteira de trabalho, a parte do
+     vínculo, ou contracheque". Qualquer um dos três vale; o contracheque é o
+     preferido (diz o mês), depois a declaração, depois a carteira. ── */
+  var declaracoes = doTipo("DECLARACAO_ESCOLA"), ctpsLista = doTipo("CTPS");
+  var prova = cc || declaracoes[0] || ctpsLista[0] || null;
+  var provaTipo = cc ? "CONTRACHEQUE" : declaracoes[0] ? "DECLARACAO_ESCOLA" : ctpsLista[0] ? "CTPS" : "";
+  var provaRot = { CONTRACHEQUE: "contracheque", DECLARACAO_ESCOLA: "declaração da escola", CTPS: "carteira de trabalho" }[provaTipo] || "";
+
+  /* ── CPF: e-mail, documento, comprovante — e se não bater, ninguém escolhe ── */
   var fontesCpf = [
     { v: vpeCpf_(tit.cpf), o: "escrito no e-mail" },
     { v: vpeCpf_(docTit && docTit.cpf), o: "lido no documento anexo" },
-    { v: vpeCpf_(cc && cc.cpf), o: "lido no contracheque" }
+    { v: vpeCpf_(prova && prova.cpf), o: "lido na " + (provaRot === "contracheque" ? "folha do contracheque" : provaRot) }
   ].filter(function (f) { return f.v; });
   var cpfsDistintos = fontesCpf.map(function (f) { return f.v; })
     .filter(function (v, i, a) { return a.indexOf(v) === i; });
@@ -384,13 +393,13 @@ function vpeAvaliar_(ext, ctx) {
 
   /* ── nome: o do cadastro manda; o do documento confere ── */
   campo("nome",
-    (assoc && assoc.nome) || (docTit && docTit.nomePessoa) || tit.nome || (cc && cc.nomePessoa) || "",
+    (assoc && assoc.nome) || (docTit && docTit.nomePessoa) || tit.nome || (prova && prova.nomePessoa) || "",
     assoc && assoc.nome ? "cadastro de associados"
       : docTit && docTit.nomePessoa ? "lido no documento anexo"
-      : tit.nome ? "escrito no e-mail" : "lido no contracheque");
-  if (docTit && docTit.nomePessoa && cc && cc.nomePessoa && !vpeNomeBate_(docTit.nomePessoa, cc.nomePessoa)) {
-    add("CONFLITO", "O nome do documento (" + docTit.nomePessoa + ") não bate com o do contracheque (" +
-      cc.nomePessoa + ").");
+      : tit.nome ? "escrito no e-mail" : "lido no " + provaRot);
+  if (docTit && docTit.nomePessoa && prova && prova.nomePessoa && !vpeNomeBate_(docTit.nomePessoa, prova.nomePessoa)) {
+    add("CONFLITO", "O nome do documento (" + docTit.nomePessoa + ") não bate com o do " + provaRot + " (" +
+      prova.nomePessoa + ").");
   }
 
   campo("email", ctx.remetenteEmail || "", "remetente do e-mail");
@@ -399,8 +408,8 @@ function vpeAvaliar_(ext, ctx) {
   campo("rg", (docTit && docTit.rg) || "", "lido no documento anexo");
 
   /* ── onde trabalha: aparece no certificado ("empregado da instituição X") ── */
-  campo("escola", (cc && cc.empregador) || (assoc && assoc.escola) || "",
-    cc && cc.empregador ? "lido no contracheque" : "cadastro de associados");
+  campo("escola", (prova && prova.empregador) || (assoc && assoc.escola) || "",
+    prova && prova.empregador ? "lido na " + (provaTipo === "CONTRACHEQUE" ? "folha do contracheque" : provaRot) : "cadastro de associados");
   if (!campos.escola.valor) add("INTERNO", "Escola onde trabalha não identificada — preencha antes de validar.");
 
   /* ── o curso ── */
@@ -432,16 +441,27 @@ function vpeAvaliar_(ext, ctx) {
   }
 
   /* ── documentos do titular ── */
-  if (!cc) {
-    add("FALTA", "Último contracheque não anexado.", "o último contracheque");
+  campo("comprovanteVinculo", provaTipo, provaTipo ? "anexo identificado pela IA" : "");
+  if (!prova) {
+    add("FALTA", "Comprovante de vínculo não anexado (contracheque, declaração da escola ou carteira de trabalho).",
+      "o comprovante de vínculo com a escola: o último contracheque, uma declaração da escola ou a página do contrato na carteira de trabalho");
+  } else if (provaTipo === "DECLARACAO_ESCOLA") {
+    var dComp = vpeCompetencia_(prova.competencia);
+    var dDif = dComp ? (hoje.getFullYear() * 12 + hoje.getMonth() + 1) - (dComp.ano * 12 + dComp.mes) : null;
+    if (!dComp) add("AVISO", "Não deu para ler a data da declaração da escola — confira se é recente.");
+    else if (dDif >= 2) add("AVISO", "Declaração da escola de " + ("0" + dComp.mes).slice(-2) + "/" + dComp.ano +
+      " — confira se o vínculo continua.");
+  } else if (provaTipo === "CTPS") {
+    add("AVISO", "Vínculo pela carteira de trabalho — confira se o contrato com a escola não tem data de saída.");
   } else if (!ccComp) {
     add("AVISO", "Não deu para ler o mês do contracheque — confira se é o último.");
   } else {
     var dif = (hoje.getFullYear() * 12 + hoje.getMonth() + 1) - (ccComp.ano * 12 + ccComp.mes);
     var rot = ("0" + ccComp.mes).slice(-2) + "/" + ccComp.ano;
     if (dif >= 2) {
-      add("AVISO", "Contracheque de " + rot + " — pode não ser o último.",
-        "o contracheque mais recente (o enviado é de " + rot + ")");
+      /* O contracheque tem que ser SEMPRE o último (usuário, 29/10/2026). */
+      add("FALTA", "Contracheque de " + rot + " — não é o último.",
+        "o último contracheque (o enviado é de " + rot + ")");
     } else if (dif < 0) {
       add("AVISO", "Contracheque com mês no futuro (" + rot + ") — confira.");
     }
@@ -507,7 +527,14 @@ function vpeAvaliar_(ext, ctx) {
   /* ── o estado ── */
   var tipos = pend.map(function (p) { return p.tipo; });
   var estado;
-  if (!cpf || cpfsDistintos.length > 1) {
+  /* SÓ TEXTO, NADA ANEXADO ("gostaria do meu voucher") — 29/10/2026. Não
+     dá para conferir filiação sem documento, mas também não é caso para a
+     equipe escrever à mão: a resposta é a padrão do sindicato, com tudo o
+     que é necessário. */
+  var semNada = !anexos.length && !cpf;
+  if (semNada) {
+    estado = VPE_ESTADOS.FALTA_DOC;
+  } else if (!cpf || cpfsDistintos.length > 1) {
     if (!cpf) add("INTERNO", "CPF não encontrado no e-mail, nos anexos nem no cadastro.");
     estado = VPE_ESTADOS.PRECISA_VOCE;
   } else if ((!assoc || assoc.filiado === false) && !ctx.associadoConfirmadoPor) {
@@ -526,6 +553,7 @@ function vpeAvaliar_(ext, ctx) {
 
   return {
     estado: estado,
+    semNada: semNada,
     pendencias: pend,
     campos: campos,
     percentual: percentual,
@@ -545,7 +573,7 @@ function vpePrimeiroNome_(nome) {
 function vpeBlocoDocumentos_() {
   return [
     "Documentos necessários:",
-    "• Último contracheque",
+    "• Comprovante de vínculo com a escola: último contracheque, declaração da escola ou a página do contrato na carteira de trabalho",
     "• CNH ou RG",
     "• Nome do curso",
     "",
@@ -558,12 +586,39 @@ function vpeBlocoDocumentos_() {
   ].join("\n");
 }
 
+/** A resposta-padrão da Secretaria a quem pede sem mandar nada — o texto
+ *  que ela já usa (enviado pelo usuário em 29/10/2026), com o comprovante de
+ *  vínculo nas três formas aceitas e os semestres abertos de verdade. */
+function vpeTextoPadrao_(ola, abertos) {
+  return [
+    ola, "",
+    "Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher de bolsa de estudos:",
+    "",
+    "✅ Associados ao SINDEDUCAÇÃO-ES possuem atendimento prioritário e benefícios exclusivos.",
+    "Caso seja associado(a), gentileza encaminhar, respondendo a este e-mail, toda a documentação listada abaixo. " +
+      "Após o recebimento, o voucher será emitido e enviado por este canal, com prioridade no atendimento.",
+    "",
+    "❌ Para não associados:",
+    "A solicitação deverá ser realizada presencialmente na sede do SINDEDUCAÇÃO-ES, mediante apresentação de " +
+      "toda a documentação exigida. O prazo para retirada do voucher é de até 15 (quinze) dias úteis após a solicitação.",
+    "👉 Aproveite a oportunidade de se associar e ter acesso a benefícios exclusivos e atendimento diferenciado.",
+    "🕘 Horário de atendimento presencial: " + VPE_HORARIO_SEDE + ".",
+    "",
+    "📄 " + vpeBlocoDocumentos_().replace("o semestre desejado no momento da solicitação.",
+      "o semestre desejado no momento da solicitação: " + abertos.join(" ou ") + ".")
+  ].join("\n");
+}
+
 function vpeTextoResposta_(estado, aval, abertos) {
   var nome = vpePrimeiroNome_(aval && aval.campos && aval.campos.nome && aval.campos.nome.valor);
   var ola = "Olá" + (nome ? ", " + nome : "") + "!";
   abertos = abertos || vpePeriodosAbertos_();
 
+  if (estado === VPE_ESTADOS.FALTA_DOC && aval && aval.semNada) return vpeTextoPadrao_(ola, abertos);
+
   if (estado === VPE_ESTADOS.FALTA_DOC) {
+    /* Mandou parte: pede SÓ o que falta (usuário, 29/10/2026: "só encaminha
+       aquilo que realmente é necessário"). */
     var itens = (aval.pendencias || []).filter(function (p) { return p.pedir; })
       .map(function (p) { return "• " + p.pedir; });
     var t = [
@@ -573,8 +628,6 @@ function vpeTextoResposta_(estado, aval, abertos) {
       itens.join("\n"), "",
       "Assim que recebermos, o voucher será emitido e enviado por este canal, com prioridade no atendimento."
     ];
-    if (itens.length >= 3) t.push("", vpeBlocoDocumentos_().replace("o semestre desejado",
-      "o semestre desejado: " + abertos.join(" ou ")));
     return t.join("\n");
   }
 
@@ -629,7 +682,7 @@ function vpePromptExtracao_(textoEmail, listaAnexos, abertos) {
     '  "periodo": "AAAA/S",',
     '  "regime": "SEMESTRAL|ANUAL|",',
     '  "ordem_filho": "",',
-    '  "anexos": [{"indice": 1, "tipo": "CONTRACHEQUE|RG|CNH|CERTIDAO_NASCIMENTO|CERTIDAO_CASAMENTO|IMPOSTO_RENDA|OUTRO",',
+    '  "anexos": [{"indice": 1, "tipo": "CONTRACHEQUE|DECLARACAO_ESCOLA|CTPS|RG|CNH|CERTIDAO_NASCIMENTO|CERTIDAO_CASAMENTO|IMPOSTO_RENDA|OUTRO",',
     '              "nome_pessoa": "", "cpf": "", "rg": "", "data_nascimento": "dd/mm/aaaa",',
     '              "competencia": "MM/AAAA", "empregador": "", "legivel": true}],',
     '  "resumo": "uma frase dizendo o que a pessoa pediu"',
@@ -640,8 +693,11 @@ function vpePromptExtracao_(textoEmail, listaAnexos, abertos) {
     "- beneficiario.tipo: TITULAR quando a bolsa é para a própria pessoa que escreve.",
     "- modalidade e area: classifique pelo NOME do curso (ex.: Pedagogia → GRADUACAO/HUMANAS;",
     "  Enfermagem → GRADUACAO/SAUDE; Engenharia Civil → GRADUACAO/ENGENHARIA; MBA → POS_GRADUACAO).",
-    "- competencia: mês/ano de referência do contracheque (não a data de pagamento).",
-    "- empregador: a escola/empresa que aparece no contracheque.",
+    "- DECLARACAO_ESCOLA: declaração/carta da escola dizendo que a pessoa trabalha (ou foi contratada) lá.",
+    "- CTPS: carteira de trabalho (física ou digital) — a página do contrato de trabalho.",
+    "- competencia: mês/ano de referência do contracheque (não a data de pagamento); na",
+    "  DECLARACAO_ESCOLA, o mês/ano em que a declaração foi assinada.",
+    "- empregador: a escola/empresa que aparece no contracheque, na declaração ou no contrato da carteira.",
     "- Liste TODOS os anexos, na ordem numerada abaixo, mesmo os que não conseguir ler (legivel: false).",
     "",
     "Anexos deste e-mail:",
@@ -1588,7 +1644,7 @@ function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
         ordemFilho: v("ordemFilho"),
         enteadoDeclaradoIR: v("tipoBeneficiario") === "ENTEADO" ? "SIM" : "",
         situacaoSindical: "ASSOCIADO", canal: "EMAIL",
-        tipoDocumentoVinculo: "CONTRACHEQUE",
+        tipoDocumentoVinculo: ({ DECLARACAO_ESCOLA: "DECLARACAO_RH", CTPS: "CTPS" })[v("comprovanteVinculo")] || "CONTRACHEQUE",
         observacoes: obs, aprovar: true
       }, tokenSessao);
       if (!cria || !cria.ok) {
@@ -1672,7 +1728,9 @@ function vpeGuardarDocumentos_(reg, protocolo, cpf, nome) {
         nome: info.nome, tipo: blob.getContentType(), base64: Utilities.base64Encode(blob.getBytes())
       }, tipo, "Recebido por e-mail (pedido " + reg.ID_PEDIDO + ")", nome);
       var url = salvo && salvo.linkArquivo ? salvo.linkArquivo : "";
-      if (url && tipo === "CONTRACHEQUE" && !links.LINK_CONTRACHEQUE) links.LINK_CONTRACHEQUE = url;
+      /* LINK_CONTRACHEQUE é o "link do documento de vínculo" (Voucher.gs lê
+         assim): vale contracheque, declaração da escola ou carteira. */
+      if (url && /^(CONTRACHEQUE|DECLARACAO_ESCOLA|CTPS)$/.test(tipo) && !links.LINK_CONTRACHEQUE) links.LINK_CONTRACHEQUE = url;
       if (url && (tipo === "RG" || tipo === "CNH") && !links.LINK_DOC_PESSOAL) links.LINK_DOC_PESSOAL = url;
     });
     var sh = ss.getSheetByName(VOUCHER_ABA_SOLICITACOES);

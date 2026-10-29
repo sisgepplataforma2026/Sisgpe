@@ -279,9 +279,20 @@ b.bloqueia(() => g.voucherPedidosDetalhe(regFin.ID_PEDIDO, TOKEN_SEC).ok === fal
 b.passo("6. Os cards contam o que está na fila");
 const pn = painel("SECRETARIA", TOKEN_SEC);
 b.igual(pn.contagens.PRONTO, 1, "1 pronto para validar");
-b.igual(pn.contagens.FALTA_DOC, 2, "2 com falta de documento");
+b.igual(pn.contagens.FALTA_DOC, 5, "5 com falta de documento (Bia, Caio e os 3 que só escreveram, sem anexo)");
 b.igual(pn.contagens.NAO_ENCONTRADO, 2, "2 não encontrados");
-b.igual(pn.contagens.PRECISA_VOCE, 5, "5 precisam de você (3 + os 2 do teste de ID, sem CPF)");
+b.igual(pn.contagens.PRECISA_VOCE, 2, "2 precisam de você (CPF divergente e filho de 26 anos)");
+
+b.passo("6b. Só escreveu, sem anexo: vai a resposta-padrão do sindicato, não fica para a equipe");
+const pY = g.voucherPedidosDetalhe(pedidoDa(thFalha).ID_PEDIDO, TOKEN_SEC);
+b.ok(/Encaminhamos abaixo as informações necessárias/.test(pY.respostaSugerida), "a resposta é a padrão");
+b.ok(/Para não associados/.test(pY.respostaSugerida) && /CNH ou RG/.test(pY.respostaSugerida),
+  "com a parte de não associados e a lista de documentos");
+b.ok(/2026\/2 ou 2027\/1/.test(pY.respostaSugerida), "e os semestres abertos de verdade");
+b.ok(/declaração da escola/.test(pY.respostaSugerida), "o comprovante de vínculo nas três formas aceitas");
+const pBia6 = g.voucherPedidosDetalhe(pedidoDa(thBia).ID_PEDIDO, TOKEN_SEC);
+b.ok(!/Para não associados/.test(pBia6.respostaSugerida) && !/CNH ou RG/.test(pBia6.respostaSugerida),
+  "quem mandou parte recebe SÓ o que falta (a Bia já mandou o RG)");
 b.igual(pn.periodosAbertos, ["2026/2", "2027/1"], "semestres abertos em out/2026: 2026/2 e 2027/1");
 
 /* ══════════════════════════════════════════════════════════════════════ */
@@ -359,7 +370,8 @@ const thVelho = novaThread("voucher 2026/2", "ana@exemplo.com", "Voucher de Letr
 ler();
 b.igual(pedidoDa(thVelho).ESTADO, "FALTA_DOC", "contracheque de 07/2026 → falta documento");
 const pVelho = g.voucherPedidosDetalhe(pedidoDa(thVelho).ID_PEDIDO, TOKEN_SEC);
-b.ok(pVelho.pendencias.some(p => p.tipo === "AVISO" && /07\/2026/.test(p.texto)), "o aviso diz o mês do contracheque");
+b.ok(pVelho.pendencias.some(p => p.tipo === "FALTA" && /07\/2026/.test(p.texto) && /não é o último/.test(p.texto)),
+  "contracheque antigo é FALTA: tem que ser sempre o último");
 const semConf = g.voucherPedidosValidarEnviar(pedidoDa(thVelho).ID_PEDIDO, {}, {}, TOKEN_SEC);
 b.igual(semConf.precisaConfirmar, true, "validar sem confirmar pede confirmação");
 const semJust = g.voucherPedidosValidarEnviar(pedidoDa(thVelho).ID_PEDIDO, {}, { forcar: true }, TOKEN_SEC);
@@ -464,6 +476,32 @@ b.ok(/^leitor-secretaria\/\*\*$/m.test(fsT.readFileSync(pathT.resolve(__dirname,
 b.passo("21. Nenhum e-mail foi mexido na caixa, e o SISGEP nunca abriu uma");
 b.igual(tocadas.length, 0, "nem lido, nem arquivado");
 b.igual(SIM.tentativasSisgep, [], "nenhuma chamada do SISGEP ao GmailApp");
+
+b.passo("22. Comprovante de vínculo: contracheque, declaração da escola ou carteira de trabalho");
+const OUT26 = new Date(2026, 9, 29);
+const assocAna = () => ({ cpf: CPF_ANA, nome: "ANA MARIA SOUZA", escola: "COLEGIO ALFA", filiado: true });
+const avaliar = anexos => g.vpeAvaliar_({ titular: { nome: "Ana Maria Souza", cpf: CPF_ANA }, beneficiario: { tipo: "TITULAR" },
+  curso: "Letras", modalidade: "GRADUACAO", area: "HUMANAS", instituicao: "FAC X", periodo: "2027/1", anexos },
+  { hoje: OUT26, buscarAssociado: assocAna });
+const RGa = { indice: 1, tipo: "RG", nomePessoa: "ANA MARIA SOUZA", cpf: CPF_ANA, rg: "123", legivel: true };
+const decl = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", nomePessoa: "ANA MARIA SOUZA", competencia: "10/2026",
+  empregador: "COLEGIO NOVO", legivel: true }]);
+b.igual(decl.estado, "PRONTO", "recém-contratada só com a declaração da escola: PRONTO", JSON.stringify(decl.pendencias));
+b.igual(decl.campos.comprovanteVinculo.valor, "DECLARACAO_ESCOLA", "a tela diz que o vínculo veio da declaração");
+b.igual(decl.campos.escola.valor, "COLEGIO NOVO", "e a escola sai da declaração");
+const declVelha = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", competencia: "03/2026", empregador: "COLEGIO NOVO" }]);
+b.ok(declVelha.pendencias.some(p => p.tipo === "AVISO" && /03\/2026/.test(p.texto)), "declaração antiga: aviso para conferir");
+const ctps = avaliar([RGa, { indice: 2, tipo: "CTPS", nomePessoa: "ANA MARIA SOUZA", empregador: "COLEGIO ALFA" }]);
+b.igual(ctps.campos.comprovanteVinculo.valor, "CTPS", "carteira de trabalho aceita");
+b.ok(ctps.pendencias.some(p => /data de saída/.test(p.texto)), "com o lembrete de conferir se o contrato não tem saída");
+b.ok(!ctps.pendencias.some(p => p.tipo === "FALTA"), "e não pede contracheque");
+const nada = avaliar([RGa]);
+b.ok(nada.pendencias.some(p => p.tipo === "FALTA" && /contracheque, declaração da escola ou carteira de trabalho/.test(p.texto)),
+  "sem nenhum dos três: falta o comprovante, dizendo as três formas");
+const ccVelho = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: "07/2026", empregador: "COLEGIO ALFA" }]);
+b.igual(ccVelho.estado, "FALTA_DOC", "contracheque de julho em outubro: falta o último");
+const ccOk = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: "09/2026", empregador: "COLEGIO ALFA" }]);
+b.igual(ccOk.estado, "PRONTO", "contracheque de setembro em 29/10: é o último, PRONTO");
 
 b.naoTestavel("a IA real lendo contracheque escaneado", "a IA está simulada aqui — testar no ar com pedidos reais");
 b.naoTestavel("o leitor rodando na conta da Secretaria e saindo como secretaria@",
