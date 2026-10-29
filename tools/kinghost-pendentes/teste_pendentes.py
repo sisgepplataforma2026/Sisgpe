@@ -81,6 +81,12 @@ enviado2 = eml(SEC, "Rui <rui@exemplo.com>", "RES: Bolsa 2026/2", "<s2@x>", pdf=
 falta_doc = eml("Carla <carla@exemplo.com>", SEC, "Voucher 2027/1 Direito", "<a7@x>")
 enviado3 = eml(SEC, "carla@exemplo.com", "Re: Voucher 2027/1 Direito", "<s3@x>", reply_to_id="<a7@x>",
                corpo="Falta o contracheque.")
+# Voucher mandado num e-mail NOVO, com outro assunto, depois do pedido: conclui.
+novo_assunto = eml("Edu <edu@exemplo.com>", SEC, "Bolsa 2027/1 Medicina", "<a9@x>", data="Mon, 05 Oct 2026 10:00:00 -0300")
+enviado5 = eml(SEC, "edu@exemplo.com", "Seu certificado", "<s5@x>", pdf=True, data="Tue, 06 Oct 2026 09:00:00 -0300")
+# ...mas um PDF mandado ANTES do pedido não conclui o pedido novo.
+antigo_pdf = eml(SEC, "fabi@exemplo.com", "Certificado 2026/1", "<s6@x>", pdf=True, data="Mon, 02 Feb 2026 09:00:00 -0300")
+pedido_fabi = eml("Fabi <fabi@exemplo.com>", SEC, "Voucher 2027/1", "<a10@x>", data="Mon, 05 Oct 2026 10:00:00 -0300")
 # A resposta-padrão da Secretaria a todo pedido (texto real, 29/10/2026):
 # orienta e lista os documentos — NÃO leva voucher, não conclui.
 padrao = eml("Davi <davi@exemplo.com>", SEC, "Voucher bolsa 2026/2", "<a8@x>")
@@ -90,9 +96,9 @@ enviado4 = eml(SEC, "davi@exemplo.com", "RE: Voucher bolsa 2026/2", "<s4@x>", re
 
 imap = ImapFalso({
     "CERTIFICADO 2027-1": [pend, resp_por_id, da_secretaria, falta_doc],
-    "CERTIFICADO 2026-2": [resp_por_assunto, outra_pasta, padrao],
+    "CERTIFICADO 2026-2": [resp_por_assunto, outra_pasta, padrao, novo_assunto, pedido_fabi],
     "CERTIFICADOS 2026-2 - EMITIDOS": [emitido],
-    "INBOX.Sent": [enviado1, enviado2, enviado3, enviado4],
+    "INBOX.Sent": [enviado1, enviado2, enviado3, enviado4, enviado5, antigo_pdf],
 })
 
 print("━━━ ROBÔ DE PENDENTES DA KINGHOST ━━━")
@@ -114,17 +120,19 @@ ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in imap.comandos),
 
 pend_lista, cont = P.separar_pendentes(pedidos, enviados, {"secretaria@sindeducacao.com"})
 quem = sorted(P.endereco(P.email.message_from_bytes(p["raw"]).get("From")) for p in pend_lista)
-ok(quem == ["bia@exemplo.com", "carla@exemplo.com", "davi@exemplo.com", "lucia@exemplo.com"],
-   "pendentes: Bia, Carla, Davi e Lúcia — " + ", ".join(quem))
-ok(cont["respondidos"] == 2, "concluídos (voucher em PDF): Marcos (por In-Reply-To) e Rui (por 'RES: mesmo assunto')")
+ok(quem == ["bia@exemplo.com", "carla@exemplo.com", "davi@exemplo.com", "fabi@exemplo.com", "lucia@exemplo.com"],
+   "pendentes: Bia, Carla, Davi, Fabi e Lúcia — " + ", ".join(quem))
+ok("edu@exemplo.com" not in quem, "Edu: voucher em e-mail novo, com outro assunto, depois do pedido — concluído")
+ok("fabi@exemplo.com" in quem, "Fabi: o PDF que ela recebeu foi ANTES deste pedido — segue pendente")
+ok(cont["respondidos"] == 3, "concluídos (voucher em PDF): Marcos (In-Reply-To), Rui ('RES: mesmo assunto') e Edu (e-mail novo)")
 ok(cont["sem_voucher"] == 2, "Carla (pedimos o contracheque) e Davi (só a resposta-padrão com a lista de documentos): continuam PENDENTES")
 ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "V.pdf"))') and not P.tem_pdf_anexo(b'("text" "plain")'),
    "sabe dizer se a resposta levou PDF")
 ok(P.tem_pdf_anexo(b'("application" "octet-stream" ("name" "Voucher 2027.pdf"))'), "PDF mandado como 'octet-stream' também conta")
 ok(not P.tem_pdf_anexo(b'("image" "png" ("name" "assinatura.png"))'), "imagem da assinatura não conta como voucher")
 ok(cont["nossos"] == 1, "a mensagem da própria Secretaria não conta como pedido")
-ok(all(p["raw"] in (pend, outra_pasta, falta_doc, padrao) for p in pend_lista), "o e-mail vai inteiro, como veio")
-ok(len({P.nome_arquivo(p) for p in pend_lista}) == 4, "cada pendente tem nome de arquivo próprio e estável")
+ok(all(p["raw"] in (pend, outra_pasta, falta_doc, padrao, pedido_fabi) for p in pend_lista), "o e-mail vai inteiro, como veio")
+ok(len({P.nome_arquivo(p) for p in pend_lista}) == 5, "cada pendente tem nome de arquivo próprio e estável")
 ok(P.nome_arquivo(pend_lista[0]) == P.nome_arquivo(pend_lista[0]), "o nome não muda entre execuções (não duplica)")
 
 # Como o main faz: cabeçalhos de tudo, .eml inteiro só dos pendentes.
@@ -135,8 +143,8 @@ pend2, _ = P.separar_pendentes(cab, enviados, {"secretaria@sindeducacao.com"})
 bruto_de = {p["nome"]: p["bruto"] for p in alvo}
 imap.comandos.clear()
 inteiros = [P.mensagem_inteira(imap, bruto_de[p["pasta"]], p["uid"]) for p in pend2]
-ok(sorted(inteiros) == sorted([pend, outra_pasta, falta_doc, padrao]), "o .eml inteiro vem só dos pendentes, pelo uid certo")
-ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 4, "anexos baixados só 4 vezes (os 4 pendentes)")
+ok(sorted(inteiros) == sorted([pend, outra_pasta, falta_doc, padrao, pedido_fabi]), "o .eml inteiro vem só dos pendentes, pelo uid certo")
+ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 5, "anexos baixados só 5 vezes (os 5 pendentes)")
 
 arq = P.nome_arquivo({"pasta": "INBOX.CERTIFICADO 2027-1", "chave": "abc"})
 ok(arq == "CERTIFICADO-2027-1__abc.eml", "o prefixo INBOX. da KingHost sai do nome — " + arq)

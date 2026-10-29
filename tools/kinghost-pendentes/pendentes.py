@@ -90,7 +90,7 @@ def mensagem_inteira(imap, bruto, uid):
 # Um "recebemos, aguarde" não conclui nada. O voucher sai sempre em PDF, no
 # modelo já aprovado; então a prova é um PDF anexado à resposta. O
 # BODYSTRUCTURE diz isso sem baixar o arquivo.
-CAB_ENVIADO = "(BODYSTRUCTURE BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
+CAB_ENVIADO = "(BODYSTRUCTURE BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT DATE IN-REPLY-TO REFERENCES)])"
 
 
 def tem_pdf_anexo(estrutura):
@@ -156,6 +156,14 @@ def assunto_base(s):
         s = novo
 
 
+def data_de(msg):
+    try:
+        d = email.utils.parsedate_to_datetime(str(msg.get("Date", "") or ""))
+        return d.timestamp() if d else None
+    except Exception:
+        return None
+
+
 def ids_referenciados(msg):
     ids = set()
     for cab in ("In-Reply-To", "References"):
@@ -169,6 +177,7 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
     enviados_brutos: [(bytes, levou_pdf)] — bytes sozinho conta como SEM anexo.
     Devolve (pendentes, contagem)."""
     concluido_id, concluido_par = set(), set()      # resposta COM o voucher
+    pdf_para = {}                                   # endereço → datas em que recebeu PDF
     respondido_id, respondido_par = set(), set()    # qualquer resposta
     for item in enviados_brutos:
         raw, levou_pdf = item if isinstance(item, tuple) else (item, False)
@@ -185,6 +194,11 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
         if levou_pdf:
             concluido_id |= ids
             concluido_par |= pares
+            # Voucher mandado num e-mail NOVO, com outro assunto, também
+            # conclui: PDF para o mesmo endereço depois da data do pedido.
+            quando = data_de(m)
+            for end, _ in pares:
+                pdf_para.setdefault(end, []).append(quando)
     pendentes, cont = [], {"lidos": 0, "nossos": 0, "respondidos": 0, "pendentes": 0, "sem_voucher": 0}
     for pasta, lista in pedidos_brutos.items():
         for item in lista:
@@ -197,7 +211,9 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
                 continue
             mid = str(m.get("Message-ID", "") or "").strip().lower()
             par = (de, assunto_base(m.get("Subject")))
-            if (mid and mid in concluido_id) or par in concluido_par:
+            pedido_em = data_de(m)
+            pdf_depois = any(d is None or pedido_em is None or d >= pedido_em for d in pdf_para.get(de, []))
+            if (mid and mid in concluido_id) or par in concluido_par or pdf_depois:
                 cont["respondidos"] += 1
                 continue
             if (mid and mid in respondido_id) or par in respondido_par:
@@ -244,13 +260,17 @@ def pasta_drive(token):
     return nova["id"]
 
 
-def ja_enviados(token, pasta_id):
-    nomes, pagina = set(), ""
+def ja_enviados(token, pasta_id, com_id=False):
+    nomes, pagina = ({} if com_id else set()), ""
     while True:
         q = urllib.parse.quote("'%s' in parents and trashed = false" % pasta_id)
         r = drive(token, "GET", "https://www.googleapis.com/drive/v3/files?q=" + q +
-                  "&fields=nextPageToken,files(name)&pageSize=1000" + ("&pageToken=" + pagina if pagina else ""))
-        nomes |= {f["name"] for f in r.get("files", [])}
+                  "&fields=nextPageToken,files(id,name)&pageSize=1000" + ("&pageToken=" + pagina if pagina else ""))
+        for f in r.get("files", []):
+            if com_id:
+                nomes[f["name"]] = f["id"]
+            else:
+                nomes.add(f["name"])
         pagina = r.get("nextPageToken")
         if not pagina:
             return nomes
@@ -317,7 +337,17 @@ def main():
         return 0
     token = token_google()
     pid = pasta_drive(token)
-    existentes = ja_enviados(token, pid)
+    existentes = ja_enviados(token, pid, com_id=True)
+    # O que deixou de ser pendente (a regra ficou mais precisa, ou o voucher
+    # saiu depois) sai da pasta — vai para a lixeira, só arquivo nosso.
+    agora = {nome_arquivo(p) for p in pendentes}
+    tirados = 0
+    for nome, fid in existentes.items():
+        if nome.endswith(".eml") and nome not in agora:
+            drive(token, "PATCH", "https://www.googleapis.com/drive/v3/files/" + fid, json.dumps({"trashed": True}).encode())
+            tirados += 1
+    if tirados:
+        print("Tirados da pasta (não são mais pendentes): %d" % tirados)
     novos = 0
     for p in pendentes:
         nome = nome_arquivo(p)
