@@ -6410,6 +6410,8 @@ Médica**. Testado no emulador (t209, t47, t48, t53, t120, t135; suíte verde).
 
 Só depois disso publicar em produção — é o texto que a Marcela emite todo dia.
 
-Observação: os valores-padrão de memória (`MemoriaCore.gs`) só são gravados
-quando a memória é criada; se a planilha de produção já tiver "Cláusula 56ª"
-gravado em ESTILO_OFICIO, ele continua lá até alguém editar.
+Observação: a memória organizacional (`MemoriaCore.gs`) só muda quando alguém
+roda `popularMemoriaInstitucional`. Até lá, se a aba de memória já tiver
+"Cláusula 56ª" em ESTILO_OFICIO, ele continua lá. (Essa função apaga e regrava
+INSTITUCIONAL/ESTILO_OFICIO/ASSINATURA, mas não ESTILO_COBRANCA: rodar de novo
+duplica as linhas de cobrança — não é desta mudança, fica anotado.)
