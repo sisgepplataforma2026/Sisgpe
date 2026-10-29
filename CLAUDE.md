@@ -215,8 +215,10 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
 - O conteúdo passa a ficar numa planilha da conta do Financeiro (é onde o
   SISGEP roda) — o usuário sabe e aceitou.
 - Propaganda e notificação automática continuam de fora.
-- Guias/boletos que chegam na secretaria@ aparecerem para o Financeiro:
-  **ainda não decidido** — não liberar sem resposta dele.
+- **A Secretaria vê todos os e-mails da caixa dela**, de todos os tipos,
+  inclusive guia/boleto (usuário, 29/10/2026).
+- Guias/boletos da secretaria@ aparecerem também para o Financeiro:
+  **ainda não decidido** — sem resposta dele, o Financeiro não vê.
 
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
