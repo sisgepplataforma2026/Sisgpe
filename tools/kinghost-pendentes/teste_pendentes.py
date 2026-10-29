@@ -34,6 +34,7 @@ class ImapFalso:
         self.selecionada = None
         self.modos = []
         self.comandos = []
+        self.buscas = []
 
     def list(self):
         return "OK", [('(\\HasNoChildren%s) "/" "%s"' % (" \\Sent" if "Sent" in n else "", n)).encode() for n in self.pastas]
@@ -47,14 +48,23 @@ class ImapFalso:
         self.comandos.append((cmd, args))
         lista = self.pastas[self.selecionada]
         if cmd == "SEARCH":
+            self.buscas.append(args)
             return "OK", [" ".join(str(i + 1) for i in range(len(lista))).encode()]
-        i = int(args[0]) - 1
-        cab = b"1 (UID %d BODY[] {n}" % (i + 1)
-        if "BODYSTRUCTURE" in str(args[1]):
-            est = (b'(("text" "plain" NIL NIL NIL "7bit" 10 1)("application" "pdf" ("name" "Voucher.pdf") NIL NIL "base64" 900) "mixed")'
-                   if b"application/pdf" in lista[i] else b'("text" "plain" NIL NIL NIL "7bit" 10 1)')
-            cab = b"1 (UID %d BODYSTRUCTURE " % (i + 1) + est + b" BODY[HEADER.FIELDS] {n}"
-        return "OK", [(cab, lista[i]), b")"]
+        saida = []
+        for u in (args[0].decode() if isinstance(args[0], bytes) else str(args[0])).split(","):
+            i = int(u) - 1
+            cab = b"%d (UID %d BODY[] {n}" % (i + 1, i + 1)
+            resto = b")"
+            if "BODYSTRUCTURE" in str(args[1]):
+                est = (b'(("text" "plain" NIL NIL NIL "7bit" 10 1)("application" "pdf" ("name" "Voucher.pdf") NIL NIL "base64" 900) "mixed")'
+                       if b"application/pdf" in lista[i] else b'("text" "plain" NIL NIL NIL "7bit" 10 1)')
+                if i % 2:   # metade das vezes o servidor manda a estrutura DEPOIS do cabeçalho
+                    cab = b"%d (UID %d BODY[HEADER.FIELDS] {n}" % (i + 1, i + 1)
+                    resto = b" BODYSTRUCTURE " + est + b")"
+                else:
+                    cab = b"%d (UID %d BODYSTRUCTURE " % (i + 1, i + 1) + est + b" BODY[HEADER.FIELDS] {n}"
+            saida += [(cab, lista[i]), resto]
+        return "OK", saida
 
 
 SEC = "Marcelha <secretaria@sindeducacao.com>"
@@ -93,9 +103,11 @@ ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2026-2", "CERTIFICADO 2027-1
 ok([p["nome"] for p in env] == ["INBOX.Sent"], "acha a pasta de enviados")
 
 pedidos = {p["nome"]: P.mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
-enviados = P.mensagens_da_pasta(imap, env[0]["bruto"], so_cabecalho=True)
+enviados = P.mensagens_da_pasta(imap, env[0]["bruto"], so_cabecalho=True, desde=P.ENVIADOS_DESDE)
 ok(any("HEADER.FIELDS" in str(a) and "BODYSTRUCTURE" in str(a) for c, a in imap.comandos if c == "FETCH"),
    "dos enviados baixa só o cabeçalho e a estrutura (sem o PDF)")
+ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 3, "um FETCH por pasta (em lote), não um por e-mail")
+ok(any("SINCE" in a for a in imap.buscas), "nos enviados, só de 2026 para cá")
 ok(all(m is True for m in imap.modos), "toda pasta é aberta em modo SÓ LEITURA")
 ok(all("PEEK" in str(a) for c, a in imap.comandos if c == "FETCH"), "toda leitura usa BODY.PEEK (não marca como lido)")
 ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in imap.comandos), "nenhum comando que altere a caixa")
@@ -125,6 +137,9 @@ imap.comandos.clear()
 inteiros = [P.mensagem_inteira(imap, bruto_de[p["pasta"]], p["uid"]) for p in pend2]
 ok(sorted(inteiros) == sorted([pend, outra_pasta, falta_doc, padrao]), "o .eml inteiro vem só dos pendentes, pelo uid certo")
 ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 4, "anexos baixados só 4 vezes (os 4 pendentes)")
+
+arq = P.nome_arquivo({"pasta": "INBOX.CERTIFICADO 2027-1", "chave": "abc"})
+ok(arq == "CERTIFICADO-2027-1__abc.eml", "o prefixo INBOX. da KingHost sai do nome — " + arq)
 
 ok(P.decodificar_utf7("Itens &AOk-nviados") == "Itens énviados", "nome de pasta em UTF-7 é decodificado")
 ok(P.assunto_base("RES: Fwd: ENC: Bolsa 2026/2") == "bolsa 2026/2", "assunto sem RES/Fwd/ENC")

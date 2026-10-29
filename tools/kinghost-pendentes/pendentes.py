@@ -99,30 +99,46 @@ def tem_pdf_anexo(estrutura):
                           r'|"(file)?name\*?"\s+"[^"]*\.pdf"', e, re.I))
 
 
-def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False):
+# Pedidos 2026/2 e 2027/1 só existem de 2026 para cá; respostas, idem.
+ENVIADOS_DESDE = "01-Jan-2026"
+LOTE = 200   # mensagens por FETCH: uma ida ao servidor por lote, não por e-mail
+
+
+def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False, desde=None):
+    """desde: "01-Jan-2026" limita a busca (a pasta de Enviados tem anos)."""
     tipo, _ = imap.select('"' + bruto + '"', readonly=True)
     if tipo != "OK":
         return []
-    tipo, dados = imap.uid("SEARCH", None, "ALL")
+    tipo, dados = imap.uid("SEARCH", None, "SINCE", desde) if desde else imap.uid("SEARCH", None, "ALL")
     uids = (dados[0] or b"").split() if tipo == "OK" else []
+    # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
+    # baixar anexo de cada e-mail que a Secretaria já mandou.
+    pedido = item or (CAB_ENVIADO if so_cabecalho else "(BODY.PEEK[])")
     saida = []
-    for uid in uids:
-        # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
-        # baixar anexo de cada e-mail que a Secretaria já mandou.
-        pedido = item or (CAB_ENVIADO if so_cabecalho else "(BODY.PEEK[])")
-        tipo, partes = imap.uid("FETCH", uid, pedido)
+    for i in range(0, len(uids), LOTE):
+        lote = b",".join(u if isinstance(u, bytes) else str(u).encode() for u in uids[i:i + LOTE])
+        tipo, partes = imap.uid("FETCH", lote, pedido)
         if tipo != "OK":
             continue
-        # O BODYSTRUCTURE pode vir antes ou depois do cabeçalho na resposta.
-        estrutura = b" ".join(x[0] if isinstance(x, tuple) else x for x in partes
-                              if isinstance(x, (tuple, bytes)))
-        for p in partes:
-            if isinstance(p, tuple) and len(p) >= 2:
-                if so_cabecalho:
-                    saida.append((p[1], tem_pdf_anexo(estrutura)))
-                else:
-                    saida.append((uid, p[1]) if com_uid else p[1])
+        # Cada mensagem vem como (prefixo, literal) e, às vezes, um resto
+        # solto depois. O BODYSTRUCTURE pode estar no prefixo ou no resto.
+        atual = None
+        for x in list(partes or []) + [None]:
+            if isinstance(x, tuple) or x is None:
+                if atual:
+                    _fechar(atual, saida, so_cabecalho, com_uid)
+                atual = {"meta": x[0], "raw": x[1]} if isinstance(x, tuple) and len(x) >= 2 else None
+            elif isinstance(x, bytes) and atual:
+                atual["meta"] += b" " + x
     return saida
+
+
+def _fechar(m, saida, so_cabecalho, com_uid):
+    uid = (re.search(rb"UID (\d+)", m["meta"]) or [None, None])[1]
+    if so_cabecalho:
+        saida.append((m["raw"], tem_pdf_anexo(m["meta"])))
+    else:
+        saida.append((uid, m["raw"]) if com_uid else m["raw"])
 
 
 # ── A REGRA: o que é pendente ────────────────────────────────────────────
@@ -251,7 +267,10 @@ def subir(token, pasta_id, nome, raw):
 
 
 def nome_arquivo(p):
-    pasta = re.sub(r"[^A-Za-z0-9-]+", "-", p["pasta"]).strip("-")
+    # Na KingHost a pasta é "INBOX.CERTIFICADO 2027-1"; a etiqueta no Gmail
+    # é só "CERTIFICADO 2027-1" (o leitor procura por esse nome).
+    nome = re.split(r"[./]", p["pasta"])[-1]
+    pasta = re.sub(r"[^A-Za-z0-9-]+", "-", nome).strip("-")
     return "%s__%s.eml" % (pasta, p["chave"])
 
 
@@ -286,7 +305,7 @@ def main():
         print("  %s: %d mensagem(ns)" % (p["nome"], len(pedidos[p["nome"]])))
     env = []
     for p in enviados:
-        env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True))
+        env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True, desde=ENVIADOS_DESDE))
     print("  enviados: %d mensagem(ns)" % len(env))
     pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
     print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · concluídos (voucher anexado): "
