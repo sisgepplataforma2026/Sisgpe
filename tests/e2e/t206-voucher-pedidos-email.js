@@ -292,7 +292,8 @@ b.ok(/1\. Documentação do solicitante/.test(ry) && /2\. Informações sobre o 
   /3\. Documentação do dependente/.test(ry), "nos três blocos");
 b.ok(/Declaração da escola, em caso de contratação recente/.test(ry) && /Registro do contrato de trabalho/.test(ry),
   "com as três formas de comprovar vínculo");
-b.ok(/Semestre desejado: 2026\/2 ou 2027\/1\./.test(ry), "e os semestres abertos de verdade");
+b.ok(/Semestre desejado: 2027\/1\./.test(ry), "e oferece só o próximo semestre (2027/1)");
+b.igual(g.vpePeriodosAbertos_(new Date(2026, 9, 29)), ["2026/2", "2027/1"], "mas 2026/2 continua aberto para quem já pediu");
 b.ok(/Ainda não é associado\(a\)\?/.test(ry) && /até 15 dias úteis/.test(ry), "com a parte de não associados");
 b.ok(/Marcelha Aline\nAdministrativo \/ Secretaria/.test(ry), "e a assinatura da Secretaria");
 const pBia6 = g.voucherPedidosDetalhe(pedidoDa(thBia).ID_PEDIDO, TOKEN_SEC);

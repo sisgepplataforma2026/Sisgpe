@@ -228,6 +228,14 @@ function vpePeriodosAbertos_(hoje) {
   return [ano + "/" + sem, prox];
 }
 
+/** O semestre que o texto OFERECE a quem pede agora: o próximo (usuário,
+ *  29/10/2026: "agora é 2027.1"). O anterior continua ABERTO — quem já pediu
+ *  2026/2 ainda é atendido —, só não é mais oferecido. */
+function vpePeriodosOferecidos_(abertos) {
+  abertos = abertos || vpePeriodosAbertos_();
+  return abertos.length ? [abertos[abertos.length - 1]] : [];
+}
+
 /** "07/2026", "julho/2026", "2026-07" → {mes:7, ano:2026}. */
 function vpeCompetencia_(v) {
   var s = vpeNorm_(v);
@@ -434,10 +442,10 @@ function vpeAvaliar_(ext, ctx) {
   var periodo = campo("periodo", vpePeriodo_(ext.periodo), "escrito no e-mail");
   periodo = vpePeriodo_(periodo);
   if (!periodo) {
-    add("FALTA", "Semestre desejado não informado.", "o semestre desejado (" + abertos.join(" ou ") + ")");
+    add("FALTA", "Semestre desejado não informado.", "o semestre desejado (" + vpePeriodosOferecidos_(abertos).join(" ou ") + ")");
   } else if (abertos.indexOf(periodo) === -1) {
     add("FALTA", "Semestre " + periodo + " não está aberto (abertos: " + abertos.join(", ") + ").",
-      "o semestre desejado — os abertos são " + abertos.join(" ou "));
+      "o semestre desejado — o aberto para novos pedidos é " + vpePeriodosOferecidos_(abertos).join(" ou "));
   }
 
   /* ── documentos do titular ── */
@@ -615,7 +623,7 @@ function vpeTextoPadrao_(ola, abertos) {
     "2. Informações sobre o curso",
     "• Nome do curso;",
     "• Nome da instituição de ensino;",
-    "• Semestre desejado: " + abertos.join(" ou ") + ".",
+    "• Semestre desejado: " + vpePeriodosOferecidos_(abertos).join(" ou ") + ".",
     "",
     "3. Documentação do dependente (quando necessário)",
     "Caso o voucher seja destinado a um dependente, encaminhe também:",
