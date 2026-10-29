@@ -93,6 +93,22 @@
   border-bottom: 2px solid var(--surface); margin-bottom: -2px; }
 #vpeAbas .vpe-badge { background: var(--red); color: #fff; border-radius: 999px; font-size: 11px; padding: 2px 8px; }
 #vpeSecao { margin-top: 0; }
+/* Filtros (29/10/2026) — Entrada e Emitidos */
+.vpe-filtros { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--g50); border: 1px solid var(--g200);
+  border-radius: 10px; padding: 8px 10px; margin-top: 10px; font-family: 'Plus Jakarta Sans', sans-serif; }
+.vpe-filtros input[type=search], .vpe-filtros select { border: 1px solid var(--g200); border-radius: 8px; padding: 6px 9px;
+  font: inherit; font-size: 12.5px; background: #fff; }
+.vpe-filtros input[type=search] { flex: 1; min-width: 220px; }
+.vpe-filtros label { font-size: 12.5px; color: var(--g600); display: inline-flex; gap: 4px; align-items: center; }
+.vpe-filtros .vpe-limpar { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; margin-left: auto; }
+#vpeEmitidos { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 0 18px; }
+#vpeEmitidos .vpe-emi-barra { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+#vpeEmitidos .vpe-emi-linha { background: var(--surface); border: var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 6px;
+  display: grid; grid-template-columns: 26px 1.6fr 1.2fr 1.6fr 0.9fr 1fr; gap: 8px; align-items: center; font-size: 12.5px; }
+#vpeEmitidos .vpe-emi-linha small { color: var(--g500); display: block; }
+#vpeEmitidos .vpe-emi-aviso { grid-column: 2 / -1; background: var(--amber-lt); color: #92400e; border-radius: 8px; padding: 4px 8px; font-size: 11.5px; }
+#vpeEnvOverlay .vpe-env-lista { max-height: 320px; overflow: auto; font-size: 13px; margin: 8px 0; }
+#vpeEnvOverlay .vpe-env-lista div { padding: 6px 0; border-bottom: 1px solid var(--g100); }
 #vpeSecao .vpe-mini { margin: 10px 2px 4px; font-size: 12.5px; color: var(--g500); font-weight: 600; }
 #vpeSecao .vpe-mini button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; }
 #vpeSecao .vpe-mini button.ativo { color: var(--blue); text-decoration: underline; }
@@ -116,9 +132,11 @@
 
 <div id="vpeAbas" role="tablist">
   <button type="button" class="vpe-aba" id="vpeAbaPedidos" role="tab" data-vpe="aba" data-arg="pedidos">
-    📨 Pedidos por e-mail <span class="vpe-badge" id="vpeAbaBadge" style="display:none;"></span></button>
+    📨 1 · Entrada <span class="vpe-badge" id="vpeAbaBadge" style="display:none;"></span></button>
+  <button type="button" class="vpe-aba" id="vpeAbaEmitidos" role="tab" data-vpe="aba" data-arg="emitidos">
+    📄 2 · Emitidos — aguardando envio <span class="vpe-badge" id="vpeAbaBadgeEmi" style="display:none;background:var(--navy);"></span></button>
   <button type="button" class="vpe-aba on" id="vpeAbaSolicitacoes" role="tab" data-vpe="aba" data-arg="solicitacoes">
-    🎓 Solicitações e certificados</button>
+    🎓 3 · Solicitações, enviados e presenciais</button>
 </div>
 
 <div id="vpeSecao" style="display:none;">
@@ -140,7 +158,47 @@
       <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnGatilho" data-vpe="ligarGatilho"
               style="display:none;margin-left:8px;">Ligar leitura automática</button>
     </div>
+    <div class="vpe-filtros" id="vpeFiltros">
+      <input type="search" id="vpeFBusca" placeholder="🔎 Buscar nome, CPF, e-mail ou protocolo…">
+      <select id="vpeFSemestre"><option value="">Semestre: todos</option></select>
+      <select id="vpeFEscola"><option value="">Escola: todas</option></select>
+      <select id="vpeFPara"><option value="">Para: titular e dependente</option><option value="TITULAR">Só titular</option><option value="DEPENDENTE">Só dependente</option></select>
+      <label><input type="checkbox" id="vpeFAntigos"> Só os esperando há 3 dias ou mais</label>
+      <button type="button" class="vpe-limpar" data-vpe="limparFiltros">Limpar filtros</button>
+    </div>
     <div class="vpe-lista" id="vpeLista"></div>
+  </div>
+</div>
+
+<div id="vpeEmitidos" style="display:none;">
+  <div class="vpe-filtros">
+    <input type="search" id="vpeEBusca" placeholder="🔎 Buscar nome, CPF, e-mail ou protocolo…">
+    <select id="vpeESemestre"><option value="">Semestre: todos</option></select>
+    <select id="vpeEEscola"><option value="">Escola: todas</option></select>
+    <select id="vpeEConferido"><option value="">Conferido por: todos</option></select>
+    <button type="button" class="vpe-limpar" data-vpe="limparFiltrosEmi">Limpar filtros</button>
+  </div>
+  <div class="vpe-emi-barra">
+    <label style="font-size:12.5px;font-weight:700;color:var(--g600);"><input type="checkbox" id="vpeEmiTodos"> Marcar todos da lista</label>
+    <button type="button" class="btn btn-navy" id="vpeEmiEnviar" data-vpe="conferirEnvio">Enviar selecionados (0)</button>
+  </div>
+  <div id="vpeEmiLista"></div>
+  <div style="font-size:11.5px;color:var(--g500);margin-top:8px;">Ao enviar, o voucher é refeito com a <b>data do envio</b> (mesmo código, mesmo percentual)
+    e sai como <b>resposta no e-mail do pedido</b>, pela caixa da Secretaria. Presenciais: aba 3.</div>
+</div>
+
+<div class="of-modal-overlay" id="vpeEnvOverlay">
+  <div class="of-modal" style="max-width:640px;">
+    <div class="of-modal-head"><div class="of-modal-title">Conferir antes de enviar</div>
+      <button type="button" class="of-modal-close" data-vpe="fecharEnvio">✕</button></div>
+    <div class="of-modal-body">
+      <div id="vpeEnvResumo" style="font-size:13px;"></div>
+      <div class="vpe-env-lista" id="vpeEnvLista"></div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" data-vpe="fecharEnvio">Cancelar</button>
+      <button type="button" class="btn btn-navy" id="vpeEnvConfirmar" data-vpe="enviarEmitidos">Enviar</button>
+    </div>
   </div>
 </div>
 
@@ -275,20 +333,24 @@ var VPE = (function () {
       var esperando = (c.PRONTO || 0) + (c.PRECISA_VOCE || 0) + (c.FALTA_DOC || 0) + (c.NAO_ENCONTRADO || 0);
       var badge = el("vpeAbaBadge");
       badge.textContent = esperando; badge.style.display = esperando ? "" : "none";
+      var bEmi = el("vpeAbaBadgeEmi");
+      bEmi.textContent = c.EMITIDO || 0; bEmi.style.display = c.EMITIDO ? "" : "none";
+      preencherFiltros();
       if (!estado.abaEscolhida) mostrarAba(esperando ? "pedidos" : "solicitacoes");
     });
   }
 
   function mostrarAba(qual) {
     estado.aba = qual;
-    var pedidos = qual === "pedidos";
-    el("vpeSecao").style.display = pedidos ? "" : "none";
+    el("vpeSecao").style.display = qual === "pedidos" ? "" : "none";
+    el("vpeEmitidos").style.display = qual === "emitidos" ? "" : "none";
     var sol = document.getElementById("secCertificadoAdmin");
-    if (sol) sol.style.display = pedidos ? "none" : "";
-    el("vpeAbaPedidos").className = "vpe-aba" + (pedidos ? " on" : "");
-    el("vpeAbaSolicitacoes").className = "vpe-aba" + (pedidos ? "" : " on");
-    el("vpeAbaPedidos").setAttribute("aria-selected", pedidos ? "true" : "false");
-    el("vpeAbaSolicitacoes").setAttribute("aria-selected", pedidos ? "false" : "true");
+    if (sol) sol.style.display = qual === "solicitacoes" ? "" : "none";
+    [["vpeAbaPedidos", "pedidos"], ["vpeAbaEmitidos", "emitidos"], ["vpeAbaSolicitacoes", "solicitacoes"]].forEach(function (a) {
+      el(a[0]).className = "vpe-aba" + (qual === a[1] ? " on" : "");
+      el(a[0]).setAttribute("aria-selected", qual === a[1] ? "true" : "false");
+    });
+    if (qual === "emitidos") carregarEmitidos();
   }
 
   function aba(qual) { estado.abaEscolhida = true; mostrarAba(qual); }
@@ -340,12 +402,114 @@ var VPE = (function () {
     }).join(" &nbsp;·&nbsp; ");
   }
 
+  function passaFiltros(i) {
+    var q = (el("vpeFBusca").value || "").trim().toLowerCase();
+    if (q && [i.nome, i.remetente, i.cpfMascarado, i.protocolo, i.curso, i.escola].join(" ").toLowerCase().indexOf(q) === -1) return false;
+    if (el("vpeFSemestre").value && i.periodo !== el("vpeFSemestre").value) return false;
+    if (el("vpeFEscola").value && (i.escola || "") !== el("vpeFEscola").value) return false;
+    var para = el("vpeFPara").value;
+    if (para === "TITULAR" && i.beneficiario) return false;
+    if (para === "DEPENDENTE" && !i.beneficiario) return false;
+    if (el("vpeFAntigos").checked && !(i.recebidoTs && Date.now() - i.recebidoTs >= 3 * 86400000)) return false;
+    return true;
+  }
+  function opcoesDe(sel, valores, rotulo) {
+    var atual = sel.value;
+    var uniq = valores.filter(function (v, k, a) { return v && a.indexOf(v) === k; }).sort();
+    sel.innerHTML = "<option value=''>" + esc(rotulo) + "</option>" + uniq.map(function (v) {
+      return "<option" + (v === atual ? " selected" : "") + ">" + esc(v) + "</option>";
+    }).join("");
+  }
+  function preencherFiltros() {
+    var it = (estado.dados && estado.dados.itens) || [];
+    opcoesDe(el("vpeFSemestre"), it.map(function (i) { return i.periodo; }), "Semestre: todos");
+    opcoesDe(el("vpeFEscola"), it.map(function (i) { return i.escola; }), "Escola: todas");
+  }
+  function limparFiltros() {
+    ["vpeFBusca", "vpeFSemestre", "vpeFEscola", "vpeFPara"].forEach(function (id) { el(id).value = ""; });
+    el("vpeFAntigos").checked = false;
+    desenharLista();
+  }
+
+  /* ── 2 · EMITIDOS, AGUARDANDO ENVIO (29/10/2026) ── */
+  function carregarEmitidos() {
+    rodar("voucherPedidosEmitidos", [], function (r) {
+      if (!r.ok) { el("vpeEmiLista").innerHTML = "<div class='vpe-vazio'>" + esc(r.mensagem || "Não foi possível carregar.") + "</div>"; return; }
+      estado.emitidos = r.itens || [];
+      opcoesDe(el("vpeESemestre"), estado.emitidos.map(function (i) { return i.periodo; }), "Semestre: todos");
+      opcoesDe(el("vpeEEscola"), estado.emitidos.map(function (i) { return i.escola; }), "Escola: todas");
+      opcoesDe(el("vpeEConferido"), estado.emitidos.map(function (i) { return i.conferidoPor; }), "Conferido por: todos");
+      desenharEmitidos();
+    });
+  }
+  function emitidosVisiveis() {
+    var q = (el("vpeEBusca").value || "").trim().toLowerCase();
+    return (estado.emitidos || []).filter(function (i) {
+      if (q && [i.nome, i.para, i.protocolo, i.curso, i.escola].join(" ").toLowerCase().indexOf(q) === -1) return false;
+      if (el("vpeESemestre").value && i.periodo !== el("vpeESemestre").value) return false;
+      if (el("vpeEEscola").value && i.escola !== el("vpeEEscola").value) return false;
+      if (el("vpeEConferido").value && i.conferidoPor !== el("vpeEConferido").value) return false;
+      return true;
+    });
+  }
+  function desenharEmitidos() {
+    estado.marcadosEmi = estado.marcadosEmi || {};
+    var vis = emitidosVisiveis();
+    if (!vis.length) {
+      el("vpeEmiLista").innerHTML = "<div class='vpe-vazio' style='margin-top:8px;'>" +
+        ((estado.emitidos || []).length ? "Nada com esses filtros." : "Nenhum voucher emitido aguardando envio.") + "</div>";
+    } else {
+      el("vpeEmiLista").innerHTML = vis.map(function (i) {
+        return "<div class='vpe-emi-linha'><input type='checkbox' class='vpe-emi-chk' data-id='" + esc(i.id) + "'" +
+          (estado.marcadosEmi[i.id] ? " checked" : "") + ">" +
+          "<div><b>" + esc(i.nome) + "</b>" + (i.beneficiario ? "<small>para " + esc(i.beneficiario) + "</small>" : "") + "<small>" + esc(i.protocolo) + "</small></div>" +
+          "<div>" + esc(i.periodo) + " · " + esc(i.curso) + (i.percentual !== "" ? " · " + esc(i.percentual) + "%" : "") + "</div>" +
+          "<div>↩ resposta no e-mail do pedido<small>" + esc(i.para) + " · caixa da Secretaria</small></div>" +
+          "<div>" + esc(i.emitidoEm) + "<small>sai com a data do envio</small></div>" +
+          "<div><small>conferido por</small>" + esc(i.conferidoPor) + "</div>" +
+          (i.aviso ? "<div class='vpe-emi-aviso'>⚠ " + esc(i.aviso) + "</div>" : "") + "</div>";
+      }).join("");
+    }
+    contarEmi();
+  }
+  function contarEmi() {
+    var n = Object.keys(estado.marcadosEmi || {}).filter(function (k) { return estado.marcadosEmi[k]; }).length;
+    el("vpeEmiEnviar").textContent = "Enviar selecionados (" + n + ")";
+    el("vpeEmiEnviar").disabled = !n;
+  }
+  function selecionadosEmi() {
+    return (estado.emitidos || []).filter(function (i) { return estado.marcadosEmi && estado.marcadosEmi[i.id]; });
+  }
+  function conferirEnvio() {
+    var sel = selecionadosEmi();
+    if (!sel.length) { aviso("Marque quem vai receber.", "warn"); return; }
+    el("vpeEnvResumo").innerHTML = "Vão sair <b>" + sel.length + "</b> voucher(s), datados de <b>hoje</b>, como resposta no e-mail de cada pedido:";
+    el("vpeEnvLista").innerHTML = sel.map(function (i) {
+      return "<div><b>" + esc(i.nome) + "</b> → " + esc(i.para) + " <small style='color:#64748b'>(" + esc(i.periodo) + " · " + esc(i.curso) + ")</small></div>";
+    }).join("");
+    el("vpeEnvConfirmar").textContent = "Enviar " + sel.length + " voucher(s)";
+    el("vpeEnvConfirmar").disabled = false;
+    el("vpeEnvOverlay").classList.add("aberto");
+  }
+  function fecharEnvio() { el("vpeEnvOverlay").classList.remove("aberto"); }
+  function enviarEmitidos() {
+    var ids = selecionadosEmi().map(function (i) { return i.id; });
+    el("vpeEnvConfirmar").disabled = true;
+    rodar("voucherPedidosEnviarEmitidos", [ids], function (r) {
+      aviso(r.mensagem || (r.ok ? "Enviado." : "Não foi possível."), r.ok ? "ok" : "err");
+      el("vpeEnvResumo").textContent = r.mensagem || "";
+      el("vpeEnvLista").innerHTML = (r.recusados || []).map(function (x) { return "<div>⚠ " + esc(x.mensagem) + "</div>"; }).join("");
+      (r.enviados || []).forEach(function (x) { delete estado.marcadosEmi[x.id]; });
+      carregarEmitidos(); carregar();
+    });
+  }
+
   function desenharLista() {
     var itens = (estado.dados.itens || []).filter(function (i) {
-      if (!estado.filtro) return i.estado !== "CONCLUIDO";
+      if (!estado.filtro) return i.estado !== "CONCLUIDO" && i.estado !== "EMITIDO";
       if (estado.filtro === "CONCLUIDO_HOJE") return i.estado === "CONCLUIDO";
       return i.estado === estado.filtro;
-    });
+    }).filter(passaFiltros);
     itens = itens.slice().sort(function (a, b) {
       var pa = PRIORIDADE[a.estado] || 9, pb = PRIORIDADE[b.estado] || 9;
       return pa !== pb ? pa - pb : (a.recebidoTs || 0) - (b.recebidoTs || 0);
@@ -449,7 +613,10 @@ var VPE = (function () {
     function add(rot, cls, fn, arg) {
       b.push("<button type='button' class='btn " + cls + "' data-vpe='" + fn + "'" + (arg ? " data-arg='" + arg + "'" : "") + ">" + rot + "</button>");
     }
-    if (st !== "CONCLUIDO") {
+    if (st === "EMITIDO") {
+      b.push("<div style='flex-basis:100%;font-size:12.5px;color:#64748b;margin-bottom:6px;'>📄 Voucher emitido — está em " +
+        "<b>2 · Emitidos, aguardando envio</b>. Envie por lá, com a data do envio.</div>");
+    } else if (st !== "CONCLUIDO") {
       add("Descartar", "btn-outline", "descartar");
       add("Salvar e reconferir", "btn-outline", "salvar");
       if (st === "NAO_ENCONTRADO") {
@@ -457,17 +624,21 @@ var VPE = (function () {
         add("Encaminhar à sede", "btn-red", "responder", "SEDE");
       } else {
         if (st !== "PRONTO") add("Enviar pedido de complemento", "btn-outline", "responder", "COMPLEMENTO");
-        add(st === "PRONTO" ? "Conferir e enviar certificado" : "Conferir e enviar mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validar");
+        /* Emitir agora e enviar depois (29/10/2026) — e, para quando quiser,
+           conferir e enviar na hora. */
+        add(st === "PRONTO" ? "Conferir e enviar agora" : "Conferir e enviar mesmo assim", "btn-outline", "validar");
+        add(st === "PRONTO" ? "Conferir e emitir" : "Conferir e emitir mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validarEmitir");
       }
     }
     b.push("<button type='button' class='btn btn-outline' data-vpe='fechar'>Fechar</button>");
     /* Um botão só confere e envia (usuário, 29/10/2026): o aviso diz o que
        o clique significa e para onde vai — fica registrado quem conferiu. */
-    var nota = (st !== "CONCLUIDO" && st !== "NAO_ENCONTRADO")
+    var nota = (st !== "CONCLUIDO" && st !== "NAO_ENCONTRADO" && st !== "EMITIDO")
       ? "<div id='vpeMNotaEnvio' style='flex-basis:100%;font-size:12px;color:#64748b;margin-bottom:6px;'>" +
-        "Ao clicar em <b>Conferir e enviar</b>, você confirma que conferiu os documentos e a filiação. " +
-        "O certificado sai datado de hoje para <b>" + esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") +
-        "</b>, e fica registrado que foi você quem conferiu.</div>" : "";
+        "Ao clicar em <b>Conferir</b>, você confirma que conferiu os documentos e a filiação, e fica registrado que foi você. " +
+        "<b>Conferir e emitir</b> gera o voucher e deixa em \"Emitidos, aguardando envio\". " +
+        "<b>Conferir e enviar agora</b> já manda, datado de hoje, para <b>" +
+        esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") + "</b>.</div>" : "";
     el("vpeMAcoes").innerHTML = nota + b.join("");
   }
 
@@ -568,7 +739,8 @@ var VPE = (function () {
     return null;
   }
 
-  function validar() {
+  function validarEmitir() { validar("emitir"); }
+  function validar(modo) {
     var opc = {};
     if (estado.atual.item.estado !== "PRONTO") {
       var j = pedirMotivo("VALIDAR", "Por que validar com pendência?",
@@ -577,7 +749,8 @@ var VPE = (function () {
       opc = { forcar: true, justificativa: j };
     }
     travar(true);
-    rodar("voucherPedidosValidarEnviar", [estado.atual.item.id, camposDaTela(), opc], function (r) { depois(r, true); });
+    rodar(modo === "emitir" ? "voucherPedidosConferirEmitir" : "voucherPedidosValidarEnviar",
+      [estado.atual.item.id, camposDaTela(), opc], function (r) { depois(r, true); });
   }
 
   function responder(tipo) {
@@ -636,22 +809,38 @@ var VPE = (function () {
   var ACOES = { lerAgora: lerAgora, aba: aba, fechar: fechar, filtrar: filtrar, abrir: abrir,
                 verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
                 responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
-                ligarGatilho: ligarGatilho, voltarModelo: voltarModelo };
+                ligarGatilho: ligarGatilho, voltarModelo: voltarModelo, validarEmitir: validarEmitir,
+                limparFiltros: limparFiltros, limparFiltrosEmi: function () {
+                  ["vpeEBusca", "vpeESemestre", "vpeEEscola", "vpeEConferido"].forEach(function (id) { el(id).value = ""; });
+                  desenharEmitidos(); },
+                conferirEnvio: conferirEnvio, fecharEnvio: fecharEnvio, enviarEmitidos: enviarEmitidos };
   document.addEventListener("click", function (ev) {
     var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
     if (!alvo || alvo.disabled) return;
-    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal") && !alvo.closest("#vpeAbas")) return;
+    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal") && !alvo.closest("#vpeAbas") &&
+        !alvo.closest("#vpeEmitidos") && !alvo.closest("#vpeEnvOverlay")) return;
     var fn = ACOES[alvo.getAttribute("data-vpe")];
     if (fn) fn(alvo.getAttribute("data-arg"));
   });
   document.addEventListener("change", function (ev) {
     if (ev.target && ev.target.id === "vpeCaixa") carregar();
     if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-falta-chk")) itensMudaram();
+    if (ev.target && ["vpeFSemestre", "vpeFEscola", "vpeFPara", "vpeFAntigos"].indexOf(ev.target.id) > -1) desenharLista();
+    if (ev.target && ["vpeESemestre", "vpeEEscola", "vpeEConferido"].indexOf(ev.target.id) > -1) desenharEmitidos();
+    if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-emi-chk")) {
+      estado.marcadosEmi[ev.target.getAttribute("data-id")] = ev.target.checked; contarEmi();
+    }
+    if (ev.target && ev.target.id === "vpeEmiTodos") {
+      emitidosVisiveis().forEach(function (i) { estado.marcadosEmi[i.id] = ev.target.checked; });
+      desenharEmitidos();
+    }
   });
   document.addEventListener("input", function (ev) {
     var t = ev.target;
     if (!t) return;
     if (t.classList && t.classList.contains("vpe-falta-txt")) itensMudaram();
+    if (t.id === "vpeFBusca") desenharLista();
+    if (t.id === "vpeEBusca") desenharEmitidos();
     if (t.id === "vpeMResposta") {
       estado.editado = t.value !== textoDosItens();
       el("vpeMTextoEditado").style.display = estado.editado ? "" : "none";
