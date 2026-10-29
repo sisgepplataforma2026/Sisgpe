@@ -203,6 +203,21 @@ Quando houver dúvida entre remover e manter, a recomendação padrão é **mant
 
 **Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
 
+## 📜 CCT — CITAR SEMPRE A NUMERAÇÃO DO REGISTRO NO MTE
+
+Definida pelo usuário em 2026-10-29: *"Sempre o MTE."*
+
+A CCT 2026/2027 tem duas numerações: a do texto aprovado nas negociações
+(a que o `CCTCore.gs` usa: 56 mensalidade, 57 taxa negocial, 58 assistência
+médica) e a do texto registrado no MTE (registro **ES000256/2026**, sistema
+Mediador: 38ª mensalidade, 40ª taxa negocial). **Todo texto que sai para fora
+— ofício, e-mail, certificado, guia — cita a numeração do MTE**, de
+preferência com o número do registro ao lado. É o documento público que o
+contador e o advogado da escola conferem.
+
+Exceção: o módulo de Negociação Coletiva trabalha sobre o texto negociado e
+pode usar a numeração dele.
+
 ## Padrão visual obrigatório (Design System)
 
 A partir de 2026-08-03, **toda implementação nova ou alterada de tela deve seguir o Design System abaixo**, definido na Auditoria de Padronização Visual (skill `sisgep-auditoria-ui-design-system`, artifact publicado: https://claude.ai/code/artifact/c1262106-7f88-492c-87b8-ed974779ce5b). Não crie paleta, header, card, botão ou modal novo "do zero" para uma tela — reaproveite os tokens e componentes já existentes em `OficiosStyles.html`, que é o CSS mestre canônico do sistema.
