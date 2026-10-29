@@ -6472,12 +6472,14 @@ resposta) e as etiquetas aparecendo no Gmail.
 237 pedidos nas pastas CERTIFICADO 2026-2 (116) e 2027-1 (121); 30
 concluídos (resposta com o voucher em PDF); **207 pendentes**, dos quais 72
 tiveram resposta sem o voucher (pedido de documento, resposta-padrão). Os 207
-estão na pasta do Drive "SISGEP — Pendentes KingHost (temporário)".
+estavam na pasta do Drive "SISGEP — Pendentes KingHost (temporário)".
 
 **NÃO TESTADO no ar:**
-- [ ] o leitor trazer os 207 do Drive para o Gmail da Secretaria e daí para o
-      SISGEP (às 20h30 de 29/10 a ponte ainda não tinha nenhum — o leitor
-      parece parado; conferir a aba Status da ponte);
+- [x] o leitor está trazendo do Drive para o Gmail e a ponte (aba Status às
+      17h43 de 29/10: 6 importados, 5 copiados na rodada). Segunda rodada do
+      robô (regra "PDF enviado depois do pedido"): 240 lidos, 46 concluídos,
+      194 pendentes, 16 tirados da pasta;
+- [ ] ver no SISGEP HML os pedidos antigos chegando e conferir uns 5;
 - [ ] conferir à mão uns 5 dos 207: a regra casa resposta por "Re:" ou pelo
       mesmo assunto para o mesmo endereço. Voucher mandado num e-mail NOVO,
       com outro assunto, aparece como pendente sem estar;
