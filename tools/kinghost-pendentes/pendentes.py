@@ -85,6 +85,20 @@ def mensagem_inteira(imap, bruto, uid):
     return None
 
 
+# Concluído = a resposta levou o VOUCHER anexado (usuário, 29/10/2026: "tem
+# que conferir se foi enviado o voucher em anexo, assim dar como concluído").
+# Um "recebemos, aguarde" não conclui nada. O voucher sai sempre em PDF, no
+# modelo já aprovado; então a prova é um PDF anexado à resposta. O
+# BODYSTRUCTURE diz isso sem baixar o arquivo.
+CAB_ENVIADO = "(BODYSTRUCTURE BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
+
+
+def tem_pdf_anexo(estrutura):
+    e = estrutura.decode("latin-1", "replace") if isinstance(estrutura, bytes) else str(estrutura or "")
+    return bool(re.search(r'"application"\s+"(pdf|x-pdf|octet-stream)"[^)]*\.pdf"|"application"\s+"pdf"'
+                          r'|"(file)?name\*?"\s+"[^"]*\.pdf"', e, re.I))
+
+
 def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False):
     tipo, _ = imap.select('"' + bruto + '"', readonly=True)
     if tipo != "OK":
@@ -95,14 +109,19 @@ def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False
     for uid in uids:
         # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
         # baixar anexo de cada e-mail que a Secretaria já mandou.
-        pedido = item or ("(BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
-                          if so_cabecalho else "(BODY.PEEK[])")
+        pedido = item or (CAB_ENVIADO if so_cabecalho else "(BODY.PEEK[])")
         tipo, partes = imap.uid("FETCH", uid, pedido)
         if tipo != "OK":
             continue
+        # O BODYSTRUCTURE pode vir antes ou depois do cabeçalho na resposta.
+        estrutura = b" ".join(x[0] if isinstance(x, tuple) else x for x in partes
+                              if isinstance(x, (tuple, bytes)))
         for p in partes:
             if isinstance(p, tuple) and len(p) >= 2:
-                saida.append((uid, p[1]) if com_uid else p[1])
+                if so_cabecalho:
+                    saida.append((p[1], tem_pdf_anexo(estrutura)))
+                else:
+                    saida.append((uid, p[1]) if com_uid else p[1])
     return saida
 
 
@@ -130,18 +149,27 @@ def ids_referenciados(msg):
 
 
 def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
-    """pedidos_brutos: {nome_da_pasta: [bytes]}. Devolve (pendentes, contagem)."""
-    respondidos_id = set()
-    respondidos_par = set()
-    for raw in enviados_brutos:
+    """pedidos_brutos: {nome_da_pasta: [bytes | (uid, bytes)]}.
+    enviados_brutos: [(bytes, levou_pdf)] — bytes sozinho conta como SEM anexo.
+    Devolve (pendentes, contagem)."""
+    concluido_id, concluido_par = set(), set()      # resposta COM o voucher
+    respondido_id, respondido_par = set(), set()    # qualquer resposta
+    for item in enviados_brutos:
+        raw, levou_pdf = item if isinstance(item, tuple) else (item, False)
         m = email.message_from_bytes(raw, policy=email.policy.compat32)
-        respondidos_id |= ids_referenciados(m)
+        ids = ids_referenciados(m)
         base = assunto_base(m.get("Subject"))
+        pares = set()
         for campo in ("To", "Cc"):
             for _, end in email.utils.getaddresses([str(m.get(campo, "") or "")]):
                 if end:
-                    respondidos_par.add((end.strip().lower(), base))
-    pendentes, cont = [], {"lidos": 0, "nossos": 0, "respondidos": 0, "pendentes": 0}
+                    pares.add((end.strip().lower(), base))
+        respondido_id |= ids
+        respondido_par |= pares
+        if levou_pdf:
+            concluido_id |= ids
+            concluido_par |= pares
+    pendentes, cont = [], {"lidos": 0, "nossos": 0, "respondidos": 0, "pendentes": 0, "sem_voucher": 0}
     for pasta, lista in pedidos_brutos.items():
         for item in lista:
             uid, raw = item if isinstance(item, tuple) else (None, item)
@@ -152,9 +180,12 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
                 cont["nossos"] += 1
                 continue
             mid = str(m.get("Message-ID", "") or "").strip().lower()
-            if (mid and mid in respondidos_id) or (de, assunto_base(m.get("Subject"))) in respondidos_par:
+            par = (de, assunto_base(m.get("Subject")))
+            if (mid and mid in concluido_id) or par in concluido_par:
                 cont["respondidos"] += 1
                 continue
+            if (mid and mid in respondido_id) or par in respondido_par:
+                cont["sem_voucher"] += 1    # respondido, mas sem o voucher: segue pendente
             chave = hashlib.sha1((mid or (de + "|" + str(m.get("Date")) + "|" + str(m.get("Subject")))).encode()).hexdigest()[:20]
             pendentes.append({"pasta": pasta, "chave": chave, "raw": raw, "uid": uid})
             cont["pendentes"] += 1
@@ -231,8 +262,13 @@ def main():
     if not senha:
         print("Sem o segredo KINGHOST_SECRETARIA_SENHA: nada a fazer (o robô só roda quando ele existir).")
         return 0
-    imap = imaplib.IMAP4_SSL(os.environ.get("KINGHOST_IMAP", "imap.kinghost.net"), 993)
+    servidor = os.environ.get("KINGHOST_IMAP", "imap.kinghost.net")
+    print("Conectando a %s…" % servidor)
+    # Sem tempo-limite, uma conexão parada trava o job até o fim do prazo.
+    imap = imaplib.IMAP4_SSL(servidor, 993, timeout=60)
+    print("Conectado. Entrando na caixa…")
     imap.login(CAIXA, senha)
+    print("Login feito (só leitura).")
     pastas = listar_pastas(imap)
     alvo = [p for p in pastas if PASTAS.search(p["nome"]) and not re.search(r"EMITID", p["nome"], re.I)]
     enviados = [p for p in pastas if ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
@@ -253,8 +289,8 @@ def main():
         env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True))
     print("  enviados: %d mensagem(ns)" % len(env))
     pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
-    print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · já respondidos: %(respondidos)d · "
-          "pendentes: %(pendentes)d" % cont)
+    print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · concluídos (voucher anexado): "
+          "%(respondidos)d · pendentes: %(pendentes)d (destes, %(sem_voucher)d tiveram resposta sem o voucher)" % cont)
 
     if os.environ.get("SO_CONFERIR") == "1":
         imap.logout()

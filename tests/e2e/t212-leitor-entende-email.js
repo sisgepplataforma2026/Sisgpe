@@ -156,7 +156,11 @@ const thPend = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Certificado de bolsa 2027", "lucia@exemplo.com", "Bom dia, peço o certificado de bolsa para meu filho."));
 const thResp = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Voucher 2027/1", "marcos@exemplo.com", "Quero o voucher de Direito."));
-SIM.responder(thResp, "Marcelha <secretaria@sindeducacao.com>", "Segue o certificado.");
+SIM.responder(thResp, "Marcelha <secretaria@sindeducacao.com>", "Segue o certificado.", [SIM.pdf("Voucher.pdf")]);
+/* Caso do usuário: a Secretaria respondeu pedindo o contracheque que falta. */
+const thFalta = SIM.pasta("CERTIFICADO 2027-1",
+  novaThread("Voucher 2027/1 Direito", "carla@exemplo.com", "Peço o voucher de bolsa."));
+SIM.responder(thFalta, "Marcelha <secretaria@sindeducacao.com>", "Falta o contracheque.");
 const thPend2 = SIM.pasta("CERTIFICADO 2026-2",
   novaThread("Bolsa 2026/2", "rui@exemplo.com", "Ainda aguardo o certificado de bolsa."));
 const thEmit = SIM.pasta("CERTIFICADOS 2026-2 - EMITIDOS",
@@ -167,20 +171,21 @@ const m0 = JSON.parse(original.MENSAGENS_JSON)[0];
 const thDup = SIM.pasta("CERTIFICADO 2027-1", novaThread(m0.assunto, "ana@exemplo.com", "cópia importada"));
 thDup.msgs[0].getDate = () => new Date(m0.data);
 const r10 = L.leitorBuscarPendentesDasPastas_();
-b.igual(r10.copiados, 2, "dois pendentes copiados", JSON.stringify(r10));
+b.igual(r10.copiados, 3, "três pendentes copiados", JSON.stringify(r10));
+b.ok(naPonte(thFalta), "Carla, respondida só pedindo o contracheque (sem voucher), CONTINUA pendente e foi");
 b.ok(naPonte(thPend) && naPonte(thPend2), "Lúcia (2027-1) e Rui (2026-2) foram para a ponte");
-b.ok(!naPonte(thResp), "o já respondido pela Secretaria NÃO foi");
+b.ok(!naPonte(thResp), "o que já recebeu o voucher em PDF NÃO foi");
 b.ok(!naPonte(thEmit), "nada da pasta EMITIDOS");
 b.ok(!naPonte(thDup), "a cópia importada de um pedido já copiado não duplicou");
 b.igual(r10.respondidos, 1, "o relatório conta o respondido");
 b.igual(r10.repetidos, 1, "e o repetido");
-b.igual(entrada().length, antesPastas + 2, "a ponte cresceu só dois");
+b.igual(entrada().length, antesPastas + 3, "a ponte cresceu só três");
 b.ok(!SIM.chamadasIALeitor.some(c => /certificado de bolsa para meu filho/.test(c.texto)),
   "pedido de pasta não passa pela IA (a Marcela já separou)");
 
 b.passo("11. Repassar no mesmo dia não faz nada; e o SISGEP mostra os pendentes");
 SIM.ciclo();
-b.igual(entrada().length, antesPastas + 2, "o ciclo do mesmo dia não copiou de novo");
+b.igual(entrada().length, antesPastas + 3, "o ciclo do mesmo dia não copiou de novo");
 g.vpeLerCaixa_({});
 b.ok(!!pedidoDa(thPend) && !!pedidoDa(thPend2), "os dois pendentes aparecem no SISGEP");
 
