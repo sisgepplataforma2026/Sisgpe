@@ -84,6 +84,7 @@ var VPE_ESTADOS = {
   NAO_ENCONTRADO: "NAO_ENCONTRADO",     // 🔴 CPF fora da relação
   PRECISA_VOCE: "PRECISA_VOCE",         // ⚪ conflito ou a IA não entendeu
   AGUARDANDO: "AGUARDANDO",             // complemento pedido, esperando o associado
+  EMITIDO: "EMITIDO",                   // 📄 conferido e emitido, aguardando envio (29/10/2026)
   CONCLUIDO: "CONCLUIDO",
   IGNORADO: "IGNORADO"                  // não é pedido de voucher
 };
@@ -1118,14 +1119,19 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
 
   /* Nova mensagem num pedido já resolvido: alguém precisa olhar, mas a
      decisão anterior não se desfaz sozinha. */
-  var reaberto = (reg.ESTADO === VPE_ESTADOS.CONCLUIDO);
+  var reaberto = (reg.ESTADO === VPE_ESTADOS.CONCLUIDO || reg.ESTADO === VPE_ESTADOS.EMITIDO);
   var jaEraPedido = !!reg.ESTADO && reg.ESTADO !== VPE_ESTADOS.IGNORADO;
   if (aval.estado === VPE_ESTADOS.IGNORADO && !jaEraPedido) {
     reg.ESTADO = VPE_ESTADOS.IGNORADO;
   } else {
-    reg.ESTADO = (reaberto || aval.estado === VPE_ESTADOS.IGNORADO) ? VPE_ESTADOS.PRECISA_VOCE : aval.estado;
+    var eraEmitido = reg.ESTADO === VPE_ESTADOS.EMITIDO;
+    /* Emitido aguardando envio: continua na fila de envio, com aviso — quem
+       for enviar vê a mensagem nova antes. */
+    reg.ESTADO = eraEmitido ? VPE_ESTADOS.EMITIDO
+      : (reaberto || aval.estado === VPE_ESTADOS.IGNORADO) ? VPE_ESTADOS.PRECISA_VOCE : aval.estado;
     if (reaberto) aval.pendencias.unshift({ tipo: "INTERNO",
-      texto: "Nova mensagem do associado depois de concluído (" + (reg.ACAO || "") +
+      texto: (eraEmitido ? "Nova mensagem do associado enquanto o voucher aguardava envio (" :
+        "Nova mensagem do associado depois de concluído (") + (reg.ACAO || "") +
         (reg.PROTOCOLO ? ", protocolo " + reg.PROTOCOLO : "") + ")." });
   }
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
@@ -1207,7 +1213,7 @@ function vpeLerCaixa_(opcoes) {
         continue;
       }
       /* Pedido já concluído e a nova mensagem é só um "obrigado": anota e segue. */
-      if (reg && reg.ESTADO === VPE_ESTADOS.CONCLUIDO && !temAnexo &&
+      if (reg && (reg.ESTADO === VPE_ESTADOS.CONCLUIDO || reg.ESTADO === VPE_ESTADOS.EMITIDO) && !temAnexo &&
           !vpePareceVoucher_(novas.map(function (m) { return vpeSemCitacao_(m.getPlainBody()); }).join("\n"))) {
         reg.ULTIMA_MENSAGEM_ID = ultima.getId();
         reg.ATUALIZADO_EM = new Date();
@@ -1408,7 +1414,7 @@ function voucherPedidosPainel(caixa, tokenSessao) {
     var alvo = caixa && permitidas.indexOf(caixa) > -1 ? caixa : permitidas[0];
     var hojeTxt = Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMdd");
 
-    var cont = { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, CONCLUIDO_HOJE: 0 };
+    var cont = { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, EMITIDO: 0, CONCLUIDO_HOJE: 0 };
     var itens = [];
     var envios = vpePonteId_() ? vpeEnviosPorConversa_() : {};
     vpeLinhas_().forEach(function (r) {
@@ -1615,7 +1621,7 @@ function vpeReavaliar_(reg, editados, quem) {
   d.campos = aval.campos; d.percentual = aval.percentual; d.associado = aval.associado; d.semNada = !!aval.semNada;
   reg.DADOS_JSON = JSON.stringify(d);
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
-  if (reg.ESTADO !== VPE_ESTADOS.CONCLUIDO) {
+  if (reg.ESTADO !== VPE_ESTADOS.CONCLUIDO && reg.ESTADO !== VPE_ESTADOS.EMITIDO) {
     reg.ESTADO = aval.estado === VPE_ESTADOS.IGNORADO ? VPE_ESTADOS.PRECISA_VOCE : aval.estado;
     reg.RESPOSTA_SUGERIDA = vpeTextoResposta_(reg.ESTADO, aval);
   }
@@ -1668,6 +1674,7 @@ function voucherPedidosResponder(id, tipo, texto, a4, a5) {
     tipo = String(tipo || "").toUpperCase();
     if (["COMPLEMENTO", "SEDE"].indexOf(tipo) === -1) return { ok: false, mensagem: "Tipo de resposta inválido." };
     if (reg.ESTADO === VPE_ESTADOS.CONCLUIDO) return { ok: false, mensagem: "Este pedido já foi concluído." };
+    if (reg.ESTADO === VPE_ESTADOS.EMITIDO) return { ok: false, mensagem: "O voucher deste pedido já foi emitido e está aguardando envio." };
     texto = String(texto || "").trim();
     if (texto.length < 20) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
 
@@ -1718,13 +1725,116 @@ function voucherPedidosDescartar(id, motivo, tokenSessao) {
  * @param opcoes {forcar, justificativa} — validar com pendência exige
  *               justificativa, que vai para a observação da solicitação.
  */
+/**
+ * CONFERIR E EMITIR, ENVIAR DEPOIS — 29/10/2026. O usuário: "a gente emite e
+ * não envia. Quando for o tempo de enviar, a gente pode enviar ... sai com a
+ * data do envio e não com a data que foi feita."
+ *
+ *   voucherPedidosConferirEmitir  → cria a solicitação e emite; ESTADO EMITIDO
+ *   voucherPedidosEnviarEmitidos  → para cada um: refaz o PDF com a data de
+ *                                    HOJE e responde na conversa do pedido
+ *   voucherPedidosValidarEnviar   → as duas coisas de uma vez (como antes)
+ */
 function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
-  opcoes = opcoes || {};
   try {
     var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+    var e = vpeConferirEmitir_(id, campos, opcoes, sessao, tokenSessao);
+    if (!e.ok) return e;
+    return vpeEnviarEmitido_(e.reg, sessao, opcoes);
+  } catch (e2) {
+    Logger.log("voucherPedidosValidarEnviar: " + e2.message);
+    return { ok: false, mensagem: e2.message };
+  }
+}
+
+function voucherPedidosConferirEmitir(id, campos, opcoes, tokenSessao) {
+  try {
+    var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+    var e = vpeConferirEmitir_(id, campos, opcoes, sessao, tokenSessao);
+    if (!e.ok) return e;
+    var reg = e.reg;
+    reg.ESTADO = VPE_ESTADOS.EMITIDO;
+    reg.ACAO = "EMITIDO_AGUARDANDO_ENVIO";
+    reg.DECIDIDO_POR = sessao.email || sessao.usuario || "";
+    reg.DECIDIDO_EM = new Date();
+    reg.ATUALIZADO_EM = new Date();
+    reg.ERRO = "";
+    vpeGravar_(reg);
+    vpeAuditar_("CONFERIR_EMITIR", reg, "Certificado " + e.protocolo + " emitido, aguardando envio", sessao);
+    return { ok: true, protocolo: e.protocolo,
+             mensagem: "Voucher " + e.protocolo + " emitido. Ele está em \"Emitidos, aguardando envio\" — " +
+               "na hora de enviar, sai com a data do envio." };
+  } catch (e2) {
+    Logger.log("voucherPedidosConferirEmitir: " + e2.message);
+    return { ok: false, mensagem: e2.message };
+  }
+}
+
+/** A conferência antes de enviar: quem vai receber, por onde. */
+function voucherPedidosEmitidos(tokenSessao) {
+  try {
+    var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+    var caixas = vpeCaixasDoUsuario_ ? vpeCaixasDoUsuario_(sessao) : null;
+    var itens = vpeLinhas_().filter(function (r) {
+      return String(r.ESTADO) === VPE_ESTADOS.EMITIDO && (!caixas || caixas.indexOf(String(r.CAIXA)) > -1);
+    }).map(function (r) {
+      var d = vpeJson_(r.DADOS_JSON, {}), c = d.campos || {};
+      function v(k) { return c[k] ? String(c[k].valor || "") : ""; }
+      return { id: r.ID_PEDIDO, protocolo: String(r.PROTOCOLO || ""), nome: v("nome") || r.REMETENTE_NOME || "",
+               para: String(r.REMETENTE_EMAIL || ""), periodo: v("periodo"), curso: v("curso"), escola: v("escola"),
+               modalidade: v("modalidade"), beneficiario: v("nomeBeneficiario"),
+               percentual: d.percentual ? d.percentual.valor : "",
+               emitidoEm: r.DECIDIDO_EM ? Utilities.formatDate(new Date(r.DECIDIDO_EM), "America/Sao_Paulo", "dd/MM/yyyy") : "",
+               conferidoPor: String(r.DECIDIDO_POR || ""),
+               aviso: vpeJson_(r.PENDENCIAS_JSON, []).filter(function (p) { return /aguardava envio/.test(p.texto || ""); })
+                 .map(function (p) { return p.texto; })[0] || "" };
+    });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+function voucherPedidosEnviarEmitidos(ids, tokenSessao) {
+  var sessao;
+  try { sessao = exigirModulo_(tokenSessao, "beneficios", false); }
+  catch (e) { return { ok: false, mensagem: e.message }; }
+  ids = (Array.isArray(ids) ? ids : []).map(String).filter(String);
+  if (!ids.length) return { ok: false, mensagem: "Marque quem vai receber." };
+  if (!voucherLoteTravar_()) return { ok: false, mensagem: "Já tem um envio em andamento. Espere terminar." };
+  var r = { ok: true, enviados: [], recusados: [], restantes: [] };
+  try {
+    var inicio = Date.now();
+    var caixas = vpeCaixasDoUsuario_ ? vpeCaixasDoUsuario_(sessao) : null;
+    for (var i = 0; i < ids.length; i++) {
+      if (Date.now() - inicio > 240000) { r.restantes = ids.slice(i); break; }
+      var reg = vpeLinhas_().filter(function (x) { return String(x.ID_PEDIDO) === ids[i]; })[0];
+      if (!reg || String(reg.ESTADO) !== VPE_ESTADOS.EMITIDO ||
+          (caixas && caixas.indexOf(String(reg.CAIXA)) === -1)) {
+        r.recusados.push({ id: ids[i], mensagem: "Não está mais aguardando envio." });
+        continue;
+      }
+      var env = vpeEnviarEmitido_(reg, sessao, {});
+      if (env.ok) r.enviados.push({ id: ids[i], protocolo: env.protocolo, para: reg.REMETENTE_EMAIL });
+      else r.recusados.push({ id: ids[i], mensagem: env.mensagem });
+    }
+  } finally {
+    voucherLoteSoltar_();
+  }
+  r.mensagem = r.enviados.length + " voucher(s) na fila da Secretaria, com a data de hoje" +
+    (r.recusados.length ? "; " + r.recusados.length + " não enviado(s)" : "") +
+    (r.restantes.length ? "; faltam " + r.restantes.length + " — clique de novo" : "") + ".";
+  return r;
+}
+
+/* Passos 1 e 2: a solicitação e o certificado. Não envia. */
+function vpeConferirEmitir_(id, campos, opcoes, sessao, tokenSessao) {
+  opcoes = opcoes || {};
+  try {
     var reg = vpeExigirPedido_(id, sessao);
     var quem = sessao.email || sessao.usuario || "";
     if (reg.ESTADO === VPE_ESTADOS.CONCLUIDO) return { ok: false, mensagem: "Este pedido já foi concluído." };
+    if (reg.ESTADO === VPE_ESTADOS.EMITIDO) return { ok: false, mensagem: "Já emitido — está em \"Emitidos, aguardando envio\"." };
 
     var aval = vpeReavaliar_(reg, campos || {}, quem);
     vpeGravar_(reg);
@@ -1803,8 +1913,22 @@ function voucherPedidosValidarEnviar(id, campos, opcoes, tokenSessao) {
       return { ok: false, protocolo: protocolo, mensagem: reg.ERRO };
     }
 
-    /* ── 3. a resposta, na mesma conversa, com o PDF ── */
-    var pronto = voucherPrepararEnvio(protocolo, tokenSessao);
+    return { ok: true, reg: reg, protocolo: protocolo, obs: obs };
+  } catch (e) {
+    Logger.log("vpeConferirEmitir_: " + e.message);
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+/* Passo 3: a resposta na conversa do pedido, com o PDF datado de HOJE. */
+function vpeEnviarEmitido_(reg, sessao, opcoes) {
+  opcoes = opcoes || {};
+  var quem = sessao.email || sessao.usuario || "";
+  var protocolo = String(reg.PROTOCOLO || "");
+  try {
+    var red = voucherRedatarDocumento_(protocolo, new Date(), "o envio por e-mail", quem);
+    if (red && red.ok === false) Logger.log("Voucher não redatado (" + protocolo + "): " + red.mensagem);
+    var pronto = voucherDadosEnvio_(protocolo);
     if (!pronto.ok) {
       reg.ERRO = "Certificado " + protocolo + " emitido, mas o envio não pôde ser preparado: " + pronto.mensagem;
       vpeGravar_(reg);
