@@ -21,6 +21,7 @@ isto entra direto pelo IMAP:
 SÓ LÊ a KingHost: abre as pastas em modo leitura (EXAMINE) e busca com
 BODY.PEEK, que não marca nada como lido. Não apaga, não move, não responde.
 O log mostra só CONTAGENS — nem nome, nem endereço, nem assunto.
+Segredo KINGHOST_SECRETARIA_SENHA criado pelo usuário em 29/10/2026.
 """
 import email
 import email.policy
