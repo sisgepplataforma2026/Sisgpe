@@ -203,6 +203,21 @@ Quando houver dúvida entre remover e manter, a recomendação padrão é **mant
 
 **Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
 
+## 🔐 E-MAILS DA SECRETARIA NO SISGEP — REGRA MUDADA EM 29/10/2026
+
+Até 29/10/2026 valia *"os e-mails da secretaria não devem ser acessados pelo
+financeiro"* (21/10), e só os pedidos de voucher entravam no SISGEP. Em
+29/10/2026 o usuário autorizou trazer **todos** os e-mails da Secretaria
+para o SISGEP ("Caixa da Secretaria"), com esta condição:
+
+- **Abre a caixa só quem é da Secretaria e o administrador.** O Financeiro
+  não vê pela tela. A trava é no servidor (perfil/módulo), não só na tela.
+- O conteúdo passa a ficar numa planilha da conta do Financeiro (é onde o
+  SISGEP roda) — o usuário sabe e aceitou.
+- Propaganda e notificação automática continuam de fora.
+- Guias/boletos que chegam na secretaria@ aparecerem para o Financeiro:
+  **ainda não decidido** — não liberar sem resposta dele.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
