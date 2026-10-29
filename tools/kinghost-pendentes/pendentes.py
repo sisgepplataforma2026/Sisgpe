@@ -72,7 +72,7 @@ def listar_pastas(imap):
     return pastas
 
 
-def mensagens_da_pasta(imap, bruto):
+def mensagens_da_pasta(imap, bruto, so_cabecalho=False):
     tipo, _ = imap.select('"' + bruto + '"', readonly=True)
     if tipo != "OK":
         return []
@@ -80,7 +80,11 @@ def mensagens_da_pasta(imap, bruto):
     uids = (dados[0] or b"").split() if tipo == "OK" else []
     saida = []
     for uid in uids:
-        tipo, partes = imap.uid("FETCH", uid, "(BODY.PEEK[])")
+        # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
+        # baixar anexo de cada e-mail que a Secretaria já mandou.
+        item = ("(BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
+                if so_cabecalho else "(BODY.PEEK[])")
+        tipo, partes = imap.uid("FETCH", uid, item)
         if tipo != "OK":
             continue
         for p in partes:
@@ -227,7 +231,7 @@ def main():
     pedidos = {p["nome"]: mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
     env = []
     for p in enviados:
-        env.extend(mensagens_da_pasta(imap, p["bruto"]))
+        env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True))
     imap.logout()
     pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
     print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · já respondidos: %(respondidos)d · "

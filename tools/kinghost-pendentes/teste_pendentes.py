@@ -75,7 +75,8 @@ ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2026-2", "CERTIFICADO 2027-1
 ok([p["nome"] for p in env] == ["INBOX.Sent"], "acha a pasta de enviados")
 
 pedidos = {p["nome"]: P.mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
-enviados = P.mensagens_da_pasta(imap, env[0]["bruto"])
+enviados = P.mensagens_da_pasta(imap, env[0]["bruto"], so_cabecalho=True)
+ok(any("HEADER.FIELDS" in str(a) for c, a in imap.comandos if c == "FETCH"), "dos enviados baixa só o cabeçalho")
 ok(all(m is True for m in imap.modos), "toda pasta é aberta em modo SÓ LEITURA")
 ok(all("PEEK" in str(a) for c, a in imap.comandos if c == "FETCH"), "toda leitura usa BODY.PEEK (não marca como lido)")
 ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in imap.comandos), "nenhum comando que altere a caixa")
