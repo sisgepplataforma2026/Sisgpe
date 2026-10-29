@@ -90,6 +90,17 @@ ok(all(p["raw"] in (pend, outra_pasta) for p in pend_lista), "o e-mail vai intei
 ok(len({P.nome_arquivo(p) for p in pend_lista}) == 2, "cada pendente tem nome de arquivo próprio e estável")
 ok(P.nome_arquivo(pend_lista[0]) == P.nome_arquivo(pend_lista[0]), "o nome não muda entre execuções (não duplica)")
 
+# Como o main faz: cabeçalhos de tudo, .eml inteiro só dos pendentes.
+imap.comandos.clear()
+cab = {p["nome"]: P.mensagens_da_pasta(imap, p["bruto"], item=P.CAB_PEDIDO, com_uid=True) for p in alvo}
+ok(all("HEADER.FIELDS" in str(a) for c, a in imap.comandos if c == "FETCH"), "das pastas de pedido, primeiro só o cabeçalho")
+pend2, _ = P.separar_pendentes(cab, enviados, {"secretaria@sindeducacao.com"})
+bruto_de = {p["nome"]: p["bruto"] for p in alvo}
+imap.comandos.clear()
+inteiros = [P.mensagem_inteira(imap, bruto_de[p["pasta"]], p["uid"]) for p in pend2]
+ok(sorted(inteiros) == sorted([pend, outra_pasta]), "o .eml inteiro vem só dos pendentes, pelo uid certo")
+ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 2, "anexos baixados só 2 vezes (os 2 pendentes)")
+
 ok(P.decodificar_utf7("Itens &AOk-nviados") == "Itens énviados", "nome de pasta em UTF-7 é decodificado")
 ok(P.assunto_base("RES: Fwd: ENC: Bolsa 2026/2") == "bolsa 2026/2", "assunto sem RES/Fwd/ENC")
 

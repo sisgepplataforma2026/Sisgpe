@@ -72,7 +72,20 @@ def listar_pastas(imap):
     return pastas
 
 
-def mensagens_da_pasta(imap, bruto, so_cabecalho=False):
+CAB_PEDIDO = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID)])"
+
+
+def mensagem_inteira(imap, bruto, uid):
+    """Baixa o .eml inteiro (com anexos) de UMA mensagem — só dos pendentes."""
+    imap.select('"' + bruto + '"', readonly=True)
+    tipo, partes = imap.uid("FETCH", uid, "(BODY.PEEK[])")
+    for p in partes or []:
+        if isinstance(p, tuple) and len(p) >= 2:
+            return p[1]
+    return None
+
+
+def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False):
     tipo, _ = imap.select('"' + bruto + '"', readonly=True)
     if tipo != "OK":
         return []
@@ -82,14 +95,14 @@ def mensagens_da_pasta(imap, bruto, so_cabecalho=False):
     for uid in uids:
         # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
         # baixar anexo de cada e-mail que a Secretaria já mandou.
-        item = ("(BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
-                if so_cabecalho else "(BODY.PEEK[])")
-        tipo, partes = imap.uid("FETCH", uid, item)
+        pedido = item or ("(BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT IN-REPLY-TO REFERENCES)])"
+                          if so_cabecalho else "(BODY.PEEK[])")
+        tipo, partes = imap.uid("FETCH", uid, pedido)
         if tipo != "OK":
             continue
         for p in partes:
             if isinstance(p, tuple) and len(p) >= 2:
-                saida.append(p[1])
+                saida.append((uid, p[1]) if com_uid else p[1])
     return saida
 
 
@@ -130,7 +143,8 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
                     respondidos_par.add((end.strip().lower(), base))
     pendentes, cont = [], {"lidos": 0, "nossos": 0, "respondidos": 0, "pendentes": 0}
     for pasta, lista in pedidos_brutos.items():
-        for raw in lista:
+        for item in lista:
+            uid, raw = item if isinstance(item, tuple) else (None, item)
             cont["lidos"] += 1
             m = email.message_from_bytes(raw, policy=email.policy.compat32)
             de = endereco(m.get("From"))
@@ -142,7 +156,7 @@ def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
                 cont["respondidos"] += 1
                 continue
             chave = hashlib.sha1((mid or (de + "|" + str(m.get("Date")) + "|" + str(m.get("Subject")))).encode()).hexdigest()[:20]
-            pendentes.append({"pasta": pasta, "chave": chave, "raw": raw})
+            pendentes.append({"pasta": pasta, "chave": chave, "raw": raw, "uid": uid})
             cont["pendentes"] += 1
     return pendentes, cont
 
@@ -228,16 +242,22 @@ def main():
         print("Nenhuma pasta CERTIFICADO 2026-2 / 2027-1 encontrada. Nomes vistos: " +
               ", ".join(p["nome"] for p in pastas))
         return 0
-    pedidos = {p["nome"]: mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
+    # Primeiro só os CABEÇALHOS: decidir o que é pendente não pede anexo.
+    bruto_de = {p["nome"]: p["bruto"] for p in alvo}
+    pedidos = {}
+    for p in alvo:
+        pedidos[p["nome"]] = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True)
+        print("  %s: %d mensagem(ns)" % (p["nome"], len(pedidos[p["nome"]])))
     env = []
     for p in enviados:
         env.extend(mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True))
-    imap.logout()
+    print("  enviados: %d mensagem(ns)" % len(env))
     pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
     print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · já respondidos: %(respondidos)d · "
           "pendentes: %(pendentes)d" % cont)
 
     if os.environ.get("SO_CONFERIR") == "1":
+        imap.logout()
         print("Modo conferir: nada foi enviado ao Drive.")
         return 0
     token = token_google()
@@ -248,8 +268,14 @@ def main():
         nome = nome_arquivo(p)
         if nome in existentes:
             continue
-        subir(token, pid, nome, p["raw"])
+        raw = mensagem_inteira(imap, bruto_de[p["pasta"]], p["uid"])
+        if not raw:
+            continue
+        subir(token, pid, nome, raw)
         novos += 1
+        if novos % 10 == 0:
+            print("  entregues até agora: %d" % novos)
+    imap.logout()
     print("Entregues ao leitor agora: %d (já estavam lá: %d)." % (novos, len(pendentes) - novos))
     return 0
 

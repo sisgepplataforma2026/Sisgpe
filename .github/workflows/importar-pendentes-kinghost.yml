@@ -38,6 +38,7 @@ jobs:
   importar:
     if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,4 +51,4 @@ jobs:
           KINGHOST_SECRETARIA_SENHA: ${{ secrets.KINGHOST_SECRETARIA_SENHA }}
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           SO_CONFERIR: ${{ github.event.inputs.modo == 'conferir' && '1' || '0' }}
-        run: python3 tools/kinghost-pendentes/pendentes.py
+        run: python3 -u tools/kinghost-pendentes/pendentes.py
