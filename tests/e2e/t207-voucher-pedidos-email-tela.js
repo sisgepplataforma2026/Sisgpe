@@ -175,6 +175,35 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.ok(/Comprovante de vínculo não anexado/.test(t.texto("#vpeMPend")), "a pendência aparece");
   b.ok(botao("Enviar pedido de complemento") && botao("Conferir e enviar mesmo assim"), "os dois caminhos", rotulos().join(", "));
 
+  b.passo("5b. A lista do que falta: o sistema já marcou; marcar/desmarcar monta o texto");
+  const chk = id => doc.querySelector("#vpeMFalta .vpe-falta-chk[data-id='" + id + "']");
+  b.ok(el("vpeMFaltaBox").style.display !== "none", "a lista do que falta aparece");
+  b.ok(chk("VINCULO") && chk("VINCULO").checked, "o comprovante de vínculo veio marcado pelo sistema");
+  b.ok(chk("DOC_ID") && !chk("DOC_ID").checked, "o RG, que ela mandou, veio desmarcado");
+  t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CPF']", true);
+  await t.assentar(10);
+  b.ok(/• Número do CPF;/.test(el("vpeMResposta").value), "marcar CPF acrescenta o item no e-mail");
+  b.ok(/Comprovante de vínculo/.test(el("vpeMResposta").value) && /Marcelha Aline/.test(el("vpeMResposta").value),
+    "o resto do modelo continua (itens marcados e assinatura)");
+  t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CPF']", false);
+  await t.assentar(10);
+  b.ok(!/Número do CPF/.test(el("vpeMResposta").value), "desmarcar tira");
+
+  b.passo("5c. Editou o texto à mão: mudar os itens NÃO apaga a edição, só avisa");
+  t.digitar("#vpeMResposta", el("vpeMResposta").value + "\nObs.: pode mandar foto legível.");
+  await t.assentar(10);
+  b.ok(el("vpeMTextoEditado").style.display !== "none", "aparece 'Texto alterado à mão'");
+  t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CURSO']", true);
+  await t.assentar(10);
+  b.ok(/pode mandar foto legível/.test(el("vpeMResposta").value), "a edição ficou");
+  b.ok(el("vpeMTextoAviso").style.display !== "none", "e aparece o aviso para refazer pelos itens");
+  t.clicar("#vpeMVoltarModelo");
+  await t.assentar(10);
+  b.ok(!/pode mandar foto legível/.test(el("vpeMResposta").value) && /• Nome do curso;/.test(el("vpeMResposta").value),
+    "'Voltar ao modelo' refaz pelo modelo, com o item novo");
+  t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CURSO']", false);
+  await t.assentar(10);
+
   b.passo("6. Validar com pendência pede justificativa antes");
   const antes = t.chamadas.filter(c => c.fn === "voucherPedidosValidarEnviar").length;
   t.clicar(botao("Conferir e enviar mesmo assim"));
@@ -193,6 +222,11 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   SIM.ciclo();                     // e o leitor envia o que ficou na fila
   const saiu = amb.outbox.filter(m => m.via === "reply" && m.to === "bia@exemplo.com").pop();
   b.ok(saiu && /contracheque de setembro/.test(saiu.htmlBody), "e foi isso que saiu no e-mail");
+  b.ok(resp && resp.args[3] && Array.isArray(resp.args[3].sugeridos) && resp.args[3].sugeridos.indexOf("VINCULO") > -1,
+    "a tela mandou junto o que o sistema tinha sugerido");
+  const corr = JSON.parse(g.vpeLinhas_().find(r => r.REMETENTE_EMAIL === "bia@exemplo.com").CORRECOES_JSON || "[]").pop();
+  b.ok(corr && corr.textoMudou === true, "fica registrado que o texto foi mudado à mão (para o sistema aprender)");
+  b.ok(corr && corr.por, "e quem mudou", corr && corr.por);
 
   b.fluxo("PEDIDOS POR E-MAIL · Tela · 4. Não encontrado");
   b.passo("8. Sem Validar; com sede e confirmar associado");

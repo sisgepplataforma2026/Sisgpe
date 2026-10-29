@@ -49,7 +49,32 @@ var VPE_COLUNAS = [
   "RECEBIDO_EM", "ATUALIZADO_EM", "REMETENTE_EMAIL", "REMETENTE_NOME",
   "ASSUNTO", "ESTADO", "PENDENCIAS_JSON", "DADOS_JSON", "ANEXOS_JSON",
   "RESPOSTA_SUGERIDA", "ASSOCIADO_CONFIRMADO_POR", "PROTOCOLO", "ACAO",
-  "DECIDIDO_POR", "DECIDIDO_EM", "ERRO"
+  "DECIDIDO_POR", "DECIDIDO_EM", "ERRO", "CORRECOES_JSON"
+];
+
+/* O QUE PODE FALTAR NUM PEDIDO — 29/10/2026. A tela mostra esta lista para
+   marcar (o sistema já abre com o que ele viu marcado) e o texto do e-mail é
+   montado SÓ com os itens marcados, sempre no mesmo modelo. `pedir` é a
+   frase que entra no e-mail. */
+var VPE_ITENS_FALTA = [
+  { id: "DOC_ID", grupo: "Documentação do solicitante", rotulo: "RG ou CNH", pedir: "RG ou CNH" },
+  { id: "CPF", grupo: "Documentação do solicitante", rotulo: "CPF", pedir: "Número do CPF" },
+  { id: "VINCULO", grupo: "Documentação do solicitante", rotulo: "Comprovante de vínculo (contracheque, declaração da escola ou carteira)",
+    pedir: "Comprovante de vínculo com a instituição de ensino onde trabalha: último contracheque, declaração da " +
+      "escola (em caso de contratação recente) ou registro do contrato de trabalho na Carteira de Trabalho" },
+  { id: "CC_ULTIMO", grupo: "Documentação do solicitante", rotulo: "Contracheque mais recente (o enviado é antigo)",
+    pedir: "O último contracheque" },
+  { id: "ILEGIVEL", grupo: "Documentação do solicitante", rotulo: "Documento ilegível — reenviar", complemento: true,
+    pedir: "Reenviar, de forma legível, o documento" },
+  { id: "CURSO", grupo: "Informações sobre o curso", rotulo: "Nome do curso", pedir: "Nome do curso" },
+  { id: "INSTITUICAO", grupo: "Informações sobre o curso", rotulo: "Nome da instituição de ensino", pedir: "Nome da instituição de ensino" },
+  { id: "SEMESTRE", grupo: "Informações sobre o curso", rotulo: "Semestre desejado", pedir: "Semestre desejado" },
+  { id: "NOME_BEN", grupo: "Documentação do dependente", rotulo: "Nome completo do dependente", pedir: "Nome completo do(a) dependente" },
+  { id: "DOC_FILHO", grupo: "Documentação do dependente", rotulo: "RG, certidão de nascimento ou CNH do filho(a)/enteado(a)",
+    pedir: "RG, certidão de nascimento ou CNH do(a) dependente" },
+  { id: "IR_ENTEADO", grupo: "Documentação do dependente", rotulo: "Comprovante de dependência no IR (enteado)",
+    pedir: "Comprovante de dependência na declaração do Imposto de Renda" },
+  { id: "CERT_CASAMENTO", grupo: "Documentação do dependente", rotulo: "Certidão de casamento (cônjuge)", pedir: "Certidão de casamento" }
 ];
 
 /* Os estados — cada um é um card no painel, e nenhum fica sempre vazio. */
@@ -326,7 +351,8 @@ function vpeAvaliar_(ext, ctx) {
     }
     return campos[chave].valor;
   }
-  function add(tipo, texto, pedir) { pend.push({ tipo: tipo, texto: texto, pedir: pedir || "" }); }
+  /* item: o id em VPE_ITENS_FALTA que esta pendência pede (a tela marca). */
+  function add(tipo, texto, pedir, item) { pend.push({ tipo: tipo, texto: texto, pedir: pedir || "", item: item || "" }); }
 
   if (ext.ehPedido === false) {
     return { estado: VPE_ESTADOS.IGNORADO, pendencias: [], campos: {}, percentual: null };
@@ -433,7 +459,10 @@ function vpeAvaliar_(ext, ctx) {
   campo("regime", String(ext.regime || "").toUpperCase() === "ANUAL" ? "ANUAL" : "SEMESTRAL",
     ext.regime ? "escrito no e-mail" : "padrão: semestral");
 
-  if (!curso) add("FALTA", "Nome do curso não informado.", "o nome do curso");
+  if (!curso) add("FALTA", "Nome do curso não informado.", "Nome do curso", "CURSO");
+  if (!ext.instituicao && !(ed && ed.instituicao)) {
+    add("FALTA", "Instituição de ensino não informada.", "Nome da instituição de ensino", "INSTITUICAO");
+  }
   if (curso && !modalidade) add("INTERNO", "Nível do curso não identificado — escolha antes de validar.");
   if (modalidade === "GRADUACAO" && !area) add("INTERNO", "Área do curso não identificada — escolha antes de validar.");
 
@@ -442,17 +471,17 @@ function vpeAvaliar_(ext, ctx) {
   var periodo = campo("periodo", vpePeriodo_(ext.periodo), "escrito no e-mail");
   periodo = vpePeriodo_(periodo);
   if (!periodo) {
-    add("FALTA", "Semestre desejado não informado.", "o semestre desejado (" + vpePeriodosOferecidos_(abertos).join(" ou ") + ")");
+    add("FALTA", "Semestre desejado não informado.", "Semestre desejado: " + vpePeriodosOferecidos_(abertos).join(" ou "), "SEMESTRE");
   } else if (abertos.indexOf(periodo) === -1) {
     add("FALTA", "Semestre " + periodo + " não está aberto (abertos: " + abertos.join(", ") + ").",
-      "o semestre desejado — o aberto para novos pedidos é " + vpePeriodosOferecidos_(abertos).join(" ou "));
+      "Semestre desejado: " + vpePeriodosOferecidos_(abertos).join(" ou ") + " (o " + periodo + " não está aberto)", "SEMESTRE");
   }
 
   /* ── documentos do titular ── */
   campo("comprovanteVinculo", provaTipo, provaTipo ? "anexo identificado pela IA" : "");
   if (!prova) {
     add("FALTA", "Comprovante de vínculo não anexado (contracheque, declaração da escola ou carteira de trabalho).",
-      "o comprovante de vínculo com a escola: o último contracheque, uma declaração da escola ou a página do contrato na carteira de trabalho");
+      vpeItemFalta_("VINCULO").pedir, "VINCULO");
   } else if (provaTipo === "DECLARACAO_ESCOLA") {
     var dComp = vpeCompetencia_(prova.competencia);
     var dDif = dComp ? (hoje.getFullYear() * 12 + hoje.getMonth() + 1) - (dComp.ano * 12 + dComp.mes) : null;
@@ -469,20 +498,20 @@ function vpeAvaliar_(ext, ctx) {
     if (dif >= 2) {
       /* O contracheque tem que ser SEMPRE o último (usuário, 29/10/2026). */
       add("FALTA", "Contracheque de " + rot + " — não é o último.",
-        "o último contracheque (o enviado é de " + rot + ")");
+        "O último contracheque (o enviado é de " + rot + ")", "CC_ULTIMO");
     } else if (dif < 0) {
       add("AVISO", "Contracheque com mês no futuro (" + rot + ") — confira.");
     }
   }
   campo("competenciaContracheque", ccComp ? ("0" + ccComp.mes).slice(-2) + "/" + ccComp.ano : "", "lido no contracheque");
-  if (!docTit) add("FALTA", "Documento de identidade (RG ou CNH) não anexado.", "um documento com foto (RG ou CNH)");
+  if (!docTit) add("FALTA", "Documento de identidade (RG ou CNH) não anexado.", "RG ou CNH", "DOC_ID");
 
   /* ── o dependente ── */
   var idade = "";
   var temIR = doTipo("IMPOSTO_RENDA").length > 0;
   if (dependente) {
     var nomeBen = campo("nomeBeneficiario", ben.nome || "", "escrito no e-mail");
-    if (!nomeBen) add("FALTA", "Nome do(a) beneficiário(a) não informado.", "o nome completo do(a) beneficiário(a)");
+    if (!nomeBen) add("FALTA", "Nome do(a) beneficiário(a) não informado.", "Nome completo do(a) dependente", "NOME_BEN");
 
     if (tipoBen === "FILHO" || tipoBen === "ENTEADO") {
       var docsBen = docsId.concat(doTipo("CERTIDAO_NASCIMENTO")).filter(function (d) {
@@ -491,7 +520,7 @@ function vpeAvaliar_(ext, ctx) {
       var rotulo = tipoBen === "FILHO" ? "filho(a)" : "enteado(a)";
       if (!docsBen.length) {
         add("FALTA", "Documento do(a) " + rotulo + " não anexado.",
-          "um documento do(a) " + rotulo + ": identidade, certidão de nascimento ou CNH");
+          "RG, certidão de nascimento ou CNH do(a) " + rotulo, "DOC_FILHO");
       }
       var nasc = vpeData_(ed.dataNascimento || ben.dataNascimento ||
         (docsBen[0] && docsBen[0].dataNascimento));
@@ -505,11 +534,11 @@ function vpeAvaliar_(ext, ctx) {
       }
       if (tipoBen === "ENTEADO" && !temIR) {
         add("FALTA", "Comprovante de dependente no Imposto de Renda não anexado (enteado).",
-          "o comprovante de que o(a) enteado(a) é seu dependente no Imposto de Renda");
+          "Comprovante de dependência do(a) enteado(a) na declaração do Imposto de Renda", "IR_ENTEADO");
       }
     }
     if (tipoBen === "CONJUGE" && !doTipo("CERTIDAO_CASAMENTO").length) {
-      add("FALTA", "Certidão de casamento não anexada.", "a certidão de casamento");
+      add("FALTA", "Certidão de casamento não anexada.", "Certidão de casamento", "CERT_CASAMENTO");
     }
   }
   campo("idade", idade === "" ? "" : idade, "calculada pela data de nascimento");
@@ -543,7 +572,7 @@ function vpeAvaliar_(ext, ctx) {
   if (semNada) {
     estado = VPE_ESTADOS.FALTA_DOC;
   } else if (!cpf || cpfsDistintos.length > 1) {
-    if (!cpf) add("INTERNO", "CPF não encontrado no e-mail, nos anexos nem no cadastro.");
+    if (!cpf) add("INTERNO", "CPF não encontrado no e-mail, nos anexos nem no cadastro.", "Número do CPF", "CPF");
     estado = VPE_ESTADOS.PRECISA_VOCE;
   } else if ((!assoc || assoc.filiado === false) && !ctx.associadoConfirmadoPor) {
     add("INTERNO", assoc
@@ -649,6 +678,29 @@ function vpeTextoPadrao_(ola, abertos) {
   ].join("\n");
 }
 
+/** As peças fixas do pedido de complemento. A TELA monta o mesmo texto com
+ *  estas peças (vem no detalhe do pedido), então servidor e tela nunca
+ *  divergem: só a lista de itens muda. */
+function vpeModeloComplemento_(ola) {
+  return {
+    abertura: [ola, "Tudo bem?", "Recebemos sua solicitação de voucher de bolsa de estudos.",
+      "Para darmos andamento ao seu pedido, pedimos que responda a este e-mail com:"].join("\n"),
+    fechamento: ["Assim que recebermos, o voucher será emitido e encaminhado por este mesmo e-mail, " +
+      "com prioridade no atendimento.", "", "Estamos à disposição para esclarecer qualquer dúvida!", "",
+      VPE_ASSINATURA].join("\n")
+  };
+}
+
+function vpeItemFalta_(id) {
+  for (var i = 0; i < VPE_ITENS_FALTA.length; i++) if (VPE_ITENS_FALTA[i].id === id) return VPE_ITENS_FALTA[i];
+  return null;
+}
+
+function vpeMontarComplemento_(modelo, pedidos) {
+  return modelo.abertura + "\n\n" + pedidos.map(function (x) { return "• " + x + ";"; }).join("\n") +
+    "\n\n" + modelo.fechamento;
+}
+
 function vpeTextoResposta_(estado, aval, abertos) {
   var nome = vpePrimeiroNome_(aval && aval.campos && aval.campos.nome && aval.campos.nome.valor);
   var ola = "Olá" + (nome ? ", " + nome : "") + "!";
@@ -659,17 +711,8 @@ function vpeTextoResposta_(estado, aval, abertos) {
   if (estado === VPE_ESTADOS.FALTA_DOC) {
     /* Mandou parte: pede SÓ o que falta (usuário, 29/10/2026: "só encaminha
        aquilo que realmente é necessário"). */
-    var itens = (aval.pendencias || []).filter(function (p) { return p.pedir; })
-      .map(function (p) { return "• " + p.pedir; });
-    var t = [
-      ola, "",
-      "Recebemos sua solicitação de voucher de bolsa de estudos. Para darmos andamento, " +
-        "precisamos que nos envie, respondendo a este e-mail:",
-      itens.join("\n"), "",
-      "Assim que recebermos, o voucher será emitido e enviado por este canal, com prioridade no atendimento.",
-      "", VPE_ASSINATURA
-    ];
-    return t.join("\n");
+    return vpeMontarComplemento_(vpeModeloComplemento_(ola),
+      (aval.pendencias || []).filter(function (p) { return p.pedir; }).map(function (p) { return p.pedir; }));
   }
 
   if (estado === VPE_ESTADOS.NAO_ENCONTRADO) {
@@ -1088,7 +1131,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
   reg.DADOS_JSON = JSON.stringify({
     extracao: ext, campos: aval.campos, percentual: aval.percentual,
-    associado: aval.associado, editados: dados.editados || {}
+    associado: aval.associado, editados: dados.editados || {}, semNada: !!aval.semNada
   });
   reg.ANEXOS_JSON = JSON.stringify(infoAnexos);
   reg.RESPOSTA_SUGERIDA = vpeTextoResposta_(reg.ESTADO, aval, abertos);
@@ -1474,6 +1517,9 @@ function voucherPedidosDetalhe(id, tokenSessao) {
       pendencias: vpeJson_(reg.PENDENCIAS_JSON, []),
       anexos: vpeJson_(reg.ANEXOS_JSON, []),
       respostaSugerida: String(reg.RESPOSTA_SUGERIDA || ""),
+      /* Para a lista "o que está faltando": o catálogo, o que o sistema viu
+         (já marcado) e as peças fixas do texto — a tela monta igual. */
+      complemento: vpeDadosComplemento_(reg, d),
       confirmadoPor: String(reg.ASSOCIADO_CONFIRMADO_POR || ""),
       mensagens: mensagens,
       opcoes: { modalidades: VPE_MODALIDADES, areas: VPE_AREAS, beneficiarios: VPE_BENEFICIARIOS,
@@ -1482,6 +1528,43 @@ function voucherPedidosDetalhe(id, tokenSessao) {
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
+}
+
+function vpeDadosComplemento_(reg, d) {
+  var pend = vpeJson_(reg.PENDENCIAS_JSON, []);
+  var nome = vpePrimeiroNome_(d.campos && d.campos.nome && d.campos.nome.valor);
+  var sugeridos = {};
+  pend.forEach(function (p) { if (p.item && !sugeridos[p.item]) sugeridos[p.item] = p.pedir || ""; });
+  var oferecidos = vpePeriodosOferecidos_();
+  return {
+    itens: VPE_ITENS_FALTA.map(function (i) {
+      return { id: i.id, grupo: i.grupo, rotulo: i.rotulo, complemento: !!i.complemento,
+               pedir: i.id === "SEMESTRE" ? "Semestre desejado: " + oferecidos.join(" ou ") : i.pedir };
+    }),
+    sugeridos: sugeridos,
+    modelo: vpeModeloComplemento_("Olá" + (nome ? ", " + nome : "") + "!"),
+    semNada: !!(d.semNada)
+  };
+}
+
+/** APRENDER VENDO A GENTE FAZER (usuário, 29/10/2026). Guarda, em cada
+ *  envio, o que o sistema sugeriu, o que a pessoa escolheu e se mudou o
+ *  texto. São estes números que dirão um dia se dá para automatizar. */
+function vpeRegistrarCorrecao_(reg, tipo, meta, textoEnviado, quem) {
+  meta = meta || {};
+  var sug = Array.isArray(meta.sugeridos) ? meta.sugeridos.map(String) : [];
+  var esc = Array.isArray(meta.escolhidos) ? meta.escolhidos.map(String) : [];
+  var lista = vpeJson_(reg.CORRECOES_JSON, []);
+  lista.push({
+    em: Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd HH:mm"), por: quem, tipo: tipo,
+    sugeridos: sug, escolhidos: esc,
+    acrescentados: esc.filter(function (x) { return sug.indexOf(x) === -1; }),
+    retirados: sug.filter(function (x) { return esc.indexOf(x) === -1; }),
+    textoMudou: meta.textoSugerido !== undefined && String(meta.textoSugerido).trim() !== String(textoEnviado).trim(),
+    textoSugerido: meta.textoSugerido !== undefined ? String(meta.textoSugerido).substring(0, 4000) : "",
+    textoEnviado: String(textoEnviado).substring(0, 4000)
+  });
+  reg.CORRECOES_JSON = JSON.stringify(lista);
 }
 
 /** O anexo, para ver na tela — de qualquer mensagem da conversa. */
@@ -1529,7 +1612,7 @@ function vpeReavaliar_(reg, editados, quem) {
     remetenteEmail: reg.REMETENTE_EMAIL, remetenteNome: reg.REMETENTE_NOME,
     camposEditados: d.editados
   });
-  d.campos = aval.campos; d.percentual = aval.percentual; d.associado = aval.associado;
+  d.campos = aval.campos; d.percentual = aval.percentual; d.associado = aval.associado; d.semNada = !!aval.semNada;
   reg.DADOS_JSON = JSON.stringify(d);
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
   if (reg.ESTADO !== VPE_ESTADOS.CONCLUIDO) {
@@ -1573,7 +1656,12 @@ function voucherPedidosConfirmarAssociado(id, tokenSessao) {
  * Pedir complemento (FALTA_DOC) ou encaminhar à sede (NAO_ENCONTRADO).
  * O texto chega editado pela pessoa — é ele que sai, não o sugerido.
  */
-function voucherPedidosResponder(id, tipo, texto, tokenSessao) {
+function voucherPedidosResponder(id, tipo, texto, a4, a5) {
+  /* (id, tipo, texto, token) ou, da tela nova, (id, tipo, texto, meta, token):
+     meta = { sugeridos, escolhidos, textoSugerido } — para aprender com a
+     correção de quem conferiu. */
+  var meta = a5 !== undefined ? (a4 || {}) : {};
+  var tokenSessao = a5 !== undefined ? a5 : a4;
   try {
     var sessao = exigirModulo_(tokenSessao, "beneficios", false);
     var reg = vpeExigirPedido_(id, sessao);
@@ -1585,6 +1673,7 @@ function voucherPedidosResponder(id, tipo, texto, tokenSessao) {
 
     var quem = sessao.email || sessao.usuario || "";
     var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto), [], quem);
+    vpeRegistrarCorrecao_(reg, tipo, meta, texto, quem);
     reg.ACAO = tipo === "SEDE" ? "ENCAMINHADO_SEDE" : "COMPLEMENTO_PEDIDO";
     reg.ESTADO = tipo === "SEDE" ? VPE_ESTADOS.CONCLUIDO : VPE_ESTADOS.AGUARDANDO;
     reg.DECIDIDO_POR = quem;

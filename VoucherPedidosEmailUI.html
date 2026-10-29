@@ -76,6 +76,14 @@
 #vpeModal .vpe-pct b { color: var(--navy); font-size: 16px; }
 #vpeModal .of-modal-foot { flex-wrap: wrap; }
 #vpeModal .vpe-just { display: none; margin-top: 10px; }
+#vpeModal .vpe-falta { border: 1px solid var(--g200, #e2e8f0); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+#vpeModal .vpe-falta h5 { margin: 8px 0 4px; font-size: 11.5px; font-weight: 700; color: var(--g600); }
+#vpeModal .vpe-falta h5:first-child { margin-top: 0; }
+#vpeModal .vpe-falta label { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; margin: 3px 0; cursor: pointer; }
+#vpeModal .vpe-falta label small { color: #7c3aed; font-size: 10.5px; }
+#vpeModal .vpe-falta input[type=text] { width: 100%; font-size: 12.5px; padding: 4px 6px; margin: 2px 0 4px 22px; max-width: calc(100% - 22px); }
+#vpeModal .vpe-texto-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#vpeModal .vpe-texto-aviso { display: none; font-size: 12px; color: var(--amber, #d97706); margin: 4px 0; }
 
 /* Abas: Pedidos por e-mail | Solicitações e certificados (21/10/2026) */
 #vpeAbas { display: flex; gap: 6px; border-bottom: 2px solid var(--g200); margin: 0 0 0; font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -162,8 +170,19 @@
           <div class="vpe-campos" id="vpeMCampos"></div>
           <div class="vpe-pct" id="vpeMPct"></div>
           <div id="vpeMRespostaBox">
-            <h4>Resposta que vai sair</h4>
+            <div id="vpeMFaltaBox">
+              <h4>O que está faltando? <span style="text-transform:none;letter-spacing:0;font-weight:600;">— o sistema já marcou o que viu; confira</span></h4>
+              <div class="vpe-falta" id="vpeMFalta"></div>
+            </div>
+            <div class="vpe-texto-cab">
+              <h4>E-mail que vai sair <span style="text-transform:none;letter-spacing:0;font-weight:600;">— pode editar</span></h4>
+              <button type="button" class="btn btn-outline" id="vpeMVoltarModelo" data-vpe="voltarModelo" style="padding:3px 10px;font-size:11.5px;">↺ Voltar ao modelo</button>
+            </div>
+            <div class="vpe-texto-aviso" id="vpeMTextoAviso">
+              Você alterou o texto à mão. <button type="button" class="btn btn-outline" data-vpe="voltarModelo" style="padding:2px 8px;font-size:11.5px;">Refazer a partir dos itens marcados</button>
+            </div>
             <textarea id="vpeMResposta"></textarea>
+            <small id="vpeMTextoEditado" style="display:none;color:var(--amber,#d97706);font-size:11px;">✎ Texto alterado à mão</small>
           </div>
           <div class="vpe-just" id="vpeMJustBox">
             <h4 id="vpeMJustTitulo">Por que validar com pendência?</h4>
@@ -418,6 +437,7 @@ var VPE = (function () {
     var temResposta = !concl && (it.estado === "FALTA_DOC" || it.estado === "NAO_ENCONTRADO" || it.estado === "PRECISA_VOCE" || it.estado === "AGUARDANDO");
     el("vpeMRespostaBox").style.display = temResposta ? "" : "none";
     el("vpeMResposta").value = d.respostaSugerida || "";
+    montarFalta(d, temResposta && it.estado !== "NAO_ENCONTRADO");
     el("vpeMJustBox").style.display = "none";
     el("vpeMJust").value = "";
     estado.modo = "";
@@ -449,6 +469,68 @@ var VPE = (function () {
         "O certificado sai datado de hoje para <b>" + esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") +
         "</b>, e fica registrado que foi você quem conferiu.</div>" : "";
     el("vpeMAcoes").innerHTML = nota + b.join("");
+  }
+
+  /* ── O QUE ESTÁ FALTANDO (29/10/2026) ──
+     Os itens marcados montam o texto com as peças fixas que vêm do
+     servidor (o mesmo modelo dos dois lados). A pessoa pode editar o texto;
+     se editou, mudar os itens NÃO apaga a edição — só avisa. */
+  function montarFalta(d, mostrar) {
+    var c = d.complemento || null;
+    estado.comp = c;
+    estado.textoSugerido = d.respostaSugerida || "";
+    estado.editado = false;
+    el("vpeMFaltaBox").style.display = (mostrar && c) ? "" : "none";
+    el("vpeMTextoAviso").style.display = "none";
+    el("vpeMTextoEditado").style.display = "none";
+    if (!mostrar || !c) { el("vpeMFalta").innerHTML = ""; return; }
+    var grupo = "", h = [];
+    c.itens.forEach(function (i) {
+      if (i.grupo !== grupo) { grupo = i.grupo; h.push("<h5>" + esc(grupo) + "</h5>"); }
+      var sug = Object.prototype.hasOwnProperty.call(c.sugeridos || {}, i.id);
+      h.push("<label><input type='checkbox' class='vpe-falta-chk' data-id='" + esc(i.id) + "'" + (sug ? " checked" : "") + "> <span>" +
+        esc(i.rotulo) + (sug ? " <small>marcado pelo sistema</small>" : "") + "</span></label>" +
+        (i.complemento ? "<input type='text' class='vpe-falta-txt' data-id='" + esc(i.id) + "' placeholder='qual documento?'>" : ""));
+    });
+    h.push("<h5>Outro</h5><input type='text' class='vpe-falta-txt' data-id='OUTRO' placeholder='escreva aqui, se faltar algo fora da lista' style='margin-left:0;max-width:100%;'>");
+    el("vpeMFalta").innerHTML = h.join("");
+  }
+  function itensMarcados() {
+    var c = estado.comp; if (!c) return [];
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMFalta .vpe-falta-chk"), function (x) {
+      if (!x.checked) return;
+      var id = x.getAttribute("data-id");
+      var item = c.itens.filter(function (i) { return i.id === id; })[0];
+      var txt = document.querySelector("#vpeMFalta .vpe-falta-txt[data-id='" + id + "']");
+      var pedir = (c.sugeridos && c.sugeridos[id]) || (item && item.pedir) || "";
+      if (txt && txt.value.trim()) pedir += ": " + txt.value.trim();
+      out.push({ id: id, pedir: pedir });
+    });
+    var outro = document.querySelector("#vpeMFalta .vpe-falta-txt[data-id='OUTRO']");
+    if (outro && outro.value.trim()) out.push({ id: "OUTRO", pedir: outro.value.trim() });
+    return out;
+  }
+  function textoDosItens() {
+    var c = estado.comp, itens = itensMarcados();
+    if (!c) return el("vpeMResposta").value;
+    if (!itens.length) return c.semNada ? estado.textoSugerido : "";
+    /* Quem não mandou nada recebe a resposta-padrão completa enquanto a
+       pessoa não mudar os itens que o sistema marcou. */
+    var ids = itens.map(function (x) { return x.id; }).sort().join(",");
+    if (c.semNada && ids === Object.keys(c.sugeridos || {}).sort().join(",")) return estado.textoSugerido;
+    return c.modelo.abertura + "\n\n" + itens.map(function (x) { return "• " + x.pedir + ";"; }).join("\n") +
+      "\n\n" + c.modelo.fechamento;
+  }
+  function itensMudaram() {
+    if (estado.editado) { el("vpeMTextoAviso").style.display = ""; return; }
+    el("vpeMResposta").value = textoDosItens();
+  }
+  function voltarModelo() {
+    el("vpeMResposta").value = textoDosItens();
+    estado.editado = false;
+    el("vpeMTextoAviso").style.display = "none";
+    el("vpeMTextoEditado").style.display = "none";
   }
 
   function camposDaTela() {
@@ -500,8 +582,12 @@ var VPE = (function () {
 
   function responder(tipo) {
     var txt = el("vpeMResposta").value;
+    var c = estado.comp || {};
+    var meta = { sugeridos: Object.keys(c.sugeridos || {}),
+                 escolhidos: itensMarcados().map(function (x) { return x.id; }),
+                 textoSugerido: estado.textoSugerido };
     travar(true);
-    rodar("voucherPedidosResponder", [estado.atual.item.id, tipo, txt], function (r) { depois(r, true); });
+    rodar("voucherPedidosResponder", [estado.atual.item.id, tipo, txt, meta], function (r) { depois(r, true); });
   }
 
   function confirmarAssociado() {
@@ -550,7 +636,7 @@ var VPE = (function () {
   var ACOES = { lerAgora: lerAgora, aba: aba, fechar: fechar, filtrar: filtrar, abrir: abrir,
                 verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
                 responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
-                ligarGatilho: ligarGatilho };
+                ligarGatilho: ligarGatilho, voltarModelo: voltarModelo };
   document.addEventListener("click", function (ev) {
     var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
     if (!alvo || alvo.disabled) return;
@@ -560,6 +646,17 @@ var VPE = (function () {
   });
   document.addEventListener("change", function (ev) {
     if (ev.target && ev.target.id === "vpeCaixa") carregar();
+    if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-falta-chk")) itensMudaram();
+  });
+  document.addEventListener("input", function (ev) {
+    var t = ev.target;
+    if (!t) return;
+    if (t.classList && t.classList.contains("vpe-falta-txt")) itensMudaram();
+    if (t.id === "vpeMResposta") {
+      estado.editado = t.value !== textoDosItens();
+      el("vpeMTextoEditado").style.display = estado.editado ? "" : "none";
+      if (!estado.editado) el("vpeMTextoAviso").style.display = "none";
+    }
   });
 
   return { carregar: carregar, filtrar: filtrar, aba: aba, lerAgora: lerAgora, abrir: abrir,
