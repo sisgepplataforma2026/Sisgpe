@@ -165,7 +165,7 @@ function enviarOTPSindicalizacao(idFicha) {
     '<p style="font-size:12.5px;color:#6b7385;line-height:1.55;">' +
     'Ao informar este código no formulário, você assina eletronicamente a ' +
     'ficha e a autorização de desconto mensal de 2% (dois por cento) sobre o ' +
-    'salário-base, nos termos do <b>Art. 545 da CLT</b> e da <b>Cláusula 56 ' +
+    'salário-base, nos termos do <b>Art. 545 da CLT</b> e da <b>Cláusula 38ª ' +
     'da Convenção Coletiva de Trabalho 2026/2027</b>.</p>' +
     '<p style="font-size:12.5px;color:#6b7385;">Se você não solicitou este ' +
     'código, ignore esta mensagem — nenhuma ficha será registrada em seu nome.</p>';
@@ -176,7 +176,7 @@ function enviarOTPSindicalizacao(idFicha) {
     SIND_ENTIDADE_SIGLA + ' é: ' + otp + '\n\n' +
     'O código vale por 10 minutos. Ao informá-lo no formulário, você assina ' +
     'eletronicamente a ficha e a autorização de desconto mensal de 2% sobre o ' +
-    'salário-base, nos termos do Art. 545 da CLT e da Cláusula 56 da ' +
+    'salário-base, nos termos do Art. 545 da CLT e da Cláusula 38ª da ' +
     'Convenção Coletiva de Trabalho 2026/2027.\n\n' +
     'Se você não solicitou este código, ignore este e-mail.\n\n' +
     SIND_ENTIDADE_SIGLA;

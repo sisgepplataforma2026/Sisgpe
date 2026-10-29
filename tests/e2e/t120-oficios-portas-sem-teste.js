@@ -194,7 +194,7 @@ b.ok(prev.assunto === "Ofício de Filiação Nº 040/" + ANO, "com o assunto do 
 const doEnvio = g.montarEmailHTML_("Ofício de Filiação", "040/" + ANO, "Filiação", 1, "");
 b.ok(prev.html === doEnvio, "e o corpo é IDÊNTICO ao que montarEmailHTML_ entrega ao envio");
 
-b.ok(/Cláusula 56/.test(prev.html), "o texto de Filiação traz a cláusula da CCT");
+b.ok(/Cláusula 38ª/.test(prev.html), "o texto de Filiação traz a cláusula da CCT");
 b.ok(/Taxa Negocial/.test(g.oficioPreviaEmail({ numero: "9/" + ANO, tipo: "Taxa Negocial" }, ADMIN).html),
   "e cada tipo devolve o seu próprio texto");
 b.ok(g.oficioPreviaEmail({ tipo: "Filiação" }, ADMIN).ok === false, "sem número, recusa");

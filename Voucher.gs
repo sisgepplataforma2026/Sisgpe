@@ -34,7 +34,12 @@ const ENDERECO_SIND_V     = "AV. NOSSA SENHORA DOS NAVEGANTES, 755, ED PALÁCIO 
 const TELEFONE_SIND_V     = "Tel.: 27 3222-2706 / 27 3223-8866";
 const SITE_SIND_V         = "www.sindeducacao.com · secretaria@sindeducacao.com";
 const CCT_TEXTO_V         = "Convenção Coletiva de Trabalho 2026/2027";
-const CCT_CLAUSULA_V      = "Cláusula 5ª, § 4º";
+/* Fundamento do voucher na CCT registrada no MTE (ES000256/2026): Cláusula 12ª
+   — Do Incentivo ao Aprimoramento, § 3º, que incorpora o Convênio Educacional
+   Sinepe-ES x SindEducação-ES. Valia "Cláusula 5ª, § 4º", que no registro é
+   prazo de pagamento de salário. O certificado (VoucherPdf.gs) cita a cláusula
+   pelo nome e não lê esta constante; ela fica correta para quem vier a ler. */
+const CCT_CLAUSULA_V      = "Cláusula 12ª, § 3º";
 
 /* Assinatura do presidente, em imagem.
  *

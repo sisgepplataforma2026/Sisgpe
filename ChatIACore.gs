@@ -1334,7 +1334,7 @@ var prompt =
     "4. Quando listar urgentes para cobrança, destaque os que têm email cadastrado.\n" +
     "5. Status: AGUARDANDO, CONFIRMADO, PENDENTE_30D, COBRANCA_ENVIADA, REGULARIZADO, DESFILIADO.\n" +
     "6. O usuário já está autenticado no SISGEP. Nunca pergunte quem ele é, seu cargo ou setor. Continue a tarefa usando o contexto da conversa.\n" +
-    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).\n" +
+    "7. Quando relevante, mencione o prazo de repasse da Cláusula 38 (dia 10 do mês seguinte).\n" +
     "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.\n" +
     "9. Ao citar inciso, alínea ou parágrafo, transcreva o texto entre aspas junto do número. Sem o texto à vista, cite só o artigo.";
 

@@ -147,7 +147,7 @@ b.ok(cinquenta.filter(n => r7.html.indexOf(n) !== -1).length === 50,
   "as 50 pessoas saem no documento",
   cinquenta.filter(n => r7.html.indexOf(n) !== -1).length + " de 50");
 
-b.passo("8. O texto cita a CCT 2026/2027 e a regra da Cláusula 57");
+b.passo("8. O texto cita a CCT 2026/2027 e a regra da Cláusula 40ª");
 const texto = r1.proc.corpoTexto;
 b.ok(/2026\/2027/.test(texto), "cita a CCT 2026/2027");
 b.ok(!/2025\/2026/.test(texto), "não cita mais a CCT vencida 2025/2026");
@@ -196,9 +196,9 @@ const fsCct = require("fs"), pathCct = require("path");
     /CCT 2025\/2026/.test(txt) ? "AINDA CITA 2025/2026" : "ok");
 });
 
-b.passo("12. A Taxa Assistencial passou a trazer os dados da Cláusula 58");
+b.passo("12. A Taxa Assistencial passou a trazer os dados da Cláusula 38ª – Assistência Médica");
 const corpoAssist = gerar("TAXA_ASSISTENCIAL", ["Teste Da Silva"]).proc.corpoTexto;
-b.ok(/Cláusula 58/.test(corpoAssist), "cita a Cláusula 58ª");
+b.ok(/Cláusula 38ª – Assistência Médica/.test(corpoAssist), "cita a Cláusula 38ª – Assistência Médica");
 /* Olha a COMPETÊNCIA, não qualquer menção ao mês: o texto cita "1º de março
    de 2026" ao informar a vigência da CCT, e isso está certo. O que não pode
    é a competência da apuração continuar em 2026. */
@@ -214,7 +214,7 @@ const corpoFil = gerar("FILIACAO", ["Teste Da Silva"]).proc.corpoTexto;
 b.ok(/10º \(décimo\) dia do mês subsequente/.test(corpoFil),
   "prazo de repasse escrito no ofício");
 b.ok(/relação nominal/.test(corpoFil),
-  "pede a relação nominal dos contribuintes, como manda a Cláusula 56");
+  "pede a relação nominal dos contribuintes, como manda a Cláusula 38ª");
 b.ok(!/conforme os prazos dispostos na CCT/.test(corpoFil),
   "saiu o 'conforme os prazos dispostos na CCT', que não dizia nada à escola");
 

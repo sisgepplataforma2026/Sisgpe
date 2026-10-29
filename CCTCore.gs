@@ -4,12 +4,20 @@
 // Vigência: 01/03/2026 a 28/02/2027
 // Assinada em: 19/05/2026 em Vitória-ES
 // Para atualizar: substitua o conteúdo de getCCTTexto_() anualmente
+//
+// NUMERAÇÃO (29/10/2026, regra do usuário: "Sempre o MTE"). Texto para fora
+// cita a numeração do registro no MTE (ES000256/2026). As cláusulas de
+// contribuição trazem a do MTE na primeira linha do corpo. O CABEÇALHO fica
+// na negociada de propósito: NegociacaoColetiva.gs divide este texto por
+// "CLÁUSULA <n> —" e trabalha sobre o texto negociado.
 // ================================================================
 
 function getCCTTexto_() {
   return (
     "━━━ CCT 2026/2027 — SindEducação-ES x Sinepe-ES ━━━\n" +
     "Vigência: 01/03/2026 a 28/02/2027. Data-base: 1º de março.\n" +
+    "Registro no MTE: ES000256/2026 (16/06/2026). Em texto para escola, associado ou terceiros, cite\n" +
+    "SEMPRE a numeração do registro no MTE, indicada em cada cláusula de contribuição.\n" +
     "Abrangência: Educadores Técnico-Administrativos (exceto professores) em estabelecimentos " +
     "particulares de ensino no ES (Ed. Infantil, Fundamental, Médio, Técnico, Superior, EaD).\n\n" +
 
@@ -166,14 +174,16 @@ function getCCTTexto_() {
     "CLÁUSULA 52 — ATESTADOS MÉDICOS: prazo de 24h úteis para entrega ao empregador (pessoalmente ou por WhatsApp/email).\n\n" +
 
     "CLÁUSULA 55 — RELAÇÃO NOMINAL:\n" +
+    "• No registro no MTE: CLÁUSULA 37ª — é a que se cita em texto para fora\n" +
     "• Escolas enviam lista de empregados em 15/abril e 15/outubro: secretaria@sindeducacao.com\n" +
     "• SindEducação-ES tem 30 dias para enviar ficha de filiação\n" +
     "• Multa por descumprimento: 2% da remuneração de cada empregado não informado\n\n" +
 
     "CLÁUSULA 56 — MENSALIDADE SINDICAL (manutenção financeira SindEducação-ES):\n" +
+    "• No registro no MTE: CLÁUSULA 38ª — é a que se cita em texto para fora\n" +
     "• Desconto mensal de 2% sobre salário-base dos ASSOCIADOS que autorizaram expressamente\n" +
     "• Repasse ao SindEducação-ES: até o 10º dia do mês subsequente + relação dos contribuintes\n" +
-    "• Multa por atraso: 0,33% ao dia sobre o valor principal + correção pelo INPC\n" +
+    "• Multa por atraso: 0,33% ao dia, LIMITADA AO VALOR DO PRINCIPAL, + atualização monetária pelo INPC\n" +
     "• Atraso reiterado pode configurar apropriação indébita\n\n" +
 
     /* Corrigido em 18/08/2026 a partir do comunicado publicado pelo sindicato
@@ -182,6 +192,7 @@ function getCCTTexto_() {
        antes do correto. Esta é a fonte que a Sofia consulta: ano errado aqui
        vira resposta errada para quem pergunta quando o desconto começa. */
     "CLÁUSULA 57 — TAXA NEGOCIAL (contribuição assistencial laboral):\n" +
+    "• No registro no MTE: CLÁUSULA 40ª — é a que se cita em texto para fora\n" +
     "• 6% em 3 parcelas mensais e sucessivas de 2%, iniciando na competência setembro/2026\n" +
     "• ISENTOS: filiados ao SindEducação-ES\n" +
     "• Repasse: até o 10º dia útil do mês subsequente ao desconto, com relação nominal\n" +
@@ -196,6 +207,7 @@ function getCCTTexto_() {
     "  constitucionalidade reconhecida pelo STF no Tema 935 (Repercussão Geral)\n\n" +
 
     "CLÁUSULA 58 — ASSISTÊNCIA MÉDICA AO SINDICATO (2027):\n" +
+    "• No registro no MTE: CLÁUSULA 38ª – ASSISTÊNCIA MÉDICA — é a que se cita em texto para fora\n" +
     "• 4% da folha bruta de março/2027, em 2 parcelas de 2% (15/abr e 15/mai/2027)\n" +
     "• Ed. Infantil exclusiva: 2% em 2 parcelas de 1%\n\n" +
 

@@ -314,7 +314,7 @@ function popularMemoriaInstitucional() {
 
     // Estilo dos ofícios
     salvarMemoria_("ESTILO_OFICIO", "Abertura padrão",   "Prezada [Nome da Escola], Cumprimentando-os cordialmente,", "Sistema");
-    salvarMemoria_("ESTILO_OFICIO", "Referência CCT",    "Conforme previsto na Cláusula 56ª da Convenção Coletiva de Trabalho (CCT) vigente", "Sistema");
+    salvarMemoria_("ESTILO_OFICIO", "Referência CCT",    "Conforme previsto na Cláusula 38ª da Convenção Coletiva de Trabalho (CCT) vigente", "Sistema");
     salvarMemoria_("ESTILO_OFICIO", "Tom",               "Formal, respeitoso, assertivo. Nunca agressivo. Sempre cita base legal.", "Sistema");
     salvarMemoria_("ESTILO_OFICIO", "Numeração",         "Formato NNN/AAAA (ex: 093/2026)", "Sistema");
     salvarMemoria_("ESTILO_OFICIO", "Cores",             "Navy #002f6c e Gold #C9A84C", "Sistema");
@@ -327,7 +327,7 @@ function popularMemoriaInstitucional() {
 
     // Padrão de cobrança conhecido
     salvarMemoria_("ESTILO_COBRANCA", "Escalonamento",   "1º: Ofício de Filiação → 2º: E-mail de cobrança → 3º: Reiteração → 4º: Notificação formal com multa", "Sistema");
-    salvarMemoria_("ESTILO_COBRANCA", "Percentual",      "2% sobre salário-base do associado (Cláusula 56 CCT)", "Sistema");
+    salvarMemoria_("ESTILO_COBRANCA", "Percentual",      "2% sobre salário-base do associado (Cláusula 38 CCT)", "Sistema");
     salvarMemoria_("ESTILO_COBRANCA", "Prazo repasse",   "Até o 10º dia do mês subsequente", "Sistema");
     salvarMemoria_("ESTILO_COBRANCA", "Multa atraso",    "0,33% ao dia + INPC. Pode configurar apropriação indébita.", "Sistema");
 

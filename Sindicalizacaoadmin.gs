@@ -299,7 +299,7 @@ function gerarPDFFichaSindicalizacao(idFicha) {
        - titulo de eleitor, zona e secao SAEM (nao existem no papel);
        - escolaridade vira caixa de marcar com NOVE opcoes;
        - contatos viram WhatsApp / telefonico / recado;
-       - o texto da autorizacao fica o COMPLETO (Art. 545 + Clausula 56 +
+       - o texto da autorizacao fica o COMPLETO (Art. 545 + Clausula 38 +
          Assembleia + Edital) — o do papel e mais curto, e encurtar texto de
          documento com valor legal nao se faz por questao de layout.
 
@@ -427,7 +427,7 @@ function gerarPDFFichaSindicalizacao(idFicha) {
 
     '<div class="aut">' +
     '<div class="aut-txt" style="width:55%;">' +
-    'Neste ato e nos termos do <b>Art. 545 da CLT</b> e da <b>Cláusula 56 da ' +
+    'Neste ato e nos termos do <b>Art. 545 da CLT</b> e da <b>Cláusula 38ª da ' +
     'Convenção Coletiva de Trabalho 2026/2027</b>, autorizo o desconto mensal ' +
     'em folha de pagamento, no percentual de <b>2% (dois por cento)</b> sobre ' +
     'meu salário-base, em favor do Sindicato dos Educadores Técnico-' +
