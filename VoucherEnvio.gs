@@ -69,7 +69,18 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
     /* Guarda DENTRO do try, pelo mesmo motivo de voucherEnviarPorEmail:
        fora dele, a recusa vira exceção crua e a tela mostra erro sem nome. */
     exigirModulo_(tokenSessao, "beneficios", false);
+    return voucherDadosEnvio_(protocolo);
+  } catch (e) {
+    Logger.log("voucherPrepararEnvio: " + e.message);
+    return { ok: false, mensagem: "Erro ao preparar o envio: " + e.message };
+  }
+}
 
+/* O preparo SEM a guarda de sessão — para o envio em lote e para a
+   continuação agendada, que já passaram pela guarda (ou não têm sessão,
+   no caso do gatilho, e só enviam o que alguém aprovou na tela). */
+function voucherDadosEnvio_(protocolo) {
+  try {
     protocolo = String(protocolo || "").trim();
     if (!protocolo) return { ok: false, mensagem: "Informe o protocolo." };
 
@@ -179,10 +190,16 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
        * Data convertida para texto no servidor não tem como quebrar a
        * serialização, e a tela já exibia isso como texto de qualquer forma. */
       emitidoEm: voucherDataTexto_(emissao.DATA_EMISSAO),
-      emitidoPor: String(emissao.USUARIO || "").trim()
+      emitidoPor: String(emissao.USUARIO || "").trim(),
+      /* A data que está no papel hoje, e a que ele vai ter ao sair: o envio
+         refaz o documento com a data do dia (VoucherLote.gs). A tela avisa. */
+      dataNoPapel: voucherDataTexto_(emissao.DATA_DOCUMENTO || emissao.DATA_EMISSAO).slice(0, 10),
+      dataDoEnvio: Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy"),
+      presencial: (typeof voucherEhNaoAssociado_ === "function")
+        ? !!voucherEhNaoAssociado_(String(solic.SITUACAO_SINDICAL || "").toUpperCase()) : false
     };
   } catch (e) {
-    Logger.log("voucherPrepararEnvio: " + e.message);
+    Logger.log("voucherDadosEnvio_: " + e.message);
     return { ok: false, mensagem: "Erro ao preparar o envio: " + e.message };
   }
 }
@@ -215,8 +232,19 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
      * Todo o resto desta função já devolvia mensagem legível pelo catch. A
      * guarda era o único ponto que escapava. */
     var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+    return voucherEnviarPorEmail_(protocolo, opcoes, sessao);
+  } catch (e) {
+    Logger.log("voucherEnviarPorEmail: " + e.message);
+    return { ok: false, mensagem: "Erro ao enviar o e-mail: " + e.message };
+  }
+}
 
-    var pronto = voucherPrepararEnvio(protocolo, tokenSessao);
+/* O envio SEM a guarda — a porta acima, o lote e a continuação agendada
+   passam todos por aqui, para o e-mail sair igual nos três. */
+function voucherEnviarPorEmail_(protocolo, opcoes, sessao) {
+  opcoes = opcoes || {};
+  try {
+    var pronto = voucherDadosEnvio_(protocolo);
     if (!pronto.ok) return pronto;
 
     var para = String(opcoes.para || pronto.emailAssociado || "").trim();
@@ -241,6 +269,22 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     if (copia && copia.indexOf("@") < 1) {
       return { ok: false, mensagem: "O e-mail da instituição não parece válido: " + copia };
     }
+    /* CÓPIA MARCADA TEM QUE TER E-MAIL — 29/10/2026, o usuário: "optativo,
+       mas tem que ter o email". Antes, marcada e vazia, o certificado saía
+       sem cópia e a tela dizia "enviado" — quem enviou achava que a escola
+       tinha recebido. */
+    if (opcoes.enviarInstituicao === true && !copia) {
+      return { ok: false, semEmailInstituicao: true,
+               mensagem: "A cópia para a instituição está marcada, mas não há e-mail da instituição. " +
+                         "Preencha o e-mail ou desmarque a cópia." };
+    }
+
+    /* O DOCUMENTO SAI COM A DATA DO ENVIO — 29/10/2026. Refeito com o mesmo
+       protocolo e o mesmo código se a data no papel for de outro dia. */
+    var quemEnvia = (sessao && (sessao.email || sessao.usuario)) || "";
+    var redatado = voucherRedatarDocumento_(pronto.protocolo, new Date(), "o envio por e-mail", quemEnvia);
+    if (!redatado.ok) return redatado;
+    pronto.linkPdf = redatado.linkPdf;
 
     var anexos = [];
     if (opcoes.anexarPdf !== false && pronto.linkPdf) {
@@ -264,6 +308,12 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     if (anexos.length) msg.attachments = anexos;
 
     voucherEnviarMsg_(msg);
+    /* O lote conta na cota do dia (CotaEmail.gs): um destinatário pelo
+       associado, mais um se foi cópia. O envio avulso fica fora, como sempre
+       foi — ele é um, e a reserva existe justamente para ele. */
+    if (opcoes.campanhaCota && typeof cotaEmail_registrarEnvio_ === "function") {
+      cotaEmail_registrarEnvio_(opcoes.campanhaCota, copia ? 2 : 1);
+    }
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
       para + (copia ? " (cc " + copia + ")" : ""), sessao);
 
@@ -289,9 +339,9 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     }
 
     return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + ".",
-             para: para, copia: copia, comAnexo: anexos.length > 0 };
+             para: para, copia: copia, comAnexo: anexos.length > 0, redatado: !!redatado.redatado };
   } catch (e) {
-    Logger.log("voucherEnviarPorEmail: " + e.message);
+    Logger.log("voucherEnviarPorEmail_: " + e.message);
     return { ok: false, mensagem: "Erro ao enviar o e-mail: " + e.message };
   }
 }

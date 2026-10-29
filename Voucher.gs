@@ -736,7 +736,11 @@ function setupVoucherModuleFase1() {
            ganha as três sem nenhuma linha antiga mudar de lugar. */
         "NOME_BENEFICIARIO",
         "TIPO_BENEFICIARIO",
-        "DATA_SOLICITACAO"
+        "DATA_SOLICITACAO",
+        /* 29/10/2026: a data IMPRESSA no certificado, quando ele é refeito
+           no dia do envio ou da impressão (VoucherLote.gs). Vazia = a da
+           emissão. Também no fim, pelo mesmo motivo das três acima. */
+        "DATA_DOCUMENTO"
       ]
     },
     {

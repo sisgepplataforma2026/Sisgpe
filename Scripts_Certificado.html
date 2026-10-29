@@ -187,6 +187,21 @@
 .cert-barra-sel { display: none; align-items: center; gap: 12px; padding: 9px 14px; margin-bottom: 10px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; }
 .cert-barra-sel.ativo { display: flex; }
 .cert-barra-sel-txt { font-size: 12.5px; font-weight: 800; color: #1e3a8a; flex: 1; }
+/* Lote de vouchers (29/10/2026): resultado da emissão e conferência do envio. */
+.cert-lote-res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.cert-lote-res > div { border-radius: 12px; padding: 12px; font-size: 12px; color: #334155; }
+.cert-lote-res b { display: block; font-size: 24px; line-height: 1.1; }
+.cert-lote-aviso { border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; margin-bottom: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #1565C0; color: #1e3a8a; }
+.cert-lote-aviso.alerta { background: #fef3c7; border-color: #fde68a; border-left-color: #d97706; color: #78350f; }
+.cert-lote-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cert-lote-tab th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; padding: 7px 6px; border-bottom: 1.5px solid #e2e8f0; }
+.cert-lote-tab td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.cert-lote-sit { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+.cert-lote-sit.PRONTO { background: #d1fae5; color: #065f46; }
+.cert-lote-sit.JA_ENVIADO { background: #f1f5f9; color: #475569; }
+.cert-lote-sit.PRESENCIAL { background: #fdf6e3; color: #8a6d1f; }
+.cert-lote-sit.SEM_EMAIL, .cert-lote-sit.NAO_EMITIDO { background: #fee2e2; color: #991b1b; }
+.cert-lote-peq { font-size: 11px; color: #64748b; }
 #certNovaBox .cert-nv-trava { background: #fef2f2; border: 1.5px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
 #certNovaBox .cert-nv-trava-tit { font-size: 13px; font-weight: 900; color: #991b1b; display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
 #certNovaBox .cert-nv-trava-l { font-size: 12px; color: #7f1d1d; line-height: 1.55; }
@@ -437,6 +452,8 @@
       <div class="cert-barra-sel" id="certBarraSel">
         <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelEmitir">📄 Emitir selecionadas</button>
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelEnviar">📧 Enviar selecionadas</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
       </div>
       <div class="cert-tabela-wrap">
@@ -809,6 +826,7 @@
         <div class="cert-info-item"><span class="cert-info-label">Curso / período</span><span class="cert-info-val" id="certEnvCurso">—</span></div>
         <div class="cert-info-item"><span class="cert-info-label">Emitido em</span><span class="cert-info-val" id="certEnvEmitido">—</span></div>
       </div>
+      <div class="cert-lote-aviso" id="certEnvDataAviso" style="display:none;margin-top:10px;"></div>
 
       <div class="cert-section-title">E-mail</div>
       <div class="cert-env-campo">
@@ -817,7 +835,7 @@
       </div>
 
       <label class="cert-env-check">
-        <input type="checkbox" id="certEnvCopiaAtiva" checked>
+        <input type="checkbox" id="certEnvCopiaAtiva">
         Enviar cópia para a instituição de ensino
       </label>
       <div class="cert-env-campo">
@@ -925,6 +943,58 @@
     <div class="cert-modal-foot">
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certComCancelar">Cancelar</button>
       <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certComEnviar">📧 Enviar comunicado</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOTE DE VOUCHERS — 29/10/2026, mockup docs/mock-voucher-lote.png aprovado.
+     Emissão: o resultado diz o que emitiu, o que já estava e o que precisa de
+     você. Envio: SEMPRE passa por esta conferência — nada sai sem ver a lista. -->
+<div id="certLoteEmiOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div style="width:min(620px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📄</div>
+        <div>
+          <div class="cert-modal-title">Emissão em lote</div>
+          <div class="cert-modal-sub" id="certLoteEmiSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certLoteEmiFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" id="certLoteEmiCorpo"></div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteEmiFechar2">Fechar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteEmiEnviar" style="display:none;">📧 Conferir e enviar as emitidas</button>
+    </div>
+  </div>
+</div>
+
+<div id="certLoteEnvOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div style="width:min(980px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">📧</div>
+        <div>
+          <div class="cert-modal-title">Enviar certificados em lote</div>
+          <div class="cert-modal-sub" id="certLoteEnvSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certLoteEnvFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" style="overflow:auto;">
+      <label class="cert-env-check" style="margin:0 0 10px;">
+        <input type="checkbox" id="certLoteEnvCopia">
+        Enviar cópia para a instituição de ensino
+        <span class="cert-lote-peq">— só para quem tem e-mail da instituição; quem não tiver fica de fora até você preencher</span>
+      </label>
+      <div id="certLoteEnvLista"></div>
+      <div class="cert-lote-aviso" id="certLoteEnvResumo" style="margin-top:12px;"></div>
+    </div>
+    <div class="cert-modal-foot">
+      <span class="cert-lote-peq" id="certLoteEnvCota" style="margin-right:auto;"></span>
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteEnvCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteEnvConfirmar">📧 Enviar</button>
     </div>
   </div>
 </div>
@@ -1512,6 +1582,8 @@ function atualizarBarraSelecao(){
     g('certBarraSelTxt').textContent = n === 1 ? '1 selecionada' : n + ' selecionadas';
   }
   if(g('certSelExcluir')) g('certSelExcluir').innerHTML = '🗑 Excluir' + (n ? ' ('+n+')' : '');
+  if(g('certSelEmitir')) g('certSelEmitir').innerHTML = '📄 Emitir selecionadas' + (n ? ' ('+n+')' : '');
+  if(g('certSelEnviar')) g('certSelEnviar').innerHTML = '📧 Enviar selecionadas' + (n ? ' ('+n+')' : '');
   /* O "marcar todos" reflete a página, não a base: marcar 8.000 registros com
      um clique é a forma mais rápida de esvaziar a lista sem querer. */
   var cbs = document.querySelectorAll('.cert-sel-linha');
@@ -1585,6 +1657,180 @@ function executarExclusao(){
     .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
     .voucherExcluirSolicitacoes(protos,
       g('certExcluirMotivo') ? g('certExcluirMotivo').value : '', certToken());
+}
+
+/* ══ LOTE: emitir e enviar as selecionadas ═══════════════════════════════
+   Mockup aprovado em 29/10/2026 (docs/mock-voucher-lote.png). A emissão
+   chama o servidor em rodadas: lote grande volta com `restantes` e a tela
+   pede de novo, em vez de estourar o tempo do Apps Script no meio. */
+var _loteEmi = null, _loteEnv = null;
+
+function loteFechar_(id){ var o=g(id); if(o){ o.style.display='none'; o.classList.remove('ativo'); } }
+function loteAbrir_(id){ var o=g(id); if(o){ o.style.display='flex'; o.classList.add('ativo'); } }
+
+function loteEmitirSelecionadas(){
+  var protos = selecionadosLista();
+  if(!protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
+  _loteEmi = { total: protos.length, emitidas: [], jaEmitidas: [], recusadas: [] };
+  loteAbrir_('certLoteEmiOverlay');
+  g('certLoteEmiSub').textContent = protos.length + (protos.length === 1 ? ' solicitação' : ' solicitações');
+  g('certLoteEmiEnviar').style.display = 'none';
+  loteEmitirRodada_(protos);
+}
+
+function loteEmitirRodada_(protos){
+  var feitas = _loteEmi.emitidas.length + _loteEmi.jaEmitidas.length + _loteEmi.recusadas.length;
+  g('certLoteEmiCorpo').innerHTML = '<div class="cert-lote-aviso">⏳ Emitindo… ' + feitas + ' de '
+    + _loteEmi.total + '. Cada certificado leva alguns segundos — pode deixar esta janela aberta.</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){ g('certLoteEmiCorpo').innerHTML = '<div class="cert-lote-aviso alerta">'
+        + cert_escHtml((r && r.mensagem) || 'Erro na emissão.') + '</div>'; return; }
+      _loteEmi.emitidas = _loteEmi.emitidas.concat(r.emitidas || []);
+      _loteEmi.jaEmitidas = _loteEmi.jaEmitidas.concat(r.jaEmitidas || []);
+      _loteEmi.recusadas = _loteEmi.recusadas.concat(r.recusadas || []);
+      if(r.restantes && r.restantes.length){ loteEmitirRodada_(r.restantes); return; }
+      loteEmitirPintar_();
+      cert_carregarLista();
+    })
+    .withFailureHandler(function(err){
+      g('certLoteEmiCorpo').innerHTML = '<div class="cert-lote-aviso alerta">Erro: '
+        + cert_escHtml((err && err.message) || '') + '</div>';
+    })
+    .voucherEmitirEmLote(protos, certToken());
+}
+
+function loteEmitirPintar_(){
+  var L = _loteEmi;
+  var html = '<div class="cert-lote-res">'
+    + '<div style="background:#d1fae5;"><b style="color:#059669;">' + L.emitidas.length + '</b>emitidas</div>'
+    + '<div style="background:#f1f5f9;"><b style="color:#64748b;">' + L.jaEmitidas.length + '</b>já estavam emitidas</div>'
+    + '<div style="background:#fef3c7;"><b style="color:#d97706;">' + L.recusadas.length + '</b>precisam de você</div>'
+    + '</div>';
+  if(L.recusadas.length){
+    html += '<div class="cert-lote-aviso alerta">' + L.recusadas.map(function(x){
+      return '<strong>' + cert_escHtml(x.protocolo) + '</strong> · ' + cert_escHtml(x.mensagem);
+    }).join('<br>') + '</div>';
+  }
+  html += '<div class="cert-lote-aviso">As emitidas ficam <strong>prontas para enviar</strong>. '
+    + 'A data do certificado será a do dia em que ele for <strong>enviado</strong> ou <strong>impresso</strong>.</div>';
+  g('certLoteEmiCorpo').innerHTML = html;
+  var prontas = L.emitidas.map(function(x){ return x.protocolo; }).concat(L.jaEmitidas);
+  var btn = g('certLoteEmiEnviar');
+  btn.style.display = prontas.length ? '' : 'none';
+  btn.textContent = '📧 Conferir e enviar (' + prontas.length + ')';
+  btn.setAttribute('data-protos', JSON.stringify(prontas));
+}
+
+/* O botão do resultado da emissão LEVA À CONFERÊNCIA — nunca envia direto. */
+function loteEmitirParaEnvio_(){
+  var protos = [];
+  try { protos = JSON.parse(g('certLoteEmiEnviar').getAttribute('data-protos') || '[]'); } catch(e){}
+  loteFechar_('certLoteEmiOverlay');
+  loteEnviarConferir(protos);
+}
+
+function loteEnviarSelecionadas(){ loteEnviarConferir(selecionadosLista()); }
+
+function loteEnviarConferir(protos){
+  if(!protos || !protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
+  _loteEnv = null;
+  loteAbrir_('certLoteEnvOverlay');
+  g('certLoteEnvSub').textContent = 'Carregando…';
+  g('certLoteEnvLista').innerHTML = '<div class="cert-lote-peq">⏳ Conferindo cada solicitação…</div>';
+  g('certLoteEnvResumo').textContent = '';
+  g('certLoteEnvCota').textContent = '';
+  g('certLoteEnvCopia').checked = false;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){ g('certLoteEnvLista').innerHTML = '<div class="cert-lote-aviso alerta">'
+        + cert_escHtml((r && r.mensagem) || 'Erro.') + '</div>'; return; }
+      _loteEnv = r;
+      g('certLoteEnvSub').textContent = r.linhas.length + ' selecionadas · todos saem datados de hoje, ' + r.dataDoEnvio;
+      g('certLoteEnvCota').textContent = 'Cota de e-mail de hoje para vouchers: ' + r.cota.disponivel
+        + ' (outros ' + r.cota.reserva + ' ficam reservados para os ofícios)'
+        + (r.filaPendente ? ' · ' + r.filaPendente + ' já aguardando para amanhã' : '');
+      loteEnviarPintar_();
+    })
+    .withFailureHandler(function(err){
+      g('certLoteEnvLista').innerHTML = '<div class="cert-lote-aviso alerta">Erro: '
+        + cert_escHtml((err && err.message) || '') + '</div>';
+    })
+    .voucherEnvioLotePreparar(protos, certToken());
+}
+
+function loteEnviarPintar_(){
+  if(!_loteEnv) return;
+  var copia = g('certLoteEnvCopia').checked;
+  var linhas = _loteEnv.linhas;
+  var html = '<table class="cert-lote-tab"><tr><th></th><th>Protocolo</th><th>Para quem</th><th>Vai para</th>'
+    + '<th>Cópia (instituição)</th><th>Situação</th></tr>';
+  linhas.forEach(function(l, i){
+    var semInst = copia && l.podeEnviar && !l.emailInstituicao;
+    html += '<tr><td>' + (l.podeEnviar && !semInst
+        ? '<input type="checkbox" class="cert-lote-chk" data-i="' + i + '"' + (l.marcado ? ' checked' : '') + '>' : '')
+      + '</td><td><strong>' + cert_escHtml(l.protocolo) + '</strong></td>'
+      + '<td>' + cert_escHtml(l.nome || '—') + '</td>'
+      + '<td>' + (l.para ? cert_escHtml(l.para) + '<div class="cert-lote-peq">da solicitação</div>' : '<span class="cert-lote-peq">—</span>') + '</td>'
+      + '<td>' + (copia ? (l.emailInstituicao ? cert_escHtml(l.emailInstituicao)
+            + '<div class="cert-lote-peq">' + (l.origemEmailInstituicao === 'CADASTRO' ? 'do cadastro — confira' : 'da solicitação') + '</div>'
+          : '<span class="cert-lote-sit SEM_EMAIL">sem e-mail da instituição</span>') : '<span class="cert-lote-peq">—</span>') + '</td>'
+      + '<td><span class="cert-lote-sit ' + cert_escHtml(l.situacao) + '">' + cert_escHtml(l.motivo) + '</span></td></tr>';
+  });
+  html += '</table>';
+  g('certLoteEnvLista').innerHTML = html;
+  loteEnviarResumo_();
+}
+
+function loteEnviarMarcados_(){
+  var out = [];
+  document.querySelectorAll('#certLoteEnvLista .cert-lote-chk').forEach(function(c){
+    if(c.checked) out.push(_loteEnv.linhas[Number(c.getAttribute('data-i'))].protocolo);
+  });
+  return out;
+}
+
+function loteEnviarResumo_(){
+  if(!_loteEnv) return;
+  var n = loteEnviarMarcados_().length;
+  var fora = _loteEnv.linhas.length - n;
+  var cabem = _loteEnv.cota.disponivel;
+  var porEnvio = g('certLoteEnvCopia').checked ? 2 : 1;
+  var hoje = Math.min(n, Math.floor(cabem / porEnvio));
+  g('certLoteEnvResumo').innerHTML = 'Vão sair <strong>' + n + ' e-mail(s)</strong>. '
+    + (fora ? fora + ' ficam de fora (motivo ao lado). ' : '')
+    + (n > hoje ? '<strong>' + hoje + ' saem hoje</strong> e ' + (n - hoje)
+        + ' saem <strong>amanhã de manhã, sozinhos</strong> — para não tirar e-mail dos ofícios. ' : '')
+    + 'Quem já recebeu vem desmarcado: para reenviar, marque.';
+  var btn = g('certLoteEnvConfirmar');
+  btn.disabled = n === 0;
+  btn.textContent = '📧 Enviar ' + n + ' certificado' + (n === 1 ? '' : 's');
+}
+
+function loteEnviarExecutar(){
+  var protos = loteEnviarMarcados_();
+  if(!protos.length){ cert_msg('Nenhum certificado marcado.','warn'); return; }
+  var btn = g('certLoteEnvConfirmar');
+  setBtnLoad(btn,'Enviando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r || !r.ok){ cert_msg((r && r.mensagem) || 'Erro no envio em lote.','erro'); return; }
+      var html = '<div class="cert-lote-aviso">✅ ' + cert_escHtml(r.mensagem) + '</div>';
+      if(r.pulados && r.pulados.length){
+        html += '<div class="cert-lote-aviso alerta">' + r.pulados.map(function(x){
+          return '<strong>' + cert_escHtml(x.protocolo) + '</strong> · ' + cert_escHtml(x.motivo);
+        }).join('<br>') + '</div>';
+      }
+      g('certLoteEnvLista').innerHTML = html;
+      g('certLoteEnvResumo').textContent = '';
+      btn.style.display = 'none';
+      cert_msg('✅ ' + r.mensagem, 'ok');
+      limparSelecao();
+      cert_carregarLista();
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherEnvioLoteExecutar(protos, { copiaInstituicao: g('certLoteEnvCopia').checked }, certToken());
 }
 
 function cert_limparFiltros(){
@@ -2338,6 +2584,11 @@ function envAbrir(protocolo){
   g('certEnvEmitido').textContent='—';
   g('certEnvPara').value  = '';
   g('certEnvCopia').value = '';
+  /* A cópia nasce DESMARCADA a cada abertura — "optativo", disse o usuário
+     em 29/10/2026. Marcar é decisão de quem envia, não herança do anterior. */
+  if(g('certEnvCopiaAtiva')) g('certEnvCopiaAtiva').checked = false;
+  if(g('certEnvDataAviso')) g('certEnvDataAviso').style.display = 'none';
+  envSincronizarCopia();
   g('certEnvOrigemDica').innerHTML = '';
   g('certEnvTelefone').textContent = '—';
   g('certEnvAlerta').style.display='none';
@@ -2397,6 +2648,17 @@ function envPintar(r){
          + cert_escHtml(r.instituicao || 'a instituição') + '. Digite, ou desmarque a cópia.';
   }
   g('certEnvOrigemDica').innerHTML = dica;
+
+  /* A DATA QUE VAI NO PAPEL. O envio refaz o certificado com a data de hoje
+     (mesmo protocolo, mesmo código) — quem envia precisa ver isso antes. */
+  var avData = g('certEnvDataAviso');
+  if(avData && r.dataDoEnvio){
+    avData.style.display = '';
+    avData.innerHTML = (r.dataNoPapel && r.dataNoPapel !== r.dataDoEnvio)
+      ? '📅 O certificado sai <strong>datado de hoje, ' + cert_escHtml(r.dataDoEnvio) + '</strong>. '
+        + 'Estava datado de ' + cert_escHtml(r.dataNoPapel) + ' — mesmo protocolo e mesmo código de validação.'
+      : '📅 O certificado sai <strong>datado de hoje, ' + cert_escHtml(r.dataDoEnvio) + '</strong>.';
+  }
 
   var temTel = !!r.whatsappUrl;
   g('certEnvTelefone').textContent = r.telefone || 'sem telefone cadastrado';
@@ -2491,7 +2753,11 @@ function envEnviarEmail(){
 
   var enviarInst = g('certEnvCopiaAtiva').checked;
   var copia = enviarInst ? String(g('certEnvCopia').value||'').trim() : '';
-  if(enviarInst && copia && copia.indexOf('@') < 1){
+  if(enviarInst && !copia){
+    cert_msg('A cópia está marcada, mas falta o e-mail da instituição. Digite o e-mail ou desmarque a cópia.','warn');
+    g('certEnvCopia').focus();return;
+  }
+  if(enviarInst && copia.indexOf('@') < 1){
     cert_msg('O e-mail da instituição não parece válido.','warn');g('certEnvCopia').focus();return;
   }
 
@@ -4060,11 +4326,38 @@ function certDocFechar(){
   if(g('certDocFrame')) g('certDocFrame').srcdoc = '';
 }
 
-function certDocImprimir(){
+function certDocImprimirFrame_(){
   var frame = g('certDocFrame');
-  if(!frame || !frame.srcdoc){ cert_msg('Nada para imprimir ainda.','warn'); return; }
   try { frame.contentWindow.focus(); frame.contentWindow.print(); }
   catch(e){ cert_msg('O navegador bloqueou a impressão: ' + (e.message||''),'erro'); }
+}
+
+/* JÁ EMITIDO: imprime o certificado DATADO DO DIA DA IMPRESSÃO — 29/10/2026,
+   o usuário, sobre a retirada presencial: a data é a do dia em que imprimir
+   para entregar. O servidor refaz o documento com o mesmo código. Rascunho
+   (antes de emitir) continua imprimindo a prévia que está na tela. */
+function certDocImprimir(){
+  var frame = g('certDocFrame');
+  var emitido = !!_docEmitido || (_docSol && String(_docSol.status||'').toUpperCase() === 'EMITIDO');
+  if(!emitido){
+    if(!frame || !frame.srcdoc){ cert_msg('Nada para imprimir ainda.','warn'); return; }
+    certDocImprimirFrame_(); return;
+  }
+  var btn = g('certDocImprimir');
+  setBtnLoad(btn,'Preparando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r || !r.ok){ cert_msg((r && r.mensagem) || 'Não consegui preparar a impressão.','erro'); return; }
+      /* onload ANTES do srcdoc: ligado depois, o documento pequeno pode
+         terminar de carregar antes e a impressão nunca abrir. */
+      if(frame){ frame.onload = function(){ frame.onload = null; certDocImprimirFrame_(); }; }
+      certDocMostrarHtml(r.html || '');
+      if(g('certDocAviso')) g('certDocAviso').textContent =
+        'Impressão datada de hoje, ' + (r.dataDocumento || '') + ' — mesmo código.';
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .voucherDocumentoParaImpressao(_docSol.protocolo, certToken());
 }
 
 function certDocGerar(){
@@ -4243,6 +4536,24 @@ function initInterno(){
     atualizarBarraSelecao();
   });
   if(g('certSelLimpar'))       g('certSelLimpar').addEventListener('click', limparSelecao);
+  // ── lote: emitir e enviar as selecionadas
+  if(g('certSelEmitir')) g('certSelEmitir').addEventListener('click', loteEmitirSelecionadas);
+  if(g('certSelEnviar')) g('certSelEnviar').addEventListener('click', loteEnviarSelecionadas);
+  ['certLoteEmiFechar','certLoteEmiFechar2'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteEmiOverlay'); });
+  });
+  if(g('certLoteEmiEnviar')) g('certLoteEmiEnviar').addEventListener('click', loteEmitirParaEnvio_);
+  ['certLoteEnvFechar','certLoteEnvCancelar'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){
+      loteFechar_('certLoteEnvOverlay');
+      if(g('certLoteEnvConfirmar')) g('certLoteEnvConfirmar').style.display = '';
+    });
+  });
+  if(g('certLoteEnvCopia')) g('certLoteEnvCopia').addEventListener('change', loteEnviarPintar_);
+  if(g('certLoteEnvLista')) g('certLoteEnvLista').addEventListener('change', function(ev){
+    if(ev.target && ev.target.classList && ev.target.classList.contains('cert-lote-chk')) loteEnviarResumo_();
+  });
+  if(g('certLoteEnvConfirmar')) g('certLoteEnvConfirmar').addEventListener('click', loteEnviarExecutar);
   if(g('certSelExcluir'))      g('certSelExcluir').addEventListener('click', confirmarExclusao);
   if(g('certExcluirFechar'))   g('certExcluirFechar').addEventListener('click', fecharExclusao);
   if(g('certExcluirCancelar')) g('certExcluirCancelar').addEventListener('click', fecharExclusao);

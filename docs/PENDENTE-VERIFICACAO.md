@@ -6415,3 +6415,33 @@ roda `popularMemoriaInstitucional`. Até lá, se a aba de memória já tiver
 "Cláusula 56ª" em ESTILO_OFICIO, ele continua lá. (Essa função apaga e regrava
 INSTITUCIONAL/ESTILO_OFICIO/ASSINATURA, mas não ESTILO_COBRANCA: rodar de novo
 duplica as linhas de cobrança — não é desta mudança, fica anotado.)
+
+## 🔴 Vouchers em lote e data do documento no dia em que sai — homologação 29/10/2026
+
+Pedido seu: emitir todos; o certificado sai com a **data do envio** (ou da
+**impressão**, na retirada presencial); envio para o e-mail de quem
+solicitou; cópia para a instituição **opcional, mas com e-mail**; envio em
+lote e individual. Mockup aprovado: `docs/mock-voucher-lote.png`, com os três
+ajustes (cota preserva os ofícios; quem já recebeu vem desmarcado; o lote
+sempre passa pela conferência).
+
+Testado no emulador com dados fictícios: t210 (83 conferências — emissão,
+data refeita, cota, fila de amanhã, impressão, massa de teste) e t211 (24 —
+a tela). Suíte verde.
+
+**NÃO TESTADO no sistema no ar.** Roteiro em HOMOLOGAÇÃO:
+- [ ] no editor do projeto de homologação, rodar `voucherHomologacaoCriarMassaTeste`
+      (cria 6 solicitações "TESTE FICTÍCIO"; os e-mails vão para a sua caixa
+      com +teste1, +teste2…). Fora de homologação ela recusa;
+- [ ] Vouchers → selecionar as 6 → **Emitir selecionadas**: 5 emitidas, a do
+      Pedro recusa por falta de período;
+- [ ] **Conferir e enviar**: Carlos (presencial) e Márcia (sem e-mail) ficam
+      de fora; marcar a cópia → Lucas sai da lista; enviar;
+- [ ] abrir o PDF que chegou: a data é a de hoje;
+- [ ] no dia seguinte, enviar de novo a Ana pelo envio individual: o PDF sai
+      com a data do novo dia;
+- [ ] Carlos: abrir o certificado → **Imprimir** → a data é a do dia;
+- [ ] apagar a massa: selecionar as linhas TESTE FICTÍCIO → Excluir.
+
+Não provado em lugar nenhum ainda: o gatilho das 8h que manda o que passou da
+cota (o emulador registra o agendamento, não espera o horário).
