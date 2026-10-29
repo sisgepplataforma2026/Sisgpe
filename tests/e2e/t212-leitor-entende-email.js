@@ -145,4 +145,43 @@ const nomes = JSON.stringify(painel);
 b.ok(nomes.indexOf("Sam's Club") === -1 && nomes.indexOf("Homologação") === -1, "e nenhuma das duas aparece no painel");
 b.ok(!!pedidoDa(thVoucher) && pedidoDa(thVoucher).ESTADO !== "IGNORADO", "o voucher continua no painel");
 
+b.fluxo("LEITOR · pendentes das pastas importadas (CERTIFICADO 2026-2 / 2027-1)");
+b.passo("9. Sem as etiquetas (importação não feita), não faz nada");
+const L9 = L.leitorBuscarPendentesDasPastas_();
+b.ok(L9.semEtiquetas, "sem etiquetas: nada a fazer");
+
+b.passo("10. Copia só os pendentes das duas pastas — e nada da pasta EMITIDOS");
+const antesPastas = entrada().length;
+const thPend = SIM.pasta("CERTIFICADO 2027-1",
+  novaThread("Certificado de bolsa 2027", "lucia@exemplo.com", "Bom dia, peço o certificado de bolsa para meu filho."));
+const thResp = SIM.pasta("CERTIFICADO 2027-1",
+  novaThread("Voucher 2027/1", "marcos@exemplo.com", "Quero o voucher de Direito."));
+SIM.responder(thResp, "Marcelha <secretaria@sindeducacao.com>", "Segue o certificado.");
+const thPend2 = SIM.pasta("CERTIFICADO 2026-2",
+  novaThread("Bolsa 2026/2", "rui@exemplo.com", "Ainda aguardo o certificado de bolsa."));
+const thEmit = SIM.pasta("CERTIFICADOS 2026-2 - EMITIDOS",
+  novaThread("Bolsa antiga", "ze@exemplo.com", "Pedido já atendido."));
+/* Já copiado pelo caminho normal (depois de 21/10): mesma pessoa, assunto e data. */
+const original = entrada().find(r => String(r.THREAD_ID) === thVoucher.id);
+const m0 = JSON.parse(original.MENSAGENS_JSON)[0];
+const thDup = SIM.pasta("CERTIFICADO 2027-1", novaThread(m0.assunto, "ana@exemplo.com", "cópia importada"));
+thDup.msgs[0].getDate = () => new Date(m0.data);
+const r10 = L.leitorBuscarPendentesDasPastas_();
+b.igual(r10.copiados, 2, "dois pendentes copiados", JSON.stringify(r10));
+b.ok(naPonte(thPend) && naPonte(thPend2), "Lúcia (2027-1) e Rui (2026-2) foram para a ponte");
+b.ok(!naPonte(thResp), "o já respondido pela Secretaria NÃO foi");
+b.ok(!naPonte(thEmit), "nada da pasta EMITIDOS");
+b.ok(!naPonte(thDup), "a cópia importada de um pedido já copiado não duplicou");
+b.igual(r10.respondidos, 1, "o relatório conta o respondido");
+b.igual(r10.repetidos, 1, "e o repetido");
+b.igual(entrada().length, antesPastas + 2, "a ponte cresceu só dois");
+b.ok(!SIM.chamadasIALeitor.some(c => /certificado de bolsa para meu filho/.test(c.texto)),
+  "pedido de pasta não passa pela IA (a Marcela já separou)");
+
+b.passo("11. Repassar no mesmo dia não faz nada; e o SISGEP mostra os pendentes");
+SIM.ciclo();
+b.igual(entrada().length, antesPastas + 2, "o ciclo do mesmo dia não copiou de novo");
+g.vpeLerCaixa_({});
+b.ok(!!pedidoDa(thPend) && !!pedidoDa(thPend2), "os dois pendentes aparecem no SISGEP");
+
 b.resumo();

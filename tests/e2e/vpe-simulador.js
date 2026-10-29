@@ -101,7 +101,7 @@ function instalar(g, amb, opcoes) {
      mandado para a secretaria@ — um e-mail ao financeiro@ nunca aparece. */
   leitor.GmailApp.search = (q) => {
     consultas.push(String(q));
-    return threads.filter(t => t.msgs.some(m =>
+    return threads.filter(t => !t.arquivada && t.msgs.some(m =>
       /secretaria@sindeducacao\.com/i.test(m.getTo() + "," + m.getCc()))).map(t => t.obj);
   };
   leitor.GmailApp.getThreadById = id => (threads.find(t => t.id === id) || {}).obj || null;
@@ -112,7 +112,20 @@ function instalar(g, amb, opcoes) {
   leitor.GmailApp.getAliases = () => (opcoes.semAlias ? [] : ["secretaria@sindeducacao.com"]);
   const etiquetasCriadas = {};
   leitor.GmailApp.getUserLabelByName = n => etiquetasCriadas[n] || null;
-  leitor.GmailApp.createLabel = n => (etiquetasCriadas[n] = { getName: () => n });
+  leitor.GmailApp.createLabel = n => (etiquetasCriadas[n] = { getName: () => n, getThreads: () => [] });
+  /* As PASTAS importadas da KingHost viram etiquetas no Gmail (importação
+     única). Conversa de pasta fica ARQUIVADA: não aparece na busca da caixa. */
+  const pastasImportadas = {};
+  leitor.GmailApp.getUserLabels = () => Object.keys(etiquetasCriadas).map(n => etiquetasCriadas[n])
+    .concat(Object.keys(pastasImportadas).map(n => ({
+      getName: () => n,
+      getThreads: (ini, max) => pastasImportadas[n].slice(ini, ini + max).map(t => t.obj)
+    })));
+  function pasta(nome, th) {
+    th.arquivada = true;
+    (pastasImportadas[nome] = pastasImportadas[nome] || []).push(th);
+    return th;
+  }
 
   /* A IA DO LEITOR (29/10/2026): ela diz o que é cada e-mail, dentro da conta
      da Secretaria. No simulador: "voucher"/"bolsa" no texto é VOUCHER; o
@@ -187,7 +200,7 @@ function instalar(g, amb, opcoes) {
   return { threads, tocadas, chamadasIA, EXTRACOES, novaThread, responder, anexo, CC, RG, base,
            pdf: n => anexo(n, "application/pdf"), jpg: n => anexo(n, "image/jpeg"),
            leitor, ponte, consultas, tentativasSisgep, PONTE_ID, CONTA_SECRETARIA, estadoIA,
-           chamadasIALeitor, estadoIALeitor,
+           chamadasIALeitor, estadoIALeitor, pasta,
            /** Um ciclo do leitor: copia o que chegou e envia o que está na fila. */
            ciclo: () => leitor.leitorCiclo(),
            aba: nome => ponte.getSheetByName(nome) };

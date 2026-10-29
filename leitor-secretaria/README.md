@@ -84,6 +84,21 @@ Quando uma versão pedir permissão nova (o `appsscript.json` mudar), o leitor
 para até alguém da Secretaria abrir o editor, rodar qualquer função e
 autorizar — parado, ele não copia nada.
 
+## Pedidos antigos sem resposta (pastas CERTIFICADO 2026-2 e 2027-1)
+
+O redirecionamento só copia o que chega depois de 21/10. Para trazer os
+pedidos antigos que a Marcela separou nas pastas da KingHost, UMA vez, no
+Gmail `sindeducacaosecretaria@gmail.com`: ⚙️ → Ver todas as configurações →
+**Contas e importação** → **Importar e-mails e contatos** → `secretaria@sindeducacao.com`
+(servidor `imap.kinghost.net`, porta 993, SSL) → marcar só **Importar e-mails**
+(desmarcar "novos e-mails pelos próximos 30 dias" e contatos).
+
+As pastas viram etiquetas. Daí o leitor, uma passada por dia durante 7 dias,
+copia para o SISGEP só as conversas das etiquetas "CERTIFICADO 2026-2" e
+"CERTIFICADO 2027-1" (não as "EMITIDOS") cuja última mensagem é de quem pediu
+— as que a Secretaria ainda não respondeu. Não duplica o que já veio depois de
+21/10.
+
 ## Conferir que funcionou
 
 1. De outro e-mail, mande para `secretaria@sindeducacao.com` um pedido de
