@@ -225,4 +225,10 @@ SIM.leitor.Gmail = gmailOk;
 b.ok(r15.importados && r15.importados.erro, "o erro fica no relatório", JSON.stringify(r15.importados));
 b.ok(r15.lidas !== undefined, "e o resto do ciclo rodou");
 
+b.passo("16. Cada rodada fica anotada na aba Status da ponte (só números)");
+const st = SIM.aba("Status").getRange(1, 1, 3, 2).getValues();
+b.ok(st[0][0] === "ULTIMA_RODADA" && /\d{2}\/\d{2}\/\d{4}/.test(st[0][1]), "a hora da última rodada", String(st[0][1]));
+b.ok(/"importados"/.test(st[1][1]), "e o resultado em números");
+b.ok(!/@exemplo\.com/.test(String(st[1][1])), "sem nenhum e-mail de pessoa");
+
 b.resumo();
