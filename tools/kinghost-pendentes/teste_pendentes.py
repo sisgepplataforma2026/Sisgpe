@@ -163,7 +163,7 @@ ok(arq == "CERTIFICADO-2027-1__abc.eml", "o prefixo INBOX. da KingHost sai do no
 ok(P.decodificar_utf7("Itens &AOk-nviados") == "Itens énviados", "nome de pasta em UTF-7 é decodificado")
 ok(P.assunto_base("RES: Fwd: ENC: Bolsa 2026/2") == "bolsa 2026/2", "assunto sem RES/Fwd/ENC")
 
-print("\n━━━ A CAIXA INTEIRA: entrada + CERTIFICADO 2026-1/2026-2/2027-1 (pela função do robô) ━━━")
+print("\n━━━ A CAIXA INTEIRA: entrada + CERTIFICADO 2026-2/2027-1, sem 2026-1 (pela função do robô) ━━━")
 caixa = ImapFalso({
     "INBOX": [na_entrada, propaganda, outro_assunto, pedido_jo],
     "INBOX.CERTIFICADO 2026-1": [p2026_1],
@@ -175,7 +175,7 @@ import io, contextlib
 with contextlib.redirect_stdout(io.StringIO()) as saida_log:
     ped, bruto_de2, env2 = P.coletar(caixa)
 log = saida_log.getvalue()
-ok("INBOX.CERTIFICADO 2026-1" in ped, "lê a pasta CERTIFICADO 2026-1")
+ok("INBOX.CERTIFICADO 2026-1" not in ped, "a pasta CERTIFICADO 2026-1 é ignorada")
 ok(not any("EMITID" in k for k in ped), "e continua sem a EMITIDOS")
 ok(P.ROTULO_ENTRADA in ped, "lê a caixa de entrada")
 de_entrada = sorted(P.endereco(P.email.message_from_bytes(r).get("From")) for u, r in ped[P.ROTULO_ENTRADA])
@@ -189,7 +189,7 @@ ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in caixa.comandos)
 pend3, cont3 = P.separar_pendentes(ped, env2, {"secretaria@sindeducacao.com"})
 quem3 = sorted(P.endereco(P.email.message_from_bytes(p["raw"]).get("From")) for p in pend3)
 ok("jo@exemplo.com" not in quem3, "Jo: a Secretaria escreveu 'segue em anexo o certificado' — concluído pelo texto")
-ok(quem3 == ["gil@exemplo.com", "hugo@exemplo.com", "lucia@exemplo.com"], "pendentes: Gil (2026-1), Hugo (entrada), Lúcia — " + ", ".join(quem3))
+ok(quem3 == ["hugo@exemplo.com", "lucia@exemplo.com"], "pendentes: Hugo (entrada) e Lúcia; Gil (2026-1) fica de fora — " + ", ".join(quem3))
 ok("1 dizem no texto que mandaram o voucher" in log, "o log conta quantos foram reconhecidos pelo texto")
 ok(P.nome_arquivo({"pasta": P.ROTULO_ENTRADA, "chave": "z"}) == "KINGHOST-ENTRADA__z.eml", "o da entrada vai com a etiqueta KINGHOST ENTRADA")
 ok(not P.TEXTO_VOUCHER_ENVIADO.search("Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher"),

@@ -38,7 +38,8 @@ import urllib.request
 CAIXA = "secretaria@sindeducacao.com"
 CONTA_LEITOR = "sindeducacaosecretaria@gmail.com"
 NOME_PASTA_DRIVE = "SISGEP — Pendentes KingHost (temporário)"
-PASTAS = re.compile(r"CERTIFICADO\s*(2026\s*[-/.]?\s*[12]|2027\s*[-/.]?\s*1)", re.I)
+# 2026/1 fica de fora (usuário, 29/10/2026: "os pedidos 2026.1 pode ignorar").
+PASTAS = re.compile(r"CERTIFICADO\s*(2026\s*[-/.]?\s*2|2027\s*[-/.]?\s*1)", re.I)
 # A CAIXA DE ENTRADA também (usuário, 29/10/2026: "tem que analisar toda a
 # caixa de entrada"): pedido que ninguém separou em pasta. Ali chega de tudo,
 # então só sai da KingHost o que fala de voucher — e a IA do leitor ainda

@@ -225,7 +225,7 @@ SIM.leitor.Gmail = gmailOk;
 b.ok(r15.importados && r15.importados.erro, "o erro fica no relatório", JSON.stringify(r15.importados));
 b.ok(r15.lidas !== undefined, "e o resto do ciclo rodou");
 
-b.passo("15b. Caixa de entrada da KingHost e pasta 2026-1: a IA confere o que veio da entrada");
+b.passo("15b. Caixa de entrada da KingHost: a IA confere o que veio de lá; a pasta 2026-1 é ignorada");
 SIM.drivePendentes.arquivos.length = 0;
 SIM.drivePendentes.arquivos.push(
   { nome: "KINGHOST-ENTRADA__e1.eml", raw: eml("Hugo <hugo@exemplo.com>", "Solicitação", "Gostaria do certificado de bolsa do meu filho.") },
@@ -235,14 +235,23 @@ const antes15b = entrada().length;
 const iaAntes15b = SIM.chamadasIALeitor.length;
 const r15b = SIM.ciclo();
 const deNaPonte = () => entrada().map(r => String(r.MENSAGENS_JSON));
-b.igual(r15b.importados.importados, 3, "os três entram no Gmail", JSON.stringify(r15b.importados));
+b.igual(r15b.importados.importados, 2, "os dois da entrada entram no Gmail; o de 2026-1 nem entra", JSON.stringify(r15b.importados));
 b.ok(deNaPonte().some(t => /hugo@exemplo\.com/.test(t)), "Hugo (entrada, pedido de verdade) foi para o SISGEP");
 b.ok(!deNaPonte().some(t => /ivo@exemplo\.com/.test(t)), "Ivo (entrada, fala de 'desconto' mas é jurídico) NÃO foi");
-b.ok(deNaPonte().some(t => /gil@exemplo\.com/.test(t)), "Gil (pasta CERTIFICADO 2026-1) foi");
-b.igual(entrada().length, antes15b + 2, "a ponte cresceu só dois");
+b.ok(!deNaPonte().some(t => /gil@exemplo\.com/.test(t)), "Gil (pasta CERTIFICADO 2026-1) NÃO foi: 2026/1 é ignorado");
+b.igual(entrada().length, antes15b + 1, "a ponte cresceu só um");
 const iaUsadas = SIM.chamadasIALeitor.slice(iaAntes15b).map(c => c.texto).join(" | ");
 b.ok(/hugo|bolsa do meu filho/i.test(iaUsadas) && /rescis/i.test(iaUsadas), "a IA leu os dois da entrada");
-b.ok(!/Peço o voucher/.test(iaUsadas), "o da pasta separada pela Marcela não passa pela IA");
+b.passo("15d. O que já tinha sido copiado da pasta 2026-1 sai da ponte");
+const thVelho261 = SIM.pasta("CERTIFICADO 2026-1", novaThread("Voucher 2026/1", "gil@exemplo.com", "Peço o voucher de 2026/1."));
+SIM.leitor.leitorGravar_(SIM.leitor.leitorAba_(SIM.leitor.leitorPonte_(), "Entrada"),
+  { THREAD_ID: thVelho261.id, ULTIMA_MENSAGEM_ID: thVelho261.msgs[0].getId(), CAIXA: "SECRETARIA", ATUALIZADO_EM: new Date(),
+    MENSAGENS_JSON: "[]", ANEXOS_JSON: "[]" });
+b.ok(naPonte(thVelho261), "(antes: estava na ponte)");
+SIM.leitor.PropertiesService.getScriptProperties().deleteProperty("IGNORADOS_2026_1_OK");
+const r15d = SIM.ciclo();
+b.ok(!naPonte(thVelho261), "saiu da ponte", JSON.stringify(r15d.ignorados));
+b.igual(r15d.ignorados.tirados, 1, "o relatório conta um tirado");
 b.igual(r15b.pendentesPastas.naoVoucher, 1, "o relatório conta o que a IA viu que não é pedido");
 const iaAntes15c = SIM.chamadasIALeitor.length;
 SIM.leitor.PropertiesService.getScriptProperties().deleteProperty("PENDENTES_PASTAS_DIA");
