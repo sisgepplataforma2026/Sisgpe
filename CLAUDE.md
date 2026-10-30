@@ -223,6 +223,20 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   Financeiro ou Caixa da Secretaria. Quem só tem outros módulos não abre.
   A condição dele é estar CATEGORIZADO — não tirar a categorização.
 
+## 📬 CAIXA DE E-MAILS ÚNICA — DECISÕES DE 30/10/2026
+
+- Uma tela só para e-mail (Comunicação › Caixa de E-mails): aba Secretaria
+  (secretaria@, KingHost) e aba Financeiro (financeiro@, Gmail do projeto),
+  com os vouchers dentro. Painel do Dia fica só como resumo.
+- *"Tem que aparecer tudo"*: TODAS as pastas de cada caixa, igual ao
+  Gmail/KingHost (Entrada, Enviados, Rascunhos, Spam, Lixeira e as pastas
+  criadas, como CERTIFICADO 2027-1).
+- Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
+  tela de conferência. Recategorizar à mão como Voucher também.
+- **Lixeira apaga no Gmail/KingHost também** (o usuário escolheu isso,
+  contra a recomendação de só esconder). Ação destrutiva: sempre com clique
+  e confirmação, nunca em lote sem mostrar o que vai.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
