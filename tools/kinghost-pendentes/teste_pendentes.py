@@ -1,3 +1,4 @@
+import re
 """Teste do robô de pendentes com uma KingHost FALSA (nada sai da máquina).
 
 Prova a regra (o que é pendente), a leitura das pastas em modo SÓ LEITURA e
@@ -225,6 +226,15 @@ class Aberta:
 ab = Aberta()
 P.mensagem_inteira(ab, "X", b"1", ja_aberta=True); P.mensagem_inteira(ab, "X", b"2", ja_aberta=True)
 ok(ab.selects == 0, "pasta já aberta não é reaberta a cada e-mail")
+
+print("\n━━━ LEVANTAMENTO DE ASSUNTOS (só leitura, só com o arquivo LEVANTAR_ASSUNTOS) ━━━")
+lin = P._linha_cabecalho(b"From: =?utf-8?q?Jo=C3=A3o?= <JOAO@x.com>\r\nSubject: =?utf-8?q?Rela=C3=A7=C3=A3o?= de outubro\r\nDate: Mon, 05 Oct 2026 10:00:00 -0300\r\n\r\n", "secretaria@")
+ok(lin == ["secretaria@", "2026-10-05 10:00", "João", "joao@x.com", "Relação de outubro"], "cabeçalho decodificado: " + repr(lin))
+ok(re.match(r"\d\d-[A-Z][a-z]{2}-\d{4}$", P._desde_dias(60)) is not None, "data no formato do IMAP: " + P._desde_dias(60))
+fonte_main = inspect.getsource(P.main)
+ok("os.path.exists(LEVANTAR)" in fonte_main, "o levantamento só roda com o arquivo LEVANTAR_ASSUNTOS")
+fonte_lev = inspect.getsource(P.levantamento)
+ok(not any(c in fonte_lev for c in ("STORE", "COPY", "MOVE", "EXPUNGE")), "o levantamento não altera a caixa")
 
 print("\nResumo: %d falha(s)" % len(falhas))
 sys.exit(1 if falhas else 0)

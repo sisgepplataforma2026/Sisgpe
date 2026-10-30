@@ -342,6 +342,90 @@ def nome_arquivo(p):
     return "%s__%s.eml" % (pasta, p["chave"])
 
 
+# ── LEVANTAMENTO DE ASSUNTOS (30/10/2026) ───────────────────────────────
+# O usuário pediu para conferir as categorias contra o que chega de verdade:
+# "ele não deveria buscar os assuntos na caixa de entrada?". Liga-se com o
+# arquivo LEVANTAR_ASSUNTOS ao lado deste; desliga-se apagando-o. Lê SÓ o
+# cabeçalho (de, assunto, data) da caixa de entrada dos últimos 60 dias —
+# nada é alterado — e grava uma planilha na pasta do robô no Drive (privada).
+# Tenta também a caixa de entrada do Gmail da conta do projeto (financeiro);
+# se o token não tiver acesso ao Gmail, só registra que não conseguiu.
+LEVANTAR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LEVANTAR_ASSUNTOS")
+MESES_IMAP = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _desde_dias(dias):
+    import datetime
+    d = datetime.date.today() - datetime.timedelta(days=dias)
+    return "%02d-%s-%d" % (d.day, MESES_IMAP[d.month - 1], d.year)
+
+
+def decodificar(valor):
+    """Cabeçalho com =?utf-8?...?= vira texto legível."""
+    try:
+        import email.header
+        return str(email.header.make_header(email.header.decode_header(str(valor or ""))))
+    except Exception:
+        return str(valor or "")
+
+
+def _linha_cabecalho(raw, caixa):
+    m = email.message_from_bytes(raw, policy=email.policy.compat32)
+    nome, end = email.utils.parseaddr(decodificar(m.get("From", "")))
+    try:
+        quando = email.utils.parsedate_to_datetime(m.get("Date")).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        quando = ""
+    return [caixa, quando, nome, end.lower(), decodificar(m.get("Subject", "")).replace("\n", " ").strip()]
+
+
+def _gmail_financeiro(token, dias):
+    linhas, pagina, ids = [], "", []
+    base = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    q = urllib.parse.quote("in:inbox newer_than:%dd" % dias)
+    while len(ids) < 600:
+        r = drive(token, "GET", base + "?maxResults=200&q=" + q + ("&pageToken=" + pagina if pagina else ""))
+        ids += [x["id"] for x in r.get("messages", [])]
+        pagina = r.get("nextPageToken", "")
+        if not pagina:
+            break
+    for i in ids:
+        m = drive(token, "GET", base + "/" + i + "?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date")
+        h = {x["name"].lower(): x["value"] for x in m.get("payload", {}).get("headers", [])}
+        raw = ("From: %s\r\nSubject: %s\r\nDate: %s\r\n\r\n" % (h.get("from", ""), h.get("subject", ""), h.get("date", ""))).encode("utf-8")
+        linhas.append(_linha_cabecalho(raw, "financeiro@"))
+    return linhas
+
+
+def levantamento(imap, token, pid, dias=60):
+    import csv, io
+    linhas = []
+    entrada = [p for p in listar_pastas(imap) if p["nome"].upper() == "INBOX"]
+    for p in entrada:
+        for uid, raw in mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True, desde=_desde_dias(dias)):
+            linhas.append(_linha_cabecalho(raw, "secretaria@"))
+    print("Levantamento: secretaria@ — %d e-mails na entrada (%d dias)" % (len(linhas), dias))
+    try:
+        fin = _gmail_financeiro(token, dias)
+        linhas += fin
+        print("Levantamento: financeiro@ — %d e-mails" % len(fin))
+    except Exception as erro:
+        print("Levantamento: sem acesso ao Gmail do financeiro por este robô (%s)" % str(erro)[:120])
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["caixa", "data", "de_nome", "de_email", "assunto"])
+    w.writerows(sorted(linhas, key=lambda l: (l[0], l[1]), reverse=True))
+    limite = "sisgeplevantamento"
+    meta = json.dumps({"name": "SISGEP — Levantamento de assuntos (%d dias)" % dias, "parents": [pid],
+                       "mimeType": "application/vnd.google-apps.spreadsheet"}).encode()
+    corpo = (b"--" + limite.encode() + b"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta +
+             b"\r\n--" + limite.encode() + b"\r\nContent-Type: text/csv; charset=UTF-8\r\n\r\n" + buf.getvalue().encode("utf-8") +
+             b"\r\n--" + limite.encode() + b"--")
+    r = drive(token, "POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+              corpo, "multipart/related; boundary=" + limite)
+    print("Levantamento gravado na pasta do robô: planilha %s (%d linhas)" % (r.get("id"), len(linhas)))
+
+
 # ── PRINCIPAL ────────────────────────────────────────────────────────────
 
 def coletar(imap):
@@ -451,6 +535,12 @@ def main():
         novos += 1
         if novos % 10 == 0:
             print("  entregues até agora: %d" % novos)
+    if os.path.exists(LEVANTAR):
+        try:
+            levantamento(imap, token, pid)
+        except (imaplib.IMAP4.abort, OSError):
+            imap = conectar()
+            levantamento(imap, token, pid)
     try:
         imap.logout()
     except Exception:
