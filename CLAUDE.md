@@ -233,9 +233,15 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   criadas, como CERTIFICADO 2027-1).
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
   tela de conferência. Recategorizar à mão como Voucher também.
-- **Lixeira apaga no Gmail/KingHost também** (o usuário escolheu isso,
-  contra a recomendação de só esconder). Ação destrutiva: sempre com clique
-  e confirmação, nunca em lote sem mostrar o que vai.
+- *"A caixa de e-mail do SISGEP vai ser o e-mail onde a gente vai
+  trabalhar. Se apaga nele, apaga em todo. Vai para a lixeira em todo."*
+  Mandar para a Lixeira no SISGEP = mover para a lixeira do Gmail/KingHost
+  também (não é apagar de vez). Sempre com clique e confirmação, nunca em
+  lote sem mostrar o que vai.
+- Robô da KingHost e leitor leem SÓ a caixa de entrada e a CERTIFICADO
+  2027-1 (30/10/2026: "até para economizar ... se precisar de mais alguma
+  pasta, eu aviso"). 2026-1 e 2026-2 já passaram. Não acrescentar pasta
+  sem ele pedir.
 
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
