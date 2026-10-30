@@ -77,8 +77,100 @@ function cxsLinhasPonte_() {
   return sh ? vpeLinhas_(sh) : [];
 }
 function cxsLinhaPonte_(id) {
+  if (cxsEhFinanceiro_(id)) return cxsLinhaFinanceiro_(id);
   var sh = vpePonte_().getSheetByName("Caixa");
   return sh ? vpeLinhaPor_(sh, "THREAD_ID", id) : null;
+}
+
+/* ── A CAIXA DO FINANCEIRO NA MESMA LISTA (30/10/2026) ──
+   O usuário: tudo num lugar só — havia três telas de e-mail (Painel do Dia,
+   Caixa de E-mails e Caixa da Secretaria) para duas caixas. A financeiro@
+   é a conta onde o SISGEP roda: o Gmail dela é lido direto (como a Central
+   de E-mails já fazia). Cada conversa vira uma "linha" com o mesmo formato
+   da ponte da Secretaria, para o resto da Caixa funcionar igual. O id leva
+   o prefixo "F:" para nunca se confundir com conversa da Secretaria.
+   Nada é mudado no Gmail (nem lido, nem arquivado): situação, tipo e nota
+   ficam no SISGEP, como na Secretaria. */
+var CXS_PREFIXO_FIN = "F:";
+var CXS_FIN_BUSCA = "in:inbox newer_than:30d -category:promotions -category:social -category:forums";
+var CXS_FIN_MAX = 40;
+var CXS_NOSSOS = ["financeiro@sindeducacao.com", "secretaria@sindeducacao.com"];
+var CXS_AUTOMATICO = /^(no-?reply|nao-?responda|naoresponda|mailer|bounce|news|newsletter|marketing|notifica)/i;
+
+function cxsEhFinanceiro_(id) { return String(id || "").indexOf(CXS_PREFIXO_FIN) === 0; }
+/* O Gmail da conta do projeto. Separado para o teste poder trocar. */
+function cxsGmailFinanceiro_() { return GmailApp; }
+
+/* Tipo por regra, sem gastar IA a cada abertura da tela. Quem discordar
+   corrige na conversa (fica registrado, como na Secretaria). */
+function cxsTipoPorRegra_(assunto, corpo) {
+  var t = (String(assunto || "") + " " + String(corpo || "").substring(0, 600)).toLowerCase();
+  if (/filia[cç][aã]o|desfilia|desligamento do sindicato/.test(t)) return "FILIACAO";
+  if (/homologa|rescis|processo|advogad|jur[ií]dic|notifica[cç][aã]o extrajudicial/.test(t)) return "JURIDICO";
+  if (/boleto|guia|comprovante|recibo|pagamento|cobran|desconto em folha|mensalidade|taxa negocial|nota fiscal|\bnf\b|nfs-?e|inadimpl|d[eé]bito|pix/.test(t)) return "FINANCEIRO";
+  if (/of[ií]cio|rela[cç][aã]o nominal|movimenta[cç][aã]o|admiss|demiss|funcion[aá]rios/.test(t)) return "OFICIO_ESCOLA";
+  if (/conven[cç][aã]o|\bcct\b|reajuste|piso salarial|cl[aá]usula/.test(t)) return "CONVENCAO";
+  if (/assembleia|evento|convite|reuni[aã]o|palestra/.test(t)) return "EVENTO";
+  return "OUTRO";
+}
+
+function cxsMensagemFin_(m) {
+  var de = String(m.getFrom() || "");
+  var rt = "";
+  try { rt = String(m.getReplyTo() || ""); } catch (e) {}
+  return { id: m.getId(), de: de, replyTo: rt, para: String(m.getTo() || ""), cc: "",
+           assunto: String(m.getSubject() || ""), data: new Date(m.getDate()).toISOString(),
+           corpo: vpeSemCitacao_(String(m.getPlainBody() || "")).substring(0, 4000) };
+}
+
+/* Uma conversa do Gmail com a cara de uma linha da ponte. */
+function cxsLinhaDeThreadFin_(th, comAnexos) {
+  var msgs = th.getMessages() || [];
+  if (!msgs.length) return null;
+  var lista = msgs.map(cxsMensagemFin_);
+  var anexos = [];
+  if (comAnexos) {
+    msgs.forEach(function (m) {
+      (m.getAttachments({ includeInlineImages: false, includeAttachments: true }) || []).forEach(function (a, pos) {
+        anexos.push({ msgId: m.getId(), pos: pos, nome: a.getName(), tipo: a.getContentType(), tamanho: a.getSize(), gmail: true });
+      });
+    });
+  }
+  var entrantes = lista.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
+  var base = entrantes[0] || lista[0];
+  return { THREAD_ID: CXS_PREFIXO_FIN + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: "FINANCEIRO",
+           TIPO: cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
+           MENSAGENS_JSON: JSON.stringify(lista), ANEXOS_JSON: JSON.stringify(anexos),
+           __qtdAnexos: comAnexos ? anexos.length : -1 };
+}
+
+function cxsLinhaFinanceiro_(id) {
+  var th = cxsGmailFinanceiro_().getThreadById(String(id).substring(CXS_PREFIXO_FIN.length));
+  return th ? cxsLinhaDeThreadFin_(th, true) : null;
+}
+
+/* As conversas da caixa de entrada da financeiro@ (30 dias). Cache curto:
+   abrir e voltar para a lista não relê o Gmail. */
+function cxsLinhasFinanceiro_() {
+  var cache = null, chave = "cxs_fin_lista_v1";
+  try { cache = CacheService.getScriptCache(); var c = cache.get(chave); if (c) return JSON.parse(c); } catch (e) {}
+  var threads = cxsGmailFinanceiro_().search(CXS_FIN_BUSCA, 0, CXS_FIN_MAX) || [];
+  var linhas = [];
+  threads.forEach(function (th) {
+    var l = cxsLinhaDeThreadFin_(th, false);
+    if (!l) return;
+    var m = vpeJson_(l.MENSAGENS_JSON, []);
+    var primeira = m[0] || {}, ultima = m[m.length - 1] || {};
+    if (CXS_CONFIRMACAO_LEITURA.test(String(primeira.assunto || ""))) return;
+    if (CXS_AUTOMATICO.test(cxsEmail_(ultima.de))) return;
+    var qtd = 0;
+    try { th.getMessages().forEach(function (x) { qtd += (x.getAttachments({ includeInlineImages: false }) || []).length; }); } catch (eA) {}
+    l.__qtdAnexos = qtd;
+    l.MENSAGENS_JSON = JSON.stringify(m.map(function (x) { x.corpo = String(x.corpo || "").substring(0, 300); return x; }));
+    linhas.push(l);
+  });
+  try { cache.put(chave, JSON.stringify(linhas), 120); } catch (e) {}
+  return linhas;
 }
 function cxsEmail_(s) {
   var m = String(s || "").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
@@ -109,7 +201,8 @@ function cxsResumo_(p, est, envios) {
     de: cxsEmail_(ultima.replyTo || ultima.de), nome: cxsNome_(ultima.de) || cxsEmail_(ultima.de),
     assunto: String(primeira.assunto || "(sem assunto)"), pedido: String(p.PEDIDO || ""),
     trecho: String(ultima.corpo || "").replace(/\s+/g, " ").substring(0, 160),
-    mensagens: msgs.length, anexos: vpeJson_(p.ANEXOS_JSON, []).length,
+    mensagens: msgs.length, anexos: p.__qtdAnexos >= 0 && p.__qtdAnexos !== undefined ? p.__qtdAnexos : vpeJson_(p.ANEXOS_JSON, []).length,
+    caixa: String(p.CAIXA || "SECRETARIA"),
     recebidoTs: ultima.data ? new Date(ultima.data).getTime() : 0,
     recebidoEm: ultima.data ? Utilities.formatDate(new Date(ultima.data), "America/Sao_Paulo", "dd/MM HH:mm") : "",
     estado: sit.estado, mensagemNova: sit.mensagemNova,
@@ -212,7 +305,18 @@ function caixaSecretariaPainel(tokenSessao) {
       return r;
     });
     var v = cxsVouchers_(sessao);
+    v.itens.forEach(function (i) { i.caixa = "SECRETARIA"; });
     itens = itens.concat(v.itens);
+    var erroFin = "";
+    try {
+      itens = itens.concat(cxsLinhasFinanceiro_().map(function (p) {
+        var r = cxsResumo_(p, est[String(p.THREAD_ID)], envios);
+        r.fonte = "EMAIL";
+        return r;
+      }));
+    } catch (eF) { erroFin = "Caixa do Financeiro: " + eF.message; }
+    var porCaixa = { SECRETARIA: 0, FINANCEIRO: 0 };
+    itens.forEach(function (i) { if (i.estado !== CXS_ESTADOS.RESOLVIDO) porCaixa[i.caixa] = (porCaixa[i.caixa] || 0) + 1; });
     itens.sort(function (a, b) { return b.recebidoTs - a.recebidoTs; });
     var porTipo = {}, porEstado = { NOVO: 0, RESPONDIDO: 0, RESOLVIDO: 0 };
     itens.forEach(function (i) {
@@ -221,7 +325,7 @@ function caixaSecretariaPainel(tokenSessao) {
     });
     var voucher = v.cont.PRONTO + v.cont.FALTA_DOC + v.cont.NAO_ENCONTRADO + v.cont.PRECISA_VOCE + v.cont.PRESENCIAL;
     return { ok: true, itens: itens, porTipo: porTipo, porEstado: porEstado, voucherAConferir: voucher,
-             voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" },
+             voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" }, porCaixa: porCaixa, erroFinanceiro: erroFin,
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
              }) };
@@ -240,7 +344,7 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
     var resumo = cxsResumo_(p, est, envios);
     var msgs = vpeJson_(p.MENSAGENS_JSON, []).map(function (m) {
       var d = new Date(m.data);
-      return { de: m.de || "", nossa: false, ts: d.getTime(), assunto: m.assunto || "",
+      return { de: m.de || "", nossa: CXS_NOSSOS.indexOf(cxsEmail_(m.de)) > -1, ts: d.getTime(), assunto: m.assunto || "",
                data: Utilities.formatDate(d, "America/Sao_Paulo", "dd/MM/yyyy HH:mm"), corpo: m.corpo || "", id: m.id };
     });
     (envios[String(id)] || []).forEach(function (e) {
@@ -251,7 +355,7 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
     });
     msgs.sort(function (a, b) { return a.ts - b.ts; });
     var anexos = vpeJson_(p.ANEXOS_JSON, []).map(function (a, i) {
-      return { indice: i, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, disponivel: !!a.fileId };
+      return { indice: i, nome: a.nome, tipo: a.tipo, tamanho: a.tamanho, disponivel: !!(a.fileId || a.gmail) };
     });
     var primeiro = (resumo.nome || "").split(/\s+/)[0] || "";
     primeiro = primeiro && primeiro.indexOf("@") === -1 ? primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase() : "";
@@ -270,6 +374,14 @@ function caixaSecretariaAnexo(id, indice, tokenSessao) {
     cxsExigir_(tokenSessao);
     var p = cxsLinhaPonte_(id);
     var a = p ? vpeJson_(p.ANEXOS_JSON, [])[Number(indice)] : null;
+    if (a && a.gmail) {
+      var msg = cxsGmailFinanceiro_().getMessageById(String(a.msgId));
+      var bg = msg ? (msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [])[Number(a.pos)] : null;
+      if (!bg) return { ok: false, mensagem: "O anexo não está mais na caixa." };
+      var tg = bg.getContentType() || a.tipo || "application/octet-stream";
+      return { ok: true, nome: a.nome, tipo: tg, driveUrl: "",
+               dataUrl: "data:" + tg + ";base64," + Utilities.base64Encode(bg.getBytes()) };
+    }
     if (!a || !a.fileId) return { ok: false, mensagem: "Anexo não disponível." };
     var blob = DriveApp.getFileById(String(a.fileId)).getBlob();
     var tipo = blob.getContentType() || a.tipo || "application/octet-stream";
@@ -291,6 +403,24 @@ function caixaSecretariaResponder(id, texto, tokenSessao) {
     var msgs = vpeJson_(p.MENSAGENS_JSON, []);
     var ultima = msgs[msgs.length - 1] || {};
     var quem = sessao.email || sessao.usuario || "";
+    if (cxsEhFinanceiro_(id)) {
+      /* A financeiro@ é a própria conta do SISGEP: responde direto, na
+         conversa, para quem escreveu por último (de fora). Só com o clique;
+         em homologação, só para a equipe. */
+      var entr = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
+      var alvo = entr[entr.length - 1];
+      if (!alvo) return { ok: false, mensagem: "Não há mensagem de fora nesta conversa para responder." };
+      var paraF = cxsEmail_(alvo.replyTo || alvo.de);
+      vpeChecarDestinoAmbiente_(paraF);
+      var mOrig = cxsGmailFinanceiro_().getMessageById(String(alvo.id));
+      if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa do Financeiro." };
+      var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("FINANCEIRO", sessao));
+      mOrig.reply("", { htmlBody: html, replyTo: "financeiro@sindeducacao.com" });
+      cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
+      cxsAuditar_("RESPONDER", id, "Resposta (financeiro@) para " + paraF, sessao);
+      try { CacheService.getScriptCache().remove("cxs_fin_lista_v1"); } catch (eC) {}
+      return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela financeiro@." };
+    }
     var para = vpeResponderThread_({ REMETENTE_EMAIL: cxsEmail_(ultima.replyTo || ultima.de), CAIXA: "SECRETARIA",
       THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), [], quem,
       /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao));

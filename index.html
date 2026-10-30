@@ -121,8 +121,7 @@
            navegacao: viraram as duas visoes de um modulo so. -->
       <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA,caixaSecretaria" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacao" onclick="spIr('comunicacao',null)">📊 Painel do Dia</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="caixaSecretaria" onclick="spIr('caixaSecretaria',null)">🏫 Caixa da Secretaria</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="caixaSecretaria" onclick="spIr('caixaSecretaria',null)">📬 Caixa de E-mails</button>
       </div>
 
       <!-- Eventos era o unico modulo grande sem subcamada no menu: clicar nele
@@ -1445,8 +1444,8 @@ var MODS={
   auditoriaRetencao:["mAuditoriaRetencao","Retenção e Descarte","Prazo de guarda dos dados pessoais e o expurgo automático — LGPD"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
-  centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
-  caixaSecretaria:["mCaixaSecretaria","Caixa da Secretaria","Comunicação — os e-mails da secretaria@, por tipo; só Secretaria e administrador"],
+  centralEmailIA:["mCentralEmailIA","Central antiga do Financeiro","Ferramentas que ainda não foram para a Caixa de E-mails — cobrança ligada à escola, comprovante de desconto, rascunho pela IA"],
+  caixaSecretaria:["mCaixaSecretaria","Caixa de E-mails","Comunicação — secretaria@ e financeiro@ num lugar só, por tipo, com os vouchers"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
   /* Os submódulos de Eventos moram no MESMO container (mEventos): o que muda
      é qual submódulo a tela abre. Registrar container próprio para cada um
