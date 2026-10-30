@@ -118,28 +118,110 @@ function cxsResumo_(p, est, envios) {
   };
 }
 
+/* ── TELA ÚNICA (30/10/2026) ──
+   O usuário: "preciso que fique tudo no mesmo lugar ... assim não preciso
+   abrir várias telas". Os pedidos de voucher por e-mail e as solicitações
+   presenciais/portal entram na MESMA lista da Caixa. Quem não tem o módulo
+   Benefícios continua sem ver voucher — a trava é aqui, no servidor. Abrir
+   um voucher usa as telas e as funções de sempre (voucherPedidos*,
+   Voucher.gs), com as travas delas. */
+var CXS_VPE_ABERTOS = ["PRONTO", "FALTA_DOC", "NAO_ENCONTRADO", "PRECISA_VOCE"];
+var CXS_SOL_ABERTAS = ["PENDENTE", "ANALISE", "AGUARDANDO_VALIDACAO_CADASTRAL", "BLOQUEADA_POR_REGRA", "APROVADO"];
+var CXS_SELO_VPE = {
+  PRONTO: ["🟢 Pronto", "pronto"], FALTA_DOC: ["🟡 Falta documento", "falta"],
+  NAO_ENCONTRADO: ["🔴 Não encontrado na relação", "erro"], PRECISA_VOCE: ["⚪ Precisa de você", "voce"],
+  AGUARDANDO: ["⏳ Aguardando o associado", "espera"], EMITIDO: ["📤 Emitido · aguardando envio", "emitido"],
+  CONCLUIDO: ["✔ Concluído", "ok"]
+};
+var CXS_SELO_SOL = {
+  PENDENTE: "🏢 Presencial · pendente", ANALISE: "🏢 Presencial · em análise",
+  AGUARDANDO_VALIDACAO_CADASTRAL: "🏢 Presencial · validação cadastral",
+  BLOQUEADA_POR_REGRA: "🏢 Presencial · bloqueada por regra", APROVADO: "🏢 Presencial · aprovada, emitir"
+};
+/* Confirmação de leitura não é pedido (o leitor já deixa de fora; isto
+   esconde as que entraram antes da correção). */
+var CXS_CONFIRMACAO_LEITURA = /^\s*(lida|lido|read|le[ií]do|lu|gelesen)\s*:/i;
+
+function cxsVouchers_(sessao) {
+  var out = { itens: [], cont: { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, EMITIDO: 0, PRESENCIAL: 0 },
+              pode: false };
+  if (!sessaoPodeModulo_(sessao, "beneficios")) return out;
+  out.pode = true;
+  var podeSecretaria = vpeCaixasDoUsuario_(sessao).indexOf("SECRETARIA") > -1;
+  var limite = Date.now() - 30 * 86400000;
+  var protocolosDeEmail = {};
+  try {
+    var envios = vpePonteId_() ? vpeEnviosPorConversa_() : {};
+    vpeLinhas_().forEach(function (r) {
+      if (r.PROTOCOLO) protocolosDeEmail[String(r.PROTOCOLO)] = true;
+      if (!podeSecretaria || String(r.CAIXA || "") !== "SECRETARIA") return;
+      var e = String(r.ESTADO || "");
+      if (e === VPE_ESTADOS.IGNORADO) return;
+      if (e === VPE_ESTADOS.CONCLUIDO && !(r.DECIDIDO_EM && new Date(r.DECIDIDO_EM).getTime() >= limite)) return;
+      if (out.cont[e] !== undefined) out.cont[e]++;
+      var v = vpeResumoItem_(r, envios);
+      var selo = CXS_SELO_VPE[e] || [e, ""];
+      var falta = v.pendencias.filter(function (x) { return /^FALTA\|/.test(x); })
+        .map(function (x) { return x.split("|").slice(1).join("|"); });
+      out.itens.push({
+        fonte: "VOUCHER", id: v.id, tipo: "VOUCHER", tipoRotulo: "Voucher", icone: "🎓",
+        nome: v.nome || v.remetente, de: v.remetente, assunto: String(r.ASSUNTO || "Pedido de voucher"),
+        pedido: [v.curso, v.periodo, v.escola].filter(function (x) { return x; }).join(" · "),
+        trecho: falta.length ? "Falta: " + falta.join("; ") : (v.beneficiario ? "Para " + v.beneficiario : ""),
+        anexos: vpeJson_(r.ANEXOS_JSON, []).length, mensagens: 0,
+        recebidoTs: v.recebidoTs, recebidoEm: v.recebidoEm,
+        estado: CXS_VPE_ABERTOS.indexOf(e) > -1 ? CXS_ESTADOS.NOVO : e === VPE_ESTADOS.CONCLUIDO ? CXS_ESTADOS.RESOLVIDO : CXS_ESTADOS.RESPONDIDO,
+        selo: selo[0], seloCls: selo[1], periodo: v.periodo, escola: v.escola, mensagemNova: false, ultimaResposta: ""
+      });
+    });
+  } catch (eV) { out.erro = "Pedidos por e-mail: " + eV.message; }
+  try {
+    listarSolicitacoesVoucher().forEach(function (sol) {
+      var st = String(sol.status || "").toUpperCase();
+      if (CXS_SOL_ABERTAS.indexOf(st) === -1 || protocolosDeEmail[String(sol.protocolo)]) return;
+      out.cont.PRESENCIAL++;
+      out.itens.push({
+        fonte: "PRESENCIAL", id: String(sol.protocolo), tipo: "VOUCHER", tipoRotulo: "Voucher", icone: "🏢",
+        nome: String(sol.nome || ""), de: String(sol.email || ""), assunto: "Solicitação de voucher · " + sol.protocolo,
+        pedido: [sol.curso, sol.periodoReferencia, sol.escola].filter(function (x) { return x; }).join(" · "),
+        trecho: sol.nomeBeneficiario && String(sol.tipoBeneficiario || "").toUpperCase() !== "TITULAR"
+          ? "Para " + sol.tipoBeneficiario + " · " + sol.nomeBeneficiario : "",
+        anexos: 0, mensagens: 0, recebidoTs: Number(sol._ts || 0), recebidoEm: String(sol.data || ""),
+        estado: CXS_ESTADOS.NOVO, selo: CXS_SELO_SOL[st] || st, seloCls: st === "APROVADO" ? "pronto" : "presencial",
+        periodo: String(sol.periodoReferencia || ""), escola: String(sol.escola || ""), mensagemNova: false, ultimaResposta: "",
+        sol: sol
+      });
+    });
+  } catch (eS) { out.erro = (out.erro ? out.erro + " · " : "") + "Solicitações presenciais: " + eS.message; }
+  return out;
+}
+
 /* ═══════════════ O QUE A TELA CHAMA ═══════════════ */
 
 function caixaSecretariaPainel(tokenSessao) {
   try {
-    cxsExigir_(tokenSessao);
+    var sessao = cxsExigir_(tokenSessao);
     var est = cxsEstados_();
     var envios = vpeEnviosPorConversa_();
-    var itens = cxsLinhasPonte_().map(function (p) { return cxsResumo_(p, est[String(p.THREAD_ID)], envios); });
+    var itens = cxsLinhasPonte_().filter(function (p) {
+      var m = vpeJson_(p.MENSAGENS_JSON, [])[0] || {};
+      return !CXS_CONFIRMACAO_LEITURA.test(String(m.assunto || ""));
+    }).map(function (p) {
+      var r = cxsResumo_(p, est[String(p.THREAD_ID)], envios);
+      r.fonte = "EMAIL";
+      return r;
+    });
+    var v = cxsVouchers_(sessao);
+    itens = itens.concat(v.itens);
     itens.sort(function (a, b) { return b.recebidoTs - a.recebidoTs; });
     var porTipo = {}, porEstado = { NOVO: 0, RESPONDIDO: 0, RESOLVIDO: 0 };
     itens.forEach(function (i) {
       if (i.estado !== CXS_ESTADOS.RESOLVIDO) porTipo[i.tipo] = (porTipo[i.tipo] || 0) + 1;
       porEstado[i.estado] = (porEstado[i.estado] || 0) + 1;
     });
-    var voucher = 0;
-    try {
-      vpeLinhas_().forEach(function (r) {
-        var e = String(r.ESTADO || "");
-        if (String(r.CAIXA) === "SECRETARIA" && ["PRONTO", "FALTA_DOC", "NAO_ENCONTRADO", "PRECISA_VOCE"].indexOf(e) > -1) voucher++;
-      });
-    } catch (eV) {}
+    var voucher = v.cont.PRONTO + v.cont.FALTA_DOC + v.cont.NAO_ENCONTRADO + v.cont.PRECISA_VOCE + v.cont.PRESENCIAL;
     return { ok: true, itens: itens, porTipo: porTipo, porEstado: porEstado, voucherAConferir: voucher,
+             voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" },
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
              }) };
