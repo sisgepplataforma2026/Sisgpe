@@ -152,12 +152,12 @@ const nomes = JSON.stringify(painel);
 b.ok(nomes.indexOf("Sam's Club") === -1 && nomes.indexOf("Homologação") === -1, "e nenhuma das duas aparece no painel");
 b.ok(!!pedidoDa(thVoucher) && pedidoDa(thVoucher).ESTADO !== "IGNORADO", "o voucher continua no painel");
 
-b.fluxo("LEITOR · pendentes das pastas importadas (CERTIFICADO 2026-2 / 2027-1)");
+b.fluxo("LEITOR · pendentes das pastas importadas (só CERTIFICADO 2027-1, desde 30/10/2026)");
 b.passo("9. Sem as etiquetas (importação não feita), não faz nada");
 const L9 = L.leitorBuscarPendentesDasPastas_();
 b.ok(L9.semEtiquetas, "sem etiquetas: nada a fazer");
 
-b.passo("10. Copia só os pendentes das duas pastas — e nada da pasta EMITIDOS");
+b.passo("10. Copia só os pendentes da 2027-1 — nada da 2026-2 (já passou) nem da EMITIDOS");
 const antesPastas = entrada().length;
 const thPend = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Certificado de bolsa 2027", "lucia@exemplo.com", "Bom dia, peço o certificado de bolsa para meu filho."));
@@ -178,23 +178,24 @@ const m0 = JSON.parse(original.MENSAGENS_JSON)[0];
 const thDup = SIM.pasta("CERTIFICADO 2027-1", novaThread(m0.assunto, "ana@exemplo.com", "cópia importada"));
 thDup.msgs[0].getDate = () => new Date(m0.data);
 const r10 = L.leitorBuscarPendentesDasPastas_();
-b.igual(r10.copiados, 3, "três pendentes copiados", JSON.stringify(r10));
+b.igual(r10.copiados, 2, "dois pendentes copiados", JSON.stringify(r10));
 b.ok(naPonte(thFalta), "Carla, respondida só pedindo o contracheque (sem voucher), CONTINUA pendente e foi");
-b.ok(naPonte(thPend) && naPonte(thPend2), "Lúcia (2027-1) e Rui (2026-2) foram para a ponte");
+b.ok(naPonte(thPend), "Lúcia (2027-1) foi para a ponte");
+b.ok(!naPonte(thPend2), "Rui (2026-2) NÃO: o usuário, 30/10/2026: \"2026-2 já aconteceu\"");
 b.ok(!naPonte(thResp), "o que já recebeu o voucher em PDF NÃO foi");
 b.ok(!naPonte(thEmit), "nada da pasta EMITIDOS");
 b.ok(!naPonte(thDup), "a cópia importada de um pedido já copiado não duplicou");
 b.igual(r10.respondidos, 1, "o relatório conta o respondido");
 b.igual(r10.repetidos, 1, "e o repetido");
-b.igual(entrada().length, antesPastas + 3, "a ponte cresceu só três");
+b.igual(entrada().length, antesPastas + 2, "a ponte cresceu só dois");
 b.ok(!SIM.chamadasIALeitor.some(c => /certificado de bolsa para meu filho/.test(c.texto)),
   "pedido de pasta não passa pela IA (a Marcela já separou)");
 
 b.passo("11. Repassar no mesmo dia não faz nada; e o SISGEP mostra os pendentes");
 SIM.ciclo();
-b.igual(entrada().length, antesPastas + 3, "o ciclo do mesmo dia não copiou de novo");
+b.igual(entrada().length, antesPastas + 2, "o ciclo do mesmo dia não copiou de novo");
 g.vpeLerCaixa_({});
-b.ok(!!pedidoDa(thPend) && !!pedidoDa(thPend2), "os dois pendentes aparecem no SISGEP");
+b.ok(!!pedidoDa(thPend) && !pedidoDa(thPend2), "o pendente de 2027-1 aparece no SISGEP; o de 2026-2 não");
 
 b.fluxo("LEITOR · pendentes que o robô da KingHost deixou no Drive");
 b.passo("12. Sem a pasta no Drive, o ciclo segue normal");
@@ -211,17 +212,17 @@ SIM.drivePendentes.arquivos.push(
   { nome: "leia-me.txt", raw: "não é e-mail" });
 const antes13 = entrada().length;
 const r13 = SIM.ciclo();
-b.igual(r13.importados.importados, 2, "dois importados (o .txt fica de fora)", JSON.stringify(r13.importados));
-b.igual(SIM.importados.map(x => x.etiqueta).sort().join(" | "), "CERTIFICADO 2026-2 | CERTIFICADO 2027-1",
-  "cada um na etiqueta da sua pasta");
+b.igual(r13.importados.importados, 1, "um importado: o de 2026-2 e o .txt ficam de fora", JSON.stringify(r13.importados));
+b.igual(SIM.importados.map(x => x.etiqueta).sort().join(" | "), "CERTIFICADO 2027-1",
+  "na etiqueta da sua pasta");
 b.ok(SIM.importados.every(x => x.op && x.op.internalDateSource === "dateHeader"), "com a data original do e-mail");
-b.igual(entrada().length, antes13 + 2, "e os dois chegaram à ponte no mesmo ciclo", JSON.stringify(r13.pendentesPastas));
+b.igual(entrada().length, antes13 + 1, "e chegou à ponte no mesmo ciclo", JSON.stringify(r13.pendentesPastas));
 b.ok(SIM.tentativasSisgep.length === 0, "o SISGEP não tocou em caixa nenhuma");
 
 b.passo("14. O robô rodar de novo não duplica nada");
 const r14 = SIM.ciclo();
 b.igual(r14.importados.importados, 0, "nada importado de novo");
-b.igual(entrada().length, antes13 + 2, "a ponte não cresceu");
+b.igual(entrada().length, antes13 + 1, "a ponte não cresceu");
 
 b.passo("15. Serviço Gmail indisponível: o ciclo não para");
 SIM.drivePendentes.arquivos.push({ nome: "CERTIFICADO-2027-1__ccc333.eml", raw: eml("x <x@exemplo.com>", "Bolsa", "y") });

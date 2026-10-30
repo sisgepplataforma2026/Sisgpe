@@ -105,9 +105,14 @@ enviado4 = eml(SEC, "davi@exemplo.com", "RE: Voucher bolsa 2026/2", "<s4@x>", re
                corpo="Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher "
                      "de bolsa de estudos: Último contracheque, CNH ou RG, Nome do curso.")
 
+# 30/10/2026: só a CERTIFICADO 2027-1 é lida ("2026-2 já aconteceu"). Os
+# casos que estavam na 2026-2 passam para a 2027-1; a 2026-2 fica com um
+# pedido que NÃO pode ser lido.
+p2026_2 = eml("Zeca <zeca@exemplo.com>", SEC, "Voucher 2026/2", "<z1@x>")
 imap = ImapFalso({
-    "CERTIFICADO 2027-1": [pend, resp_por_id, da_secretaria, falta_doc],
-    "CERTIFICADO 2026-2": [resp_por_assunto, outra_pasta, padrao, novo_assunto, pedido_fabi],
+    "CERTIFICADO 2027-1": [pend, resp_por_id, da_secretaria, falta_doc,
+                           resp_por_assunto, outra_pasta, padrao, novo_assunto, pedido_fabi],
+    "CERTIFICADO 2026-2": [p2026_2],
     "CERTIFICADOS 2026-2 - EMITIDOS": [emitido],
     "INBOX.Sent": [enviado1, enviado2, enviado3, enviado4, enviado5, antigo_pdf],
 })
@@ -116,14 +121,14 @@ print("━━━ ROBÔ DE PENDENTES DA KINGHOST ━━━")
 pastas = P.listar_pastas(imap)
 alvo = [p for p in pastas if P.PASTAS.search(p["nome"]) and "EMITID" not in p["nome"].upper()]
 env = [p for p in pastas if P.ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
-ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2026-2", "CERTIFICADO 2027-1"], "acha as pastas CERTIFICADO, sem a EMITIDOS")
+ok(sorted(p["nome"] for p in alvo) == ["CERTIFICADO 2027-1"], "só a CERTIFICADO 2027-1 (2026-2 já passou), sem a EMITIDOS")
 ok([p["nome"] for p in env] == ["INBOX.Sent"], "acha a pasta de enviados")
 
 pedidos = {p["nome"]: P.mensagens_da_pasta(imap, p["bruto"]) for p in alvo}
 enviados = P.mensagens_da_pasta(imap, env[0]["bruto"], so_cabecalho=True, desde=P.ENVIADOS_DESDE)
 ok(any("HEADER.FIELDS" in str(a) and "BODYSTRUCTURE" in str(a) for c, a in imap.comandos if c == "FETCH"),
    "dos enviados baixa só o cabeçalho e a estrutura (sem o PDF)")
-ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 3, "um FETCH por pasta (em lote), não um por e-mail")
+ok(len([1 for c, a in imap.comandos if c == "FETCH"]) == 2, "um FETCH por pasta (em lote), não um por e-mail")
 ok(any("SINCE" in a for a in imap.buscas), "nos enviados, só de 2026 para cá")
 ok(all(m is True for m in imap.modos), "toda pasta é aberta em modo SÓ LEITURA")
 ok(all("PEEK" in str(a) for c, a in imap.comandos if c == "FETCH"), "toda leitura usa BODY.PEEK (não marca como lido)")
@@ -133,6 +138,7 @@ pend_lista, cont = P.separar_pendentes(pedidos, enviados, {"secretaria@sindeduca
 quem = sorted(P.endereco(P.email.message_from_bytes(p["raw"]).get("From")) for p in pend_lista)
 ok(quem == ["bia@exemplo.com", "carla@exemplo.com", "davi@exemplo.com", "fabi@exemplo.com", "lucia@exemplo.com"],
    "pendentes: Bia, Carla, Davi, Fabi e Lúcia — " + ", ".join(quem))
+ok("zeca@exemplo.com" not in quem, "Zeca (pasta 2026-2) não é lido")
 ok("edu@exemplo.com" not in quem, "Edu: voucher em e-mail novo, com outro assunto, depois do pedido — concluído")
 ok("fabi@exemplo.com" in quem, "Fabi: o PDF que ela recebeu foi ANTES deste pedido — segue pendente")
 ok(cont["respondidos"] == 3, "concluídos (voucher em PDF): Marcos (In-Reply-To), Rui ('RES: mesmo assunto') e Edu (e-mail novo)")
@@ -163,10 +169,11 @@ ok(arq == "CERTIFICADO-2027-1__abc.eml", "o prefixo INBOX. da KingHost sai do no
 ok(P.decodificar_utf7("Itens &AOk-nviados") == "Itens énviados", "nome de pasta em UTF-7 é decodificado")
 ok(P.assunto_base("RES: Fwd: ENC: Bolsa 2026/2") == "bolsa 2026/2", "assunto sem RES/Fwd/ENC")
 
-print("\n━━━ A CAIXA INTEIRA: entrada + CERTIFICADO 2026-2/2027-1, sem 2026-1 (pela função do robô) ━━━")
+print("\n━━━ A CAIXA INTEIRA: entrada + CERTIFICADO 2027-1, sem 2026-1 nem 2026-2 (pela função do robô) ━━━")
 caixa = ImapFalso({
     "INBOX": [na_entrada, propaganda, outro_assunto, pedido_jo],
     "INBOX.CERTIFICADO 2026-1": [p2026_1],
+    "INBOX.CERTIFICADO 2026-2": [p2026_2],
     "INBOX.CERTIFICADO 2027-1": [pend],
     "INBOX.CERTIFICADOS 2026-2 - EMITIDOS": [emitido],
     "INBOX.Sent": [enviado_texto, enviado3],
@@ -176,6 +183,7 @@ with contextlib.redirect_stdout(io.StringIO()) as saida_log:
     ped, bruto_de2, env2 = P.coletar(caixa)
 log = saida_log.getvalue()
 ok("INBOX.CERTIFICADO 2026-1" not in ped, "a pasta CERTIFICADO 2026-1 é ignorada")
+ok("INBOX.CERTIFICADO 2026-2" not in ped, "a CERTIFICADO 2026-2 também (30/10/2026: já passou)")
 ok(not any("EMITID" in k for k in ped), "e continua sem a EMITIDOS")
 ok(P.ROTULO_ENTRADA in ped, "lê a caixa de entrada")
 de_entrada = sorted(P.endereco(P.email.message_from_bytes(r).get("From")) for u, r in ped[P.ROTULO_ENTRADA])
