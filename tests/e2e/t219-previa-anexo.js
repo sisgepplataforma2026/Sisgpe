@@ -90,6 +90,35 @@ const links = c => Array.from(c.querySelectorAll("a")).map(a => a.textContent + 
   win.sisgepPreviaAnexo(c5, { nome: "a.docx", tipo: "application/msword", dataUrl: "data:application/msword;base64,AAAA", driveUrl: "" });
   b.ok(/Formato sem prévia/.test(c5.textContent) && links(c5).length === 1, "aviso e link");
 
+  b.fluxo("MENSAGEM E ANEXO NO FORMATO NOVO (mockup aprovado em 30/10/2026)");
+  b.passo("6. O remetente que veio em minúsculo, como no print do usuário");
+  const box = caixa();
+  box.innerHTML = win.sisgepMsgHtml({ de: "wanderson nascimento castelo <wandersoncastelo39@gmail.com>", data: "29/10/2026 22:09",
+    corpo: "  Quero o voucher de Pedagogia para 2027/1.\nWanderson  " });
+  b.igual(box.querySelector(".sg-quem b").textContent, "Wanderson Nascimento Castelo", "nome com iniciais maiúsculas");
+  b.igual(box.querySelector(".sg-quem span").textContent, "wandersoncastelo39@gmail.com", "e-mail separado, embaixo");
+  b.igual(box.querySelector(".sg-av").textContent, "W", "a inicial no círculo");
+  b.ok(/29\/10\/2026/.test(box.querySelector(".sg-data").textContent) && /22:09/.test(box.querySelector(".sg-data").textContent), "data e hora à direita");
+  b.igual(win.sisgepNomeBonito("MARIA DAS DORES DE SOUZA"), "Maria das Dores de Souza", "de/das ficam minúsculos");
+  b.igual(win.sisgepNomeBonito("Maria McAllister"), "Maria McAllister", "nome já escrito à mão não é mexido");
+  box.innerHTML = win.sisgepMsgHtml({ de: "x", corpo: "<script>alert(1)</script>" });
+  b.ok(!box.querySelector("script"), "texto do e-mail não vira código na tela");
+
+  b.passo("7. Anexo: ícone pelo tipo, nome legível, etiqueta");
+  box.innerHTML = win.sisgepAnexoHtml({ indice: 0, nome: "CNH-e.pdf (22).pdf" }, { attr: "data-vpe", etiqueta: "cnh", pessoa: "wanderson castelo" }) +
+    win.sisgepAnexoHtml({ indice: 1, nome: "foto.JPG" }, { attr: "data-vpe", etiqueta: "CONTRACHEQUE" }) +
+    win.sisgepAnexoHtml({ indice: 2, nome: "grande.zip" }, { attr: "data-cxs", ver: false, nota: "grande demais" });
+  const ics = Array.from(box.querySelectorAll(".sg-ic")).map(x => x.className + ":" + x.textContent);
+  b.igual(ics.join(" | "), "sg-ic pdf:PDF | sg-ic img:IMG | sg-ic :ZIP", "PDF vermelho, imagem verde, outro cinza");
+  b.igual(Array.from(box.querySelectorAll(".sg-chip")).map(x => x.textContent).join(","), "CNH,Contracheque", "etiquetas legíveis");
+  b.ok(/Wanderson Castelo/.test(box.textContent), "nome da pessoa no documento");
+  b.igual(box.querySelectorAll("button").length, 2, "anexo grande demais fica sem 'Ver'");
+  win.sisgepMarcarAnexo(box, 1);
+  b.igual(box.querySelector(".sel").getAttribute("data-anexo"), "1", "o anexo da prévia fica destacado");
+  b.igual(win.sisgepAnexoPrincipal([{ indice: 0, classificacao: "CNH" }, { indice: 1, classificacao: "CONTRACHEQUE" }]).indice, 1,
+    "a prévia abre primeiro a prova de vínculo");
+  b.igual(win.sisgepAnexoPrincipal([{ indice: 0, disponivel: false }, { indice: 1 }]).indice, 1, "e pula o que não dá para abrir");
+
   b.naoTestavel("o pdf.js real dentro do iframe do Apps Script", "só no navegador, em HML");
   b.resumo();
   process.exit(process.exitCode || 0);

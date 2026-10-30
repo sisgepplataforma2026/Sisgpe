@@ -2,6 +2,35 @@
 /* ── Pedidos de voucher por e-mail — backend: VoucherPedidosEmail.gs (este arquivo é VoucherPedidosEmailUI.html — nome diferente do .gs de propósito: o Apps Script recusa .gs e .html com o mesmo nome) ──
    Tokens e modal vêm de OficiosStyles.html (CSS mestre). Nada de paleta nova. */
 #vpeSecao { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 0 18px; }
+/* Mensagem e anexo na conversa (30/10/2026, mockup aprovado). Classes sg-*
+   porque a Caixa da Secretaria usa as mesmas. */
+.sg-msg { border: 1px solid var(--g200); border-radius: 12px; background: #fff; overflow: hidden; margin-bottom: 8px; }
+.sg-msg.nossa { border-color: #bfd3f2; }
+.sg-msg-cab { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--g50); border-bottom: 1px solid var(--g200); }
+.sg-msg.nossa .sg-msg-cab { background: var(--blue-lt); }
+.sg-av { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; background: var(--navy2); color: #fff; font-weight: 800;
+  font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.sg-msg.nossa .sg-av { background: var(--gold); color: var(--navy); }
+.sg-quem { flex: 1; min-width: 0; text-align: left; }
+.sg-quem b { display: block; font-size: 13px; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-quem span { display: block; font-size: 11.5px; color: var(--g500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-data { font-size: 11.5px; color: var(--g500); text-align: right; white-space: nowrap; line-height: 1.35; }
+.sg-msg-corpo { padding: 11px 14px; font-size: 13.5px; line-height: 1.55; color: var(--g800); white-space: pre-wrap;
+  word-break: break-word; max-height: 240px; overflow: auto; text-align: left; }
+.sg-anexo { display: flex; align-items: center; gap: 10px; border: 1px solid var(--g200); border-radius: 10px; padding: 8px 10px;
+  margin-bottom: 6px; background: #fff; text-align: left; }
+.sg-anexo.sel { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-lt); }
+.sg-ic { width: 34px; height: 40px; flex: 0 0 34px; border-radius: 6px; color: #fff; font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; background: var(--g500); }
+.sg-ic.pdf { background: #dc2626; }
+.sg-ic.img { background: #0f8a5f; }
+.sg-anexo-info { flex: 1; min-width: 0; }
+.sg-anexo-info b { display: block; font-size: 12.5px; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-anexo-info .sg-chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--blue-lt); color: var(--navy2); margin: 3px 4px 0 0; }
+.sg-anexo-info .sg-chip.ruim { background: var(--amber-lt); color: #92400e; }
+.sg-anexo-info span { font-size: 11px; color: var(--g500); }
+.sg-carregando { height: 12px; border-radius: 6px; background: var(--g100); margin: 8px 0; }
 #vpeSecao * { box-sizing: border-box; }
 #vpeSecao .vpe-topo {
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, #1058b0 100%);
@@ -217,7 +246,7 @@
           <h4>O que a pessoa mandou</h4>
           <div id="vpeMResumo" style="font-size:12.5px;color:#7c3aed;margin-bottom:8px;"></div>
           <div id="vpeMMensagens"></div>
-          <h4 style="margin-top:12px;">Anexos</h4>
+          <h4 style="margin-top:12px;" id="vpeMAnexosTit">Anexos</h4>
           <div class="vpe-anexos" id="vpeMAnexos"></div>
           <div class="vpe-prev" id="vpeMPrev"><div style="padding:18px;font-size:12px;color:#64748b;">Clique em "Ver" para abrir um anexo aqui.</div></div>
         </div>
@@ -261,6 +290,59 @@
    falhar, ficam "Abrir em nova aba" e "Abrir no Google Drive". Imagem vai
    direto. Global de propósito: a Caixa da Secretaria usa a mesma. */
 var SISGEP_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+/* Nome em minúsculo ("wanderson nascimento castelo") vira "Wanderson
+   Nascimento Castelo"; de/da/do/dos/das/e ficam minúsculos. */
+function sisgepNomeBonito(s) {
+  var t = String(s || "").replace(/["']/g, "").trim();
+  if (!t || t !== t.toLowerCase() && t !== t.toUpperCase()) return t;
+  return t.toLowerCase().split(/\s+/).map(function (p, i) {
+    return i && /^(de|da|do|das|dos|e)$/.test(p) ? p : p.charAt(0).toUpperCase() + p.slice(1);
+  }).join(" ");
+}
+function sisgepEsc_(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+/* Uma mensagem da conversa: inicial, nome, e-mail e data no cabeçalho. */
+function sisgepMsgHtml(m) {
+  var de = String(m.de || "");
+  var em = (de.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/) || [""])[0];
+  var nome = sisgepNomeBonito(de.replace(/<[^>]*>/, "").replace(em, "")) || em || "—";
+  var dt = String(m.data || "").split(" ");
+  return "<div class='sg-msg" + (m.nossa ? " nossa" : "") + "'><div class='sg-msg-cab'>" +
+    "<div class='sg-av'>" + sisgepEsc_(nome.charAt(0).toUpperCase()) + "</div>" +
+    "<div class='sg-quem'><b>" + sisgepEsc_(nome) + "</b>" + (em && em !== nome ? "<span>" + sisgepEsc_(em) + "</span>" : "") + "</div>" +
+    "<div class='sg-data'>" + sisgepEsc_(dt[0] || "") + (dt[1] ? "<br>" + sisgepEsc_(dt[1]) : "") + "</div></div>" +
+    "<div class='sg-msg-corpo'>" + sisgepEsc_(String(m.corpo || "(sem texto)").trim()) + "</div></div>";
+}
+/* Um anexo: ícone pelo tipo, nome legível, etiqueta do que a IA viu.
+   o = { attr: "data-vpe", etiqueta, pessoa, ruim, ver (false = sem botão), nota } */
+function sisgepAnexoHtml(a, o) {
+  var nome = String(a.nome || "anexo");
+  var ext = (nome.match(/\.([a-z0-9]+)$/i) || ["", ""])[1].toLowerCase();
+  var ic = ext === "pdf" || /pdf/.test(a.tipo || "") ? ["pdf", "PDF"]
+    : /^(jpe?g|png|gif|webp|heic|bmp)$/.test(ext) || /^image\//.test(a.tipo || "") ? ["img", "IMG"]
+    : ["", (ext || "ARQ").toUpperCase().slice(0, 4)];
+  var et = String(o.etiqueta || "").replace(/_/g, " ").trim();
+  if (et) et = et.length <= 4 ? et.toUpperCase() : et.charAt(0).toUpperCase() + et.slice(1).toLowerCase();
+  return "<div class='sg-anexo' data-anexo='" + Number(a.indice) + "'><div class='sg-ic " + ic[0] + "'>" + ic[1] + "</div>" +
+    "<div class='sg-anexo-info'><b title='" + sisgepEsc_(nome) + "'>" + sisgepEsc_(nome) + "</b>" +
+    (et ? "<span class='sg-chip" + (o.ruim ? " ruim" : "") + "'>" + sisgepEsc_(et) + "</span>" : "") +
+    (o.pessoa ? "<span>" + sisgepEsc_(sisgepNomeBonito(o.pessoa)) + "</span>" : "") +
+    (o.nota ? "<span> · " + sisgepEsc_(o.nota) + "</span>" : "") + "</div>" +
+    (o.ver === false ? "" : "<button type='button' class='btn btn-outline' " + o.attr + "='verAnexo' data-arg='" + Number(a.indice) + "'>Ver</button>") +
+    "</div>";
+}
+/* Destaca o anexo que está na prévia. */
+function sisgepMarcarAnexo(lista, indice) {
+  if (!lista) return;
+  Array.prototype.forEach.call(lista.querySelectorAll(".sg-anexo"), function (x) {
+    x.classList.toggle("sel", x.getAttribute("data-anexo") === String(indice));
+  });
+}
+/* O que a prévia abre sozinha: a prova de vínculo, se a IA achou; senão, o primeiro. */
+function sisgepAnexoPrincipal(lista, campo) {
+  var bons = (lista || []).filter(function (a) { return a.disponivel !== false; });
+  return bons.filter(function (a) { return /CONTRACHEQUE|DECLARA|CTPS/i.test(String(a[campo || "classificacao"] || "")); })[0] || bons[0] || null;
+}
+
 /* Baixa o pdf.js uma vez só; quem pedir enquanto baixa entra na fila. É
    chamado já ao abrir o pedido, para estar pronto quando clicarem "Ver". */
 var SISGEP_PDFJS_FILA = null;
@@ -621,7 +703,15 @@ var VPE = (function () {
 
   /* ── o pedido aberto ── */
   function abrir(id) {
-    el("vpeMTitulo").textContent = "Carregando…"; el("vpeMSub").textContent = "";
+    /* Enquanto carrega, nada do pedido anterior fica na tela (o usuário viu
+       o título "Carregando…" em cima dos dados de outra pessoa). */
+    estado.atual = null;
+    el("vpeMTitulo").textContent = "Carregando o pedido…"; el("vpeMSub").textContent = "";
+    el("vpeMResumo").textContent = "";
+    var sk = "<div class='sg-carregando' style='width:45%'></div><div class='sg-carregando'></div><div class='sg-carregando' style='width:75%'></div>";
+    el("vpeMMensagens").innerHTML = sk;
+    ["vpeMAnexos", "vpeMPrev", "vpeMPend", "vpeMCampos", "vpeMAcoes"].forEach(function (k) { el(k).innerHTML = ""; });
+    if (el("vpeMEscola")) el("vpeMEscola").style.display = "none";
     el("vpeModal").classList.add("aberto");
     sisgepCarregarPdfJs_();
     rodar("voucherPedidosDetalhe", [id], mostrar);
@@ -635,17 +725,20 @@ var VPE = (function () {
     el("vpeMSub").textContent = d.assunto + " · " + it.remetente + " · caixa " + it.caixa.toLowerCase() +
       (it.protocolo ? " · protocolo " + it.protocolo : "") + (d.confirmadoPor ? " · associado confirmado por " + d.confirmadoPor : "");
     el("vpeMResumo").textContent = d.resumoIA ? "Leitura da IA: " + d.resumoIA : "";
-    el("vpeMMensagens").innerHTML = (d.mensagens || []).map(function (m) {
-      return "<div class='vpe-msg" + (m.nossa ? " nossa" : "") + "'><div class='vpe-msg-cab'>" + esc(m.de) + " · " + esc(m.data) +
-        "</div><div class='vpe-msg-corpo'>" + esc(m.corpo || "(sem texto)") + "</div></div>";
-    }).join("") || "<div class='vpe-vazio'>Conversa indisponível.</div>";
-    el("vpeMAnexos").innerHTML = (d.anexos || []).map(function (a) {
-      var cls = a.classificacao ? a.classificacao.replace(/_/g, " ").toLowerCase() : (a.lidoPelaIA ? "não identificado" : "não lido pela IA");
-      return "<div class='vpe-anexo'><div>📎 " + esc(a.nome) + "<br><small>" + esc(cls) +
-        (a.nomePessoa ? " · " + esc(a.nomePessoa) : "") + (a.legivel === false ? " · ilegível" : "") +
-        "</small></div><button type='button' class='btn btn-outline' data-vpe='verAnexo' data-arg='" + Number(a.indice) + "'>Ver</button></div>";
+    el("vpeMMensagens").innerHTML = (d.mensagens || []).map(sisgepMsgHtml).join("") ||
+      "<div class='vpe-vazio'>Conversa indisponível.</div>";
+    var anexos = d.anexos || [];
+    el("vpeMAnexosTit").textContent = "Anexos" + (anexos.length ? " (" + anexos.length + ")" : "");
+    el("vpeMAnexos").innerHTML = anexos.map(function (a) {
+      return sisgepAnexoHtml(a, { attr: "data-vpe",
+        etiqueta: a.classificacao || (a.lidoPelaIA ? "não identificado" : "não lido pela IA"),
+        ruim: !a.classificacao || a.legivel === false, pessoa: a.nomePessoa, nota: a.legivel === false ? "ilegível" : "" });
     }).join("") || "<div style='font-size:12.5px;color:#64748b;'>Nenhum anexo.</div>";
     el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Clique em \"Ver\" para abrir um anexo aqui.</div>";
+    /* A prévia já abre com a prova de vínculo (ou o primeiro anexo): é o
+       que se confere primeiro. Pedido do usuário em 30/10/2026. */
+    var principal = sisgepAnexoPrincipal(anexos);
+    if (principal) verAnexo(Number(principal.indice));
 
     var pend = d.pendencias || [];
     el("vpeMPend").innerHTML = pend.length ? pend.map(function (p) {
@@ -667,9 +760,10 @@ var VPE = (function () {
       } else {
         input = "<input data-k='" + chave + "' value='" + esc(f.valor) + "'" + (concl ? " disabled" : "") + ">";
       }
-      return "<div class='vpe-campo'><label>" + esc(c[1]) + "</label>" + input +
+      return "<div class='vpe-campo' data-campo='" + chave + "'><label>" + esc(c[1]) + "</label>" + input +
         "<small class='" + cls + "'>" + esc(origem ? "↳ " + origem : "") + "</small></div>";
     }).join("");
+    ajustarBeneficiario();
     el("vpeMPct").innerHTML = d.percentual
       ? "Percentual: <b>" + esc(d.percentual.valor) + "%</b> <small>(" + esc(d.percentual.origem) + ")</small>"
       : "<small>Percentual calculado na criação, pela regra da convenção.</small>";
@@ -783,6 +877,20 @@ var VPE = (function () {
   /* ── ESCOLA NO CADASTRO DO SISGEP (30/10/2026) ──
      Não achou: escolher uma parecida, cadastrar (abre o cadastro já
      preenchido) ou seguir com justificativa (o "mesmo assim" de sempre). */
+  /* Voucher para o titular não tem beneficiário: os campos dele somem
+     (pedido do usuário, 30/10/2026). Ordem do filho só para filho/enteado.
+     Sem "Para quem é" escolhido, tudo aparece. */
+  var SO_BENEFICIARIO = { nomeBeneficiario: ["FILHO", "ENTEADO", "CONJUGE"], dataNascimento: ["FILHO", "ENTEADO", "CONJUGE"],
+    ordemFilho: ["FILHO", "ENTEADO"] };
+  function ajustarBeneficiario() {
+    var sel = document.querySelector("#vpeMCampos [data-k='tipoBeneficiario']");
+    var tipo = sel ? String(sel.value || "").toUpperCase() : "";
+    Object.keys(SO_BENEFICIARIO).forEach(function (k) {
+      var box = document.querySelector("#vpeMCampos [data-campo='" + k + "']");
+      if (box) box.style.display = !tipo || SO_BENEFICIARIO[k].indexOf(tipo) > -1 ? "" : "none";
+    });
+  }
+
   function desenharEscola(d, st) {
     var box = el("vpeMEscola"), e = d.escola;
     if (!e || e.achada || st === "CONCLUIDO" || st === "EMITIDO") { box.style.display = "none"; box.innerHTML = ""; return; }
@@ -901,10 +1009,13 @@ var VPE = (function () {
      novo o mesmo não volta ao servidor. */
   var anexosVistos = {};
   function verAnexo(i) {
-    var chave = estado.atual.item.id + "#" + i;
+    if (!estado.atual) return;
+    var id = estado.atual.item.id, chave = id + "#" + i;
+    sisgepMarcarAnexo(el("vpeMAnexos"), i);
     if (anexosVistos[chave]) return sisgepPreviaAnexo(el("vpeMPrev"), anexosVistos[chave]);
     el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Buscando o anexo na caixa da Secretaria…</div>";
-    rodar("voucherPedidosAnexo", [estado.atual.item.id, i], function (r) {
+    rodar("voucherPedidosAnexo", [id, i], function (r) {
+      if (!estado.atual || estado.atual.item.id !== id) return;
       if (!r.ok) { el("vpeMPrev").innerHTML = "<div style='padding:18px;color:#dc2626;'>" + esc(r.mensagem) + "</div>"; return; }
       anexosVistos[chave] = r;
       sisgepPreviaAnexo(el("vpeMPrev"), r);
@@ -945,6 +1056,7 @@ var VPE = (function () {
   });
   document.addEventListener("change", function (ev) {
     if (ev.target && ev.target.id === "vpeCaixa") carregar();
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-k") === "tipoBeneficiario") ajustarBeneficiario();
     if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-falta-chk")) itensMudaram();
     if (ev.target && ["vpeFSemestre", "vpeFEscola", "vpeFPara", "vpeFAntigos"].indexOf(ev.target.id) > -1) desenharLista();
     if (ev.target && ["vpeESemestre", "vpeEEscola", "vpeEConferido"].indexOf(ev.target.id) > -1) desenharEmitidos();

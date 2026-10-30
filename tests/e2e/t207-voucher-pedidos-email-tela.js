@@ -144,8 +144,11 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   await t.assentar(60);
   b.ok(el("vpeModal").classList.contains("aberto"), "o modal abriu");
   b.ok(/Pedagogia 2027\/1/.test(t.texto("#vpeMMensagens")), "a mensagem da associada aparece");
-  b.igual(doc.querySelectorAll("#vpeMAnexos .vpe-anexo").length, 2, "os 2 anexos listados");
-  b.ok(/contracheque/.test(t.texto("#vpeMAnexos")), "com o tipo que a IA identificou");
+  b.igual(doc.querySelectorAll("#vpeMAnexos .sg-anexo").length, 2, "os 2 anexos listados");
+  b.ok(/Contracheque/.test(t.texto("#vpeMAnexos")), "com o tipo que a IA identificou, como etiqueta");
+  b.igual(t.texto("#vpeMAnexosTit"), "Anexos (2)", "e a contagem no título");
+  b.ok(doc.querySelector("#vpeMMensagens .sg-quem b") && /ana@exemplo\.com/.test(t.texto("#vpeMMensagens .sg-quem b")),
+    "sem nome no remetente, o cabeçalho mostra o e-mail");
   const cpfCampo = doc.querySelector("#vpeMCampos [data-k='cpf']");
   b.igual(cpfCampo.value, "11144477735", "CPF preenchido");
   b.ok(/lido no documento anexo/.test(cpfCampo.parentNode.textContent), "com a origem ao lado");
@@ -155,16 +158,31 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.ok(/confirma que conferiu os documentos e a filiação/.test(t.texto("#vpeMNotaEnvio") || "") &&
     /ana@exemplo\.com/.test(t.texto("#vpeMNotaEnvio") || ""), "o aviso diz o que o clique significa e para quem vai");
   b.ok(!botao("Encaminhar à sede"), "sem botão de sede num associado");
-  win.sisgepPreviaAnexo = (c, r) => { c.textContent = "PREVIA:" + r.nome; };
   const nAnexo = () => t.chamadas.filter(c => c.fn === "voucherPedidosAnexo").length;
-  const n0 = nAnexo();
-  t.clicar(doc.querySelector("[data-vpe='verAnexo']"));
+  b.igual(nAnexo(), 1, "a prévia abre sozinha ao abrir o pedido");
+  const sel = doc.querySelector("#vpeMAnexos .sg-anexo.sel");
+  b.ok(sel && /Contracheque/.test(sel.textContent), "com a prova de vínculo (contracheque), destacada", sel && sel.textContent);
+  win.sisgepPreviaAnexo = (c, r) => { c.textContent = "PREVIA:" + r.nome; };
+  t.clicar(sel.querySelector("[data-vpe='verAnexo']"));
   await t.assentar(60);
-  b.igual(nAnexo(), n0 + 1, "'Ver' busca o anexo no servidor");
+  b.igual(nAnexo(), 1, "'Ver' de novo no mesmo anexo não volta ao servidor (fica guardado)");
+  const outro = Array.from(doc.querySelectorAll("#vpeMAnexos .sg-anexo")).find(x => x !== sel);
+  t.clicar(outro.querySelector("[data-vpe='verAnexo']"));
+  await t.assentar(60);
+  b.igual(nAnexo(), 2, "'Ver' no outro anexo busca no servidor");
+  b.ok(outro.classList.contains("sel") && !sel.classList.contains("sel"), "e o destaque passa para ele");
   b.ok(/^PREVIA:/.test(t.texto("#vpeMPrev")), "e mostra a prévia");
-  t.clicar(doc.querySelector("[data-vpe='verAnexo']"));
-  await t.assentar(60);
-  b.igual(nAnexo(), n0 + 1, "'Ver' de novo no mesmo anexo não volta ao servidor (fica guardado)");
+
+  const vis = k => doc.querySelector("#vpeMCampos [data-campo='" + k + "']").style.display !== "none";
+  b.igual(doc.querySelector("#vpeMCampos [data-k='tipoBeneficiario']").value, "TITULAR", "voucher para a titular");
+  b.ok(!vis("nomeBeneficiario") && !vis("dataNascimento") && !vis("ordemFilho"), "os campos do beneficiário não aparecem");
+  const selB = doc.querySelector("#vpeMCampos [data-k='tipoBeneficiario']");
+  selB.value = "FILHO"; selB.dispatchEvent(new win.Event("change", { bubbles: true }));
+  b.ok(vis("nomeBeneficiario") && vis("dataNascimento") && vis("ordemFilho"), "trocou para FILHO: aparecem os três");
+  selB.value = "CONJUGE"; selB.dispatchEvent(new win.Event("change", { bubbles: true }));
+  b.ok(vis("nomeBeneficiario") && !vis("ordemFilho"), "cônjuge: nome e nascimento, sem ordem do filho");
+  selB.value = "TITULAR"; selB.dispatchEvent(new win.Event("change", { bubbles: true }));
+  b.ok(!vis("nomeBeneficiario"), "de volta a TITULAR: somem de novo");
 
   b.passo("4. Validar manda o que está NO CAMPO");
   t.digitar(doc.querySelector("#vpeMCampos [data-k='rg']"), "9.999.999");
