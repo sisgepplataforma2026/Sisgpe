@@ -18,7 +18,7 @@
 
 var ROBO_MEM_ABA = "Robo_Memoria";
 var ROBO_MEM_COLUNAS = ["EM", "TAREFA", "ORIGEM", "CHAVE", "REMETENTE", "ASSUNTO", "TRECHO",
-                        "SUGERIDO", "DECIDIDO", "ACERTOU", "QUEM"];
+                        "SUGERIDO", "DECIDIDO", "ACERTOU", "QUEM", "TIPO_EMAIL"];
 var ROBO_MEM_PONTE_ABA = "Exemplos";
 var ROBO_MEM_PONTE_COLUNAS = ["EM", "REMETENTE", "ASSUNTO", "TRECHO", "TIPO_IA", "TIPO_CERTO", "QUEM"];
 
@@ -27,6 +27,9 @@ function roboMemAba_() {
   var sh = ss.getSheetByName(ROBO_MEM_ABA);
   if (!sh) {
     sh = ss.insertSheet(ROBO_MEM_ABA);
+    sh.getRange(1, 1, 1, ROBO_MEM_COLUNAS.length).setValues([ROBO_MEM_COLUNAS]);
+  } else if (sh.getLastColumn() < ROBO_MEM_COLUNAS.length) {
+    /* Coluna nova acrescentada depois: o cabeçalho acompanha. */
     sh.getRange(1, 1, 1, ROBO_MEM_COLUNAS.length).setValues([ROBO_MEM_COLUNAS]);
   }
   return sh;
@@ -45,7 +48,8 @@ function roboMemoriaRegistrar_(o) {
       REMETENTE: String(o.remetente || "").toLowerCase(), ASSUNTO: String(o.assunto || "").substring(0, 200),
       TRECHO: String(o.trecho || "").replace(/\s+/g, " ").substring(0, 300),
       SUGERIDO: String(o.sugerido || ""), DECIDIDO: String(o.decidido || ""),
-      ACERTOU: String(o.sugerido || "") === String(o.decidido || "") ? "SIM" : "NAO", QUEM: String(o.quem || "")
+      ACERTOU: String(o.sugerido || "") === String(o.decidido || "") ? "SIM" : "NAO", QUEM: String(o.quem || ""),
+      TIPO_EMAIL: String(o.tipoEmail || "")
     };
     roboMemAba_().appendRow(ROBO_MEM_COLUNAS.map(function (c) { return linha[c]; }));
     delete ROBO_MEM_CACHE[linha.TAREFA];

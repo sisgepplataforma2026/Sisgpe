@@ -356,6 +356,21 @@ function caixaSecretariaPainel(tokenSessao) {
   }
 }
 
+/* A MEMÓRIA DO ROBÔ guarda a resposta: o que ele sugeriu e o que saiu. */
+function cxsMemoriaResposta_(id, texto, meta, sessao) {
+  try {
+    var p = cxsLinhaPonte_(id);
+    var msgs = p ? vpeJson_(p.MENSAGENS_JSON, []) : [];
+    var de = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; }).pop() || {};
+    var est = cxsEstados_()[String(id)] || {};
+    roboMemoriaRegistrar_({ tarefa: "resposta-email", origem: String((p && p.CAIXA) || "SECRETARIA"), chave: id,
+      remetente: cxsEmail_(de.replyTo || de.de), assunto: de.assunto, trecho: de.corpo,
+      sugerido: String((meta && meta.sugerido) || "").trim().substring(0, 2000),
+      decidido: String(texto).substring(0, 2000), quem: sessao.email || sessao.usuario || "",
+      tipoEmail: String(est.TIPO_CORRIGIDO || (p && p.TIPO) || "") });
+  } catch (e) {}
+}
+
 /** Os e-mails da financeiro@, à parte (o Gmail é a parte lenta). */
 function caixaFinanceiroItens(tokenSessao) {
   try {
@@ -431,11 +446,16 @@ function caixaSecretariaAnexo(id, indice, tokenSessao) {
 }
 
 /** Responder — só com o clique, só como resposta, para quem escreveu. */
-function caixaSecretariaResponder(id, texto, tokenSessao) {
+/* meta (opcional) = { sugerido: o texto que o sistema propôs } — para a
+   memória do robô comparar com o que a pessoa enviou. */
+function caixaSecretariaResponder(id, texto, a3, a4) {
+  var meta = (a4 === undefined) ? {} : (a3 || {});
+  var tokenSessao = (a4 === undefined) ? a3 : a4;
   try {
     var sessao = cxsExigir_(tokenSessao);
     texto = String(texto || "").trim();
     if (texto.length < 10) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
+    cxsMemoriaResposta_(id, texto, meta, sessao);
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var msgs = vpeJson_(p.MENSAGENS_JSON, []);
@@ -483,6 +503,8 @@ function caixaSecretariaMarcar(id, estado, nota, tokenSessao) {
     if (nota !== undefined && nota !== null) mud.NOTA = String(nota).substring(0, 1000);
     cxsGravarEstado_(id, mud, quem);
     cxsAuditar_("MARCAR_" + estado, id, nota || "", sessao);
+    roboMemoriaRegistrar_({ tarefa: "situacao-email", origem: String(p.CAIXA || "SECRETARIA"), chave: id,
+      sugerido: "", decidido: estado + (nota ? " · " + String(nota).substring(0, 200) : ""), quem: quem });
     return { ok: true, mensagem: estado === "RESOLVIDO" ? "Marcado como resolvido." : "Voltou para os novos." };
   } catch (e) {
     return { ok: false, mensagem: e.message };

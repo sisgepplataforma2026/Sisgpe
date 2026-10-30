@@ -131,6 +131,23 @@ b.ok(encaminhados.length === 1 && encaminhados[0].para === "secretaria@sindeduca
 limparCache();
 b.igual(painelTudo(TOKEN).itens.find(i => i.id === "F:a2").estado, "RESOLVIDO", "e sai da lista de a tratar");
 
+b.fluxo("MEMÓRIA · aprende com tudo o que é feito");
+b.passo("8a. A resposta: o que o sistema sugeriu e o que saiu");
+T.push({ id: "a4", msgs: [msg("Escola Teta <rh@teta.exemplo.com>", "Dúvida sobre o boleto", "Qual o vencimento?")] });
+limparCache();
+const dT = g.caixaSecretariaDetalhe("F:a4", TOKEN);
+g.caixaSecretariaResponder("F:a4", dT.sugestao.replace("Tudo bem?", "Tudo bem? O vencimento é dia 10."), { sugerido: dT.sugestao }, TOKEN);
+const mR = memoria().filter(m => m.TAREFA === "resposta-email" && m.CHAVE === "F:a4").pop();
+b.ok(mR && mR.ACERTOU === "NAO" && /vencimento é dia 10/.test(mR.DECIDIDO) && mR.SUGERIDO && mR.TIPO_EMAIL,
+  "guarda a sugestão, o texto enviado e o tipo do e-mail", JSON.stringify(mR && [mR.ACERTOU, mR.TIPO_EMAIL]));
+b.passo("8b. Resolver também fica na memória");
+g.caixaSecretariaMarcar("F:a1", "RESOLVIDO", "lançado", TOKEN);
+b.ok(memoria().some(m => m.TAREFA === "situacao-email" && m.CHAVE === "F:a1" && /RESOLVIDO/.test(m.DECIDIDO)), "resolver ficou registrado");
+b.passo("8c. Campo do voucher corrigido pela pessoa");
+g.voucherPedidosSalvarCampos(r.pedidoId, { telefone: "27988887777" }, TOKEN);
+const mC = memoria().filter(m => m.TAREFA === "voucher-campo:telefone").pop();
+b.ok(mC && mC.DECIDIDO === "27988887777" && mC.ACERTOU === "NAO", "o que a IA leu e o que a pessoa corrigiu", JSON.stringify(mC && [mC.SUGERIDO, mC.DECIDIDO]));
+
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 /* Mais um pedido escondido como 'Outro', para a tela. */
 const thBia = SIM.novaThread("Desconto do curso", "Bia <bia@exemplo.com>", "Segue documento. TIPO:OUTRO", [SIM.jpg("rg.jpg")]);
@@ -152,6 +169,22 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
   b.ok(/Bia/i.test(t.texto("#vpeMTitulo")) || /bia@exemplo/i.test(t.texto("#vpeMSub")), "com o pedido da Bia",
     t.texto("#vpeMTitulo") + " | " + t.texto("#vpeMSub"));
 
+  b.passo("9. Arrastar o e-mail para o card da categoria certa");
+  win.VPE.fechar && win.VPE.fechar();
+  win.cxsIniciar(); await t.assentar(200);
+  const item = doc.querySelector("[data-arrastar='F:a3']");
+  b.ok(item && item.getAttribute("draggable") === "true", "o e-mail pode ser arrastado");
+  b.ok(!doc.querySelector("[data-arrastar='" + r.pedidoId + "']"), "voucher não se arrasta (já está no lugar dele)");
+  item.dispatchEvent(new win.Event("dragstart", { bubbles: true }));
+  const card = doc.querySelector("#cxsTipos [data-cxs='filtrarTipo'][data-arg='FINANCEIRO']");
+  card.dispatchEvent(new win.Event("dragover", { bubbles: true, cancelable: true }));
+  b.ok(card.classList.contains("alvo"), "o card acende ao passar por cima");
+  card.dispatchEvent(new win.Event("drop", { bubbles: true, cancelable: true }));
+  await t.assentar(200);
+  b.igual(painelTudo(TOKEN).itens.find(i => i.id === "F:a3").tipo, "FINANCEIRO", "soltou no Financeiro: mudou");
+  b.ok(memoria().some(m => m.TAREFA === "categoria-email" && m.CHAVE === "F:a3" && m.DECIDIDO === "FINANCEIRO"), "e o robô guardou");
+
+  b.naoTestavel("arrastar com o mouse de verdade", "jsdom dispara o evento; o gesto só no navegador");
   b.naoTestavel("a IA de verdade seguindo os exemplos", "a IA aqui é simulada");
   b.resumo();
   process.exit(process.exitCode || 0);

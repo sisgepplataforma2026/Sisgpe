@@ -1743,6 +1743,14 @@ function vpeRegistrarCorrecao_(reg, tipo, meta, textoEnviado, quem) {
     textoEnviado: String(textoEnviado).substring(0, 4000)
   });
   reg.CORRECOES_JSON = JSON.stringify(lista);
+  /* MEMÓRIA DO ROBÔ: o que faltava (sugerido × escolhido) e o texto. */
+  roboMemoriaRegistrar_({ tarefa: "voucher-falta", origem: "VOUCHER", chave: reg.ID_PEDIDO, remetente: reg.REMETENTE_EMAIL,
+    assunto: reg.ASSUNTO, sugerido: sug.slice().sort().join(","), decidido: esc.slice().sort().join(","), quem: quem });
+  if (meta.textoSugerido !== undefined) {
+    roboMemoriaRegistrar_({ tarefa: "voucher-texto", origem: "VOUCHER", chave: reg.ID_PEDIDO, remetente: reg.REMETENTE_EMAIL,
+      assunto: reg.ASSUNTO, sugerido: String(meta.textoSugerido).trim().substring(0, 2000),
+      decidido: String(textoEnviado).trim().substring(0, 2000), quem: quem });
+  }
 }
 
 /** O anexo, para ver na tela — de qualquer mensagem da conversa. */
@@ -1783,7 +1791,12 @@ function vpeReavaliar_(reg, editados, quem) {
     if (k.indexOf("__") === 0) return;
     var atual = d.campos && d.campos[k] ? String(d.campos[k].valor || "") : "";
     var novo = String(editados[k] === undefined || editados[k] === null ? "" : editados[k]).trim();
-    if (novo !== atual) d.editados[k] = novo;
+    if (novo !== atual) {
+      d.editados[k] = novo;
+      /* MEMÓRIA DO ROBÔ: o campo que a IA leu e o que a pessoa corrigiu. */
+      roboMemoriaRegistrar_({ tarefa: "voucher-campo:" + k, origem: "VOUCHER", chave: reg.ID_PEDIDO,
+        remetente: reg.REMETENTE_EMAIL, assunto: reg.ASSUNTO, sugerido: atual, decidido: novo, quem: quem });
+    }
   });
   d.editados.__por = quem || d.editados.__por || "";
   var aval = vpeAvaliar_(ext, {

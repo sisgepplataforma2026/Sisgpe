@@ -126,13 +126,14 @@ win.spIr = m => { win.__foi = m; };
   b.fluxo("CAIXA DE E-MAILS · a tela");
   b.passo("8. Filtro por caixa");
   win.cxsIniciar(); await t.assentar(150);
-  b.ok(/Todas as caixas/.test(t.texto("#cxsCaixas")) && /Financeiro \(\d+\)/.test(t.texto("#cxsCaixas")), "os botões das caixas");
-  b.ok(/💰 Financeiro/.test(t.texto("#cxsLista")), "cada e-mail mostra por qual caixa chegou");
+  b.ok(/Todas as caixas/.test(t.texto("#cxsCaixas")) && /secretaria@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")) &&
+    /financeiro@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")), "os botões das caixas, com o endereço de cada uma");
+  b.ok(/💰 financeiro@/.test(t.texto("#cxsLista")), "cada e-mail mostra por qual caixa chegou");
   t.clicar("[data-cxs='filtrarCaixa'][data-arg='FINANCEIRO']"); await t.assentar(30);
   const itens = () => Array.from(doc.querySelectorAll("#cxsLista .cxs-item")).map(x => x.textContent);
-  b.ok(itens().length && itens().every(x => /💰 Financeiro/.test(x)), "Financeiro: só os da financeiro@", itens().length);
+  b.ok(itens().length && itens().every(x => /💰 financeiro@/.test(x)), "Financeiro: só os da financeiro@", itens().length);
   t.clicar("[data-cxs='filtrarCaixa'][data-arg='SECRETARIA']"); await t.assentar(30);
-  b.ok(itens().every(x => !/💰 Financeiro/.test(x)), "Secretaria: nenhum da financeiro@");
+  b.ok(itens().every(x => !/💰 financeiro@/.test(x)), "Secretaria: nenhum da financeiro@");
   t.clicar("[data-cxs='filtrarCaixa'][data-arg='']"); await t.assentar(30);
 
   b.passo("9. Abrir uma conversa da financeiro@ diz por onde a resposta sai");
