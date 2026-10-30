@@ -26,7 +26,7 @@ ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["rhzinho", g.gerarHashSenha_(
   "USUARIO", "ATIVO", "NAO", "rh"]);
 const TOKEN = b.logar(g, "wanderson"), T_RH = b.logar(g, "rhzinho");
 g.setupVoucherModuleFase1();
-require("./vpe-simulador").instalar(g, amb);
+const SIM = require("./vpe-simulador").instalar(g, amb);
 
 /* ── O Gmail da financeiro@, falso ── */
 const respostas = [], proibidas = [];
@@ -73,7 +73,7 @@ b.ok(p.ok && !p.erroFinanceiro, "o painel abre", p.mensagem || p.erroFinanceiro)
 const fin = p.itens.filter(i => i.caixa === "FINANCEIRO");
 const f1 = fin.find(i => i.id === "F:t1"), f2 = fin.find(i => i.id === "F:t2"), f5 = fin.find(i => i.id === "F:t5");
 b.ok(f1 && f1.tipo === "FINANCEIRO" && f1.anexos === 1, "comprovante → Financeiro, com 1 anexo", JSON.stringify(f1 && [f1.tipo, f1.anexos]));
-b.ok(f2 && f2.tipo === "OFICIO_ESCOLA", "ofício/relação → Escola", f2 && f2.tipo);
+b.ok(f2 && f2.tipo === "FINANCEIRO", "relação nominal → Escolas: contribuições", f2 && f2.tipo);
 b.ok(f5 && f5.de === "wanderson@uvv.br", "conversa iniciada por nós mostra quem respondeu", f5 && f5.de);
 b.ok(!fin.some(i => i.id === "F:t3") && !fin.some(i => i.id === "F:t4"), "'Lida:' e remetente automático ficam de fora");
 b.igual(p.porCaixa.FINANCEIRO, 3, "3 do Financeiro a tratar");
@@ -131,16 +131,24 @@ g.vpeChamarIA_ = function (prompt) {
 };
 g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
 const pIA = painelTudo(TOKEN);
-b.ok(pedidosIA.length === 1 && /NOTA_FISCAL = toda nota fiscal/.test(pedidosIA[0]), "um pedido à IA, com as categorias aprovadas");
+b.ok(pedidosIA.length === 1 && /NOTA_FISCAL = nota fiscal de fornecedor/.test(pedidosIA[0]), "um pedido à IA, com as categorias aprovadas");
 b.igual(pIA.itens.find(i => i.id === "F:t6").tipo, "NOTA_FISCAL", "a nota fiscal vai para Notas fiscais");
 b.ok(!pIA.itens.some(i => i.id === "F:t7"), "propaganda não aparece na Entrada");
 b.igual(pIA.itens.find(i => i.id === "F:t2").tipo, "FILIACAO", "o que a equipe corrigiu continua valendo");
 g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
 painelTudo(TOKEN);
 b.igual(pedidosIA.length, 1, "abrir de novo não pergunta à IA outra vez (ficou guardado)");
-b.ok(Object.keys(g.CXS_TIPOS).join(",") === "VOUCHER,FILIACAO,FINANCEIRO,NOTA_FISCAL,OFICIO_ESCOLA,JURIDICO,EVENTO,OUTRO",
-  "as 8 categorias aprovadas, na ordem", Object.keys(g.CXS_TIPOS).join(","));
-b.igual(g.cxsTipo_("CONVENCAO"), "JURIDICO", "o que era Convenção aparece em Jurídico e convenção");
+b.ok(Object.keys(g.CXS_TIPOS).join(",") === "VOUCHER,FILIACAO,FINANCEIRO,NOTA_FISCAL,CONTAS,JURIDICO,NEGOCIACAO,ENTIDADES,EVENTO,OUTRO",
+  "as categorias aprovadas (levantamento de 60 dias), na ordem", Object.keys(g.CXS_TIPOS).join(","));
+b.igual(g.cxsTipo_("CONVENCAO"), "NEGOCIACAO", "o que era Convenção aparece em Negociação e reuniões");
+b.igual(g.cxsTipo_("OFICIO_ESCOLA"), "FINANCEIRO", "o que era Escola aparece em Escolas: contribuições");
+
+/* O mesmo e-mail com cópia para a secretaria@ (o leitor também o traz). */
+const thCopia = SIM.novaThread("Comprovante de desconto em folha – out/2026", "Colégio Beta <contabil@beta.exemplo.com>",
+  "Segue o comprovante do mês. TIPO:FINANCEIRO");
+thCopia.msgs[0].getDate = () => new Date(agora - 3600e3);   // a mesma mensagem, mesma hora
+SIM.ciclo();
+g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
 
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"], { token: TOKEN });
@@ -150,6 +158,14 @@ win.spIr = m => { win.__foi = m; };
   b.fluxo("CAIXA DE E-MAILS · a tela");
   b.passo("8. Filtro por caixa");
   win.cxsIniciar(); await t.assentar(150);
+  b.passo("8b. O Wanderson abre em 'Precisa de mim — Financeiro'");
+  b.ok(/Precisa de mim — Financeiro/.test(t.texto("#cxsCaixas")), "o departamento dele", t.texto("#cxsCaixas"));
+  const nomes = () => Array.from(doc.querySelectorAll("#cxsLista .cxs-item")).map(x => x.textContent);
+  b.ok(nomes().length && nomes().every(x => !/para ciência/.test(x)), "só o que é dele (nada 'para ciência')");
+  b.igual(nomes().filter(x => /Comprovante de desconto em folha – out\/2026/.test(x)).length, 1,
+    "o comprovante que chegou nas duas caixas aparece uma vez só");
+  b.ok(nomes().some(x => /Comprovante de desconto/.test(x) && /financeiro@/.test(x)), "e é o da financeiro@");
+  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
   b.ok(/Todas as caixas/.test(t.texto("#cxsCaixas")) && /secretaria@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")) &&
     /financeiro@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")), "os botões das caixas, com o endereço de cada uma");
   b.ok(/💰 financeiro@/.test(t.texto("#cxsLista")), "cada e-mail mostra por qual caixa chegou");

@@ -117,11 +117,11 @@ b.passo("6. A equipe corrige o tipo de um remetente; o próximo e-mail dele já 
 limparCache();
 p = painelTudo(TOKEN);
 b.igual(p.itens.find(i => i.id === "F:a1").tipo, "OUTRO", "a regra não soube (Outro)");
-b.ok(g.caixaSecretariaReclassificar("F:a1", "OFICIO_ESCOLA", TOKEN).ok, "a equipe diz: é Escola");
+b.ok(g.caixaSecretariaReclassificar("F:a1", "FINANCEIRO", TOKEN).ok, "a equipe diz: é Contribuições das escolas");
 T.push({ id: "a3", msgs: [msg("Escola Zeta <dp@zeta.exemplo.com>", "Mais um arquivo", "Segue outro.")] });
 limparCache();
 p = painelTudo(TOKEN);
-b.igual(p.itens.find(i => i.id === "F:a3").tipo, "OFICIO_ESCOLA", "o próximo e-mail da Escola Zeta já vem como Escola");
+b.igual(p.itens.find(i => i.id === "F:a3").tipo, "FINANCEIRO", "o próximo e-mail da Escola Zeta já vem como Contribuições");
 
 b.passo("7. Voucher que chegou no Financeiro: encaminhado à Secretaria, só com o clique");
 b.igual(encaminhados.length, 0, "nada encaminhado sozinho");
@@ -158,6 +158,7 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
   b.fluxo("VOUCHER NA MÃO · a tela");
   b.passo("8. Escolher Voucher avisa o que vai acontecer; salvar abre a conferência");
   win.cxsIniciar(); await t.assentar(150);
+  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
   t.clicar("[data-cxs='abrir'][data-arg='" + thBia.id + "']"); await t.assentar(150);
   const sel = el("cxsMTipo");
   b.ok(Array.from(sel.options).some(o => o.value === "VOUCHER"), "'Voucher' na lista de categorias");
@@ -172,17 +173,18 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
   b.passo("9. Arrastar o e-mail para o card da categoria certa");
   win.VPE.fechar && win.VPE.fechar();
   win.cxsIniciar(); await t.assentar(200);
+  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
   const item = doc.querySelector("[data-arrastar='F:a3']");
   b.ok(item && item.getAttribute("draggable") === "true", "o e-mail pode ser arrastado");
   b.ok(!doc.querySelector("[data-arrastar='" + r.pedidoId + "']"), "voucher não se arrasta (já está no lugar dele)");
   item.dispatchEvent(new win.Event("dragstart", { bubbles: true }));
-  const card = doc.querySelector("#cxsTipos [data-cxs='filtrarTipo'][data-arg='FINANCEIRO']");
+  const card = doc.querySelector("#cxsTipos [data-cxs='filtrarTipo'][data-arg='CONTAS']");
   card.dispatchEvent(new win.Event("dragover", { bubbles: true, cancelable: true }));
   b.ok(card.classList.contains("alvo"), "o card acende ao passar por cima");
   card.dispatchEvent(new win.Event("drop", { bubbles: true, cancelable: true }));
   await t.assentar(200);
-  b.igual(painelTudo(TOKEN).itens.find(i => i.id === "F:a3").tipo, "FINANCEIRO", "soltou no Financeiro: mudou");
-  b.ok(memoria().some(m => m.TAREFA === "categoria-email" && m.CHAVE === "F:a3" && m.DECIDIDO === "FINANCEIRO"), "e o robô guardou");
+  b.igual(painelTudo(TOKEN).itens.find(i => i.id === "F:a3").tipo, "CONTAS", "soltou em Contas: mudou");
+  b.ok(memoria().some(m => m.TAREFA === "categoria-email" && m.CHAVE === "F:a3" && m.DECIDIDO === "CONTAS"), "e o robô guardou");
 
   b.naoTestavel("arrastar com o mouse de verdade", "jsdom dispara o evento; o gesto só no navegador");
   b.naoTestavel("a IA de verdade seguindo os exemplos", "a IA aqui é simulada");

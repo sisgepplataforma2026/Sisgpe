@@ -54,10 +54,20 @@ function montar(token) {
   await t.assentar(150);
   b.passo("2. Cards por tipo e a lista");
   b.ok(doc.querySelectorAll("#cxsTipos .cxs-tipo").length >= 7, "um card por tipo (+ o atalho do Voucher)");
-  b.igual(itens().length, 3, "três e-mails");
+  /* 30/10/2026, o usuário: "cada um corresponde a seu departamento —
+     Secretaria Marcelha, Financeiro Wanderson". */
+  b.ok(/Precisa de mim — Secretaria \(1\)/.test(t.texto("#cxsCaixas")), "a Marcelha abre em 'Precisa de mim — Secretaria'",
+    t.texto("#cxsCaixas"));
+  b.ok(itens().length === 1 && /desfiliar/.test(itens()[0]), "só o que é da Secretaria (a desfiliação)", itens().join(" | "));
+  t.clicar("[data-cxs='filtrarMeus'][data-arg='']");
+  await t.assentar(10);
+  b.igual(itens().length, 3, "em 'Tudo', os três e-mails");
+  b.ok((t.texto("#cxsLista").match(/do Financeiro — para ciência/g) || []).length === 2,
+    "guia e relação aparecem como 'do Financeiro — para ciência'");
   t.clicar("#cxsTipos [data-arg='FINANCEIRO']");
   await t.assentar(10);
-  b.ok(itens().length === 1 && /guia/i.test(itens()[0]), "card Financeiro filtra só a guia");
+  b.ok(itens().length === 2 && itens().some(x => /guia/i.test(x)) && itens().some(x => /Relação/.test(x)),
+    "card Contribuições: a guia e a relação da escola");
   t.clicar("#cxsTipos [data-arg='FINANCEIRO']");
   await t.assentar(10);
   t.marcar("#cxsFAnexo", true);

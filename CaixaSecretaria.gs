@@ -27,22 +27,45 @@
 var CXS_ABA = "Caixa_Secretaria";
 var CXS_COLUNAS = ["THREAD_ID", "ESTADO", "ULTIMA_VISTA", "TIPO_CORRIGIDO", "NOTA", "DECIDIDO_POR", "DECIDIDO_EM",
                    "CORRECOES_JSON"];
-/* AS CATEGORIAS — aprovadas pelo usuário em 30/10/2026: o que o sindicato
-   faz, agrupado ("não precisa colocar tantas, pode agrupar"). A ordem é a
-   dos cards. CONVENCAO (antiga) entrou em JURIDICO: ver cxsTipo_. */
+/* AS CATEGORIAS — tiradas dos e-mails reais (levantamento de 60 dias da
+   secretaria@) e aprovadas pelo usuário em 30/10/2026. A ordem é a dos
+   cards. Cada categoria tem DONO (usuário, 30/10/2026: "o dela é a
+   secretaria e o meu é o financeiro" — boleto e guia que chegam à
+   secretaria@ em cópia são para ciência dela; o Jurídico é dos dois).
+   OUTRO: dono é a caixa que recebeu. As chaves antigas seguem valendo
+   (CXS_TIPO_ALIAS). */
 var CXS_TIPOS = {
-  VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios" },
-  FILIACAO: { rotulo: "Filiação e desfiliação", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao" },
-  FINANCEIRO: { rotulo: "Financeiro — boleto, guia, comprovante, cobrança", curto: "Financeiro", icone: "💰", modulo: "financeiro" },
-  NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
-  OFICIO_ESCOLA: { rotulo: "Relações das escolas", curto: "Relações", icone: "🏫", modulo: "documentos" },
-  JURIDICO: { rotulo: "Jurídico e convenção", curto: "Jurídico", icone: "⚖", modulo: "juridico" },
-  EVENTO: { rotulo: "Eventos e comunicados", curto: "Eventos", icone: "📅", modulo: "eventos" },
-  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "" }
+  VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios", dono: "SECRETARIA" },
+  FILIACAO: { rotulo: "Filiação e associados", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao", dono: "SECRETARIA" },
+  FINANCEIRO: { rotulo: "Escolas: contribuições — taxa negocial, mensalidade, guia, desconto em folha", curto: "Contribuições", icone: "🏫", modulo: "financeiro", dono: "FINANCEIRO" },
+  NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro", dono: "FINANCEIRO" },
+  CONTAS: { rotulo: "Contas do sindicato — boletos e faturas a pagar", curto: "Contas", icone: "💳", modulo: "financeiro", dono: "FINANCEIRO" },
+  JURIDICO: { rotulo: "Jurídico e fiscalização", curto: "Jurídico", icone: "⚖", modulo: "juridico", dono: "AMBOS" },
+  NEGOCIACAO: { rotulo: "Negociação e reuniões", curto: "Negociação", icone: "🤝", modulo: "negociacao", dono: "SECRETARIA" },
+  ENTIDADES: { rotulo: "Entidades e órgãos", curto: "Entidades", icone: "🏛", modulo: "", dono: "SECRETARIA" },
+  EVENTO: { rotulo: "Eventos do sindicato", curto: "Eventos", icone: "📅", modulo: "eventos", dono: "SECRETARIA" },
+  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "", dono: "" }
 };
 /* Tipos antigos ou de fora da Entrada, para o nome novo. */
-var CXS_TIPO_ALIAS = { CONVENCAO: "JURIDICO" };
+var CXS_TIPO_ALIAS = { CONVENCAO: "NEGOCIACAO", OFICIO_ESCOLA: "FINANCEIRO" };
 var CXS_FORA_DA_ENTRADA = ["PROPAGANDA", "NOTIFICACAO"];
+/* De quem é: o dono da categoria; em Outros, a caixa que recebeu. */
+/* Quem está logado trabalha na Secretaria ou no Financeiro? Pelo e-mail
+   do usuário; sem ser nenhum dos dois, pelo módulo. */
+/* Usuário, 30/10/2026: "Secretaria Marcelha · Financeiro Wanderson".
+   Pelo e-mail do login; quem entra com outro e-mail é achado pela linha
+   de assinatura dele (Wanderson → financeiro@, Marcelha → secretaria@ —
+   vpeDadosAssinatura_ procura pelo primeiro nome). */
+function cxsMeuPapel_(sessao) {
+  var em = String((sessao && sessao.email) || "").toLowerCase();
+  try { em = String(vpeDadosAssinatura_(sessao).email || em).toLowerCase() || em; } catch (e) {}
+  if (em === "financeiro@sindeducacao.com") return "FINANCEIRO";
+  return "SECRETARIA";
+}
+function cxsDono_(tipo, caixa) {
+  var t = CXS_TIPOS[tipo];
+  return (t && t.dono) || String(caixa || "SECRETARIA");
+}
 function cxsTipo_(t) {
   t = String(t || "").toUpperCase();
   t = CXS_TIPO_ALIAS[t] || t;
@@ -134,12 +157,14 @@ function cxsGmailFinanceiro_() { return GmailApp; }
 function cxsTipoPorRegra_(assunto, corpo) {
   var t = (String(assunto || "") + " " + String(corpo || "").substring(0, 600)).toLowerCase();
   if (/voucher|bolsa de estudo|certificado de (bolsa|desconto)/.test(t)) return "VOUCHER";
-  if (/filia[cç][aã]o|desfilia|pedido de baixa|solicita[cç][aã]o de baixa/.test(t)) return "FILIACAO";
+  if (/filia[cç][aã]o|desfilia|associa[cç][aã]o|situa[cç][aã]o sindical|carteirinha|pedido de baixa/.test(t)) return "FILIACAO";
   if (/nota fiscal|\bnfs?-?e\b|\bnf\b|danfe/.test(t)) return "NOTA_FISCAL";
-  if (/homologa|rescis|processo|advogad|jur[ií]dic|notifica[cç][aã]o extrajudicial|\bcct\b|conven[cç][aã]o coletiva/.test(t)) return "JURIDICO";
-  if (/boleto|guia|comprovante|recibo|pagamento|cobran|desconto em folha|mensalidade|taxa negocial|taxa assistencial|inadimpl|pix/.test(t)) return "FINANCEIRO";
-  if (/rela[cç][aã]o nominal|movimenta[cç][aã]o|admiss|demiss|funcion[aá]rios|planilha/.test(t)) return "OFICIO_ESCOLA";
-  if (/assembleia|evento|convite|reuni[aã]o|palestra|comunicado/.test(t)) return "EVENTO";
+  if (/taxa negocial|oposi[cç][aã]o|mensalidade|desconto em folha|contribui[cç][aã]o sindical|guia sindical|rela[cç][aã]o nominal|relat[oó]rio nominal|movimenta[cç][aã]o/.test(t)) return "FINANCEIRO";
+  if (/notifica[cç][aã]o|homologa|rescis|processo|advogad|jur[ií]dic|minist[eé]rio p[uú]blico|\bmpt\b|\bmte\b/.test(t)) return "JURIDICO";
+  if (/boleto|fatura|cobran|vencimento|iptu|condom[ií]nio|pagamento/.test(t)) return "CONTAS";
+  if (/reuni[aã]o|\bplr\b|pauta|reivindica|conven[cç][aã]o|\bcct\b|negocia/.test(t)) return "NEGOCIACAO";
+  if (/contee|fitee|dieese|sedu|circular|conselho|of[ií]cio/.test(t)) return "ENTIDADES";
+  if (/festa|confraterniza|assembleia|evento|formul[aá]rio/.test(t)) return "EVENTO";
   return "OUTRO";
 }
 
@@ -149,19 +174,22 @@ function cxsTipoPorRegra_(assunto, corpo) {
    equipe corrigiu (memória do robô). Cada conversa é classificada UMA vez e
    fica guardada (aba Caixa_Financeiro_Tipos); a regra só vale enquanto a
    IA não respondeu. */
-var CXS_FIN_TIPOS_ABA = "Caixa_Financeiro_Tipos";
+/* v2: as categorias mudaram em 30/10/2026 — reclassifica do zero. */
+var CXS_FIN_TIPOS_ABA = "Caixa_Financeiro_Tipos_v2";
 var CXS_FIN_IA_LOTE = 20;
 var CXS_TIPOS_DESC = {
   VOUCHER: "pedido de voucher/bolsa de estudo, documentos para bolsa, faculdade/escola tratando de bolsa",
-  FILIACAO: "pedido de filiação ou desfiliação, ofício de filiação/desfiliação e a resposta da escola (\"ciente\"), pedido de baixa",
-  FINANCEIRO: "boleto, guia, comprovante de pagamento, comprovante de desconto em folha, cobrança e resposta de cobrança, mensalidade, taxa negocial/assistencial, recibo",
-  NOTA_FISCAL: "toda nota fiscal (NF, NFS-e, DANFE)",
-  OFICIO_ESCOLA: "relação nominal de funcionários, movimentação (admissão/demissão), planilhas, atualização de cadastro de funcionários",
-  JURIDICO: "homologação, rescisão, processo, notificação, dúvida de direito trabalhista e da convenção coletiva (CCT)",
-  EVENTO: "assembleia, convites (SEDU e outros), avisos e comunicados",
+  FILIACAO: "filiação ou desfiliação, resposta da escola a ofício de filiação, associação, situação sindical de alguém, carteirinha, pedido de baixa",
+  FINANCEIRO: "o que as ESCOLAS pagam ou devem ao sindicato: taxa negocial (relatório nominal, oposição, confirmação de entrega), mensalidade, guia sindical, comprovante de desconto em folha, relação de funcionários, contribuição sindical",
+  NOTA_FISCAL: "nota fiscal de fornecedor (NF, NFS-e, DANFE)",
+  CONTAS: "contas que o SINDICATO paga: boletos e faturas de fornecedores (luz, telefone, plano de saúde, sistemas, condomínio, IPTU, hospedagem)",
+  JURIDICO: "notificação extrajudicial, homologação, rescisão, processo, Ministério Público do Trabalho, MTE, advogados",
+  NEGOCIACAO: "pedido de reunião com escola, PLR, pauta de reivindicação, convenção coletiva",
+  ENTIDADES: "circulares e ofícios de entidades e órgãos: CONTEE, FITEE, DIEESE, SEDU, conselhos, comunicados oficiais",
+  EVENTO: "eventos do sindicato: festa, confraternização, assembleia, formulários de inscrição",
   OUTRO: "o que não se encaixar",
-  PROPAGANDA: "propaganda, venda, newsletter, marketing",
-  NOTIFICACAO: "aviso automático de sistema/banco, confirmação de leitura"
+  PROPAGANDA: "propaganda, oferta de serviço/domínio, newsletter, marketing",
+  NOTIFICACAO: "aviso automático (planilha compartilhada, confirmação de leitura, sistema)"
 };
 
 function cxsFinTiposAba_() {
@@ -255,6 +283,7 @@ function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas) {
   /* O que a equipe já decidiu para este remetente vale mais que a regra
      (a memória do robô — RoboMemoria.gs). */
   var aprendido = roboMemoriaUltimaDecisao_("categoria-email", cxsEmail_(base.replyTo || base.de));
+  aprendido = aprendido ? cxsTipo_(aprendido) : "";
   return { THREAD_ID: CXS_PREFIXO_FIN + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: "FINANCEIRO",
            TIPO: aprendido && CXS_TIPOS[aprendido] ? aprendido : cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
            __aprendido: !!(aprendido && CXS_TIPOS[aprendido]),
@@ -340,6 +369,7 @@ function cxsResumo_(p, est, envios) {
     recebidoTs: ultima.data ? new Date(ultima.data).getTime() : 0,
     recebidoEm: ultima.data ? Utilities.formatDate(new Date(ultima.data), "America/Sao_Paulo", "dd/MM HH:mm") : "",
     estado: sit.estado, mensagemNova: sit.mensagemNova,
+    dono: cxsDono_(tipo, p.CAIXA),
     ultimaResposta: meus.length ? vpeRotuloEnvio_(meus[meus.length - 1].STATUS) : "",
     decididoPor: est ? String(est.DECIDIDO_POR || "") : ""
   };
@@ -397,6 +427,7 @@ function cxsVouchers_(sessao) {
         trecho: falta.length ? "Falta: " + falta.join("; ") : (v.beneficiario ? "Para " + v.beneficiario : ""),
         anexos: vpeJson_(r.ANEXOS_JSON, []).length, mensagens: 0,
         recebidoTs: v.recebidoTs, recebidoEm: v.recebidoEm,
+        dono: "SECRETARIA",
         estado: CXS_VPE_ABERTOS.indexOf(e) > -1 ? CXS_ESTADOS.NOVO : e === VPE_ESTADOS.CONCLUIDO ? CXS_ESTADOS.RESOLVIDO : CXS_ESTADOS.RESPONDIDO,
         selo: selo[0], seloCls: selo[1], periodo: v.periodo, escola: v.escola, mensagemNova: false, ultimaResposta: ""
       });
@@ -414,7 +445,7 @@ function cxsVouchers_(sessao) {
         trecho: sol.nomeBeneficiario && String(sol.tipoBeneficiario || "").toUpperCase() !== "TITULAR"
           ? "Para " + sol.tipoBeneficiario + " · " + sol.nomeBeneficiario : "",
         anexos: 0, mensagens: 0, recebidoTs: Number(sol._ts || 0), recebidoEm: String(sol.data || ""),
-        estado: CXS_ESTADOS.NOVO, selo: CXS_SELO_SOL[st] || st, seloCls: st === "APROVADO" ? "pronto" : "presencial",
+        dono: "SECRETARIA", estado: CXS_ESTADOS.NOVO, selo: CXS_SELO_SOL[st] || st, seloCls: st === "APROVADO" ? "pronto" : "presencial",
         periodo: String(sol.periodoReferencia || ""), escola: String(sol.escola || ""), mensagemNova: false, ultimaResposta: "",
         sol: sol
       });
@@ -455,6 +486,7 @@ function caixaSecretariaPainel(tokenSessao) {
     var voucher = v.cont.PRONTO + v.cont.FALTA_DOC + v.cont.NAO_ENCONTRADO + v.cont.PRECISA_VOCE + v.cont.PRESENCIAL;
     return { ok: true, itens: itens, porTipo: porTipo, porEstado: porEstado, voucherAConferir: voucher,
              voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" }, porCaixa: porCaixa, erroFinanceiro: erroFin,
+             meuPapel: cxsMeuPapel_(sessao),
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
                         icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };

@@ -120,6 +120,7 @@ win.cert_abrirModal = s => { solAberta = s; };
   b.passo("4. A lista mostra vouchers e e-mails juntos; o card de voucher filtra");
   win.cxsIniciar();
   await t.assentar(150);
+  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
   const lista = () => t.texto("#cxsLista");
   b.ok(/ANA MARIA/i.test(lista()) && /CARLOS PRESENCIAL/.test(lista()) && /desfiliar/.test(lista()), "tudo na mesma lista", lista().slice(0, 600));
   b.ok(/Pronto/.test(lista()) && /Falta documento/.test(lista()) && /Presencial/.test(lista()), "com a situação de cada voucher");
