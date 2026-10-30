@@ -443,6 +443,12 @@ b.igual(hml.ok, false, "resposta para associado real é bloqueada");
 b.ok(/\[HML\]/.test(hml.mensagem), "com a mensagem de homologação", hml.mensagem);
 b.igual(amb.outbox.length, envAntes, "e nada saiu");
 b.ok(!saida().some(r => r.THREAD_ID === thEnteado.id), "nem entrou na fila");
+/* 30/10/2026: para dar para testar de verdade em HML, a equipe do SISGEP
+   (e-mails dos usuários) também pode receber; gente de fora, não. */
+let liberou = true; try { g.vpeChecarDestinoAmbiente_("wanderson@sindeducacao.com"); } catch (e) { liberou = false; }
+b.ok(liberou, "em HML, um usuário do SISGEP (a equipe) pode receber — para testar de ponta a ponta");
+let bloqueou = false; try { g.vpeChecarDestinoAmbiente_("caio@exemplo.com"); } catch (e) { bloqueou = /\[HML\]/.test(e.message); }
+b.ok(bloqueou, "quem não é da equipe continua bloqueado");
 g.PropertiesService.getScriptProperties().setProperty("SISGEP_AMBIENTE", "producao");
 g.getAmbienteAtual(true);
 

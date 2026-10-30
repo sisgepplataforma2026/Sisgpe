@@ -1445,11 +1445,29 @@ function vpeChecarDestinoAmbiente_(para) {
   var amb = (typeof getAmbienteAtual === "function") ? String(getAmbienteAtual() || "").toLowerCase() : "producao";
   if (amb !== "homologacao") return;
   var permitidos = (typeof obterAllowlistOficiosHml_ === "function")
-    ? obterAllowlistOficiosHml_() : ["secretaria@sindeducacao.com"];
+    ? obterAllowlistOficiosHml_().slice() : ["secretaria@sindeducacao.com"];
+  /* 30/10/2026: o leitor ignora e-mail vindo da própria secretaria@, então
+     só ela na lista tornava impossível testar a resposta em homologação.
+     Entram também os e-mails dos USUÁRIOS DO SISGEP (a equipe) — gente de
+     fora continua bloqueada. */
+  permitidos = permitidos.concat(vpeEmailsDaEquipe_());
   if (permitidos.indexOf(String(para || "").toLowerCase()) === -1) {
-    throw new Error("[HML] Resposta bloqueada: em homologação só se responde para " +
-      permitidos.join(", ") + ". Para testar, mande o pedido a partir dessa caixa.");
+    throw new Error("[HML] Resposta bloqueada: em homologação só se responde para a equipe do SISGEP (" +
+      permitidos.join(", ") + "). Para testar, mande o pedido de um desses e-mails.");
   }
+}
+
+function vpeEmailsDaEquipe_() {
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA_USUARIOS_LOGIN);
+    if (!sh || sh.getLastRow() < 2) return [];
+    var tudo = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var cab = tudo[0].map(function (c) { return String(c || "").trim().toUpperCase(); });
+    var iE = cab.indexOf("EMAIL"), iS = cab.indexOf("STATUS");
+    if (iE === -1) return [];
+    return tudo.slice(1).filter(function (l) { return iS === -1 || String(l[iS]).toUpperCase() !== "INATIVO"; })
+      .map(function (l) { return String(l[iE] || "").trim().toLowerCase(); }).filter(String);
+  } catch (e) { return []; }
 }
 
 /**
