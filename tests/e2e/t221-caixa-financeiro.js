@@ -118,6 +118,30 @@ b.ok(!g.caixaSecretariaResponder("F:t1", "tentativa de resposta indevida", T_RH)
 b.passo("7. O Gmail não é mexido");
 b.igual(proibidas, [], "nada lido, arquivado, estrelado ou apagado pelo SISGEP");
 
+b.fluxo("CAIXA DE E-MAILS · a IA classifica o Financeiro (categorias de 30/10/2026)");
+b.passo("8a. A IA classifica uma vez só, guarda, e esconde propaganda");
+T.push({ id: "t6", msgs: [msg("Prefeitura <nf@pref.exemplo.com>", "Documento de outubro", "Segue o documento.", new Date(agora - 600e3))] });
+T.push({ id: "t7", msgs: [msg("Loja <vendas@loja.exemplo.com>", "Ofertas da semana", "Compre já.", new Date(agora - 700e3))] });
+const pedidosIA = [];
+g.vpeChamarIA_ = function (prompt) {
+  pedidosIA.push(prompt);
+  const linhas = (prompt.split("E-MAILS:\n")[1] || "").split("\n").filter(Boolean);
+  return { resultados: linhas.map((l, i) => ({ i, tipo: /Documento de outubro/.test(l) ? "NOTA_FISCAL" : /Ofertas/.test(l) ? "PROPAGANDA" :
+    /Comprovante/.test(l) ? "FINANCEIRO" : "OUTRO", pedido: "x" })) };
+};
+g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
+const pIA = painelTudo(TOKEN);
+b.ok(pedidosIA.length === 1 && /NOTA_FISCAL = toda nota fiscal/.test(pedidosIA[0]), "um pedido à IA, com as categorias aprovadas");
+b.igual(pIA.itens.find(i => i.id === "F:t6").tipo, "NOTA_FISCAL", "a nota fiscal vai para Notas fiscais");
+b.ok(!pIA.itens.some(i => i.id === "F:t7"), "propaganda não aparece na Entrada");
+b.igual(pIA.itens.find(i => i.id === "F:t2").tipo, "FILIACAO", "o que a equipe corrigiu continua valendo");
+g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
+painelTudo(TOKEN);
+b.igual(pedidosIA.length, 1, "abrir de novo não pergunta à IA outra vez (ficou guardado)");
+b.ok(Object.keys(g.CXS_TIPOS).join(",") === "VOUCHER,FILIACAO,FINANCEIRO,NOTA_FISCAL,OFICIO_ESCOLA,JURIDICO,EVENTO,OUTRO",
+  "as 8 categorias aprovadas, na ordem", Object.keys(g.CXS_TIPOS).join(","));
+b.igual(g.cxsTipo_("CONVENCAO"), "JURIDICO", "o que era Convenção aparece em Jurídico e convenção");
+
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"], { token: TOKEN });
 const doc = t.doc, win = t.win, el = id => doc.getElementById(id);

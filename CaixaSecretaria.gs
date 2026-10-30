@@ -27,18 +27,27 @@
 var CXS_ABA = "Caixa_Secretaria";
 var CXS_COLUNAS = ["THREAD_ID", "ESTADO", "ULTIMA_VISTA", "TIPO_CORRIGIDO", "NOTA", "DECIDIDO_POR", "DECIDIDO_EM",
                    "CORRECOES_JSON"];
+/* AS CATEGORIAS — aprovadas pelo usuário em 30/10/2026: o que o sindicato
+   faz, agrupado ("não precisa colocar tantas, pode agrupar"). A ordem é a
+   dos cards. CONVENCAO (antiga) entrou em JURIDICO: ver cxsTipo_. */
 var CXS_TIPOS = {
-  FILIACAO: { rotulo: "Filiação ou desfiliação", icone: "🪪", modulo: "sindicalizacao" },
-  OFICIO_ESCOLA: { rotulo: "Escola — ofício, relação, desconto em folha", icone: "🏫", modulo: "documentos" },
-  CONVENCAO: { rotulo: "Convenção e direitos trabalhistas", icone: "📜", modulo: "negociacao" },
-  FINANCEIRO: { rotulo: "Financeiro — guia, boleto, pagamento", icone: "💰", modulo: "financeiro" },
-  JURIDICO: { rotulo: "Jurídico — homologação, rescisão, processo", icone: "⚖", modulo: "juridico" },
-  EVENTO: { rotulo: "Evento ou assembleia", icone: "📅", modulo: "eventos" },
-  OUTRO: { rotulo: "Outro assunto", icone: "❓", modulo: "" },
-  /* 30/10/2026: mudar um e-mail para Voucher faz dele um pedido de voucher
-     (e o "Ver" abre a conferência). */
-  VOUCHER: { rotulo: "Voucher — bolsa de estudo", icone: "🎓", modulo: "beneficios" }
+  VOUCHER: { rotulo: "Voucher / Bolsa", icone: "🎓", modulo: "beneficios" },
+  FILIACAO: { rotulo: "Filiação e desfiliação", icone: "🪪", modulo: "sindicalizacao" },
+  FINANCEIRO: { rotulo: "Financeiro — boleto, guia, comprovante, cobrança", icone: "💰", modulo: "financeiro" },
+  NOTA_FISCAL: { rotulo: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
+  OFICIO_ESCOLA: { rotulo: "Relações das escolas", icone: "🏫", modulo: "documentos" },
+  JURIDICO: { rotulo: "Jurídico e convenção", icone: "⚖", modulo: "juridico" },
+  EVENTO: { rotulo: "Eventos e comunicados", icone: "📅", modulo: "eventos" },
+  OUTRO: { rotulo: "Outros", icone: "❓", modulo: "" }
 };
+/* Tipos antigos ou de fora da Entrada, para o nome novo. */
+var CXS_TIPO_ALIAS = { CONVENCAO: "JURIDICO" };
+var CXS_FORA_DA_ENTRADA = ["PROPAGANDA", "NOTIFICACAO"];
+function cxsTipo_(t) {
+  t = String(t || "").toUpperCase();
+  t = CXS_TIPO_ALIAS[t] || t;
+  return CXS_TIPOS[t] || CXS_FORA_DA_ENTRADA.indexOf(t) > -1 ? t : "OUTRO";
+}
 var CXS_ESTADOS = { NOVO: "NOVO", RESPONDIDO: "RESPONDIDO", RESOLVIDO: "RESOLVIDO" };
 
 /* ── a trava ── */
@@ -124,13 +133,97 @@ function cxsGmailFinanceiro_() { return GmailApp; }
    corrige na conversa (fica registrado, como na Secretaria). */
 function cxsTipoPorRegra_(assunto, corpo) {
   var t = (String(assunto || "") + " " + String(corpo || "").substring(0, 600)).toLowerCase();
-  if (/filia[cç][aã]o|desfilia|desligamento do sindicato/.test(t)) return "FILIACAO";
-  if (/homologa|rescis|processo|advogad|jur[ií]dic|notifica[cç][aã]o extrajudicial/.test(t)) return "JURIDICO";
-  if (/boleto|guia|comprovante|recibo|pagamento|cobran|desconto em folha|mensalidade|taxa negocial|nota fiscal|\bnf\b|nfs-?e|inadimpl|d[eé]bito|pix/.test(t)) return "FINANCEIRO";
-  if (/of[ií]cio|rela[cç][aã]o nominal|movimenta[cç][aã]o|admiss|demiss|funcion[aá]rios/.test(t)) return "OFICIO_ESCOLA";
-  if (/conven[cç][aã]o|\bcct\b|reajuste|piso salarial|cl[aá]usula/.test(t)) return "CONVENCAO";
-  if (/assembleia|evento|convite|reuni[aã]o|palestra/.test(t)) return "EVENTO";
+  if (/voucher|bolsa de estudo|certificado de (bolsa|desconto)/.test(t)) return "VOUCHER";
+  if (/filia[cç][aã]o|desfilia|pedido de baixa|solicita[cç][aã]o de baixa/.test(t)) return "FILIACAO";
+  if (/nota fiscal|\bnfs?-?e\b|\bnf\b|danfe/.test(t)) return "NOTA_FISCAL";
+  if (/homologa|rescis|processo|advogad|jur[ií]dic|notifica[cç][aã]o extrajudicial|\bcct\b|conven[cç][aã]o coletiva/.test(t)) return "JURIDICO";
+  if (/boleto|guia|comprovante|recibo|pagamento|cobran|desconto em folha|mensalidade|taxa negocial|taxa assistencial|inadimpl|pix/.test(t)) return "FINANCEIRO";
+  if (/rela[cç][aã]o nominal|movimenta[cç][aã]o|admiss|demiss|funcion[aá]rios|planilha/.test(t)) return "OFICIO_ESCOLA";
+  if (/assembleia|evento|convite|reuni[aã]o|palestra|comunicado/.test(t)) return "EVENTO";
   return "OUTRO";
+}
+
+/* A IA CLASSIFICA O FINANCEIRO (30/10/2026). O usuário viu e-mail do
+   Financeiro em "Convenção" e em "Escola" — era a regra de palavras. Agora
+   a mesma IA da Secretaria, com as categorias aprovadas e os exemplos que a
+   equipe corrigiu (memória do robô). Cada conversa é classificada UMA vez e
+   fica guardada (aba Caixa_Financeiro_Tipos); a regra só vale enquanto a
+   IA não respondeu. */
+var CXS_FIN_TIPOS_ABA = "Caixa_Financeiro_Tipos";
+var CXS_FIN_IA_LOTE = 20;
+var CXS_TIPOS_DESC = {
+  VOUCHER: "pedido de voucher/bolsa de estudo, documentos para bolsa, faculdade/escola tratando de bolsa",
+  FILIACAO: "pedido de filiação ou desfiliação, ofício de filiação/desfiliação e a resposta da escola (\"ciente\"), pedido de baixa",
+  FINANCEIRO: "boleto, guia, comprovante de pagamento, comprovante de desconto em folha, cobrança e resposta de cobrança, mensalidade, taxa negocial/assistencial, recibo",
+  NOTA_FISCAL: "toda nota fiscal (NF, NFS-e, DANFE)",
+  OFICIO_ESCOLA: "relação nominal de funcionários, movimentação (admissão/demissão), planilhas, atualização de cadastro de funcionários",
+  JURIDICO: "homologação, rescisão, processo, notificação, dúvida de direito trabalhista e da convenção coletiva (CCT)",
+  EVENTO: "assembleia, convites (SEDU e outros), avisos e comunicados",
+  OUTRO: "o que não se encaixar",
+  PROPAGANDA: "propaganda, venda, newsletter, marketing",
+  NOTIFICACAO: "aviso automático de sistema/banco, confirmação de leitura"
+};
+
+function cxsFinTiposAba_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(CXS_FIN_TIPOS_ABA);
+  if (!sh) {
+    sh = ss.insertSheet(CXS_FIN_TIPOS_ABA);
+    sh.getRange(1, 1, 1, 5).setValues([["THREAD_ID", "TIPO", "PEDIDO", "EM", "ORIGEM"]]);
+  }
+  return sh;
+}
+function cxsFinTiposGuardados_() {
+  var m = {};
+  try { vpeLinhas_(cxsFinTiposAba_()).forEach(function (r) { m[String(r.THREAD_ID)] = r; }); } catch (e) {}
+  return m;
+}
+/* Os exemplos da equipe para a IA: as últimas correções de categoria. */
+function cxsExemplosEquipe_() {
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ROBO_MEM_ABA);
+    if (!sh || sh.getLastRow() < 2) return "";
+    var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var c = v[0].map(String), iT = c.indexOf("TAREFA"), iA = c.indexOf("ASSUNTO"), iR = c.indexOf("REMETENTE"),
+        iD = c.indexOf("DECIDIDO"), iOk = c.indexOf("ACERTOU");
+    var ex = v.slice(1).filter(function (l) { return l[iT] === "categoria-email" && l[iOk] === "NAO"; }).slice(-20);
+    if (!ex.length) return "";
+    return "Correções feitas pela equipe (siga este jeito de classificar):\n" + ex.map(function (l) {
+      return "- \"" + String(l[iA]).substring(0, 100) + "\" (de " + l[iR] + ") → " + l[iD];
+    }).join("\n") + "\n\n";
+  } catch (e) { return ""; }
+}
+/* Classifica pela IA as conversas ainda sem tipo guardado (até um lote por
+   vez) e guarda. Falha da IA não derruba a lista: fica para a próxima. */
+function cxsClassificarFinanceiro_(linhas) {
+  var guardados = cxsFinTiposGuardados_();
+  var faltam = linhas.filter(function (l) { return !guardados[l.THREAD_ID]; }).slice(0, CXS_FIN_IA_LOTE);
+  if (faltam.length) {
+    try {
+      var lista = faltam.map(function (l, i) {
+        var m = vpeJson_(l.MENSAGENS_JSON, []);
+        var e = m.filter(function (x) { return CXS_NOSSOS.indexOf(cxsEmail_(x.de)) === -1; })[0] || m[0] || {};
+        return i + ". ASSUNTO: " + String(e.assunto || "").substring(0, 120) + " | DE: " + cxsEmail_(e.de) +
+          " | TEXTO: " + String(e.corpo || "").replace(/\s+/g, " ").substring(0, 300);
+      }).join("\n");
+      var prompt = "Você classifica e-mails que chegam ao FINANCEIRO de um sindicato de trabalhadores da educação " +
+        "(SindEducação-ES). Categorias: " + Object.keys(CXS_TIPOS_DESC).map(function (k) { return k + " = " + CXS_TIPOS_DESC[k]; }).join("; ") +
+        ".\n\n" + cxsExemplosEquipe_() +
+        "Responda SOMENTE com JSON: {\"resultados\":[{\"i\":0,\"tipo\":\"...\",\"pedido\":\"o que a pessoa quer, em poucas palavras\"}]}\n\nE-MAILS:\n" + lista;
+      var r = vpeChamarIA_(prompt);
+      var sh = cxsFinTiposAba_();
+      (r && r.resultados || []).forEach(function (x) {
+        var l = faltam[Number(x.i)];
+        if (!l) return;
+        var t = String(x.tipo || "").toUpperCase();
+        t = CXS_TIPO_ALIAS[t] || t;
+        if (!CXS_TIPOS[t] && CXS_FORA_DA_ENTRADA.indexOf(t) === -1) t = "OUTRO";
+        sh.appendRow([l.THREAD_ID, t, String(x.pedido || "").substring(0, 200), new Date(), "IA"]);
+        guardados[l.THREAD_ID] = { TIPO: t, PEDIDO: String(x.pedido || "") };
+      });
+    } catch (e) { Logger.log("Caixa do Financeiro: IA não classificou agora — " + e.message); }
+  }
+  return guardados;
 }
 
 function cxsMensagemFin_(m) {
@@ -164,13 +257,19 @@ function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas) {
   var aprendido = roboMemoriaUltimaDecisao_("categoria-email", cxsEmail_(base.replyTo || base.de));
   return { THREAD_ID: CXS_PREFIXO_FIN + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: "FINANCEIRO",
            TIPO: aprendido && CXS_TIPOS[aprendido] ? aprendido : cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
+           __aprendido: !!(aprendido && CXS_TIPOS[aprendido]),
            MENSAGENS_JSON: JSON.stringify(lista), ANEXOS_JSON: JSON.stringify(anexos),
            __qtdAnexos: comAnexos ? anexos.length : -1 };
 }
 
 function cxsLinhaFinanceiro_(id) {
   var th = cxsGmailFinanceiro_().getThreadById(String(id).substring(CXS_PREFIXO_FIN.length));
-  return th ? cxsLinhaDeThreadFin_(th, true) : null;
+  var l = th ? cxsLinhaDeThreadFin_(th, true) : null;
+  if (l && !l.__aprendido) {
+    var g = cxsFinTiposGuardados_()[l.THREAD_ID];
+    if (g) { l.TIPO = String(g.TIPO); l.PEDIDO = String(g.PEDIDO || ""); }
+  }
+  return l;
 }
 
 /* As conversas da caixa de entrada da financeiro@ (30 dias). Cache curto:
@@ -196,6 +295,14 @@ function cxsLinhasFinanceiro_() {
     l.MENSAGENS_JSON = JSON.stringify(m.map(function (x) { x.corpo = String(x.corpo || "").substring(0, 300); return x; }));
     linhas.push(l);
   });
+  /* Tipo: o que a equipe decidiu para o remetente (memória) > o que a IA
+     disse (guardado) > a regra, enquanto a IA não responde. */
+  var guardados = cxsClassificarFinanceiro_(linhas);
+  linhas = linhas.filter(function (l) {
+    var g = guardados[l.THREAD_ID];
+    if (!l.__aprendido && g) { l.TIPO = String(g.TIPO); l.PEDIDO = String(g.PEDIDO || ""); }
+    return CXS_FORA_DA_ENTRADA.indexOf(l.TIPO) === -1;
+  });
   try { cache.put(chave, JSON.stringify(linhas), 300); } catch (e) {}
   return linhas;
 }
@@ -219,7 +326,7 @@ function cxsSituacao_(p, est) {
 function cxsResumo_(p, est, envios) {
   var msgs = vpeJson_(p.MENSAGENS_JSON, []);
   var primeira = msgs[0] || {}, ultima = msgs[msgs.length - 1] || {};
-  var tipo = String((est && est.TIPO_CORRIGIDO) || p.TIPO || "OUTRO");
+  var tipo = cxsTipo_((est && est.TIPO_CORRIGIDO) || p.TIPO || "OUTRO");
   var sit = cxsSituacao_(p, est);
   var meus = (envios[String(p.THREAD_ID)] || []);
   return {

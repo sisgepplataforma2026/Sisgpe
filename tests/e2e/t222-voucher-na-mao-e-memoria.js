@@ -47,7 +47,7 @@ function msg(de, assunto, corpo) {
     getSubject: () => assunto, getDate: () => new Date(Date.now() - seq * 60000), getPlainBody: () => corpo,
     getAttachments: () => [], reply: () => {}, forward: (para, op) => encaminhados.push({ id, para, op }) };
 }
-const T = [{ id: "a1", msgs: [msg("Escola Zeta <dp@zeta.exemplo.com>", "Planilha de outubro", "Segue a planilha.")] },
+const T = [{ id: "a1", msgs: [msg("Escola Zeta <dp@zeta.exemplo.com>", "Arquivo de outubro", "Segue o arquivo.")] },
            { id: "a2", msgs: [msg("Rui <rui@exemplo.com>", "Bolsa para meu filho", "Quero o desconto da bolsa.")] }];
 const fake = {
   search: () => T.map(t => ({ getId: () => t.id, getMessages: () => t.msgs })),
@@ -118,7 +118,7 @@ limparCache();
 p = painelTudo(TOKEN);
 b.igual(p.itens.find(i => i.id === "F:a1").tipo, "OUTRO", "a regra não soube (Outro)");
 b.ok(g.caixaSecretariaReclassificar("F:a1", "OFICIO_ESCOLA", TOKEN).ok, "a equipe diz: é Escola");
-T.push({ id: "a3", msgs: [msg("Escola Zeta <dp@zeta.exemplo.com>", "Mais uma planilha", "Segue outra.")] });
+T.push({ id: "a3", msgs: [msg("Escola Zeta <dp@zeta.exemplo.com>", "Mais um arquivo", "Segue outro.")] });
 limparCache();
 p = painelTudo(TOKEN);
 b.igual(p.itens.find(i => i.id === "F:a3").tipo, "OFICIO_ESCOLA", "o próximo e-mail da Escola Zeta já vem como Escola");
