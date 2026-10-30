@@ -6533,3 +6533,16 @@ do Drive). **Não testado:** o pdf.js real dentro do iframe do Apps Script.
 | "Abrir em nova aba" | o PDF abre inteiro em outra aba |
 | "Abrir no Google Drive" | abre o arquivo no Drive (se não abrir: falta permissão na pasta da ponte) |
 | Caixa da Secretaria › abrir conversa com PDF | idem |
+
+## 🔴 Formato da conversa e campos do beneficiário — HML 30/10/2026 (run #201)
+
+Mockup aprovado (`docs/mock-voucher-mensagem.png`). Emulador: t207 (89), t219 (30).
+**Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Pedido com "Para quem é" = TITULAR | sem nome/nascimento/ordem do beneficiário |
+| Trocar para FILHO / CÔNJUGE | campos do beneficiário aparecem (cônjuge sem ordem do filho) |
+| Abrir pedido | nome legível, e-mail embaixo, data à direita; contracheque já na prévia, destacado |
+| Fechar e abrir outro | nada do pedido anterior enquanto carrega |
+| Caixa da Secretaria › conversa com anexo | mesmo formato |
