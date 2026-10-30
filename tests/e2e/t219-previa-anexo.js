@@ -74,6 +74,17 @@ const links = c => Array.from(c.querySelectorAll("a")).map(a => a.textContent + 
   b.ok(/A prévia de PDF não carregou/.test(c4.textContent), "avisa que a prévia não carregou");
   b.ok(links(c4).some(l => /nova aba/.test(l)), "e deixa abrir em nova aba");
 
+  b.passo("4b. Pedido aberto chama o pdf.js várias vezes: baixa uma vez só");
+  let scripts = 0;
+  doc.head.appendChild = n => { if (n.tagName === "SCRIPT") { scripts++; setTimeout(() => { win.pdfjsLib = { GlobalWorkerOptions: {} }; n.onload(); }, 0); } return n; };
+  let prontos = 0;
+  win.sisgepCarregarPdfJs_(); win.sisgepCarregarPdfJs_(() => prontos++); win.sisgepCarregarPdfJs_(() => prontos++);
+  await t.assentar(40);
+  b.igual(scripts, 1, "um download só");
+  b.igual(prontos, 2, "e todos que esperavam foram atendidos");
+  win.sisgepCarregarPdfJs_(() => prontos++);
+  b.igual(scripts, 1, "depois de carregado, não baixa de novo");
+
   b.passo("5. Outro formato: diz que não tem prévia, mas deixa abrir");
   const c5 = caixa();
   win.sisgepPreviaAnexo(c5, { nome: "a.docx", tipo: "application/msword", dataUrl: "data:application/msword;base64,AAAA", driveUrl: "" });

@@ -171,14 +171,29 @@ function vpeNovoId_() {
   return "PED_" + Utilities.getUuid().replace(/-/g, "").slice(0, 20).toUpperCase();
 }
 
-function vpeAcharPorId_(id) {
-  var alvo = String(id || "").trim();
-  if (!alvo) return null;
-  var lista = vpeLinhas_();
-  for (var i = 0; i < lista.length; i++) {
-    if (String(lista[i].ID_PEDIDO) === alvo) return lista[i];
+/** Uma linha só, achada pela coluna — sem ler a aba inteira. As abas de
+    pedidos e da ponte guardam JSON grande por linha; ler tudo para abrir um
+    pedido ou um anexo era o que deixava a tela lenta (30/10/2026). */
+function vpeLinhaPor_(sh, coluna, valor) {
+  var alvo = String(valor || "").trim();
+  if (!alvo || sh.getLastRow() < 2) return null;
+  var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
+    .map(function (c) { return String(c || "").trim(); });
+  var col = cab.indexOf(coluna);
+  if (col === -1) return null;
+  var vals = sh.getRange(2, col + 1, sh.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0]).trim() !== alvo) continue;
+    var linha = sh.getRange(i + 2, 1, 1, cab.length).getValues()[0];
+    var o = { __linha: i + 2 };
+    cab.forEach(function (n, k) { if (n) o[n] = linha[k]; });
+    return o;
   }
   return null;
+}
+
+function vpeAcharPorId_(id) {
+  return vpeLinhaPor_(vpeAba_(), "ID_PEDIDO", id);
 }
 
 function vpeJson_(texto, padrao) {
@@ -995,8 +1010,7 @@ function vpeFonteConversas_() {
 }
 
 function vpeFonteConversa_(threadId) {
-  var alvo = String(threadId || "");
-  var row = vpeLinhas_(vpePonteAba_("Entrada")).filter(function (r) { return String(r.THREAD_ID) === alvo; })[0];
+  var row = vpeLinhaPor_(vpePonteAba_("Entrada"), "THREAD_ID", threadId);
   return row ? vpeThreadDaPonte_(row) : null;
 }
 

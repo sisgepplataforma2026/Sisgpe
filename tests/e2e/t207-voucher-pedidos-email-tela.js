@@ -155,6 +155,16 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   b.ok(/confirma que conferiu os documentos e a filiação/.test(t.texto("#vpeMNotaEnvio") || "") &&
     /ana@exemplo\.com/.test(t.texto("#vpeMNotaEnvio") || ""), "o aviso diz o que o clique significa e para quem vai");
   b.ok(!botao("Encaminhar à sede"), "sem botão de sede num associado");
+  win.sisgepPreviaAnexo = (c, r) => { c.textContent = "PREVIA:" + r.nome; };
+  const nAnexo = () => t.chamadas.filter(c => c.fn === "voucherPedidosAnexo").length;
+  const n0 = nAnexo();
+  t.clicar(doc.querySelector("[data-vpe='verAnexo']"));
+  await t.assentar(60);
+  b.igual(nAnexo(), n0 + 1, "'Ver' busca o anexo no servidor");
+  b.ok(/^PREVIA:/.test(t.texto("#vpeMPrev")), "e mostra a prévia");
+  t.clicar(doc.querySelector("[data-vpe='verAnexo']"));
+  await t.assentar(60);
+  b.igual(nAnexo(), n0 + 1, "'Ver' de novo no mesmo anexo não volta ao servidor (fica guardado)");
 
   b.passo("4. Validar manda o que está NO CAMPO");
   t.digitar(doc.querySelector("#vpeMCampos [data-k='rg']"), "9.999.999");

@@ -261,15 +261,25 @@
    falhar, ficam "Abrir em nova aba" e "Abrir no Google Drive". Imagem vai
    direto. Global de propósito: a Caixa da Secretaria usa a mesma. */
 var SISGEP_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+/* Baixa o pdf.js uma vez só; quem pedir enquanto baixa entra na fila. É
+   chamado já ao abrir o pedido, para estar pronto quando clicarem "Ver". */
+var SISGEP_PDFJS_FILA = null;
 function sisgepCarregarPdfJs_(ok, erro) {
+  ok = ok || function () {}; erro = erro || function () {};
   if (window.pdfjsLib) return ok(window.pdfjsLib);
+  if (SISGEP_PDFJS_FILA) { SISGEP_PDFJS_FILA.push([ok, erro]); return; }
+  SISGEP_PDFJS_FILA = [[ok, erro]];
+  function fim(lib) {
+    var fila = SISGEP_PDFJS_FILA; SISGEP_PDFJS_FILA = null;
+    fila.forEach(function (f) { lib ? f[0](lib) : f[1]("pdf.js não carregou"); });
+  }
   var sc = document.createElement("script");
   sc.src = SISGEP_PDFJS + "pdf.min.js";
   sc.onload = function () {
     try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = SISGEP_PDFJS + "pdf.worker.min.js"; } catch (e) {}
-    window.pdfjsLib ? ok(window.pdfjsLib) : erro("pdf.js não carregou");
+    fim(window.pdfjsLib || null);
   };
-  sc.onerror = function () { erro("pdf.js não carregou"); };
+  sc.onerror = function () { fim(null); };
   document.head.appendChild(sc);
 }
 function sisgepPreviaAnexo(caixa, r) {
@@ -613,6 +623,7 @@ var VPE = (function () {
   function abrir(id) {
     el("vpeMTitulo").textContent = "Carregando…"; el("vpeMSub").textContent = "";
     el("vpeModal").classList.add("aberto");
+    sisgepCarregarPdfJs_();
     rodar("voucherPedidosDetalhe", [id], mostrar);
   }
 
@@ -886,10 +897,16 @@ var VPE = (function () {
     rodar("voucherPedidosDescartar", [estado.atual.item.id, motivo], function (r) { depois(r, true); });
   }
 
+  /* Anexo já baixado fica guardado enquanto a tela está aberta: abrir de
+     novo o mesmo não volta ao servidor. */
+  var anexosVistos = {};
   function verAnexo(i) {
-    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Abrindo…</div>";
+    var chave = estado.atual.item.id + "#" + i;
+    if (anexosVistos[chave]) return sisgepPreviaAnexo(el("vpeMPrev"), anexosVistos[chave]);
+    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Buscando o anexo na caixa da Secretaria…</div>";
     rodar("voucherPedidosAnexo", [estado.atual.item.id, i], function (r) {
       if (!r.ok) { el("vpeMPrev").innerHTML = "<div style='padding:18px;color:#dc2626;'>" + esc(r.mensagem) + "</div>"; return; }
+      anexosVistos[chave] = r;
       sisgepPreviaAnexo(el("vpeMPrev"), r);
     });
   }

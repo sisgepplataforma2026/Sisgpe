@@ -77,7 +77,8 @@ function cxsLinhasPonte_() {
   return sh ? vpeLinhas_(sh) : [];
 }
 function cxsLinhaPonte_(id) {
-  return cxsLinhasPonte_().filter(function (r) { return String(r.THREAD_ID) === String(id); })[0] || null;
+  var sh = vpePonte_().getSheetByName("Caixa");
+  return sh ? vpeLinhaPor_(sh, "THREAD_ID", id) : null;
 }
 function cxsEmail_(s) {
   var m = String(s || "").match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
