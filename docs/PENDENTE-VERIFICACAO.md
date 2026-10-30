@@ -6520,3 +6520,16 @@ depois → Caixa da Secretaria). Suíte verde, 215 arquivos.
       cadastro preenchido; "É esta" resolve;
 - [ ] pedido só com texto (sem anexo) de quem está na base: recebe a
       resposta-padrão completa.
+
+## 🔴 Prévia de anexo (PDF desenhado na tela) — HML 30/10/2026 (run #199)
+
+Origem: print do usuário no teste em HML — a CNH em PDF aparecia como ícone
+quebrado. Testado no emulador (t219, jsdom com pdf.js dublê; t206/t215 o link
+do Drive). **Não testado:** o pdf.js real dentro do iframe do Apps Script.
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Voucher › abrir um pedido com PDF anexo | as páginas aparecem desenhadas |
+| "Abrir em nova aba" | o PDF abre inteiro em outra aba |
+| "Abrir no Google Drive" | abre o arquivo no Drive (se não abrir: falta permissão na pasta da ponte) |
+| Caixa da Secretaria › abrir conversa com PDF | idem |
