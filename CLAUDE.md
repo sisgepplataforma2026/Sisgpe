@@ -118,6 +118,28 @@ Duas regras de uso:
   Se ele disser que testa depois, a resposta é registrar a data e seguir com
   o trabalho — não repetir a cada mensagem.
 
+## 🤖 O ROBÔ É UM FUNCIONÁRIO QUE APRENDE — DIRETRIZ DO PROJETO (30/10/2026)
+
+O usuário: *"esse projeto é um projeto de automação ... esse robô, nada mais
+do que ele é como se fosse um trabalhador, um funcionário meu. Então, eu
+preciso que ele aprenda, tenha memória evolutiva, vai aprendendo os
+processos, para mais adiante ele fazer todo o processo."*
+
+Vale para todo módulo, não só e-mail. Todo fluxo novo nasce com as quatro
+partes abaixo — fluxo sem elas está incompleto:
+
+1. **Registrar** — toda decisão de pessoa vira exemplo guardado (o que o
+   robô sugeriu, o que a pessoa fez, quem, quando). Categoria trocada,
+   campo corrigido, texto editado, pendência derrubada, aprovação.
+2. **Usar o que aprendeu** — os exemplos voltam para o robô (na IA, como
+   exemplos do próprio sindicato; nas regras, como ajuste). Guardar e não
+   usar não é aprender.
+3. **Medir** — taxa de acerto por tarefa ("categoria", "documento que
+   falta", "texto da resposta"…), visível para o usuário.
+4. **Subir de nível só com o usuário** — quando uma tarefa acerta de forma
+   consistente, o sistema PROPÕE fazê-la sozinho; quem liga é o usuário,
+   por tarefa, e dá para desligar. Até ele ligar, vale "nada sai sozinho".
+
 ## 🚨 REGRA Nº 0.6 — AUTOMATIZAR É O PADRÃO, NÃO O EXTRA
 
 Definida pelo usuário em 2026-08-13: *"devemos pensar sempre em automatizar e
