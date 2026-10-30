@@ -210,15 +210,18 @@ financeiro"* (21/10), e só os pedidos de voucher entravam no SISGEP. Em
 29/10/2026 o usuário autorizou trazer **todos** os e-mails da Secretaria
 para o SISGEP ("Caixa da Secretaria"), com esta condição:
 
-- **Abre a caixa só quem é da Secretaria e o administrador.** O Financeiro
-  não vê pela tela. A trava é no servidor (perfil/módulo), não só na tela.
+- (29/10) Abria só Secretaria e administrador — ver a atualização de 30/10
+  abaixo. A trava é sempre no servidor, não só na tela.
 - O conteúdo passa a ficar numa planilha da conta do Financeiro (é onde o
   SISGEP roda) — o usuário sabe e aceitou.
 - Propaganda e notificação automática continuam de fora.
 - **A Secretaria vê todos os e-mails da caixa dela**, de todos os tipos,
   inclusive guia/boleto (usuário, 29/10/2026).
-- Guias/boletos da secretaria@ aparecerem também para o Financeiro:
-  **ainda não decidido** — sem resposta dele, o Financeiro não vê.
+- **ATUALIZADO EM 30/10/2026:** *"tanto secretaria quanto financeiro podem
+  olhar tudo. Se tiver categorizado, não tem problema."* A Caixa abre para
+  administrador, o usuário secretaria@ e quem tem o módulo Comunicação,
+  Financeiro ou Caixa da Secretaria. Quem só tem outros módulos não abre.
+  A condição dele é estar CATEGORIZADO — não tirar a categorização.
 
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 

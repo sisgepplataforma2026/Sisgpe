@@ -21,7 +21,8 @@ const hash = s => g.gerarHashSenha_(s);
 aba.appendRow(["marcelha", hash("Senha@2026"), "Marcelha", "secretaria@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "beneficios,caixaSecretaria"]);
 aba.appendRow(["tudo", hash("Senha@2026"), "Usuário com todos os módulos", "tudo@sindeducacao.com", "USUARIO", "ATIVO", "NAO", ""]);
 aba.appendRow(["fin", hash("Senha@2026"), "Financeiro", "financeiro@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "financeiro,beneficios"]);
-const T_ADM = b.logar(g, "wanderson"), T_SEC = b.logar(g, "marcelha"), T_TUDO = b.logar(g, "tudo"), T_FIN = b.logar(g, "fin");
+aba.appendRow(["rhzinho", hash("Senha@2026"), "Só RH", "rh@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "rh"]);
+const T_ADM = b.logar(g, "wanderson"), T_SEC = b.logar(g, "marcelha"), T_TUDO = b.logar(g, "tudo"), T_FIN = b.logar(g, "fin"), T_RH = b.logar(g, "rhzinho");
 g.setupVoucherModuleFase1();
 
 const SIM = require("./vpe-simulador").instalar(g, amb);
@@ -34,18 +35,19 @@ const thProp = novaThread("Promoção", "Loja <ofertas@loja.exemplo.com>", "50% 
 SIM.ciclo();
 
 b.fluxo("CAIXA DA SECRETARIA · a trava");
-b.passo("1. Abre só Secretaria e administrador");
+b.passo("1. Abre para Secretaria, Financeiro e administrador (regra de 30/10/2026); não para quem só tem outros módulos");
 b.ok(g.caixaSecretariaPainel(T_ADM).ok, "administrador abre");
-b.ok(g.caixaSecretariaPainel(T_SEC).ok, "a Secretaria (com Caixa da Secretaria liberada) abre");
-const rT = g.caixaSecretariaPainel(T_TUDO);
-b.ok(!rT.ok && /só para a Secretaria/.test(rT.mensagem), "usuário com 'todos os módulos' NÃO abre", rT.mensagem);
-b.ok(!g.caixaSecretariaPainel(T_FIN).ok, "o Financeiro NÃO abre");
-aba.appendRow(["marcela2", hash("Senha@2026"), "Marcela (todos os módulos)", "secretaria@sindeducacao.com", "USUARIO", "ATIVO", "NAO", ""]);
-b.ok(g.caixaSecretariaPainel(b.logar(g, "marcela2")).ok, "o usuário com o e-mail secretaria@ abre, mesmo sem liberar o módulo");
-b.ok(!g.caixaSecretariaDetalhe(thFil.id, T_FIN).ok, "nem a conversa pelo número");
-b.ok(!g.caixaSecretariaResponder(thFil.id, "tentativa de resposta pelo financeiro", T_FIN).ok, "nem responde");
-b.ok(!g.caixaSecretariaAnexo(thFil.id, 0, T_TUDO).ok, "nem abre anexo");
-b.igual(g.caixaSecretariaPodeAbrir(T_FIN).pode, false, "a tela sabe que não pode (para mostrar o aviso)");
+b.ok(g.caixaSecretariaPainel(T_SEC).ok, "a Secretaria abre");
+b.ok(g.caixaSecretariaPainel(T_FIN).ok, "o Financeiro abre (usuário: 'se tiver categorizado, não tem problema')");
+b.ok(g.caixaSecretariaPainel(T_TUDO).ok, "quem tem todos os módulos abre");
+const rRh = g.caixaSecretariaPainel(T_RH);
+b.ok(!rRh.ok, "quem só tem RH NÃO abre", rRh.mensagem);
+b.ok(!g.caixaSecretariaDetalhe(thFil.id, T_RH).ok, "nem a conversa pelo número");
+b.ok(!g.caixaSecretariaResponder(thFil.id, "tentativa de resposta por quem não pode", T_RH).ok, "nem responde");
+b.ok(!g.caixaSecretariaAnexo(thFil.id, 0, T_RH).ok, "nem abre anexo");
+b.igual(g.caixaSecretariaPodeAbrir(T_RH).pode, false, "a tela sabe que não pode (para mostrar o aviso)");
+aba.appendRow(["marcela2", hash("Senha@2026"), "Marcela (só benefícios)", "secretaria@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "beneficios"]);
+b.ok(g.caixaSecretariaPainel(b.logar(g, "marcela2")).ok, "o usuário com o e-mail secretaria@ abre sempre");
 
 b.fluxo("CAIXA DA SECRETARIA · categorizado");
 b.passo("2. Cada e-mail com o seu tipo; propaganda de fora");

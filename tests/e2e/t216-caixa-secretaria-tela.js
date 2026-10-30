@@ -21,7 +21,9 @@ b.seedUsuarios(g);
 const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
 ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["marcelha", g.gerarHashSenha_("Senha@2026"), "Marcelha",
   "secretaria@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "beneficios,caixaSecretaria"]);
-const T_SEC = b.logar(g, "marcelha"), T_FIN = b.logar(g, "rogerio");
+ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["rhzinho", g.gerarHashSenha_("Senha@2026"), "Só RH",
+  "rh@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "rh"]);
+const T_SEC = b.logar(g, "marcelha"), T_FIN = b.logar(g, "rhzinho");
 g.setupVoucherModuleFase1();
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const thFil = SIM.novaThread("Quero me desfiliar", "João <joao@exemplo.com>", "Quero cancelar a filiação. TIPO:FILIACAO");
@@ -37,11 +39,11 @@ function montar(token) {
 
 (async function () {
   b.fluxo("CAIXA DA SECRETARIA · Tela · a trava");
-  b.passo("1. Quem não pode vê o cadeado — e nenhum e-mail");
+  b.passo("1. Quem não pode (só RH) vê o cadeado — e nenhum e-mail");
   const tf = montar(T_FIN);
   tf.win.cxsIniciar();
   await tf.assentar(120);
-  b.ok(/🔒/.test(tf.texto("#cxsLista") || "") && /só para a Secretaria/.test(tf.texto("#cxsLista") || ""), "aparece o cadeado com o motivo");
+  b.ok(/🔒/.test(tf.texto("#cxsLista") || "") && /Comunicação ou o Financeiro/.test(tf.texto("#cxsLista") || ""), "aparece o cadeado com o motivo");
   b.ok(!/joao@exemplo|Relação de descontos/.test(tf.doc.body.innerHTML), "nenhum e-mail aparece");
 
   b.fluxo("CAIXA DA SECRETARIA · Tela · trabalhar");

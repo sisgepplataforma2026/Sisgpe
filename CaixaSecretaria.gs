@@ -5,8 +5,8 @@
 // O usuário, em 29/10/2026: "Posso trabalhar os e-mails dentro do SISGEP?",
 // "Tudo no mesmo lugar", "todos categorizados". A regra de 21/10 ("os
 // e-mails da secretaria não devem ser acessados pelo financeiro") foi
-// MUDADA por ele com uma condição: abre só quem é da Secretaria e o
-// administrador. Ver CLAUDE.md, "E-MAILS DA SECRETARIA NO SISGEP".
+// MUDADA por ele: em 29/10 só Secretaria e administrador; em 30/10, também
+// o Financeiro. Ver CLAUDE.md, "E-MAILS DA SECRETARIA NO SISGEP".
 //
 // De onde vem: o leitor (leitor-secretaria/LeitorSecretaria.gs.txt), na
 // conta da Secretaria, copia para a aba "Caixa" da ponte cada e-mail que não
@@ -17,10 +17,11 @@
 // envia como RESPOSTA na conversa, pela caixa da Secretaria. Nada sai sem o
 // clique de uma pessoa (CLAUDE.md, "NADA SAI SOZINHO").
 //
-// A TRAVA: não é exigirModulo_. Usuário com MODULOS vazio vale "TODOS" no
-// SISGEP — o Financeiro abriria a caixa. Aqui só passa o administrador ou
-// quem tem "caixaSecretaria" escrito na lista de módulos, ou o usuário cujo
-// e-mail é secretaria@sindeducacao.com.
+// QUEM ABRE (30/10/2026, o usuário mudou de novo: "tanto secretaria quanto
+// financeiro podem olhar tudo. Se tiver categorizado, não tem problema"):
+// administrador, o usuário secretaria@, e quem tem o módulo Comunicação,
+// Financeiro ou Caixa da Secretaria. Quem só tem outros módulos (RH,
+// Jurídico…) não abre.
 // ================================================================
 
 var CXS_ABA = "Caixa_Secretaria";
@@ -41,17 +42,17 @@ var CXS_ESTADOS = { NOVO: "NOVO", RESPONDIDO: "RESPONDIDO", RESOLVIDO: "RESOLVID
 function cxsPode_(sessao) {
   if (!sessao || sessao.logado !== true) return false;
   if (String(sessao.perfil || "").toUpperCase().indexOf("ADMIN") > -1) return true;
-  /* O usuário da própria Secretaria (secretaria@) abre sempre — o usuário,
-     em 30/10/2026: "a Marcela e eu, administrador, temos acesso a tudo". */
   if (String(sessao.email || "").trim().toLowerCase() === "secretaria@sindeducacao.com") return true;
-  var mods = sessao.modulos;
-  return Array.isArray(mods) && mods.map(function (m) { return String(m).toLowerCase(); }).indexOf("caixasecretaria") > -1;
+  /* 30/10/2026, o usuário: "tanto secretaria quanto financeiro podem olhar
+     tudo. Se tiver categorizado, não tem problema." Abre para quem usa a
+     Comunicação ou o Financeiro (e quem tem a Caixa liberada pelo nome). */
+  return ["comunicacao", "financeiro", "caixaSecretaria"].some(function (m) { return sessaoPodeModulo_(sessao, m); });
 }
 function cxsExigir_(tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   if (!cxsPode_(sessao)) {
-    throw new Error("A Caixa da Secretaria abre só para a Secretaria e para o administrador. " +
-      "Peça ao administrador para liberar \"Caixa da Secretaria\" no seu usuário.");
+    throw new Error("A Caixa da Secretaria abre para quem usa a Comunicação ou o Financeiro. " +
+      "Peça ao administrador para liberar um desses módulos no seu usuário.");
   }
   return sessao;
 }
