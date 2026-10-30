@@ -734,7 +734,8 @@ function vpeTextoResposta_(estado, aval, abertos) {
       "",
       "Aproveite a oportunidade de se associar e ter acesso a benefícios exclusivos e atendimento diferenciado.",
       "",
-      "Se você já é associado(a), responda a este e-mail informando seu CPF para conferirmos."
+      "Se você já é associado(a), responda a este e-mail informando seu CPF para conferirmos.",
+      "", VPE_ASSINATURA
     ].join("\n");
   }
   return "";
@@ -1295,10 +1296,43 @@ function instalarGatilhoVoucherPedidosEmail(tokenSessao) {
    7. RESPONDER NA MESMA CONVERSA, COMO A CAIXA QUE RECEBEU
 ═══════════════════════════════════════════════════════════════════════ */
 
-function vpeAssinaturaHtml_(caixa) {
+/* A ASSINATURA É DE QUEM ESTÁ LOGADO (usuário, 30/10/2026): "se for o
+   Wanderson, sai no nome do financeiro; se for a Marcela, no da secretaria".
+   Fonte: a aba de assinaturas da Central de E-mails (SISGEP_UsuariosCentralIA:
+   e-mail, nome, cargo, telefone) — a mesma que a Caixa de E-mails usa. */
+function vpeDadosAssinatura_(sessao) {
+  var mapa = {};
+  try { mapa = (typeof eiaObterUsuariosCentralIA_ === "function") ? eiaObterUsuariosCentralIA_() : {}; } catch (e) {}
+  if (!mapa || !Object.keys(mapa).length) mapa = (typeof EMAIL_IA_ASSINATURAS_USUARIOS !== "undefined") ? EMAIL_IA_ASSINATURAS_USUARIOS : {};
+  var email = String((sessao && sessao.email) || "").trim().toLowerCase();
+  if (mapa[email]) return mapa[email];
+  /* Login com outro e-mail: acha pelo primeiro nome (Wanderson → a linha do
+     financeiro). Sem nada, sai o nome da pessoa e o e-mail do login. */
+  var nome = String((sessao && sessao.nome) || "").trim();
+  var primeiro = nome.split(/\s+/)[0].toLowerCase();
+  var achou = null;
+  Object.keys(mapa).forEach(function (k) {
+    if (!achou && primeiro && String(mapa[k].nome || "").toLowerCase().split(/\s+/)[0] === primeiro) achou = mapa[k];
+  });
+  return achou || { nome: nome || "SindEducação-ES", cargo: "", telefone: "", email: email };
+}
+
+function vpeAssinaturaTexto_(sessao) {
+  var d = vpeDadosAssinatura_(sessao);
+  return ["Atenciosamente,", d.nome, (d.cargo ? d.cargo + " – " : "") + "SINDEDUCAÇÃO-ES", d.telefone, d.email]
+    .filter(function (x) { return String(x || "").trim(); }).join("\n");
+}
+
+/** O texto-modelo guarda a assinatura-base; na tela, vale a de quem abriu. */
+function vpeTrocarAssinatura_(texto, sessao) {
+  if (!sessao) return texto;
+  return String(texto || "").split(VPE_ASSINATURA).join(vpeAssinaturaTexto_(sessao));
+}
+
+function vpeAssinaturaHtml_(caixa, sessao) {
   var mapa = (typeof EMAIL_IA_ASSINATURAS_USUARIOS !== "undefined") ? EMAIL_IA_ASSINATURAS_USUARIOS : {};
   var end = caixa === "FINANCEIRO" ? "financeiro@sindeducacao.com" : "secretaria@sindeducacao.com";
-  var d = mapa[end] || { nome: "SindEducação-ES", cargo: "", telefone: "", email: end };
+  var d = sessao ? vpeDadosAssinatura_(sessao) : (mapa[end] || { nome: "SindEducação-ES", cargo: "", telefone: "", email: end });
   return "<div style='font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#333;line-height:1.6;margin-top:18px;'>" +
     "<strong>" + escHtmlVoucher_(d.nome) + (d.cargo ? " — " + escHtmlVoucher_(d.cargo) : "") + "</strong><br>" +
     "SindEducação-ES<br>" +
@@ -1330,11 +1364,14 @@ function vpeChecarDestinoAmbiente_(para) {
  * @param {string[]} anexosIds  arquivos do Drive (só PDF). São compartilhados
  *   com a conta do leitor, que precisa abri-los para anexar.
  */
-function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem) {
+/* assinaturaHtml: o rodapé a anexar. "" quando o texto já traz a
+   assinatura (complemento, Caixa) — para nunca sair duas; sem o parâmetro,
+   o rodapé da caixa (comportamento antigo). */
+function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
   var para = String(reg.REMETENTE_EMAIL || "").trim();
   if (!para) throw new Error("O pedido não tem e-mail do remetente.");
   vpeChecarDestinoAmbiente_(para);
-  var html = htmlCorpo + vpeAssinaturaHtml_(reg.CAIXA);
+  var html = htmlCorpo + (assinaturaHtml === undefined ? vpeAssinaturaHtml_(reg.CAIXA) : assinaturaHtml);
   /* Célula de planilha guarda até 50.000 caracteres. */
   if (html.length > 49000) throw new Error("A resposta ficou grande demais para a fila (" + html.length + " caracteres).");
   var sh = vpePonteAba_("Saida");
@@ -1523,10 +1560,10 @@ function voucherPedidosDetalhe(id, tokenSessao) {
       resumoIA: d.extracao ? d.extracao.resumo : "",
       pendencias: vpeJson_(reg.PENDENCIAS_JSON, []),
       anexos: vpeJson_(reg.ANEXOS_JSON, []),
-      respostaSugerida: String(reg.RESPOSTA_SUGERIDA || ""),
+      respostaSugerida: vpeTrocarAssinatura_(String(reg.RESPOSTA_SUGERIDA || ""), sessao),
       /* Para a lista "o que está faltando": o catálogo, o que o sistema viu
          (já marcado) e as peças fixas do texto — a tela monta igual. */
-      complemento: vpeDadosComplemento_(reg, d),
+      complemento: vpeDadosComplemento_(reg, d, sessao),
       confirmadoPor: String(reg.ASSOCIADO_CONFIRMADO_POR || ""),
       mensagens: mensagens,
       opcoes: { modalidades: VPE_MODALIDADES, areas: VPE_AREAS, beneficiarios: VPE_BENEFICIARIOS,
@@ -1537,7 +1574,7 @@ function voucherPedidosDetalhe(id, tokenSessao) {
   }
 }
 
-function vpeDadosComplemento_(reg, d) {
+function vpeDadosComplemento_(reg, d, sessao) {
   var pend = vpeJson_(reg.PENDENCIAS_JSON, []);
   var nome = vpePrimeiroNome_(d.campos && d.campos.nome && d.campos.nome.valor);
   var sugeridos = {};
@@ -1549,7 +1586,8 @@ function vpeDadosComplemento_(reg, d) {
                pedir: i.id === "SEMESTRE" ? "Semestre desejado: " + oferecidos.join(" ou ") : i.pedir };
     }),
     sugeridos: sugeridos,
-    modelo: vpeModeloComplemento_("Olá" + (nome ? ", " + nome : "") + "!"),
+    modelo: (function (m) { m.fechamento = vpeTrocarAssinatura_(m.fechamento, sessao); return m; })(
+      vpeModeloComplemento_("Olá" + (nome ? ", " + nome : "") + "!")),
     semNada: !!(d.semNada)
   };
 }
@@ -1680,7 +1718,8 @@ function voucherPedidosResponder(id, tipo, texto, a4, a5) {
     if (texto.length < 20) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
 
     var quem = sessao.email || sessao.usuario || "";
-    var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto), [], quem);
+    var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto), [], quem,
+      /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_(reg.CAIXA, sessao));
     vpeRegistrarCorrecao_(reg, tipo, meta, texto, quem);
     reg.ACAO = tipo === "SEDE" ? "ENCAMINHADO_SEDE" : "COMPLEMENTO_PEDIDO";
     reg.ESTADO = tipo === "SEDE" ? VPE_ESTADOS.CONCLUIDO : VPE_ESTADOS.AGUARDANDO;
@@ -1943,7 +1982,7 @@ function vpeEnviarEmitido_(reg, sessao, opcoes) {
 
     var para;
     try {
-      para = vpeResponderThread_(reg, voucherCorpoEmail_(pronto), anexos, quem);
+      para = vpeResponderThread_(reg, voucherCorpoEmail_(pronto), anexos, quem, vpeAssinaturaHtml_(reg.CAIXA, sessao));
     } catch (e) {
       reg.ERRO = "Certificado " + protocolo + " emitido, mas a resposta não entrou na fila: " + e.message;
       vpeGravar_(reg);

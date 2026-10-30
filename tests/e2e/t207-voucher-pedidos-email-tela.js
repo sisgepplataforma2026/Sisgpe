@@ -183,8 +183,8 @@ const rotulos = () => Array.from(doc.querySelectorAll("#vpeMAcoes button")).map(
   t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CPF']", true);
   await t.assentar(10);
   b.ok(/• Número do CPF;/.test(el("vpeMResposta").value), "marcar CPF acrescenta o item no e-mail");
-  b.ok(/Comprovante de vínculo/.test(el("vpeMResposta").value) && /Marcelha Aline/.test(el("vpeMResposta").value),
-    "o resto do modelo continua (itens marcados e assinatura)");
+  b.ok(/Comprovante de vínculo/.test(el("vpeMResposta").value) && /Wanderson N Castelo/.test(el("vpeMResposta").value),
+    "o resto do modelo continua, com a assinatura de quem está logado (o Wanderson → Financeiro)");
   t.marcar("#vpeMFalta .vpe-falta-chk[data-id='CPF']", false);
   await t.assentar(10);
   b.ok(!/Número do CPF/.test(el("vpeMResposta").value), "desmarcar tira");

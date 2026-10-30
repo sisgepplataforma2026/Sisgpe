@@ -97,6 +97,8 @@ b.igual(emiDepois.CODIGO_VALIDACAO, emi.CODIGO_VALIDACAO, "e o MESMO código");
 const resp = saida().filter(r => r.THREAD_ID === thAna.id).pop();
 b.ok(resp && resp.STATUS === "PENDENTE" && resp.ANEXOS_FILE_IDS, "a resposta entrou na fila, na conversa da Ana, com o PDF");
 b.ok(!saida().some(r => r.THREAD_ID === thEdu.id), "o Eduardo, não marcado, não foi");
+b.igual((String(resp.HTML).match(/Wanderson N Castelo/g) || []).length, 1,
+  "o voucher sai com a assinatura de quem enviou (o Wanderson), uma vez só");
 b.igual(pedidoDa(thAna).ESTADO, "CONCLUIDO", "a Ana fica concluída");
 b.igual(pedidoDa(thEdu).ESTADO, "EMITIDO", "o Eduardo continua aguardando");
 

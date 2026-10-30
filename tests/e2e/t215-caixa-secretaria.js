@@ -95,5 +95,22 @@ const est = g.vpeLinhas_(ss.getSheetByName("Caixa_Secretaria")).find(r => r.THRE
 const corr = JSON.parse(est.CORRECOES_JSON || "[]").pop();
 b.ok(corr && corr.deTipo === "FINANCEIRO" && corr.paraTipo === "OUTRO" && corr.por, "registro: de, para e quem", JSON.stringify(corr));
 
+b.fluxo("CAIXA DA SECRETARIA · a assinatura é de quem está logado (30/10/2026)");
+b.passo("7. Marcela assina como Secretaria; Wanderson como Financeiro; nunca duas assinaturas");
+const dSec = g.caixaSecretariaDetalhe(thGuia.id, T_SEC);
+b.ok(/Marcelha Aline/.test(dSec.sugestao) && /Secretaria/.test(dSec.sugestao) && !/Wanderson/.test(dSec.sugestao),
+  "logada a Marcela: assinatura da Secretaria");
+const dAdm = g.caixaSecretariaDetalhe(thGuia.id, T_ADM);
+b.ok(/Wanderson N Castelo/.test(dAdm.sugestao) && /Financeiro/.test(dAdm.sugestao) && !/Marcelha/.test(dAdm.sugestao),
+  "logado o Wanderson: assinatura do Financeiro");
+const fila0 = g.vpeLinhas_(SIM.aba("Saida")).length;
+g.caixaSecretariaResponder(thGuia.id, dAdm.sugestao.replace("Tudo bem?", "Tudo bem? Segue a orientação sobre a guia."), T_ADM);
+const html = g.vpeLinhas_(SIM.aba("Saida")).slice(fila0).pop().HTML;
+b.igual((html.match(/Wanderson N Castelo/g) || []).length, 1, "o e-mail sai com UMA assinatura");
+b.ok(!/Marcelha/.test(html), "e não leva a da Marcela junto");
+g.caixaSecretariaResponder(thEsc.id, "Olá! Recebemos a planilha, obrigado.", T_SEC);
+const html2 = g.vpeLinhas_(SIM.aba("Saida")).pop().HTML;
+b.ok(/Marcelha Aline/.test(html2), "texto sem assinatura: o rodapé de quem está logado entra sozinho");
+
 b.naoTestavel("a tela no navegador", "jsdom testa a tela em t216");
 b.resumo();

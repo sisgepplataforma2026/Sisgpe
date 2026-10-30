@@ -149,7 +149,7 @@ function caixaSecretariaPainel(tokenSessao) {
 
 function caixaSecretariaDetalhe(id, tokenSessao) {
   try {
-    cxsExigir_(tokenSessao);
+    var sessao = cxsExigir_(tokenSessao);
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var est = cxsEstados_()[String(id)];
@@ -172,7 +172,8 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
     });
     var primeiro = (resumo.nome || "").split(/\s+/)[0] || "";
     primeiro = primeiro && primeiro.indexOf("@") === -1 ? primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase() : "";
-    var sugestao = "Olá" + (primeiro ? ", " + primeiro : "") + "!\nTudo bem?\n\n\n\nEstamos à disposição para esclarecer qualquer dúvida!\n\n" + VPE_ASSINATURA;
+    var sugestao = "Olá" + (primeiro ? ", " + primeiro : "") + "!\nTudo bem?\n\n\n\nEstamos à disposição para esclarecer qualquer dúvida!\n\n" +
+      vpeAssinaturaTexto_(sessao);   // de quem está logado (30/10/2026)
     return { ok: true, item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
              nota: est ? String(est.NOTA || "") : "",
              tipos: Object.keys(CXS_TIPOS).map(function (k) { return { chave: k, rotulo: CXS_TIPOS[k].rotulo, modulo: CXS_TIPOS[k].modulo }; }) };
@@ -207,7 +208,8 @@ function caixaSecretariaResponder(id, texto, tokenSessao) {
     var ultima = msgs[msgs.length - 1] || {};
     var quem = sessao.email || sessao.usuario || "";
     var para = vpeResponderThread_({ REMETENTE_EMAIL: cxsEmail_(ultima.replyTo || ultima.de), CAIXA: "SECRETARIA",
-      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), [], quem);
+      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), [], quem,
+      /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao));
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
     cxsAuditar_("RESPONDER", id, "Resposta para " + para, sessao);
     return { ok: true, mensagem: "Resposta para " + para + " na fila da Secretaria — sai em até 15 minutos." };
