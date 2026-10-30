@@ -6487,3 +6487,24 @@ estavam na pasta do Drive "SISGEP — Pendentes KingHost (temporário)".
       chega PRONTO; contracheque antigo pede o último; pedido só com texto
       recebe a resposta-padrão; pedido com parte dos documentos recebe só o
       que falta.
+
+## Voucher em três etapas e Caixa da Secretaria — 29-30/10/2026 (HML)
+
+Testado no emulador (t213, t214, t215, t216; suíte verde, 213 arquivos).
+**NÃO TESTADO no ar.** Roteiro em homologação:
+
+**Voucher**
+- [ ] Num pedido pronto, "Conferir e emitir": não sai e-mail; ele aparece em
+      "2 · Emitidos — aguardando envio".
+- [ ] Na aba 2, marcar um e "Enviar selecionados": a conferência mostra quem
+      vai; ao confirmar, a pessoa recebe a resposta no MESMO e-mail do pedido,
+      com o voucher datado do dia do envio.
+- [ ] Filtros da Entrada e da aba 2 (busca, semestre, escola).
+
+**Caixa da Secretaria** (Comunicação → 🏫 Caixa da Secretaria)
+- [ ] Liberar no usuário da Marcela o módulo `caixaSecretaria` (Configurações
+      → usuários → módulos). Sem isso ela vê o cadeado. "Todos os módulos"
+      NÃO libera a Caixa, de propósito.
+- [ ] Conferir que um usuário do Financeiro vê o cadeado.
+- [ ] Os e-mails aparecem por tipo; abrir um, responder, ver a resposta
+      chegar na conversa; marcar resolvido; corrigir um tipo errado.
