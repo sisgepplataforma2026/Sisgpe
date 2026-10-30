@@ -95,9 +95,10 @@ def listar_pastas(imap):
 CAB_PEDIDO = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE)])"
 
 
-def mensagem_inteira(imap, bruto, uid):
+def mensagem_inteira(imap, bruto, uid, ja_aberta=False):
     """Baixa o .eml inteiro (com anexos) de UMA mensagem — só dos pendentes."""
-    imap.select('"' + bruto + '"', readonly=True)
+    if not ja_aberta:
+        imap.select('"' + bruto + '"', readonly=True)
     tipo, partes = imap.uid("FETCH", uid, "(BODY.PEEK[])")
     for p in partes or []:
         if isinstance(p, tuple) and len(p) >= 2:
@@ -392,10 +393,12 @@ def main():
     servidor = os.environ.get("KINGHOST_IMAP", "imap.kinghost.net")
     print("Conectando a %s…" % servidor)
     # Sem tempo-limite, uma conexão parada trava o job até o fim do prazo.
-    imap = imaplib.IMAP4_SSL(servidor, 993, timeout=60)
-    print("Conectado. Entrando na caixa…")
-    imap.login(CAIXA, senha)
-    print("Login feito (só leitura).")
+    def conectar():
+        c = imaplib.IMAP4_SSL(servidor, 993, timeout=60)
+        c.login(CAIXA, senha)
+        return c
+    imap = conectar()
+    print("Conectado e logado (só leitura).")
     col = coletar(imap)
     if col is None:
         return 0
@@ -421,19 +424,37 @@ def main():
             tirados += 1
     if tirados:
         print("Tirados da pasta (não são mais pendentes): %d" % tirados)
+    # A KingHost derruba a conexão parada (30/10/2026: caiu com "EOF" depois
+    # de o robô passar um tempo só no Drive). Reconecta e tenta de novo uma
+    # vez; a pasta só é aberta de novo quando muda (ou depois de reconectar).
     novos = 0
+    aberta = None
     for p in pendentes:
         nome = nome_arquivo(p)
         if nome in existentes:
             continue
-        raw = mensagem_inteira(imap, bruto_de[p["pasta"]], p["uid"])
+        bruto = bruto_de[p["pasta"]]
+        try:
+            raw = mensagem_inteira(imap, bruto, p["uid"], ja_aberta=(aberta == bruto))
+        except (imaplib.IMAP4.abort, OSError) as erro:
+            print("  conexão com a KingHost caiu (%s) — reconectando" % erro)
+            try:
+                imap.logout()
+            except Exception:
+                pass
+            imap = conectar()
+            raw = mensagem_inteira(imap, bruto, p["uid"])
+        aberta = bruto
         if not raw:
             continue
         subir(token, pid, nome, raw)
         novos += 1
         if novos % 10 == 0:
             print("  entregues até agora: %d" % novos)
-    imap.logout()
+    try:
+        imap.logout()
+    except Exception:
+        pass
     print("Entregues ao leitor agora: %d (já estavam lá: %d)." % (novos, len(pendentes) - novos))
     return 0
 

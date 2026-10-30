@@ -207,5 +207,24 @@ ok(P.TEXTO_VOUCHER_ENVIADO.search("Prezada, o voucher segue anexo."), "'o vouche
 ok(P.texto_legivel(b"Segue em anexo o certifica=\r\ndo de bolsa") == "Segue em anexo o certificado de bolsa",
    "texto quebrado em quoted-printable é juntado")
 
+print("\n━━━ A KINGHOST DERRUBA A CONEXÃO PARADA (30/10/2026) ━━━")
+import inspect
+fonte = inspect.getsource(P.main)
+ok("IMAP4.abort" in fonte and "conectar()" in fonte, "ao cair, o robô reconecta e tenta de novo")
+class Caiu:
+    def select(self, *a, **k): raise P.imaplib.IMAP4.abort("command: EXAMINE => socket error: EOF")
+try:
+    P.mensagem_inteira(Caiu(), "INBOX.CERTIFICADO 2027-1", b"1")
+    ok(False, "a queda aparece como IMAP4.abort (o que o main trata)")
+except P.imaplib.IMAP4.abort:
+    ok(True, "a queda aparece como IMAP4.abort (o que o main trata)")
+class Aberta:
+    def __init__(self): self.selects = 0
+    def select(self, *a, **k): self.selects += 1
+    def uid(self, *a): return "OK", [(b"1", b"EML")]
+ab = Aberta()
+P.mensagem_inteira(ab, "X", b"1", ja_aberta=True); P.mensagem_inteira(ab, "X", b"2", ja_aberta=True)
+ok(ab.selects == 0, "pasta já aberta não é reaberta a cada e-mail")
+
 print("\nResumo: %d falha(s)" % len(falhas))
 sys.exit(1 if falhas else 0)
