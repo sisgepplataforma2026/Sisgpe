@@ -34,7 +34,10 @@ var CXS_TIPOS = {
   FINANCEIRO: { rotulo: "Financeiro — guia, boleto, pagamento", icone: "💰", modulo: "financeiro" },
   JURIDICO: { rotulo: "Jurídico — homologação, rescisão, processo", icone: "⚖", modulo: "juridico" },
   EVENTO: { rotulo: "Evento ou assembleia", icone: "📅", modulo: "eventos" },
-  OUTRO: { rotulo: "Outro assunto", icone: "❓", modulo: "" }
+  OUTRO: { rotulo: "Outro assunto", icone: "❓", modulo: "" },
+  /* 30/10/2026: mudar um e-mail para Voucher faz dele um pedido de voucher
+     (e o "Ver" abre a conferência). */
+  VOUCHER: { rotulo: "Voucher — bolsa de estudo", icone: "🎓", modulo: "beneficios" }
 };
 var CXS_ESTADOS = { NOVO: "NOVO", RESPONDIDO: "RESPONDIDO", RESOLVIDO: "RESOLVIDO" };
 
@@ -74,7 +77,23 @@ function cxsEstados_() {
 }
 function cxsLinhasPonte_() {
   var sh = vpePonte_().getSheetByName("Caixa");
-  return sh ? vpeLinhas_(sh) : [];
+  if (!sh) return [];
+  var naEntrada = cxsIdsDaEntrada_();
+  return vpeLinhas_(sh).filter(function (p) { return !naEntrada[String(p.THREAD_ID)]; });
+}
+/* As conversas que viraram voucher (estão na Entrada da ponte) — só a
+   coluna, sem ler os JSONs. */
+function cxsIdsDaEntrada_() {
+  var ids = {};
+  try {
+    var sh = vpePonteAba_("Entrada");
+    if (sh.getLastRow() < 2) return ids;
+    var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+    var col = cab.indexOf("THREAD_ID");
+    if (col === -1) return ids;
+    sh.getRange(2, col + 1, sh.getLastRow() - 1, 1).getValues().forEach(function (l) { ids[String(l[0])] = true; });
+  } catch (e) {}
+  return ids;
 }
 function cxsLinhaPonte_(id) {
   if (cxsEhFinanceiro_(id)) return cxsLinhaFinanceiro_(id);
@@ -124,10 +143,12 @@ function cxsMensagemFin_(m) {
 }
 
 /* Uma conversa do Gmail com a cara de uma linha da ponte. */
-function cxsLinhaDeThreadFin_(th, comAnexos) {
-  var msgs = th.getMessages() || [];
+function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas) {
+  var msgs = msgsProntas || th.getMessages() || [];
   if (!msgs.length) return null;
-  var lista = msgs.map(cxsMensagemFin_);
+  /* Na lista bastam as últimas mensagens; a conversa inteira só ao abrir. */
+  var lista = (comAnexos ? msgs : msgs.slice(-4)).map(cxsMensagemFin_);
+  if (!comAnexos) msgs = msgs.slice(-4);
   var anexos = [];
   if (comAnexos) {
     msgs.forEach(function (m) {
@@ -138,8 +159,11 @@ function cxsLinhaDeThreadFin_(th, comAnexos) {
   }
   var entrantes = lista.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
   var base = entrantes[0] || lista[0];
+  /* O que a equipe já decidiu para este remetente vale mais que a regra
+     (a memória do robô — RoboMemoria.gs). */
+  var aprendido = roboMemoriaUltimaDecisao_("categoria-email", cxsEmail_(base.replyTo || base.de));
   return { THREAD_ID: CXS_PREFIXO_FIN + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: "FINANCEIRO",
-           TIPO: cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
+           TIPO: aprendido && CXS_TIPOS[aprendido] ? aprendido : cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
            MENSAGENS_JSON: JSON.stringify(lista), ANEXOS_JSON: JSON.stringify(anexos),
            __qtdAnexos: comAnexos ? anexos.length : -1 };
 }
@@ -154,7 +178,12 @@ function cxsLinhaFinanceiro_(id) {
 function cxsLinhasFinanceiro_() {
   var cache = null, chave = "cxs_fin_lista_v1";
   try { cache = CacheService.getScriptCache(); var c = cache.get(chave); if (c) return JSON.parse(c); } catch (e) {}
-  var threads = cxsGmailFinanceiro_().search(CXS_FIN_BUSCA, 0, CXS_FIN_MAX) || [];
+  var gm = cxsGmailFinanceiro_();
+  var threads = gm.search(CXS_FIN_BUSCA, 0, CXS_FIN_MAX) || [];
+  /* Quem tem anexo: UMA busca a mais, em vez de abrir os anexos de cada
+     mensagem (era o que deixava a Caixa lenta — usuário, 30/10/2026). */
+  var comAnexo = {};
+  try { (gm.search(CXS_FIN_BUSCA + " has:attachment", 0, CXS_FIN_MAX) || []).forEach(function (t) { comAnexo[String(t.getId())] = true; }); } catch (eA) {}
   var linhas = [];
   threads.forEach(function (th) {
     var l = cxsLinhaDeThreadFin_(th, false);
@@ -163,13 +192,11 @@ function cxsLinhasFinanceiro_() {
     var primeira = m[0] || {}, ultima = m[m.length - 1] || {};
     if (CXS_CONFIRMACAO_LEITURA.test(String(primeira.assunto || ""))) return;
     if (CXS_AUTOMATICO.test(cxsEmail_(ultima.de))) return;
-    var qtd = 0;
-    try { th.getMessages().forEach(function (x) { qtd += (x.getAttachments({ includeInlineImages: false }) || []).length; }); } catch (eA) {}
-    l.__qtdAnexos = qtd;
+    l.__qtdAnexos = comAnexo[String(th.getId())] ? 1 : 0;
     l.MENSAGENS_JSON = JSON.stringify(m.map(function (x) { x.corpo = String(x.corpo || "").substring(0, 300); return x; }));
     linhas.push(l);
   });
-  try { cache.put(chave, JSON.stringify(linhas), 120); } catch (e) {}
+  try { cache.put(chave, JSON.stringify(linhas), 300); } catch (e) {}
   return linhas;
 }
 function cxsEmail_(s) {
@@ -307,14 +334,9 @@ function caixaSecretariaPainel(tokenSessao) {
     var v = cxsVouchers_(sessao);
     v.itens.forEach(function (i) { i.caixa = "SECRETARIA"; });
     itens = itens.concat(v.itens);
+    /* A financeiro@ vem numa chamada separada (caixaFinanceiroItens): a
+       tela desenha a Secretaria na hora e junta o Financeiro quando chegar. */
     var erroFin = "";
-    try {
-      itens = itens.concat(cxsLinhasFinanceiro_().map(function (p) {
-        var r = cxsResumo_(p, est[String(p.THREAD_ID)], envios);
-        r.fonte = "EMAIL";
-        return r;
-      }));
-    } catch (eF) { erroFin = "Caixa do Financeiro: " + eF.message; }
     var porCaixa = { SECRETARIA: 0, FINANCEIRO: 0 };
     itens.forEach(function (i) { if (i.estado !== CXS_ESTADOS.RESOLVIDO) porCaixa[i.caixa] = (porCaixa[i.caixa] || 0) + 1; });
     itens.sort(function (a, b) { return b.recebidoTs - a.recebidoTs; });
@@ -331,6 +353,22 @@ function caixaSecretariaPainel(tokenSessao) {
              }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
+  }
+}
+
+/** Os e-mails da financeiro@, à parte (o Gmail é a parte lenta). */
+function caixaFinanceiroItens(tokenSessao) {
+  try {
+    cxsExigir_(tokenSessao);
+    var est = cxsEstados_();
+    var itens = cxsLinhasFinanceiro_().map(function (p) {
+      var r = cxsResumo_(p, est[String(p.THREAD_ID)], {});
+      r.fonte = "EMAIL";
+      return r;
+    });
+    return { ok: true, itens: itens };
+  } catch (e) {
+    return { ok: false, mensagem: "Caixa do Financeiro: " + e.message };
   }
 }
 
@@ -461,15 +499,71 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var quem = sessao.email || sessao.usuario || "";
     var est = cxsEstados_()[String(id)] || {};
+    var tipoAntes = String(est.TIPO_CORRIGIDO || p.TIPO || "");
     var corr = vpeJson_(est.CORRECOES_JSON, []);
     corr.push({ em: Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd HH:mm"), por: quem,
-                deTipo: String(est.TIPO_CORRIGIDO || p.TIPO || ""), paraTipo: tipo });
+                deTipo: tipoAntes, paraTipo: tipo });
     cxsGravarEstado_(id, { TIPO_CORRIGIDO: tipo, CORRECOES_JSON: JSON.stringify(corr) }, quem);
     cxsAuditar_("RECLASSIFICAR", id, (p.TIPO || "") + " → " + tipo, sessao);
-    return { ok: true, mensagem: "Tipo corrigido para " + CXS_TIPOS[tipo].rotulo + "." };
+    /* A MEMÓRIA DO ROBÔ: o que a IA (ou a regra) disse e o que a pessoa
+       decidiu. É daqui que ele aprende. */
+    var msgs = vpeJson_(p.MENSAGENS_JSON, []);
+    var de = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; })[0] || msgs[0] || {};
+    roboMemoriaRegistrar_({ tarefa: "categoria-email", origem: String(p.CAIXA || "SECRETARIA"), chave: id,
+      remetente: cxsEmail_(de.replyTo || de.de), assunto: de.assunto, trecho: de.corpo,
+      sugerido: String(p.TIPO || ""), decidido: tipo, quem: quem });
+    if (tipo === "VOUCHER") return cxsVirarVoucher_(id, p, sessao);
+    return { ok: true, mensagem: "Tipo corrigido para " + CXS_TIPOS[tipo].rotulo + ". O robô guardou o exemplo." };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
+}
+
+/**
+ * MUDOU PARA VOUCHER (30/10/2026). O usuário: "tudo que for voucher, quando
+ * eu clicar ver, ele tem que ir para aquela tela do voucher".
+ *  - Secretaria: a conversa sai da Caixa e entra na Entrada da ponte (onde
+ *    os pedidos de voucher moram); é lida na hora como pedido — a pessoa já
+ *    disse que é voucher, então a peneira de palavras não barra. Mensagem
+ *    nova nessa conversa passa a ir para o pedido (o leitor segue a Entrada).
+ *  - Financeiro: o pedido de voucher é da Secretaria — vai encaminhado para
+ *    a secretaria@ (só com este clique) e lá entra como pedido.
+ */
+function cxsVirarVoucher_(id, p, sessao) {
+  var quem = sessao.email || sessao.usuario || "";
+  if (!sessaoPodeModulo_(sessao, "beneficios")) {
+    return { ok: false, mensagem: "Mudar para Voucher pede o módulo Benefícios. O tipo ficou anotado." };
+  }
+  if (cxsEhFinanceiro_(id)) {
+    var msgs = vpeJson_(p.MENSAGENS_JSON, []);
+    var entr = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
+    var alvo = entr[entr.length - 1] || msgs[msgs.length - 1];
+    var mOrig = alvo ? cxsGmailFinanceiro_().getMessageById(String(alvo.id)) : null;
+    if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa do Financeiro." };
+    vpeChecarDestinoAmbiente_("secretaria@sindeducacao.com");
+    mOrig.forward("secretaria@sindeducacao.com", {
+      htmlBody: "<p>Pedido de voucher que chegou no Financeiro — encaminhado pelo SISGEP por " +
+        escHtmlVoucher_(quem) + ".</p>" });
+    cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESOLVIDO, NOTA: "Encaminhado à Secretaria como pedido de voucher." }, quem);
+    cxsAuditar_("VIROU_VOUCHER", id, "Encaminhado à secretaria@", sessao);
+    return { ok: true, mensagem: "Encaminhado à Secretaria: entra lá como pedido de voucher no próximo ciclo da leitura." };
+  }
+  var shE = vpePonteAba_("Entrada");
+  if (!vpeLinhaPor_(shE, "THREAD_ID", id)) {
+    vpeGravar_({ THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID), CAIXA: String(p.CAIXA || "SECRETARIA"),
+                 ATUALIZADO_EM: new Date(), MENSAGENS_JSON: p.MENSAGENS_JSON, ANEXOS_JSON: p.ANEXOS_JSON }, shE);
+  }
+  /* A linha da Caixa NÃO é apagada (REGRA Nº 1: nada se apaga): a conversa
+     está agora na Entrada, e o painel não mostra na Caixa o que já é
+     voucher (cxsIdsDaEntrada_). O leitor também passa a seguir a Entrada. */
+  var r = vpeLerCaixa_({ soThread: String(id), forcarVoucher: true, maxProcessar: 1 });
+  var reg = vpeLinhaPor_(vpeAba_(), "THREAD_ID", id);
+  cxsAuditar_("VIROU_VOUCHER", id, reg ? "Pedido " + reg.ID_PEDIDO : "aguardando leitura", sessao);
+  if (!reg) {
+    return { ok: true, mensagem: "Virou pedido de voucher; a leitura dos documentos termina no próximo ciclo." +
+      (r && r.ocupado ? " (A leitura estava ocupada.)" : "") };
+  }
+  return { ok: true, pedidoId: String(reg.ID_PEDIDO), mensagem: "Virou pedido de voucher — abrindo a conferência." };
 }
 
 /** A tela pergunta antes de desenhar: mostra o aviso certo, sem expor nada. */

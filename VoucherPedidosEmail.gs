@@ -1153,7 +1153,7 @@ function vpeEntrantes_(thread, nossos) {
 }
 
 /** Processa UMA thread: extrai com IA, confere, grava. Devolve o registro. */
-function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
+function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh, forcarVoucher) {
   var ultima = entrantes[entrantes.length - 1];
   var primeira = entrantes[0];
   var agora = new Date();
@@ -1230,7 +1230,9 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
   /* Nova mensagem num pedido já resolvido: alguém precisa olhar, mas a
      decisão anterior não se desfaz sozinha. */
   var reaberto = (reg.ESTADO === VPE_ESTADOS.CONCLUIDO || reg.ESTADO === VPE_ESTADOS.EMITIDO);
-  var jaEraPedido = !!reg.ESTADO && reg.ESTADO !== VPE_ESTADOS.IGNORADO;
+  /* forcarVoucher: uma pessoa disse que é voucher (Caixa, 30/10/2026). Se a
+     IA não achar pedido, vai para "precisa de você" — nunca some. */
+  var jaEraPedido = !!forcarVoucher || (!!reg.ESTADO && reg.ESTADO !== VPE_ESTADOS.IGNORADO);
   if (aval.estado === VPE_ESTADOS.IGNORADO && !jaEraPedido) {
     reg.ESTADO = VPE_ESTADOS.IGNORADO;
   } else {
@@ -1275,7 +1277,7 @@ function vpeLerCaixa_(opcoes) {
     var nossos = vpeEnderecosNossos_();
     var buscar = vpeCriarBuscaAssociado_();
     if (!vpePonteId_()) { r.semPonte = true; return r; }
-    var todas = vpeFonteConversas_();
+    var todas = opcoes.soThread ? [vpeFonteConversa_(opcoes.soThread)].filter(Boolean) : vpeFonteConversas_();
     var threads = todas.slice(0, opcoes.max || 200);
 
     for (var i = 0; i < threads.length; i++) {
@@ -1311,7 +1313,9 @@ function vpeLerCaixa_(opcoes) {
         return (m.getAttachments({ includeInlineImages: false, includeAttachments: true }) || []).length > 0;
       });
       var jaEraPedido = reg && reg.ESTADO && reg.ESTADO !== VPE_ESTADOS.IGNORADO;
-      if (!jaEraPedido && !vpePareceVoucher_(textoNovo)) {
+      /* forcarVoucher: uma pessoa mudou o e-mail para Voucher na Caixa —
+         a peneira de palavras não tem o que discutir. */
+      if (!jaEraPedido && !opcoes.forcarVoucher && !vpePareceVoucher_(textoNovo)) {
         /* Não é pedido: guarda só o necessário para não reler. Sem assunto,
            sem remetente — e-mail administrativo não é assunto deste módulo. */
         vpeGravar_({
@@ -1334,7 +1338,7 @@ function vpeLerCaixa_(opcoes) {
 
       try {
         var antes = reg ? reg.ESTADO : "";
-        var novo = vpeProcessarThread_(th, entrantes, reg, buscar, sh);
+        var novo = vpeProcessarThread_(th, entrantes, reg, buscar, sh, !!opcoes.forcarVoucher);
         porThread[String(th.getId())] = novo;
         if (novo.ESTADO === VPE_ESTADOS.IGNORADO) r.ignorados++;
         else if (antes && antes !== VPE_ESTADOS.IGNORADO) r.atualizados++;

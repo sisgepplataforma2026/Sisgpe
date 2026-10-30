@@ -167,7 +167,7 @@ function instalar(g, amb, opcoes) {
     const payload = JSON.parse(params.payload);
     const texto = String(payload.messages[0].content);
     const email = texto.slice(texto.indexOf("E-MAIL:"));
-    chamadasIALeitor.push({ modelo: payload.model, texto: email });
+    chamadasIALeitor.push({ modelo: payload.model, texto: email, prompt: texto });
     if (estadoIALeitor.fora) {
       return { getResponseCode: () => 400,
                getContentText: () => JSON.stringify({ error: { message: "Your credit balance is too low" } }) };

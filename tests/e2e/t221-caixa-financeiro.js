@@ -59,9 +59,16 @@ const fake = {
 };
 g.cxsGmailFinanceiro_ = () => fake;
 
+const painelTudo = tk => {
+  const p = g.caixaSecretariaPainel(tk), f = g.caixaFinanceiroItens(tk);
+  p.itens = p.itens.concat(f.itens || []);
+  p.porCaixa = Object.assign({}, p.porCaixa, { FINANCEIRO: (f.itens || []).filter(i => i.estado !== "RESOLVIDO").length });
+  p.erroFinanceiro = f.ok ? "" : f.mensagem;
+  return p;
+};
 b.fluxo("CAIXA DE E-MAILS · a financeiro@ na mesma lista");
 b.passo("1. As conversas da financeiro@ entram, com a caixa e o tipo");
-const p = g.caixaSecretariaPainel(TOKEN);
+const p = painelTudo(TOKEN);
 b.ok(p.ok && !p.erroFinanceiro, "o painel abre", p.mensagem || p.erroFinanceiro);
 const fin = p.itens.filter(i => i.caixa === "FINANCEIRO");
 const f1 = fin.find(i => i.id === "F:t1"), f2 = fin.find(i => i.id === "F:t2"), f5 = fin.find(i => i.id === "F:t5");
@@ -84,7 +91,7 @@ b.ok(an.ok && /^data:application\/pdf;base64,/.test(an.dataUrl), "e abre", an.me
 b.passo("3. Mudar o tipo e resolver ficam no SISGEP");
 b.ok(g.caixaSecretariaReclassificar("F:t2", "FILIACAO", TOKEN).ok, "corrige o tipo");
 b.ok(g.caixaSecretariaMarcar("F:t2", "RESOLVIDO", "visto", TOKEN).ok, "marca resolvido");
-const p2 = g.caixaSecretariaPainel(TOKEN);
+const p2 = painelTudo(TOKEN);
 const f2b = p2.itens.find(i => i.id === "F:t2");
 b.ok(f2b && f2b.tipo === "FILIACAO" && f2b.estado === "RESOLVIDO", "e a lista mostra assim", JSON.stringify(f2b && [f2b.tipo, f2b.estado]));
 
@@ -93,7 +100,7 @@ b.igual(respostas.length, 0, "nada saiu sozinho até aqui");
 const r = g.caixaSecretariaResponder("F:t5", "Olá! Recebido, obrigado.\n\nAtenciosamente,\nWanderson", TOKEN);
 b.ok(r.ok && /wanderson@uvv\.br/.test(r.mensagem), "respondeu", r.mensagem);
 b.ok(respostas.length === 1 && respostas[0].id === "M6", "como resposta à última mensagem de fora");
-b.igual(g.caixaSecretariaPainel(TOKEN).itens.find(i => i.id === "F:t5").estado, "RESPONDIDO", "e fica como respondido");
+b.igual(painelTudo(TOKEN).itens.find(i => i.id === "F:t5").estado, "RESPONDIDO", "e fica como respondido");
 
 b.passo("5. Em homologação, só para a equipe do SISGEP");
 g.PropertiesService.getScriptProperties().setProperty("SISGEP_AMBIENTE", "homologacao");
