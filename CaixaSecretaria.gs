@@ -31,14 +31,14 @@ var CXS_COLUNAS = ["THREAD_ID", "ESTADO", "ULTIMA_VISTA", "TIPO_CORRIGIDO", "NOT
    faz, agrupado ("não precisa colocar tantas, pode agrupar"). A ordem é a
    dos cards. CONVENCAO (antiga) entrou em JURIDICO: ver cxsTipo_. */
 var CXS_TIPOS = {
-  VOUCHER: { rotulo: "Voucher / Bolsa", icone: "🎓", modulo: "beneficios" },
-  FILIACAO: { rotulo: "Filiação e desfiliação", icone: "🪪", modulo: "sindicalizacao" },
-  FINANCEIRO: { rotulo: "Financeiro — boleto, guia, comprovante, cobrança", icone: "💰", modulo: "financeiro" },
-  NOTA_FISCAL: { rotulo: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
-  OFICIO_ESCOLA: { rotulo: "Relações das escolas", icone: "🏫", modulo: "documentos" },
-  JURIDICO: { rotulo: "Jurídico e convenção", icone: "⚖", modulo: "juridico" },
-  EVENTO: { rotulo: "Eventos e comunicados", icone: "📅", modulo: "eventos" },
-  OUTRO: { rotulo: "Outros", icone: "❓", modulo: "" }
+  VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios" },
+  FILIACAO: { rotulo: "Filiação e desfiliação", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao" },
+  FINANCEIRO: { rotulo: "Financeiro — boleto, guia, comprovante, cobrança", curto: "Financeiro", icone: "💰", modulo: "financeiro" },
+  NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
+  OFICIO_ESCOLA: { rotulo: "Relações das escolas", curto: "Relações", icone: "🏫", modulo: "documentos" },
+  JURIDICO: { rotulo: "Jurídico e convenção", curto: "Jurídico", icone: "⚖", modulo: "juridico" },
+  EVENTO: { rotulo: "Eventos e comunicados", curto: "Eventos", icone: "📅", modulo: "eventos" },
+  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "" }
 };
 /* Tipos antigos ou de fora da Entrada, para o nome novo. */
 var CXS_TIPO_ALIAS = { CONVENCAO: "JURIDICO" };
@@ -456,7 +456,8 @@ function caixaSecretariaPainel(tokenSessao) {
     return { ok: true, itens: itens, porTipo: porTipo, porEstado: porEstado, voucherAConferir: voucher,
              voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" }, porCaixa: porCaixa, erroFinanceiro: erroFin,
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
-               return { chave: k, rotulo: CXS_TIPOS[k].rotulo, icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
+               return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
+                        icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
              }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
