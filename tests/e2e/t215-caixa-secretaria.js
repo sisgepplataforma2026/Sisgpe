@@ -40,6 +40,8 @@ b.ok(g.caixaSecretariaPainel(T_SEC).ok, "a Secretaria (com Caixa da Secretaria l
 const rT = g.caixaSecretariaPainel(T_TUDO);
 b.ok(!rT.ok && /só para a Secretaria/.test(rT.mensagem), "usuário com 'todos os módulos' NÃO abre", rT.mensagem);
 b.ok(!g.caixaSecretariaPainel(T_FIN).ok, "o Financeiro NÃO abre");
+aba.appendRow(["marcela2", hash("Senha@2026"), "Marcela (todos os módulos)", "secretaria@sindeducacao.com", "USUARIO", "ATIVO", "NAO", ""]);
+b.ok(g.caixaSecretariaPainel(b.logar(g, "marcela2")).ok, "o usuário com o e-mail secretaria@ abre, mesmo sem liberar o módulo");
 b.ok(!g.caixaSecretariaDetalhe(thFil.id, T_FIN).ok, "nem a conversa pelo número");
 b.ok(!g.caixaSecretariaResponder(thFil.id, "tentativa de resposta pelo financeiro", T_FIN).ok, "nem responde");
 b.ok(!g.caixaSecretariaAnexo(thFil.id, 0, T_TUDO).ok, "nem abre anexo");

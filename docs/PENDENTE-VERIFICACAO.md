@@ -6502,9 +6502,10 @@ Testado no emulador (t213, t214, t215, t216; suíte verde, 213 arquivos).
 - [ ] Filtros da Entrada e da aba 2 (busca, semestre, escola).
 
 **Caixa da Secretaria** (Comunicação → 🏫 Caixa da Secretaria)
-- [ ] Liberar no usuário da Marcela o módulo `caixaSecretaria` (Configurações
-      → usuários → módulos). Sem isso ela vê o cadeado. "Todos os módulos"
-      NÃO libera a Caixa, de propósito.
+- [ ] A Marcela abrir a Caixa: abre sozinha se o usuário dela for
+      administrador OU tiver o e-mail secretaria@sindeducacao.com (regra de
+      30/10/2026). Se não for nenhum dos dois, liberar `caixaSecretaria` nos
+      módulos dela. "Todos os módulos" NÃO libera a Caixa, de propósito.
 - [ ] Conferir que um usuário do Financeiro vê o cadeado.
 - [ ] Os e-mails aparecem por tipo; abrir um, responder, ver a resposta
       chegar na conversa; marcar resolvido; corrigir um tipo errado.

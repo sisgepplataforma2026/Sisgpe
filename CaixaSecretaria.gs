@@ -19,7 +19,8 @@
 //
 // A TRAVA: não é exigirModulo_. Usuário com MODULOS vazio vale "TODOS" no
 // SISGEP — o Financeiro abriria a caixa. Aqui só passa o administrador ou
-// quem tem "caixaSecretaria" escrito na lista de módulos.
+// quem tem "caixaSecretaria" escrito na lista de módulos, ou o usuário cujo
+// e-mail é secretaria@sindeducacao.com.
 // ================================================================
 
 var CXS_ABA = "Caixa_Secretaria";
@@ -40,6 +41,9 @@ var CXS_ESTADOS = { NOVO: "NOVO", RESPONDIDO: "RESPONDIDO", RESOLVIDO: "RESOLVID
 function cxsPode_(sessao) {
   if (!sessao || sessao.logado !== true) return false;
   if (String(sessao.perfil || "").toUpperCase().indexOf("ADMIN") > -1) return true;
+  /* O usuário da própria Secretaria (secretaria@) abre sempre — o usuário,
+     em 30/10/2026: "a Marcela e eu, administrador, temos acesso a tudo". */
+  if (String(sessao.email || "").trim().toLowerCase() === "secretaria@sindeducacao.com") return true;
   var mods = sessao.modulos;
   return Array.isArray(mods) && mods.map(function (m) { return String(m).toLowerCase(); }).indexOf("caixasecretaria") > -1;
 }
