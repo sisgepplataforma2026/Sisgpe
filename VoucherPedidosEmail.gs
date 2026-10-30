@@ -951,6 +951,7 @@ function vpeAnexoDaPonte_(a) {
   }
   return {
     getName: function () { return a.nome || "anexo"; },
+    getDriveId: function () { return String(a.fileId || ""); },
     getContentType: function () { return a.tipo || ""; },
     /* Sem fileId (o leitor não guardou: grande demais), o tamanho fica acima
        do teto e o anexo não vai para a IA — mas continua listado. */
@@ -1736,7 +1737,9 @@ function voucherPedidosAnexo(id, indice, tokenSessao) {
     var blob = vpeBlobAnexo_(reg, info);
     if (!blob) return { ok: false, mensagem: "O anexo não está mais na caixa." };
     var tipo = blob.getContentType() || "application/octet-stream";
+    var fid = blob.getDriveId ? blob.getDriveId() : "";
     return { ok: true, nome: info.nome, tipo: tipo,
+             driveUrl: fid ? "https://drive.google.com/file/d/" + fid + "/view" : "",
              dataUrl: "data:" + tipo + ";base64," + Utilities.base64Encode(blob.getBytes()) };
   } catch (e) {
     return { ok: false, mensagem: e.message };

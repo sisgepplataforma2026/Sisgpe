@@ -66,6 +66,7 @@ b.ok(d.ok && d.mensagens.some(m => /cancelar minha filia/.test(m.corpo)), "a men
 b.igual(d.anexos.length, 1, "um anexo listado");
 const an = g.caixaSecretariaAnexo(thFil.id, 0, T_SEC);
 b.ok(an.ok && /^data:/.test(an.dataUrl), "o anexo abre");
+b.ok(/^https:\/\/drive\.google\.com\/file\/d\/.+\/view$/.test(an.driveUrl), "com o link do Drive (para quando a prévia não abrir)", an.driveUrl);
 b.ok(/Olá, João!/.test(d.sugestao) && /Marcelha Aline/.test(d.sugestao), "a resposta vem com saudação e assinatura, para editar");
 
 b.fluxo("CAIXA DA SECRETARIA · responder");

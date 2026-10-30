@@ -258,6 +258,9 @@ b.bloqueia(() => g.voucherPedidosPainel("SECRETARIA", TOKEN_SEM), "o painel nega
 b.bloqueia(() => g.voucherPedidosValidarEnviar(pedidoDa(thAna).ID_PEDIDO, {}, {}, TOKEN_SEM),
   "validar nega quem não tem Benefícios");
 b.bloqueia(() => g.voucherPedidosAnexo(pedidoDa(thAna).ID_PEDIDO, 1, TOKEN_SEM), "o anexo também");
+{ const an = g.voucherPedidosAnexo(pedidoDa(thAna).ID_PEDIDO, 1, TOKEN);
+  b.ok(an.ok && /^data:/.test(an.dataUrl) && /^https:\/\/drive\.google\.com\/file\/d\/.+\/view$/.test(an.driveUrl),
+    "quem pode abre o anexo, com o link do Drive", JSON.stringify({ ok: an.ok, m: an.mensagem, drive: an.driveUrl })); }
 b.bloqueia(() => g.voucherPedidosSalvarCampos(pedidoDa(thAna).ID_PEDIDO, { curso: "X" }, TOKEN_SEM), "editar campo também");
 b.bloqueia(() => g.voucherPedidosResponder(pedidoDa(thBia).ID_PEDIDO, "COMPLEMENTO", "texto qualquer com mais de vinte letras", TOKEN_SEM),
   "responder também");

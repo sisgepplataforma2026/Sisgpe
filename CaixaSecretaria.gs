@@ -190,7 +190,8 @@ function caixaSecretariaAnexo(id, indice, tokenSessao) {
     if (!a || !a.fileId) return { ok: false, mensagem: "Anexo não disponível." };
     var blob = DriveApp.getFileById(String(a.fileId)).getBlob();
     var tipo = blob.getContentType() || a.tipo || "application/octet-stream";
-    return { ok: true, nome: a.nome, tipo: tipo, dataUrl: "data:" + tipo + ";base64," + Utilities.base64Encode(blob.getBytes()) };
+    return { ok: true, nome: a.nome, tipo: tipo, driveUrl: "https://drive.google.com/file/d/" + a.fileId + "/view",
+             dataUrl: "data:" + tipo + ";base64," + Utilities.base64Encode(blob.getBytes()) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

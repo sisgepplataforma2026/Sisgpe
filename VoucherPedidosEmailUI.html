@@ -255,6 +255,69 @@
 </div>
 
 <script>
+/* PRÉVIA DE ANEXO (30/10/2026). O SISGEP roda dentro do iframe protegido do
+   Google, e ali o leitor de PDF do navegador não abre (o usuário viu o
+   ícone de arquivo quebrado). PDF é desenhado na página pelo pdf.js; se
+   falhar, ficam "Abrir em nova aba" e "Abrir no Google Drive". Imagem vai
+   direto. Global de propósito: a Caixa da Secretaria usa a mesma. */
+var SISGEP_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+function sisgepCarregarPdfJs_(ok, erro) {
+  if (window.pdfjsLib) return ok(window.pdfjsLib);
+  var sc = document.createElement("script");
+  sc.src = SISGEP_PDFJS + "pdf.min.js";
+  sc.onload = function () {
+    try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = SISGEP_PDFJS + "pdf.worker.min.js"; } catch (e) {}
+    window.pdfjsLib ? ok(window.pdfjsLib) : erro("pdf.js não carregou");
+  };
+  sc.onerror = function () { erro("pdf.js não carregou"); };
+  document.head.appendChild(sc);
+}
+function sisgepPreviaAnexo(caixa, r) {
+  function e(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  var bytes = null, blobUrl = "";
+  try {
+    var b64 = String(r.dataUrl || "").split(",")[1] || "";
+    var bin = atob(b64); bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    blobUrl = URL.createObjectURL(new Blob([bytes], { type: r.tipo || "application/octet-stream" }));
+  } catch (x) {}
+  var links = "<div style='display:flex;gap:6px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;'>" +
+    (blobUrl ? "<a href='" + blobUrl + "' target='_blank' rel='noopener' class='btn btn-outline' style='padding:3px 10px;'>Abrir em nova aba</a>" : "") +
+    (r.driveUrl ? "<a href='" + e(r.driveUrl) + "' target='_blank' rel='noopener' class='btn btn-outline' style='padding:3px 10px;'>Abrir no Google Drive</a>" : "") +
+    "<span style='align-self:center;color:#64748b;'>" + e(r.nome) + "</span></div>";
+  if (/^image\//.test(r.tipo)) { caixa.innerHTML = links + "<img alt='" + e(r.nome) + "' src='" + r.dataUrl + "' style='max-width:100%;display:block;'>"; return; }
+  if (!/pdf/i.test(r.tipo) || !bytes) { caixa.innerHTML = links + "<div style='padding:14px;font-size:12px;'>Formato sem prévia: " + e(r.tipo) + "</div>"; return; }
+  caixa.innerHTML = links + "<div class='sisgep-pdf-paginas' style='padding:6px;'><div style='font-size:12px;color:#64748b;padding:10px;'>Desenhando o PDF…</div></div>";
+  var alvo = caixa.querySelector(".sisgep-pdf-paginas");
+  sisgepCarregarPdfJs_(function (pdfjs) {
+    pdfjs.getDocument({ data: bytes }).promise.then(function (pdf) {
+      alvo.innerHTML = "";
+      var n = Math.min(pdf.numPages, 5);
+      var cadeia = Promise.resolve();
+      for (var p = 1; p <= n; p++) (function (num) {
+        cadeia = cadeia.then(function () {
+          return pdf.getPage(num).then(function (pg) {
+            var vp = pg.getViewport({ scale: 1.3 });
+            var cv = document.createElement("canvas");
+            cv.width = vp.width; cv.height = vp.height;
+            cv.style.cssText = "width:100%;display:block;margin-bottom:6px;border:1px solid #e2e8f0;";
+            alvo.appendChild(cv);
+            return pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+          });
+        });
+      })(p);
+      cadeia.then(function () {
+        if (pdf.numPages > n) alvo.insertAdjacentHTML("beforeend", "<div style='font-size:12px;color:#64748b;padding:6px;'>Mostrando " + n + " de " + pdf.numPages + " páginas — abra em nova aba para ver todas.</div>");
+      });
+    }).catch(function () {
+      alvo.innerHTML = "<div style='font-size:12px;color:#dc2626;padding:10px;'>Não deu para desenhar este PDF aqui. Use \"Abrir em nova aba\" ou \"Abrir no Google Drive\".</div>";
+    });
+  }, function () {
+    alvo.innerHTML = "<div style='font-size:12px;color:#dc2626;padding:10px;'>A prévia de PDF não carregou. Use \"Abrir em nova aba\" ou \"Abrir no Google Drive\".</div>";
+  });
+}
+</script>
+<script>
 /* Pedidos de voucher por e-mail. Tudo dentro de VPE: os <script> do SISGEP
    dividem um escopo global só, e nome solto aqui colidiria com outra tela. */
 var VPE = (function () {
@@ -827,10 +890,7 @@ var VPE = (function () {
     el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Abrindo…</div>";
     rodar("voucherPedidosAnexo", [estado.atual.item.id, i], function (r) {
       if (!r.ok) { el("vpeMPrev").innerHTML = "<div style='padding:18px;color:#dc2626;'>" + esc(r.mensagem) + "</div>"; return; }
-      el("vpeMPrev").innerHTML = /^image\//.test(r.tipo)
-        ? "<img alt='" + esc(r.nome) + "' src='" + r.dataUrl + "'>"
-        : /pdf/.test(r.tipo) ? "<iframe title='" + esc(r.nome) + "' src='" + r.dataUrl + "'></iframe>"
-        : "<div style='padding:18px;font-size:12px;'>Formato sem prévia: " + esc(r.tipo) + "</div>";
+      sisgepPreviaAnexo(el("vpeMPrev"), r);
     });
   }
 
