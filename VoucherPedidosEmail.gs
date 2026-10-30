@@ -447,6 +447,34 @@ function vpeAvaliar_(ext, ctx) {
     prova && prova.empregador ? "lido na " + (provaTipo === "CONTRACHEQUE" ? "folha do contracheque" : provaRot) : "cadastro de associados");
   if (!campos.escola.valor) add("INTERNO", "Escola onde trabalha não identificada — preencha antes de validar.");
 
+  /* ── a escola no CADASTRO DO SISGEP (30/10/2026) ──
+     Pelo CNPJ do documento, ou pelo nome. Achou: o nome oficial do cadastro
+     é o que vai no voucher. Não achou: alguém decide (cadastrar a escola,
+     escolher uma parecida ou seguir com justificativa). Cadastro vazio ou
+     indisponível: não confere — não trava ninguém por falta de base. */
+  var escolaInfo = null;
+  if (campos.escola.valor && typeof ctx.buscarEscola === "function") {
+    var cnpjDoc = ed.escola ? "" : String((prova && prova.cnpjEmpregador) || "").replace(/\D/g, "");
+    var rEsc = ctx.buscarEscola(cnpjDoc, campos.escola.valor);
+    if (rEsc && rEsc.semCadastro !== true) {
+      escolaInfo = { lida: campos.escola.valor, cnpjLido: cnpjDoc, parecidas: rEsc.parecidas || [],
+                     achada: rEsc.achada || null };
+      if (rEsc.achada) {
+        campos.escola = { valor: rEsc.achada.nome, origem: "cadastro de escolas do SISGEP (" +
+          (rEsc.por === "CNPJ" ? "pelo CNPJ do documento" : rEsc.por === "RAIZ" ? "pelo CNPJ — outra unidade da mesma escola" : "pelo nome") + ")" };
+        var escAssoc = assoc && assoc.escola ? vpeNorm_(assoc.escola) : "";
+        if (escAssoc && [vpeNorm_(rEsc.achada.nome), vpeNorm_(rEsc.achada.fantasia)].indexOf(escAssoc) === -1 &&
+            vpeEscolaParece_(escAssoc, rEsc.achada) < 0.5) {
+          add("AVISO", "No cadastro do associado a escola é " + assoc.escola + "; o documento é de " + rEsc.achada.nome +
+            " — pode ter mudado de escola. Confira.");
+        }
+      } else {
+        add("INTERNO", "Escola não cadastrada no SISGEP: " + campos.escola.valor + (cnpjDoc ? " (CNPJ " + cnpjDoc + ")" : "") +
+          ". Cadastre a escola, escolha uma parecida ou siga com justificativa.");
+      }
+    }
+  }
+
   /* ── o curso ── */
   var curso = campo("curso", ext.curso || "", "escrito no e-mail");
   var modalidade = campo("modalidade",
@@ -595,6 +623,7 @@ function vpeAvaliar_(ext, ctx) {
     pendencias: pend,
     campos: campos,
     percentual: percentual,
+    escola: escolaInfo,
     associado: assoc ? { nome: assoc.nome || "", escola: assoc.escola || "", filiado: assoc.filiado !== false } : null
   };
 }
@@ -770,7 +799,7 @@ function vpePromptExtracao_(textoEmail, listaAnexos, abertos) {
     '  "ordem_filho": "",',
     '  "anexos": [{"indice": 1, "tipo": "CONTRACHEQUE|DECLARACAO_ESCOLA|CTPS|RG|CNH|CERTIDAO_NASCIMENTO|CERTIDAO_CASAMENTO|IMPOSTO_RENDA|OUTRO",',
     '              "nome_pessoa": "", "cpf": "", "rg": "", "data_nascimento": "dd/mm/aaaa",',
-    '              "competencia": "MM/AAAA", "empregador": "", "legivel": true}],',
+    '              "competencia": "MM/AAAA", "empregador": "", "cnpj_empregador": "", "legivel": true}],',
     '  "resumo": "uma frase dizendo o que a pessoa pediu"',
     "}",
     "",
@@ -784,6 +813,7 @@ function vpePromptExtracao_(textoEmail, listaAnexos, abertos) {
     "- competencia: mês/ano de referência do contracheque (não a data de pagamento); na",
     "  DECLARACAO_ESCOLA, o mês/ano em que a declaração foi assinada.",
     "- empregador: a escola/empresa que aparece no contracheque, na declaração ou no contrato da carteira.",
+    "- cnpj_empregador: o CNPJ dessa escola/empresa, se aparecer no documento (só os números).",
     "- Liste TODOS os anexos, na ordem numerada abaixo, mesmo os que não conseguir ler (legivel: false).",
     "",
     "Anexos deste e-mail:",
@@ -824,6 +854,7 @@ function vpeNormalizarExtracao_(j) {
         dataNascimento: String(a.data_nascimento || ""),
         competencia: String(a.competencia || ""),
         empregador: String(a.empregador || ""),
+        cnpjEmpregador: String(a.cnpj_empregador || "").replace(/\D/g, ""),
         legivel: a.legivel !== false
       };
     })
@@ -991,6 +1022,66 @@ function vpeCaixaDe_(msg) {
 }
 
 /** Busca de associado na aba Associados, por CPF e, sem CPF, pelo e-mail. */
+/* A escola no cadastro do SISGEP: pelo CNPJ (inteiro, depois a raiz — outra
+   unidade da mesma escola), depois pelo nome (razão social ou fantasia).
+   Devolve também as parecidas, para a pessoa escolher. */
+function vpeEscolaParece_(nomeNorm, esc) {
+  /* Palavras que toda escola tem não dizem qual escola é. */
+  var ignora = { LTDA: 1, ME: 1, EIRELI: 1, EPP: 1, SA: 1, S: 1, A: 1, DE: 1, DA: 1, DO: 1, DOS: 1, DAS: 1, E: 1,
+                 COLEGIO: 1, ESCOLA: 1, CENTRO: 1, EDUCACIONAL: 1, INSTITUTO: 1, ENSINO: 1, SOCIEDADE: 1,
+                 ASSOCIACAO: 1, UNIDADE: 1, EDUCACAO: 1, FACULDADE: 1, REDE: 1 };
+  function toks(x) { return vpeNorm_(x).split(" ").filter(function (t) { return t.length > 1 && !ignora[t]; }); }
+  var a = toks(nomeNorm);
+  var melhor = 0;
+  [esc.nome, esc.fantasia].forEach(function (n) {
+    var bT = toks(n);
+    if (!a.length || !bT.length) return;
+    var comuns = a.filter(function (t) { return bT.indexOf(t) > -1; }).length;
+    melhor = Math.max(melhor, comuns / Math.min(a.length, bT.length));
+  });
+  return melhor;
+}
+
+function vpeCriarBuscaEscola_() {
+  var lista = null;
+  function carregar() {
+    if (lista) return lista;
+    lista = [];
+    try {
+      var cru = (typeof listarEscolasCadastro_interno_ === "function") ? listarEscolasCadastro_interno_() : [];
+      (cru || []).forEach(function (e) {
+        var nome = String(e.NomeEscola || e.escola || "").trim();
+        if (!nome) return;
+        lista.push({ nome: nome, fantasia: String(e.Fantasia || "").trim(), cnpj: String(e.CNPJ || "").replace(/\D/g, ""),
+                     id: String(e.EscolaID || e.escolaId || "") });
+      });
+    } catch (e) { Logger.log("Cadastro de escolas indisponível para o voucher: " + e.message); }
+    return lista;
+  }
+  return function (cnpj, nome) {
+    var l = carregar();
+    if (!l.length) return { semCadastro: true };
+    cnpj = String(cnpj || "").replace(/\D/g, "");
+    if (cnpj.length === 14) {
+      var porCnpj = l.filter(function (e) { return e.cnpj === cnpj; })[0];
+      if (porCnpj) return { achada: porCnpj, por: "CNPJ" };
+      var raiz = l.filter(function (e) { return e.cnpj.length === 14 && e.cnpj.substring(0, 8) === cnpj.substring(0, 8); })[0];
+      if (raiz) return { achada: raiz, por: "RAIZ" };
+    }
+    var n = vpeNorm_(nome);
+    var exato = l.filter(function (e) { return vpeNorm_(e.nome) === n || (e.fantasia && vpeNorm_(e.fantasia) === n); })[0];
+    if (exato) return { achada: exato, por: "NOME" };
+    var parecidas = l.map(function (e) { return { e: e, p: vpeEscolaParece_(n, e) }; })
+      .filter(function (x) { return x.p >= 0.5; }).sort(function (a, b) { return b.p - a.p; }).slice(0, 4)
+      .map(function (x) { return { nome: x.e.nome, fantasia: x.e.fantasia, cnpj: x.e.cnpj }; });
+    return { achada: null, parecidas: parecidas };
+  };
+}
+
+/* Uma busca de escolas por leitura da caixa (vpeLerCaixa_ zera). */
+var VPE_BUSCA_ESCOLA = null;
+function vpeBuscaEscola_() { return VPE_BUSCA_ESCOLA || (VPE_BUSCA_ESCOLA = vpeCriarBuscaEscola_()); }
+
 function vpeCriarBuscaAssociado_() {
   var cache = null;
   function carregar() {
@@ -1112,7 +1203,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
 
   var dados = vpeJson_(reg.DADOS_JSON, {});
   var aval = vpeAvaliar_(ext, {
-    hoje: agora, periodosAbertos: abertos, buscarAssociado: buscarAssociado,
+    hoje: agora, periodosAbertos: abertos, buscarAssociado: buscarAssociado, buscarEscola: vpeBuscaEscola_(),
     associadoConfirmadoPor: reg.ASSOCIADO_CONFIRMADO_POR,
     remetenteEmail: reg.REMETENTE_EMAIL, remetenteNome: reg.REMETENTE_NOME,
     camposEditados: dados.editados || {}
@@ -1138,7 +1229,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
   reg.DADOS_JSON = JSON.stringify({
     extracao: ext, campos: aval.campos, percentual: aval.percentual,
-    associado: aval.associado, editados: dados.editados || {}, semNada: !!aval.semNada
+    associado: aval.associado, editados: dados.editados || {}, semNada: !!aval.semNada, escola: aval.escola || null
   });
   reg.ANEXOS_JSON = JSON.stringify(infoAnexos);
   reg.RESPOSTA_SUGERIDA = vpeTextoResposta_(reg.ESTADO, aval, abertos);
@@ -1150,6 +1241,7 @@ function vpeProcessarThread_(thread, entrantes, reg, buscarAssociado, sh) {
  * @return {{lidas, novos, atualizados, ignorados, erros}}
  */
 function vpeLerCaixa_(opcoes) {
+  VPE_BUSCA_ESCOLA = null;
   opcoes = opcoes || {};
   var inicio = Date.now();
   var limiteMs = opcoes.limiteMs || 240000;   // folga para os 6 min do Apps Script
@@ -1557,6 +1649,7 @@ function voucherPedidosDetalhe(id, tokenSessao) {
       campos: d.campos || {},
       percentual: d.percentual || null,
       associado: d.associado || null,
+      escola: d.escola || null,
       resumoIA: d.extracao ? d.extracao.resumo : "",
       pendencias: vpeJson_(reg.PENDENCIAS_JSON, []),
       anexos: vpeJson_(reg.ANEXOS_JSON, []),
@@ -1652,12 +1745,13 @@ function vpeReavaliar_(reg, editados, quem) {
   });
   d.editados.__por = quem || d.editados.__por || "";
   var aval = vpeAvaliar_(ext, {
-    hoje: new Date(), buscarAssociado: vpeCriarBuscaAssociado_(),
+    hoje: new Date(), buscarAssociado: vpeCriarBuscaAssociado_(), buscarEscola: vpeCriarBuscaEscola_(),
     associadoConfirmadoPor: reg.ASSOCIADO_CONFIRMADO_POR,
     remetenteEmail: reg.REMETENTE_EMAIL, remetenteNome: reg.REMETENTE_NOME,
     camposEditados: d.editados
   });
   d.campos = aval.campos; d.percentual = aval.percentual; d.associado = aval.associado; d.semNada = !!aval.semNada;
+  d.escola = aval.escola || null;
   reg.DADOS_JSON = JSON.stringify(d);
   reg.PENDENCIAS_JSON = JSON.stringify(aval.pendencias);
   if (reg.ESTADO !== VPE_ESTADOS.CONCLUIDO && reg.ESTADO !== VPE_ESTADOS.EMITIDO) {

@@ -224,6 +224,7 @@
         <div>
           <h4>Conferência</h4>
           <div class="vpe-pend" id="vpeMPend"></div>
+          <div id="vpeMEscola" style="display:none;margin:8px 0;border:1px solid var(--amber,#d97706);background:var(--amber-lt,#fef3c7);border-radius:10px;padding:10px 12px;font-size:12.5px;"></div>
           <h4>Dados do pedido <span style="text-transform:none;letter-spacing:0;font-weight:600;">— confira e corrija</span></h4>
           <div class="vpe-campos" id="vpeMCampos"></div>
           <div class="vpe-pct" id="vpeMPct"></div>
@@ -577,6 +578,7 @@ var VPE = (function () {
       return "<span class='vpe-chip " + esc(p.tipo) + "'>" + esc(p.texto) + "</span>";
     }).join("") : "<div class='vpe-ok'>Tudo conferido: associado na relação, documentos e dados completos.</div>";
 
+    desenharEscola(d, it.estado);
     var concl = it.estado === "CONCLUIDO";
     el("vpeMCampos").innerHTML = CAMPOS.map(function (c) {
       var chave = c[0], f = d.campos[chave] || { valor: "", origem: "" };
@@ -704,6 +706,47 @@ var VPE = (function () {
     el("vpeMTextoEditado").style.display = "none";
   }
 
+  /* ── ESCOLA NO CADASTRO DO SISGEP (30/10/2026) ──
+     Não achou: escolher uma parecida, cadastrar (abre o cadastro já
+     preenchido) ou seguir com justificativa (o "mesmo assim" de sempre). */
+  function desenharEscola(d, st) {
+    var box = el("vpeMEscola"), e = d.escola;
+    if (!e || e.achada || st === "CONCLUIDO" || st === "EMITIDO") { box.style.display = "none"; box.innerHTML = ""; return; }
+    estado.escolaLida = e;
+    box.style.display = "";
+    box.innerHTML = "<b>⚠ Escola não cadastrada no SISGEP</b><br>Lido no documento: <b>" + esc(e.lida) + "</b>" +
+      (e.cnpjLido ? " · CNPJ " + esc(e.cnpjLido) : "") +
+      ((e.parecidas || []).length ? "<div style='margin-top:6px;'>Parecidas no cadastro:</div>" + e.parecidas.map(function (p, k) {
+        return "<div style='display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:4px;'><span>" + esc(p.nome) +
+          (p.fantasia ? " <small>(" + esc(p.fantasia) + ")</small>" : "") + (p.cnpj ? " <small>CNPJ " + esc(p.cnpj) + "</small>" : "") +
+          "</span><button type='button' class='btn btn-outline' style='padding:2px 10px;font-size:11.5px;' data-vpe='escolherEscola' data-arg='" + k + "'>É esta</button></div>";
+      }).join("") : "<div style='margin-top:6px;color:#92400e;'>Nenhuma parecida no cadastro.</div>") +
+      "<div style='margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;'>" +
+      "<button type='button' class='btn btn-navy' style='padding:4px 12px;font-size:12px;' data-vpe='cadastrarEscola'>Cadastrar escola no SISGEP</button>" +
+      "<span style='font-size:11.5px;color:#92400e;align-self:center;'>ou siga com \"mesmo assim\", explicando o motivo.</span></div>";
+  }
+  function escolherEscola(k) {
+    var p = estado.escolaLida && estado.escolaLida.parecidas[Number(k)];
+    if (!p) return;
+    var inp = document.querySelector("#vpeMCampos [data-k='escola']");
+    if (inp) inp.value = p.nome;
+    salvar();
+  }
+  function cadastrarEscola() {
+    var e = estado.escolaLida || {};
+    fechar();
+    if (typeof spIr === "function") spIr("escolas", null);
+    /* O cadastro abre já preenchido com o que veio no documento. */
+    setTimeout(function () {
+      if (typeof limparForm === "function") { try { limparForm(); } catch (x) {} }
+      var n = document.getElementById("ceNomeEscola"), c = document.getElementById("ceCnpj");
+      if (n) n.value = e.lida || "";
+      if (c) c.value = e.cnpjLido || "";
+      if (n && n.focus) n.focus();
+      aviso("Cadastro de escola aberto com o nome" + (e.cnpjLido ? " e o CNPJ" : "") + " do documento. Confira e salve; depois volte ao pedido e clique em \"Salvar e reconferir\".", "info");
+    }, 700);
+  }
+
   function camposDaTela() {
     var o = {};
     Array.prototype.forEach.call(document.querySelectorAll("#vpeMCampos [data-k]"), function (x) { o[x.getAttribute("data-k")] = x.value; });
@@ -810,6 +853,7 @@ var VPE = (function () {
                 verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
                 responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
                 ligarGatilho: ligarGatilho, voltarModelo: voltarModelo, validarEmitir: validarEmitir,
+                escolherEscola: escolherEscola, cadastrarEscola: cadastrarEscola,
                 limparFiltros: limparFiltros, limparFiltrosEmi: function () {
                   ["vpeEBusca", "vpeESemestre", "vpeEEscola", "vpeEConferido"].forEach(function (id) { el(id).value = ""; });
                   desenharEmitidos(); },
