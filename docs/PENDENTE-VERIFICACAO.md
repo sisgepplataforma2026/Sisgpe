@@ -6507,3 +6507,16 @@ Testado no emulador (t213, t214, t215, t216; suíte verde, 213 arquivos).
 - [ ] Um usuário só de RH (ou outro módulo) vê o cadeado.
 - [ ] Os e-mails aparecem por tipo; abrir um, responder, ver a resposta
       chegar na conversa; marcar resolvido; corrigir um tipo errado.
+
+## Escola no cadastro e a jornada completa — 30/10/2026 (HML)
+
+Testado no emulador: t217 (escola no cadastro, 20) e t218 (jornada completa,
+42: KingHost → leitor → SISGEP → complemento → resposta → emitir → enviar
+depois → Caixa da Secretaria). Suíte verde, 215 arquivos.
+**NÃO TESTADO no ar:**
+- [ ] pedido com contracheque de escola cadastrada: a escola aparece com o
+      nome oficial do cadastro;
+- [ ] escola fora do cadastro: o quadro aparece; "Cadastrar escola" abre o
+      cadastro preenchido; "É esta" resolve;
+- [ ] pedido só com texto (sem anexo) de quem está na base: recebe a
+      resposta-padrão completa.

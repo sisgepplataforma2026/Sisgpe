@@ -597,7 +597,10 @@ function vpeAvaliar_(ext, ctx) {
      dá para conferir filiação sem documento, mas também não é caso para a
      equipe escrever à mão: a resposta é a padrão do sindicato, com tudo o
      que é necessário. */
-  var semNada = !anexos.length && !cpf;
+  /* Sem NENHUM anexo é "só texto", mesmo que o sistema ache a pessoa na base
+     pelo e-mail (usuário, 29-30/10: "o cara solicita, mas não coloca nada, é
+     um texto" → a resposta-padrão, com tudo o que é necessário). */
+  var semNada = !anexos.length;
   if (semNada) {
     estado = VPE_ESTADOS.FALTA_DOC;
   } else if (!cpf || cpfsDistintos.length > 1) {
