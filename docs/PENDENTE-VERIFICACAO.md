@@ -6546,3 +6546,18 @@ Mockup aprovado (`docs/mock-voucher-mensagem.png`). Emulador: t207 (89), t219 (3
 | Abrir pedido | nome legível, e-mail embaixo, data à direita; contracheque já na prévia, destacado |
 | Fechar e abrir outro | nada do pedido anterior enquanto carrega |
 | Caixa da Secretaria › conversa com anexo | mesmo formato |
+
+## 🔴 Tela única da Secretaria (vouchers dentro da Caixa) — HML 30/10/2026 (run #202, leitor run #13)
+
+Mockup aprovado (`docs/mock-caixa-unica.png`); foto da tela real em `docs/previa-caixa-unica.png`.
+Emulador: t220 (31). **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Comunicação › Caixa da Secretaria | e-mails, vouchers por e-mail (🎓) e presenciais (🏢) na mesma lista, com a situação |
+| Card Voucher | contagens; clicar filtra só vouchers |
+| Abrir um voucher | conferência de sempre, sem trocar de tela; ao fechar, a lista atualiza |
+| Conferir e emitir → faixa "emitidos" → Ver e enviar | marcar, 1º clique mostra quem vai, 2º confirma |
+| Abrir um presencial | abre a solicitação (modal de Solicitações) |
+| Avisos "Lida:" | não aparecem mais |
+| Usuário só com Comunicação | abre a Caixa, sem nenhum voucher |
