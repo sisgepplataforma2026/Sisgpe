@@ -126,10 +126,28 @@ def texto_legivel(trecho):
     return re.sub(r"\s+", " ", t)
 
 
-def tem_pdf_anexo(estrutura):
+# O VOUCHER É RECONHECIDO PELO NOME DO ARQUIVO (usuário, 31/10/2026: "ele não
+# precisa ler, baixar o arquivo, ele só precisa entender que arquivo que é.
+# Porque o voucher, a gente já tem um modelo pronto"). O nome vem na "ficha"
+# do e-mail (BODYSTRUCTURE): nada é baixado. O modelo do SISGEP sai como
+# "<data> - Voucher Bolsa - <protocolo> - <nome>.pdf"; os feitos à mão antes
+# do SISGEP costumam ter "voucher", "certificado" ou "bolsa" no nome. PDF com
+# outro nome (lista de documentos, comprovante…) NÃO conclui o pedido.
+NOME_VOUCHER = re.compile(r"voucher|certificad|bolsa", re.I)
+
+
+def nomes_pdf(estrutura):
+    """Os nomes dos PDFs anexados, lidos da ficha do e-mail."""
     e = estrutura.decode("latin-1", "replace") if isinstance(estrutura, bytes) else str(estrutura or "")
-    return bool(re.search(r'"application"\s+"(pdf|x-pdf|octet-stream)"[^)]*\.pdf"|"application"\s+"pdf"'
-                          r'|"(file)?name\*?"\s+"[^"]*\.pdf"', e, re.I))
+    nomes = re.findall(r'"(?:file)?name\*?"\s+"([^"]*\.pdf)"', e, re.I)
+    if not nomes and re.search(r'"application"\s+"(pdf|x-pdf)"', e, re.I):
+        nomes = ["(sem nome).pdf"]
+    return nomes
+
+
+def tem_pdf_anexo(estrutura):
+    """Levou o VOUCHER: um PDF com nome do modelo."""
+    return any(NOME_VOUCHER.search(n) for n in nomes_pdf(estrutura))
 
 
 # Pedidos 2026/2 e 2027/1 só existem de 2026 para cá; respostas, idem.

@@ -144,10 +144,15 @@ ok("edu@exemplo.com" not in quem, "Edu: voucher em e-mail novo, com outro assunt
 ok("fabi@exemplo.com" in quem, "Fabi: o PDF que ela recebeu foi ANTES deste pedido — segue pendente")
 ok(cont["respondidos"] == 3, "concluídos (voucher em PDF): Marcos (In-Reply-To), Rui ('RES: mesmo assunto') e Edu (e-mail novo)")
 ok(cont["sem_voucher"] == 2, "Carla (pedimos o contracheque) e Davi (só a resposta-padrão com a lista de documentos): continuam PENDENTES")
-ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "V.pdf"))') and not P.tem_pdf_anexo(b'("text" "plain")'),
+ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "31-10-2026 - Voucher Bolsa - VCH-1 - ANA.pdf"))') and not P.tem_pdf_anexo(b'("text" "plain")'),
    "sabe dizer se a resposta levou PDF")
 ok(P.tem_pdf_anexo(b'("application" "octet-stream" ("name" "Voucher 2027.pdf"))'), "PDF mandado como 'octet-stream' também conta")
 ok(not P.tem_pdf_anexo(b'("image" "png" ("name" "assinatura.png"))'), "imagem da assinatura não conta como voucher")
+ok(not P.tem_pdf_anexo(b'("application" "pdf" ("name" "Lista de documentos.pdf"))'),
+   "PDF com outro nome (lista de documentos) NÃO conta como voucher — 31/10/2026")
+ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "CERTIFICADO DE BOLSA - Maria.pdf"))'), "o certificado feito à mão também conta")
+ok(P.nomes_pdf(b'("application" "pdf" ("name" "a.pdf"))("application" "pdf" ("filename" "b.pdf"))') == ["a.pdf", "b.pdf"],
+   "lê os nomes da ficha, sem baixar o arquivo")
 ok(cont["nossos"] == 1, "a mensagem da própria Secretaria não conta como pedido")
 ok(all(p["raw"] in (pend, outra_pasta, falta_doc, padrao, pedido_fabi) for p in pend_lista), "o e-mail vai inteiro, como veio")
 ok(len({P.nome_arquivo(p) for p in pend_lista}) == 5, "cada pendente tem nome de arquivo próprio e estável")

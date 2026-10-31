@@ -191,6 +191,16 @@ b.igual(entrada().length, antesPastas + 2, "a ponte cresceu só dois");
 b.ok(!SIM.chamadasIALeitor.some(c => /certificado de bolsa para meu filho/.test(c.texto)),
   "pedido de pasta não passa pela IA (a Marcela já separou)");
 
+b.passo("10b. Voucher é reconhecido pelo NOME do PDF (modelo), sem abrir o arquivo — 31/10/2026");
+const fakeMsg = (de, nomes) => ({ getFrom: () => de, getAttachments: () => nomes.map(n => ({ getName: () => n, getContentType: () => "application/pdf" })) });
+const nossosL = ["secretaria@sindeducacao.com"];
+b.ok(L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["31-10-2026 - Voucher Bolsa - VCH-1 - ANA.pdf"])], nossosL),
+  "o PDF do modelo do SISGEP conclui");
+b.ok(L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["CERTIFICADO DE BOLSA.pdf"])], nossosL), "o certificado feito à mão também");
+b.ok(!L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["Lista de documentos.pdf"])], nossosL),
+  "outro PDF (lista de documentos) NÃO conclui");
+b.ok(!L.leitorVoucherJaEnviado_([fakeMsg("ana@exemplo.com", ["Voucher.pdf"])], nossosL), "PDF mandado pela própria pessoa não conta");
+
 b.passo("11. Repassar no mesmo dia não faz nada; e o SISGEP mostra os pendentes");
 SIM.ciclo();
 b.igual(entrada().length, antesPastas + 2, "o ciclo do mesmo dia não copiou de novo");
