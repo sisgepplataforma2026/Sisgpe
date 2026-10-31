@@ -117,7 +117,10 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
 const escondida = doc.createElement("div"); escondida.style.display = "none"; doc.body.appendChild(escondida);
 escondida.appendChild(el("vpeModal"));
 let solAberta = null;
-win.cert_abrirModal = s => { solAberta = s; };
+/* A tela de Solicitações expõe só window.certAbrirSolicitacao (escopo
+   próprio) — o dublê fica no mesmo lugar, para o teste não passar por
+   engano (foi assim que um defeito escapou até 31/10/2026). */
+win.certAbrirSolicitacao = s => { solAberta = s; };
 (async function () {
   b.fluxo("TELA ÚNICA · a tela");
   b.passo("4. A lista mostra vouchers e e-mails juntos; o card de voucher filtra");

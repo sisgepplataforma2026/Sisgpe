@@ -463,7 +463,7 @@
               <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
               <th>Protocolo</th><th>Beneficiário</th><th>Escola</th>
               <th>Modalidade</th><th>Curso</th><th>Período</th>
-              <th>Status</th><th>Data</th><th style="text-align:center;">Ações</th>
+              <th>Status</th><th>Enviado em / por</th><th>Data</th><th style="text-align:center;">Ações</th>
             </tr>
             <!-- FILTRO POR COLUNA, embaixo do titulo dela.
                  Pedido do usuario em 13/08/2026 apontando a propria linha de
@@ -517,12 +517,23 @@
                   <option value="CANCELADO">Cancelado</option>
                 </select>
               </th>
+              <th>
+                <!-- Envio (31/10/2026): situação e quem enviou. -->
+                <select class="cert-filtro-col" id="certFiltroEnvio">
+                  <option value="">todos</option>
+                  <option value="ENVIADO">✔ Enviados</option>
+                  <option value="NA_FILA">⏳ Na fila</option>
+                  <option value="ERRO">✖ Erro no envio</option>
+                  <option value="NAO">— Não enviados</option>
+                </select>
+                <select class="cert-filtro-col" id="certFiltroEnviadoPor" style="margin-top:3px;"><option value="">enviado por: todos</option></select>
+              </th>
               <th></th>
               <th></th>
             </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="11"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -787,6 +798,8 @@
           <button type="button" class="cert-btn cert-btn-violet cert-btn-sm" id="certBtnGerarCertificado">🎓 Gerar Certificado</button>
         </div>
       </div>
+      <!-- Histórico do voucher: quem fez o quê e quando (31/10/2026). -->
+      <div id="certModalHistorico" style="display:none;"></div>
     </div>
     <div class="cert-modal-foot">
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certModalCancelar">Fechar</button>
@@ -1486,6 +1499,14 @@ function certDataNumISO(iso){
 /* O seletor de período é montado do que EXISTE na lista, nunca de uma lista
    fixa de anos: assim ele não oferece período vazio nem esconde um que
    existe. Remontado a cada carga, preservando o que estava escolhido. */
+function certMontarFiltroEnviadoPor(){
+  var sel=g('certFiltroEnviadoPor'); if(!sel) return;
+  var atual=sel.value, vistos={};
+  _lista.forEach(function(s){ if(s.envio&&s.envio.por) vistos[s.envio.por]=1; });
+  sel.innerHTML='<option value="">enviado por: todos</option>'+Object.keys(vistos).sort().map(function(p){
+    return '<option value="'+cert_escHtml(p)+'"'+(p===atual?' selected':'')+'>'+cert_escHtml(p.split('@')[0])+'</option>';
+  }).join('');
+}
 function montarFiltroPeriodo(){
   var sel = g('certFiltroPeriodo');
   if(!sel) return;
@@ -1511,6 +1532,8 @@ function cert_aplicarFiltros(){
   var esc    = normTxt(filtroVal('certFiltroEscola'));
   var curso  = normTxt(filtroVal('certFiltroCurso'));
   var per    = filtroVal('certFiltroPeriodo');
+  var envio  = filtroVal('certFiltroEnvio');
+  var envPor = filtroVal('certFiltroEnviadoPor');
   var de     = certDataNumISO(filtroVal('certFiltroDataDe'));
   var ate    = certDataNumISO(filtroVal('certFiltroDataAte'));
 
@@ -1518,6 +1541,8 @@ function cert_aplicarFiltros(){
      anterior deixou. É o que a pessoa espera ao ir preenchendo campo por
      campo — e o contador embaixo do título reflete o conjunto. */
   _filtrada = _lista.filter(function(s){
+    if (envio && certSituacaoEnvio(s) !== envio) return false;
+    if (envPor && !(s.envio && s.envio.por === envPor)) return false;
     if(status && String(s.status||'').toUpperCase() !== status) return false;
     if(mod    && String(s.nivel||s.modalidade||'').toUpperCase() !== mod) return false;
     if(per    && String(s.periodoReferencia||s.periodo||'').trim() !== per) return false;
@@ -1836,7 +1861,7 @@ function loteEnviarExecutar(){
 function cert_limparFiltros(){
   ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
    'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
-   'certFiltroModalidade','certFiltroPeriodo'].forEach(function(id){
+   'certFiltroModalidade','certFiltroPeriodo','certFiltroEnvio','certFiltroEnviadoPor'].forEach(function(id){
     if(g(id)){ g(id).value=''; g(id).classList.remove('ativo'); }
   });
   cert_aplicarFiltros();
@@ -1894,12 +1919,25 @@ function certBeneficiarioEtiqueta(s){
 }
 
 // ── Tabela
+/* "Enviado em / por" — do histórico permanente (31/10/2026). */
+function certEnvioCelula(s){
+  var e=s.envio;
+  if(!e) return '<span style="color:#94a3b8;">— não enviado</span>';
+  var quem=String(e.por||'').split('@')[0];
+  if(e.situacao==='NA_FILA') return '<span style="color:#92400e;">⏳ na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
+  if(e.situacao==='ERRO') return '<span style="color:#991b1b;" title="'+cert_escHtml(e.erro||'')+'">✖ erro no envio</span><br><span style="color:#64748b;">'+cert_escHtml(e.em)+'</span>';
+  if(e.situacao==='WHATSAPP') return '💬 WhatsApp '+cert_escHtml(e.em)+'<br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
+  return '<span style="color:#065f46;font-weight:700;">✔ '+cert_escHtml(e.em)+'</span> · '+cert_escHtml(quem)
+    +(e.para?'<br><span style="color:#64748b;">para '+cert_escHtml(e.para)+'</span>':'');
+}
+function certSituacaoEnvio(s){ return s.envio ? s.envio.situacao : 'NAO'; }
+
 function cert_renderTabela(){
   var tbody=g('certTbody'), sub=g('certTabelaSub');
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="11"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -1970,6 +2008,7 @@ function cert_renderTabela(){
               + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
       +'</td>'
       +'<td>'+badgeStatus(s.status)+'</td>'
+      +'<td style="font-size:11px;white-space:nowrap;">'+certEnvioCelula(s)+'</td>'
       +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+cert_escHtml(certData(s.data))+'</td>'
       +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
         /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
@@ -2066,6 +2105,9 @@ function cert_abrirModal(s){
      Guilherme, e ela seria enviada assim. */
   certCompEsconder();
   _solAtual=s;
+  /* Histórico permanente (VoucherHistoricoEnvio.gs) — a função mora em
+     VoucherPedidosEmailUI, incluída na mesma página. */
+  if(typeof sisgepHistoricoVoucher==='function') sisgepHistoricoVoucher(g('certModalHistorico'), s.protocolo||'');
   var st=String(s.status||'').toUpperCase();
   if(g('certModalTitulo')) g('certModalTitulo').textContent='Solicitação de Bolsa';
   if(g('certModalSub'))    g('certModalSub').textContent=s.protocolo||'';
@@ -4402,7 +4444,7 @@ function certDocEnviar(){
 // ── Carregar
 function cert_carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="10"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="11"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];
@@ -4414,6 +4456,7 @@ function cert_carregarLista(){
       _selecionados = {};
       atualizarBarraSelecao();
       montarFiltroPeriodo();
+      certMontarFiltroEnviadoPor();
       cert_atualizarMetricas(); cert_aplicarFiltros();
     })
     .withFailureHandler(function(err){cert_msg('Erro ao carregar: '+((err&&err.message)||''),'erro');})
@@ -4474,11 +4517,15 @@ function certCopiar(texto, aviso){
 
 function cert_exportarCsv(){
   if(!_filtrada.length){cert_msg('Nenhum dado para exportar.','warn');return;}
-  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data'];
+  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data',
+                'Situação do envio','Enviado em','Enviado por','Enviado para'];
   var rows=[headers].concat(_filtrada.map(function(s){
+    var e=s.envio||{};
     return [s.protocolo||'',s.nome||'',s.cpf||'',s.email||'',s.escola||'',
             s.nivel||s.modalidade||'',s.curso||'',s.tipoBeneficiario||s.beneficiario||'',
-            s.periodoReferencia||s.periodo||'',s.status||'',s.data||''];
+            s.periodoReferencia||s.periodo||'',s.status||'',s.data||'',
+            ({ENVIADO:'Enviado',NA_FILA:'Na fila',ERRO:'Erro',WHATSAPP:'WhatsApp'})[e.situacao]||'Não enviado',
+            e.em||'',e.por||'',e.para||''];
   }));
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
@@ -4510,7 +4557,7 @@ function initInterno(){
         clearTimeout(_buscaTimer); _buscaTimer = setTimeout(cert_aplicarFiltros, 250);
       });
     });
-  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte'].forEach(function(id){
+  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte','certFiltroEnvio','certFiltroEnviadoPor'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', cert_aplicarFiltros);
   });
   if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', cert_limparFiltros);

@@ -1948,7 +1948,15 @@ function listarSolicitacoesVoucher() {
 
 function listarSolicitacoesCertBolsa(tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
-  return listarSolicitacoesVoucher();
+  var lista = listarSolicitacoesVoucher();
+  /* "Enviado em / por" (31/10/2026): o último envio de cada protocolo, do
+     histórico permanente (VoucherHistoricoEnvio.gs). */
+  try {
+    voucherHistoricoConfirmarSaidas_();
+    var env = voucherUltimosEnvios_();
+    lista.forEach(function (s) { var e = env[String(s.protocolo || "")]; if (e) s.envio = e; });
+  } catch (e) { Logger.log("Envios na lista de solicitações: " + e.message); }
+  return lista;
 }
 
 /* ================= DASHBOARD (PAINEL ADMIN) ================= */

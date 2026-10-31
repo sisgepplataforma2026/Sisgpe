@@ -584,12 +584,19 @@ function voucherIdDoLink_(url) {
  * A trilha real é auditar_(dados) — AuditoriaCore.gs:133. Ela NUNCA lança, e
  * cai para a planilha de reserva quando o Firestore não está configurado.
  */
-function voucherRegistrarEnvio_(protocolo, canal, destino, sessao) {
+function voucherRegistrarEnvio_(protocolo, canal, destino, sessao, opcoes) {
   /* A anotação na linha vem ANTES da auditoria e fora do try dela de
    * propósito: são dois registros independentes, e uma auditoria indisponível
    * não pode levar junto a data de envio que fica à vista de quem abre a
    * planilha. */
   voucherAnotarEnvioNaObservacao_(protocolo, canal, destino, sessao);
+  /* E o HISTÓRICO PERMANENTE do envio (VoucherHistoricoEnvio.gs, 31/10/2026):
+   * quem, quando, para onde — para o dia em que alguém perguntar. */
+  opcoes = opcoes || {};
+  if (typeof voucherHistoricoAnotar_ === "function") {
+    voucherHistoricoAnotar_(protocolo, opcoes.acao || (canal === "EMAIL" ? "ENVIO_EMAIL" : "ENVIO_" + canal),
+      (sessao && (sessao.email || sessao.usuario)) || "", String(destino || canal) + (opcoes.ref ? " · ref " + opcoes.ref : ""));
+  }
 
   try {
     if (typeof auditar_ !== "function") return false;

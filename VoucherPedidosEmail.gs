@@ -1277,6 +1277,7 @@ function vpeLerCaixa_(opcoes) {
     var nossos = vpeEnderecosNossos_();
     var buscar = vpeCriarBuscaAssociado_();
     if (!vpePonteId_()) { r.semPonte = true; return r; }
+    if (!opcoes.soThread && typeof voucherHistoricoConfirmarSaidas_ === "function") voucherHistoricoConfirmarSaidas_();
     var todas = opcoes.soThread ? [vpeFonteConversa_(opcoes.soThread)].filter(Boolean) : vpeFonteConversas_();
     var threads = todas.slice(0, opcoes.max || 200);
 
@@ -1499,6 +1500,9 @@ function vpeEmailsDaEquipe_() {
 /* assinaturaHtml: o rodapé a anexar. "" quando o texto já traz a
    assinatura (complemento, Caixa) — para nunca sair duas; sem o parâmetro,
    o rodapé da caixa (comportamento antigo). */
+/* O ID da última resposta posta na fila — o histórico do voucher guarda para
+   conferir depois que ela saiu (VoucherHistoricoEnvio.gs). */
+var VPE_ULTIMA_SAIDA_ID = "";
 function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
   var para = String(reg.REMETENTE_EMAIL || "").trim();
   if (!para) throw new Error("O pedido não tem e-mail do remetente.");
@@ -1514,8 +1518,9 @@ function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
     catch (e) { Logger.log("Não compartilhou " + id + " com " + conta + ": " + e.message); }
   });
 
+  VPE_ULTIMA_SAIDA_ID = "ENV_" + Utilities.getUuid().replace(/-/g, "").slice(0, 20).toUpperCase();
   vpeGravar_({
-    ID: "ENV_" + Utilities.getUuid().replace(/-/g, "").slice(0, 20).toUpperCase(),
+    ID: VPE_ULTIMA_SAIDA_ID,
     THREAD_ID: String(reg.THREAD_ID),
     MENSAGEM_ID: String(reg.ULTIMA_MENSAGEM_ID),
     HTML: html,
@@ -2137,7 +2142,8 @@ function vpeEnviarEmitido_(reg, sessao, opcoes) {
       vpeGravar_(reg);
       return { ok: false, protocolo: protocolo, mensagem: reg.ERRO };
     }
-    voucherRegistrarEnvio_(protocolo, "EMAIL", para + " (resposta ao pedido por e-mail, pela caixa da Secretaria)", sessao);
+    voucherRegistrarEnvio_(protocolo, "EMAIL", para + " · resposta ao pedido por e-mail, pela caixa da Secretaria", sessao,
+      { acao: "EMAIL_NA_FILA", ref: VPE_ULTIMA_SAIDA_ID });
 
     reg.ESTADO = VPE_ESTADOS.CONCLUIDO;
     reg.ACAO = "CERTIFICADO_NA_FILA";

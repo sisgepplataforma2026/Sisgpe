@@ -30,6 +30,15 @@
   background: var(--blue-lt); color: var(--navy2); margin: 3px 4px 0 0; }
 .sg-anexo-info .sg-chip.ruim { background: var(--amber-lt); color: #92400e; }
 .sg-anexo-info span { font-size: 11px; color: var(--g500); }
+.sg-hist { margin-top: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 10px 12px; text-align: left; }
+.sg-hist-tit { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #065f46; margin-bottom: 8px; }
+.sg-hist-tl { border-left: 3px solid var(--blue); margin-left: 4px; padding-left: 12px; }
+.sg-hist-ev { margin-bottom: 7px; font-size: 12.5px; color: var(--g800); }
+.sg-hist-ev small { display: block; color: var(--g500); font-size: 11.5px; }
+.sg-hist-ev.ok b { color: #065f46; }
+.sg-hist-ev.erro b { color: #991b1b; }
+.sg-hist-vazio { font-size: 12px; color: var(--g500); }
+.sg-hist-lock { margin-top: 6px; font-size: 11px; color: var(--g500); }
 .sg-carregando { height: 12px; border-radius: 6px; background: var(--g100); margin: 8px 0; }
 #vpeSecao * { box-sizing: border-box; }
 #vpeSecao .vpe-topo {
@@ -257,6 +266,7 @@
           <h4>Dados do pedido <span style="text-transform:none;letter-spacing:0;font-weight:600;">— confira e corrija</span></h4>
           <div class="vpe-campos" id="vpeMCampos"></div>
           <div class="vpe-pct" id="vpeMPct"></div>
+          <div id="vpeMHist" style="display:none;"></div>
           <div id="vpeMRespostaBox">
             <div id="vpeMFaltaBox">
               <h4>O que está faltando? <span style="text-transform:none;letter-spacing:0;font-weight:600;">— o sistema já marcou o que viu; confira</span></h4>
@@ -341,6 +351,32 @@ function sisgepMarcarAnexo(lista, indice) {
 function sisgepAnexoPrincipal(lista, campo) {
   var bons = (lista || []).filter(function (a) { return a.disponivel !== false; });
   return bons.filter(function (a) { return /CONTRACHEQUE|DECLARA|CTPS/i.test(String(a[campo || "classificacao"] || "")); })[0] || bons[0] || null;
+}
+
+/* HISTÓRICO DO VOUCHER (31/10/2026): a linha do tempo — pedido, conferência,
+   emissão, fila, saída — com quem e quando. Registro permanente
+   (VoucherHistoricoEnvio.gs). Usado na ficha da Caixa/Voucher e na das
+   Solicitações. */
+function sisgepHistoricoVoucher(caixa, protocolo) {
+  if (!caixa) return;
+  if (!protocolo) { caixa.style.display = "none"; caixa.innerHTML = ""; return; }
+  caixa.style.display = "";
+  caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>Carregando…</div></div>";
+  var tk = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) { caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>" +
+      sisgepEsc_((r && r.mensagem) || "Não foi possível ler o histórico.") + "</div></div>"; return; }
+    var ev = r.eventos || [];
+    caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div>" + (ev.length ? "<div class='sg-hist-tl'>" +
+      ev.map(function (e) {
+        var cls = e.acao === "EMAIL_SAIU" || e.acao === "ENVIO_EMAIL" ? " ok" : e.acao === "EMAIL_ERRO" ? " erro" : "";
+        return "<div class='sg-hist-ev" + cls + "'><b>" + sisgepEsc_(e.quando) + " · " + sisgepEsc_(e.rotulo) + "</b>" +
+          "<small>" + sisgepEsc_([e.quem ? "por " + e.quem : "", e.detalhe].filter(String).join(" — ")) + "</small></div>";
+      }).join("") + "</div>" : "<div class='sg-hist-vazio'>Nada registrado ainda.</div>") +
+      "<div class='sg-hist-lock'>🔒 Registro permanente — ninguém edita nem apaga.</div></div>";
+  }).withFailureHandler(function (e) {
+    caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>" + sisgepEsc_(e && e.message) + "</div></div>";
+  }).voucherHistoricoProtocolo(protocolo, tk);
 }
 
 /* Baixa o pdf.js uma vez só; quem pedir enquanto baixa entra na fila. É
@@ -710,7 +746,7 @@ var VPE = (function () {
     el("vpeMResumo").textContent = "";
     var sk = "<div class='sg-carregando' style='width:45%'></div><div class='sg-carregando'></div><div class='sg-carregando' style='width:75%'></div>";
     el("vpeMMensagens").innerHTML = sk;
-    ["vpeMAnexos", "vpeMPrev", "vpeMPend", "vpeMCampos", "vpeMAcoes"].forEach(function (k) { el(k).innerHTML = ""; });
+    ["vpeMAnexos", "vpeMPrev", "vpeMPend", "vpeMCampos", "vpeMAcoes", "vpeMHist"].forEach(function (k) { el(k).innerHTML = ""; });
     if (el("vpeMEscola")) el("vpeMEscola").style.display = "none";
     el("vpeModal").classList.add("aberto");
     sisgepCarregarPdfJs_();
@@ -764,6 +800,7 @@ var VPE = (function () {
         "<small class='" + cls + "'>" + esc(origem ? "↳ " + origem : "") + "</small></div>";
     }).join("");
     ajustarBeneficiario();
+    sisgepHistoricoVoucher(el("vpeMHist"), it.protocolo);
     el("vpeMPct").innerHTML = d.percentual
       ? "Percentual: <b>" + esc(d.percentual.valor) + "%</b> <small>(" + esc(d.percentual.origem) + ")</small>"
       : "<small>Percentual calculado na criação, pela regra da convenção.</small>";
