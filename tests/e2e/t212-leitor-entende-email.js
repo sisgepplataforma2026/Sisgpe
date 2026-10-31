@@ -163,7 +163,7 @@ const thPend = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Certificado de bolsa 2027", "lucia@exemplo.com", "Bom dia, peço o certificado de bolsa para meu filho."));
 const thResp = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Voucher 2027/1", "marcos@exemplo.com", "Quero o voucher de Direito."));
-SIM.responder(thResp, "Marcelha <secretaria@sindeducacao.com>", "Segue o certificado.", [SIM.pdf("Voucher.pdf")]);
+SIM.responder(thResp, "Marcelha <secretaria@sindeducacao.com>", "Segue o certificado.", [SIM.pdf("31-10-2026 - Voucher Bolsa - VCH-9 - MARCOS.pdf")]);
 /* Caso do usuário: a Secretaria respondeu pedindo o contracheque que falta. */
 const thFalta = SIM.pasta("CERTIFICADO 2027-1",
   novaThread("Voucher 2027/1 Direito", "carla@exemplo.com", "Peço o voucher de bolsa."));
@@ -196,7 +196,8 @@ const fakeMsg = (de, nomes) => ({ getFrom: () => de, getAttachments: () => nomes
 const nossosL = ["secretaria@sindeducacao.com"];
 b.ok(L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["31-10-2026 - Voucher Bolsa - VCH-1 - ANA.pdf"])], nossosL),
   "o PDF do modelo do SISGEP conclui");
-b.ok(L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["CERTIFICADO DE BOLSA.pdf"])], nossosL), "o certificado feito à mão também");
+b.ok(!L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["CERTIFICADO DE BOLSA.pdf"])], nossosL),
+  "o certificado feito à mão (semestre antigo) NÃO conclui — 'nenhum voucher foi enviado para 2027-1'");
 b.ok(!L.leitorVoucherJaEnviado_([fakeMsg("secretaria@sindeducacao.com", ["Lista de documentos.pdf"])], nossosL),
   "outro PDF (lista de documentos) NÃO conclui");
 b.ok(!L.leitorVoucherJaEnviado_([fakeMsg("ana@exemplo.com", ["Voucher.pdf"])], nossosL), "PDF mandado pela própria pessoa não conta");

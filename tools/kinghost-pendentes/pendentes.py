@@ -133,7 +133,12 @@ def texto_legivel(trecho):
 # "<data> - Voucher Bolsa - <protocolo> - <nome>.pdf"; os feitos à mão antes
 # do SISGEP costumam ter "voucher", "certificado" ou "bolsa" no nome. PDF com
 # outro nome (lista de documentos, comprovante…) NÃO conclui o pedido.
-NOME_VOUCHER = re.compile(r"voucher|certificad|bolsa", re.I)
+# 31/10/2026, depois do log real: com "certificado/bolsa" no nome e com o
+# texto ("segue o voucher"), 6 pedidos da 2027-1 saíam como atendidos — e o
+# usuário confirmou: "nenhum voucher foi enviado para 2027-1. Nenhum". Os
+# vouchers de semestres passados (feitos à mão) não dizem a que semestre
+# são; o do SISGEP é o único que conclui. Só o MODELO DO SISGEP conta.
+NOME_VOUCHER = re.compile(r"voucher\s*bolsa", re.I)
 
 
 def nomes_pdf(estrutura):
@@ -477,13 +482,13 @@ def coletar(imap):
     por_texto = 0
     for p in enviados:
         cabs = mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True, desde=ENVIADOS_DESDE, com_uid=True)
-        txt = dict(mensagens_da_pasta(imap, p["bruto"], item=TEXTO_ITEM, com_uid=True, desde=ENVIADOS_DESDE))
+        # O texto ("segue o voucher") NÃO conclui mais (31/10/2026): só o PDF do
+        # modelo do SISGEP. Nem se baixa o texto dos enviados.
         for uid, raw, pdf in cabs:
-            pelo_texto = bool(TEXTO_VOUCHER_ENVIADO.search(texto_legivel(txt.get(uid, b""))))
-            if pelo_texto and not pdf:
+            if pdf:
                 por_texto += 1
-            env.append((raw, pdf or pelo_texto))
-    print("  enviados: %d mensagem(ns) · %d dizem no texto que mandaram o voucher (sem PDF reconhecido)" % (len(env), por_texto))
+            env.append((raw, pdf))
+    print("  enviados: %d mensagem(ns) · %d com o PDF do modelo do SISGEP (Voucher Bolsa)" % (len(env), por_texto))
     return pedidos, bruto_de, env
 
 

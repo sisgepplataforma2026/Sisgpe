@@ -23,7 +23,7 @@ def ok(cond, desc):
 def eml(de, para, assunto, mid, corpo="texto", reply_to_id=None, data="Mon, 05 Oct 2026 10:00:00 -0300", pdf=False):
     cab = "From: %s\r\nTo: %s\r\nSubject: %s\r\nMessage-ID: %s\r\nDate: %s\r\n" % (de, para, assunto, mid, data)
     if pdf:
-        corpo += "\r\n--x\r\nContent-Type: application/pdf; name=Voucher.pdf\r\n\r\nJVBERi0=\r\n--x--"
+        corpo += "\r\n--x\r\nContent-Type: application/pdf; name=\"31-10-2026 - Voucher Bolsa - VCH-1 - X.pdf\"\r\n\r\nJVBERi0=\r\n--x--"
     if reply_to_id:
         cab += "In-Reply-To: %s\r\nReferences: %s\r\n" % (reply_to_id, reply_to_id)
     return (cab + "\r\n" + corpo).encode()
@@ -57,7 +57,7 @@ class ImapFalso:
             cab = b"%d (UID %d BODY[] {n}" % (i + 1, i + 1)
             resto = b")"
             if "BODYSTRUCTURE" in str(args[1]):
-                est = (b'(("text" "plain" NIL NIL NIL "7bit" 10 1)("application" "pdf" ("name" "Voucher.pdf") NIL NIL "base64" 900) "mixed")'
+                est = (b'(("text" "plain" NIL NIL NIL "7bit" 10 1)("application" "pdf" ("name" "31-10-2026 - Voucher Bolsa - VCH-1 - X.pdf") NIL NIL "base64" 900) "mixed")'
                        if b"application/pdf" in lista[i] else b'("text" "plain" NIL NIL NIL "7bit" 10 1)')
                 if i % 2:   # metade das vezes o servidor manda a estrutura DEPOIS do cabeçalho
                     cab = b"%d (UID %d BODY[HEADER.FIELDS] {n}" % (i + 1, i + 1)
@@ -146,11 +146,12 @@ ok(cont["respondidos"] == 3, "concluídos (voucher em PDF): Marcos (In-Reply-To)
 ok(cont["sem_voucher"] == 2, "Carla (pedimos o contracheque) e Davi (só a resposta-padrão com a lista de documentos): continuam PENDENTES")
 ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "31-10-2026 - Voucher Bolsa - VCH-1 - ANA.pdf"))') and not P.tem_pdf_anexo(b'("text" "plain")'),
    "sabe dizer se a resposta levou PDF")
-ok(P.tem_pdf_anexo(b'("application" "octet-stream" ("name" "Voucher 2027.pdf"))'), "PDF mandado como 'octet-stream' também conta")
+ok(P.tem_pdf_anexo(b'("application" "octet-stream" ("name" "Voucher Bolsa 2027.pdf"))'), "PDF mandado como 'octet-stream' também conta")
 ok(not P.tem_pdf_anexo(b'("image" "png" ("name" "assinatura.png"))'), "imagem da assinatura não conta como voucher")
 ok(not P.tem_pdf_anexo(b'("application" "pdf" ("name" "Lista de documentos.pdf"))'),
    "PDF com outro nome (lista de documentos) NÃO conta como voucher — 31/10/2026")
-ok(P.tem_pdf_anexo(b'("application" "pdf" ("name" "CERTIFICADO DE BOLSA - Maria.pdf"))'), "o certificado feito à mão também conta")
+ok(not P.tem_pdf_anexo(b'("application" "pdf" ("name" "CERTIFICADO DE BOLSA - Maria.pdf"))'),
+   "o certificado feito à mão (semestre antigo) NÃO conclui — 31/10/2026: 'nenhum voucher foi enviado para 2027-1'")
 ok(P.nomes_pdf(b'("application" "pdf" ("name" "a.pdf"))("application" "pdf" ("filename" "b.pdf"))') == ["a.pdf", "b.pdf"],
    "lê os nomes da ficha, sem baixar o arquivo")
 ok(cont["nossos"] == 1, "a mensagem da própria Secretaria não conta como pedido")
@@ -202,9 +203,9 @@ ok(all(m is True for m in caixa.modos), "tudo em modo SÓ LEITURA")
 ok(not any(c in ("STORE", "COPY", "MOVE", "EXPUNGE") for c, a in caixa.comandos), "nenhum comando que altere a caixa")
 pend3, cont3 = P.separar_pendentes(ped, env2, {"secretaria@sindeducacao.com"})
 quem3 = sorted(P.endereco(P.email.message_from_bytes(p["raw"]).get("From")) for p in pend3)
-ok("jo@exemplo.com" not in quem3, "Jo: a Secretaria escreveu 'segue em anexo o certificado' — concluído pelo texto")
-ok(quem3 == ["hugo@exemplo.com", "lucia@exemplo.com"], "pendentes: Hugo (entrada) e Lúcia; Gil (2026-1) fica de fora — " + ", ".join(quem3))
-ok("1 dizem no texto que mandaram o voucher" in log, "o log conta quantos foram reconhecidos pelo texto")
+ok("jo@exemplo.com" in quem3, "Jo: a Secretaria só ESCREVEU 'segue em anexo o certificado', sem o PDF do modelo — continua pendente (31/10/2026)")
+ok(quem3 == ["hugo@exemplo.com", "jo@exemplo.com", "lucia@exemplo.com"], "pendentes: Hugo e Jo (entrada) e Lúcia; Gil (2026-1) fica de fora — " + ", ".join(quem3))
+ok("com o PDF do modelo do SISGEP" in log, "o log conta os enviados com o PDF do modelo")
 ok(P.nome_arquivo({"pasta": P.ROTULO_ENTRADA, "chave": "z"}) == "KINGHOST-ENTRADA__z.eml", "o da entrada vai com a etiqueta KINGHOST ENTRADA")
 ok(not P.TEXTO_VOUCHER_ENVIADO.search("Encaminhamos abaixo as informações necessárias para o processo de solicitação do voucher"),
    "a resposta-padrão (que fala em voucher) NÃO conta como voucher enviado")
