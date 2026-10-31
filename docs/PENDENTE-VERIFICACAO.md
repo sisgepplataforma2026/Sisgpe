@@ -6561,3 +6561,16 @@ Emulador: t220 (31). **Não testado no navegador.**
 | Abrir um presencial | abre a solicitação (modal de Solicitações) |
 | Avisos "Lida:" | não aparecem mais |
 | Usuário só com Comunicação | abre a Caixa, sem nenhum voucher |
+
+## 🔴 Caixa por usuário, categorias novas e histórico de envio do voucher — HML 31/10/2026 (run #209)
+
+Emulador: t215, t216, t220, t221, t222, t223 (suíte 220 verde). **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Entrar como Wanderson › Comunicação › Caixa de E-mails | título "— financeiro@sindeducacao.com", só e-mails da financeiro@, sem voucher |
+| Entrar como Marcelha › Caixa de E-mails | título "— secretaria@sindeducacao.com", tudo da secretaria@ (inclusive cópias do Financeiro) e os vouchers |
+| Cards | 10 categorias numa linha; arrastar um e-mail para outro card muda a categoria |
+| Abrir um voucher presencial pela Caixa | abre a ficha da solicitação (conserto de 31/10) |
+| Emitir e enviar um voucher de teste | ficha mostra 🕑 Histórico: recebido → emitido → na fila → saiu, com quem e quando |
+| Benefícios › Voucher › Solicitações | coluna "Enviado em / por", filtros de envio, Exportar com quem enviou |
