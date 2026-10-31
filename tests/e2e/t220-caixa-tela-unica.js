@@ -26,7 +26,10 @@ const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
 const hash = s => g.gerarHashSenha_(s);
 ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["comu", hash("Senha@2026"), "Só Comunicação", "comu@sindeducacao.com",
   "USUARIO", "ATIVO", "NAO", "comunicacao"]);
-const TOKEN = b.logar(g, "wanderson"), T_COMU = b.logar(g, "comu");
+/* A Caixa da secretaria@ é da Marcelha (31/10/2026: cada um com a sua). */
+ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["marcelha", hash("Senha@2026"), "Marcelha Aline", "secretaria@sindeducacao.com",
+  "ADMINISTRADOR", "ATIVO", "NAO", ""]);
+const TOKEN = b.logar(g, "marcelha"), T_COMU = b.logar(g, "comu");
 g.setupVoucherModuleFase1();
 g.PropertiesService.getScriptProperties().setProperty("ANTHROPIC_API_KEY", "chave-de-teste");
 
@@ -120,7 +123,6 @@ win.cert_abrirModal = s => { solAberta = s; };
   b.passo("4. A lista mostra vouchers e e-mails juntos; o card de voucher filtra");
   win.cxsIniciar();
   await t.assentar(150);
-  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
   const lista = () => t.texto("#cxsLista");
   b.ok(/ANA MARIA/i.test(lista()) && /CARLOS PRESENCIAL/.test(lista()) && /desfiliar/.test(lista()), "tudo na mesma lista", lista().slice(0, 600));
   b.ok(/Pronto/.test(lista()) && /Falta documento/.test(lista()) && /Presencial/.test(lista()), "com a situação de cada voucher");

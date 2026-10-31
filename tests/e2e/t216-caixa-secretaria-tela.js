@@ -54,16 +54,11 @@ function montar(token) {
   await t.assentar(150);
   b.passo("2. Cards por tipo e a lista");
   b.ok(doc.querySelectorAll("#cxsTipos .cxs-tipo").length >= 7, "um card por tipo (+ o atalho do Voucher)");
-  /* 30/10/2026, o usuário: "cada um corresponde a seu departamento —
-     Secretaria Marcelha, Financeiro Wanderson". */
-  b.ok(/Precisa de mim — Secretaria \(1\)/.test(t.texto("#cxsCaixas")), "a Marcelha abre em 'Precisa de mim — Secretaria'",
-    t.texto("#cxsCaixas"));
-  b.ok(itens().length === 1 && /desfiliar/.test(itens()[0]), "só o que é da Secretaria (a desfiliação)", itens().join(" | "));
-  t.clicar("[data-cxs='filtrarMeus'][data-arg='']");
-  await t.assentar(10);
-  b.igual(itens().length, 3, "em 'Tudo', os três e-mails");
-  b.ok((t.texto("#cxsLista").match(/do Financeiro — para ciência/g) || []).length === 2,
-    "guia e relação aparecem como 'do Financeiro — para ciência'");
+  /* 31/10/2026, o usuário: "cada um com o seu" — a Marcelha vê a caixa
+     secretaria@ inteira (inclusive o que é do Financeiro, em cópia). */
+  b.ok(/Caixa de E-mails — secretaria@sindeducacao\.com/.test(t.texto("#cxsTitulo")), "a Marcelha vê a caixa dela",
+    t.texto("#cxsTitulo"));
+  b.igual(itens().length, 3, "os três e-mails da secretaria@ (a guia também, que ela recebe)");
   t.clicar("#cxsTipos [data-arg='FINANCEIRO']");
   await t.assentar(10);
   b.ok(itens().length === 2 && itens().some(x => /guia/i.test(x)) && itens().some(x => /Relação/.test(x)),

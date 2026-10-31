@@ -101,14 +101,17 @@ b.passo("7. Marcela assina como Secretaria; Wanderson como Financeiro; nunca dua
 const dSec = g.caixaSecretariaDetalhe(thGuia.id, T_SEC);
 b.ok(/Marcelha Aline/.test(dSec.sugestao) && /Secretaria/.test(dSec.sugestao) && !/Wanderson/.test(dSec.sugestao),
   "logada a Marcela: assinatura da Secretaria");
+/* 31/10/2026: cada um com a sua caixa — o Wanderson não abre a da
+   secretaria@; a assinatura dele é testada na financeiro@ (t221). */
 const dAdm = g.caixaSecretariaDetalhe(thGuia.id, T_ADM);
-b.ok(/Wanderson N Castelo/.test(dAdm.sugestao) && /Financeiro/.test(dAdm.sugestao) && !/Marcelha/.test(dAdm.sugestao),
-  "logado o Wanderson: assinatura do Financeiro");
+b.ok(!dAdm.ok && /cada um vê só a sua/.test(dAdm.mensagem), "o Wanderson não abre a caixa da secretaria@", dAdm.mensagem);
+b.ok(!g.caixaSecretariaResponder(thGuia.id, "Tentativa de responder pela caixa da secretaria.", T_ADM).ok,
+  "nem responde por ela");
 const fila0 = g.vpeLinhas_(SIM.aba("Saida")).length;
-g.caixaSecretariaResponder(thGuia.id, dAdm.sugestao.replace("Tudo bem?", "Tudo bem? Segue a orientação sobre a guia."), T_ADM);
+g.caixaSecretariaResponder(thGuia.id, dSec.sugestao.replace("Tudo bem?", "Tudo bem? Segue a orientação sobre a guia."), T_SEC);
 const html = g.vpeLinhas_(SIM.aba("Saida")).slice(fila0).pop().HTML;
-b.igual((html.match(/Wanderson N Castelo/g) || []).length, 1, "o e-mail sai com UMA assinatura");
-b.ok(!/Marcelha/.test(html), "e não leva a da Marcela junto");
+b.igual((html.match(/Marcelha Aline/g) || []).length, 1, "o e-mail sai com UMA assinatura");
+b.ok(!/Wanderson/.test(html), "e não leva a do Wanderson junto");
 g.caixaSecretariaResponder(thEsc.id, "Olá! Recebemos a planilha, obrigado.", T_SEC);
 const html2 = g.vpeLinhas_(SIM.aba("Saida")).pop().HTML;
 b.ok(/Marcelha Aline/.test(html2), "texto sem assinatura: o rodapé de quem está logado entra sozinho");

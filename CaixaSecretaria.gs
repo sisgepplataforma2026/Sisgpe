@@ -29,42 +29,49 @@ var CXS_COLUNAS = ["THREAD_ID", "ESTADO", "ULTIMA_VISTA", "TIPO_CORRIGIDO", "NOT
                    "CORRECOES_JSON"];
 /* AS CATEGORIAS — tiradas dos e-mails reais (levantamento de 60 dias da
    secretaria@) e aprovadas pelo usuário em 30/10/2026. A ordem é a dos
-   cards. Cada categoria tem DONO (usuário, 30/10/2026: "o dela é a
-   secretaria e o meu é o financeiro" — boleto e guia que chegam à
-   secretaria@ em cópia são para ciência dela; o Jurídico é dos dois).
-   OUTRO: dono é a caixa que recebeu. As chaves antigas seguem valendo
-   (CXS_TIPO_ALIAS). */
+   cards. Valem para as duas caixas; cada pessoa vê a SUA caixa
+   (cxsMeuPapel_). As chaves antigas seguem valendo (CXS_TIPO_ALIAS). */
 var CXS_TIPOS = {
-  VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios", dono: "SECRETARIA" },
-  FILIACAO: { rotulo: "Filiação e associados", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao", dono: "SECRETARIA" },
-  FINANCEIRO: { rotulo: "Escolas: contribuições — taxa negocial, mensalidade, guia, desconto em folha", curto: "Contribuições", icone: "🏫", modulo: "financeiro", dono: "FINANCEIRO" },
-  NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro", dono: "FINANCEIRO" },
-  CONTAS: { rotulo: "Contas do sindicato — boletos e faturas a pagar", curto: "Contas", icone: "💳", modulo: "financeiro", dono: "FINANCEIRO" },
-  JURIDICO: { rotulo: "Jurídico e fiscalização", curto: "Jurídico", icone: "⚖", modulo: "juridico", dono: "AMBOS" },
-  NEGOCIACAO: { rotulo: "Negociação e reuniões", curto: "Negociação", icone: "🤝", modulo: "negociacao", dono: "SECRETARIA" },
-  ENTIDADES: { rotulo: "Entidades e órgãos", curto: "Entidades", icone: "🏛", modulo: "", dono: "SECRETARIA" },
-  EVENTO: { rotulo: "Eventos do sindicato", curto: "Eventos", icone: "📅", modulo: "eventos", dono: "SECRETARIA" },
-  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "", dono: "" }
+  VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios" },
+  FILIACAO: { rotulo: "Filiação e associados", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao" },
+  FINANCEIRO: { rotulo: "Escolas: contribuições — taxa negocial, mensalidade, guia, desconto em folha", curto: "Contribuições", icone: "🏫", modulo: "financeiro" },
+  NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
+  CONTAS: { rotulo: "Contas do sindicato — boletos e faturas a pagar", curto: "Contas", icone: "💳", modulo: "financeiro" },
+  JURIDICO: { rotulo: "Jurídico e fiscalização", curto: "Jurídico", icone: "⚖", modulo: "juridico" },
+  NEGOCIACAO: { rotulo: "Negociação e reuniões", curto: "Negociação", icone: "🤝", modulo: "negociacao" },
+  ENTIDADES: { rotulo: "Entidades e órgãos", curto: "Entidades", icone: "🏛", modulo: "" },
+  EVENTO: { rotulo: "Eventos do sindicato", curto: "Eventos", icone: "📅", modulo: "eventos" },
+  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "" }
 };
 /* Tipos antigos ou de fora da Entrada, para o nome novo. */
 var CXS_TIPO_ALIAS = { CONVENCAO: "NEGOCIACAO", OFICIO_ESCOLA: "FINANCEIRO" };
 var CXS_FORA_DA_ENTRADA = ["PROPAGANDA", "NOTIFICACAO"];
-/* De quem é: o dono da categoria; em Outros, a caixa que recebeu. */
-/* Quem está logado trabalha na Secretaria ou no Financeiro? Pelo e-mail
-   do usuário; sem ser nenhum dos dois, pelo módulo. */
-/* Usuário, 30/10/2026: "Secretaria Marcelha · Financeiro Wanderson".
-   Pelo e-mail do login; quem entra com outro e-mail é achado pela linha
-   de assinatura dele (Wanderson → financeiro@, Marcelha → secretaria@ —
-   vpeDadosAssinatura_ procura pelo primeiro nome). */
+/* CADA UM COM A SUA CAIXA (usuário, 31/10/2026): "Quem acessar pelo seu
+   usuário vai ver somente uma caixa — a Marcelha vê a secretaria e o
+   Wanderson vê o financeiro." A divisão é por CAIXA de e-mail, não por
+   assunto: a Marcelha vê tudo o que chega à secretaria@ (inclusive o que é
+   do Financeiro, que ela recebe em cópia), categorizado; o Wanderson, tudo
+   o que chega à financeiro@. Quem é quem: pelo e-mail do login ou pela
+   linha de assinatura (vpeDadosAssinatura_ acha pelo primeiro nome). Quem
+   não é nenhum dos dois (outro administrador) vê as duas. A trava é aqui,
+   no servidor. */
 function cxsMeuPapel_(sessao) {
   var em = String((sessao && sessao.email) || "").toLowerCase();
   try { em = String(vpeDadosAssinatura_(sessao).email || em).toLowerCase() || em; } catch (e) {}
   if (em === "financeiro@sindeducacao.com") return "FINANCEIRO";
-  return "SECRETARIA";
+  if (em === "secretaria@sindeducacao.com") return "SECRETARIA";
+  return "";
 }
-function cxsDono_(tipo, caixa) {
-  var t = CXS_TIPOS[tipo];
-  return (t && t.dono) || String(caixa || "SECRETARIA");
+function cxsPodeCaixa_(sessao, caixa) {
+  var papel = cxsMeuPapel_(sessao);
+  return !papel || papel === caixa;
+}
+function cxsExigirCaixaDe_(sessao, id) {
+  var caixa = cxsEhFinanceiro_(id) ? "FINANCEIRO" : "SECRETARIA";
+  if (!cxsPodeCaixa_(sessao, caixa)) {
+    throw new Error("Esta conversa é da caixa " + (caixa === "FINANCEIRO" ? "financeiro@" : "secretaria@") +
+      "sindeducacao.com — cada um vê só a sua.");
+  }
 }
 function cxsTipo_(t) {
   t = String(t || "").toUpperCase();
@@ -143,8 +150,9 @@ function cxsLinhaPonte_(id) {
    Nada é mudado no Gmail (nem lido, nem arquivado): situação, tipo e nota
    ficam no SISGEP, como na Secretaria. */
 var CXS_PREFIXO_FIN = "F:";
-var CXS_FIN_BUSCA = "in:inbox newer_than:30d -category:promotions -category:social -category:forums";
-var CXS_FIN_MAX = 40;
+/* 60 dias (31/10/2026: "pode categorizar ambas as caixas de entrada"). */
+var CXS_FIN_BUSCA = "in:inbox newer_than:60d -category:promotions -category:social -category:forums";
+var CXS_FIN_MAX = 60;
 var CXS_NOSSOS = ["financeiro@sindeducacao.com", "secretaria@sindeducacao.com"];
 var CXS_AUTOMATICO = /^(no-?reply|nao-?responda|naoresponda|mailer|bounce|news|newsletter|marketing|notifica)/i;
 
@@ -369,7 +377,6 @@ function cxsResumo_(p, est, envios) {
     recebidoTs: ultima.data ? new Date(ultima.data).getTime() : 0,
     recebidoEm: ultima.data ? Utilities.formatDate(new Date(ultima.data), "America/Sao_Paulo", "dd/MM HH:mm") : "",
     estado: sit.estado, mensagemNova: sit.mensagemNova,
-    dono: cxsDono_(tipo, p.CAIXA),
     ultimaResposta: meus.length ? vpeRotuloEnvio_(meus[meus.length - 1].STATUS) : "",
     decididoPor: est ? String(est.DECIDIDO_POR || "") : ""
   };
@@ -427,7 +434,6 @@ function cxsVouchers_(sessao) {
         trecho: falta.length ? "Falta: " + falta.join("; ") : (v.beneficiario ? "Para " + v.beneficiario : ""),
         anexos: vpeJson_(r.ANEXOS_JSON, []).length, mensagens: 0,
         recebidoTs: v.recebidoTs, recebidoEm: v.recebidoEm,
-        dono: "SECRETARIA",
         estado: CXS_VPE_ABERTOS.indexOf(e) > -1 ? CXS_ESTADOS.NOVO : e === VPE_ESTADOS.CONCLUIDO ? CXS_ESTADOS.RESOLVIDO : CXS_ESTADOS.RESPONDIDO,
         selo: selo[0], seloCls: selo[1], periodo: v.periodo, escola: v.escola, mensagemNova: false, ultimaResposta: ""
       });
@@ -445,7 +451,7 @@ function cxsVouchers_(sessao) {
         trecho: sol.nomeBeneficiario && String(sol.tipoBeneficiario || "").toUpperCase() !== "TITULAR"
           ? "Para " + sol.tipoBeneficiario + " · " + sol.nomeBeneficiario : "",
         anexos: 0, mensagens: 0, recebidoTs: Number(sol._ts || 0), recebidoEm: String(sol.data || ""),
-        dono: "SECRETARIA", estado: CXS_ESTADOS.NOVO, selo: CXS_SELO_SOL[st] || st, seloCls: st === "APROVADO" ? "pronto" : "presencial",
+        estado: CXS_ESTADOS.NOVO, selo: CXS_SELO_SOL[st] || st, seloCls: st === "APROVADO" ? "pronto" : "presencial",
         periodo: String(sol.periodoReferencia || ""), escola: String(sol.escola || ""), mensagemNova: false, ultimaResposta: "",
         sol: sol
       });
@@ -461,7 +467,8 @@ function caixaSecretariaPainel(tokenSessao) {
     var sessao = cxsExigir_(tokenSessao);
     var est = cxsEstados_();
     var envios = vpeEnviosPorConversa_();
-    var itens = cxsLinhasPonte_().filter(function (p) {
+    var veSecretaria = cxsPodeCaixa_(sessao, "SECRETARIA");
+    var itens = (veSecretaria ? cxsLinhasPonte_() : []).filter(function (p) {
       var m = vpeJson_(p.MENSAGENS_JSON, [])[0] || {};
       return !CXS_CONFIRMACAO_LEITURA.test(String(m.assunto || ""));
     }).map(function (p) {
@@ -469,7 +476,8 @@ function caixaSecretariaPainel(tokenSessao) {
       r.fonte = "EMAIL";
       return r;
     });
-    var v = cxsVouchers_(sessao);
+    var v = veSecretaria ? cxsVouchers_(sessao)
+      : { itens: [], cont: { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, EMITIDO: 0, PRESENCIAL: 0 }, pode: false };
     v.itens.forEach(function (i) { i.caixa = "SECRETARIA"; });
     itens = itens.concat(v.itens);
     /* A financeiro@ vem numa chamada separada (caixaFinanceiroItens): a
@@ -486,7 +494,7 @@ function caixaSecretariaPainel(tokenSessao) {
     var voucher = v.cont.PRONTO + v.cont.FALTA_DOC + v.cont.NAO_ENCONTRADO + v.cont.PRECISA_VOCE + v.cont.PRESENCIAL;
     return { ok: true, itens: itens, porTipo: porTipo, porEstado: porEstado, voucherAConferir: voucher,
              voucher: { pode: v.pode, cont: v.cont, erro: v.erro || "" }, porCaixa: porCaixa, erroFinanceiro: erroFin,
-             meuPapel: cxsMeuPapel_(sessao),
+             meuPapel: cxsMeuPapel_(sessao), veSecretaria: veSecretaria, veFinanceiro: cxsPodeCaixa_(sessao, "FINANCEIRO"),
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
                         icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
@@ -514,7 +522,8 @@ function cxsMemoriaResposta_(id, texto, meta, sessao) {
 /** Os e-mails da financeiro@, à parte (o Gmail é a parte lenta). */
 function caixaFinanceiroItens(tokenSessao) {
   try {
-    cxsExigir_(tokenSessao);
+    var sessao = cxsExigir_(tokenSessao);
+    if (!cxsPodeCaixa_(sessao, "FINANCEIRO")) return { ok: true, itens: [] };
     var est = cxsEstados_();
     var itens = cxsLinhasFinanceiro_().map(function (p) {
       var r = cxsResumo_(p, est[String(p.THREAD_ID)], {});
@@ -530,6 +539,7 @@ function caixaFinanceiroItens(tokenSessao) {
 function caixaSecretariaDetalhe(id, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
+    cxsExigirCaixaDe_(sessao, id);
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var est = cxsEstados_()[String(id)];
@@ -564,7 +574,7 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
 
 function caixaSecretariaAnexo(id, indice, tokenSessao) {
   try {
-    cxsExigir_(tokenSessao);
+    cxsExigirCaixaDe_(cxsExigir_(tokenSessao), id);
     var p = cxsLinhaPonte_(id);
     var a = p ? vpeJson_(p.ANEXOS_JSON, [])[Number(indice)] : null;
     if (a && a.gmail) {
@@ -593,6 +603,7 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
   var tokenSessao = (a4 === undefined) ? a3 : a4;
   try {
     var sessao = cxsExigir_(tokenSessao);
+    cxsExigirCaixaDe_(sessao, id);
     texto = String(texto || "").trim();
     if (texto.length < 10) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
     cxsMemoriaResposta_(id, texto, meta, sessao);
@@ -634,6 +645,7 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
 function caixaSecretariaMarcar(id, estado, nota, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
+    cxsExigirCaixaDe_(sessao, id);
     estado = String(estado || "").toUpperCase();
     if (!CXS_ESTADOS[estado]) return { ok: false, mensagem: "Situação inválida." };
     var p = cxsLinhaPonte_(id);
@@ -655,6 +667,7 @@ function caixaSecretariaMarcar(id, estado, nota, tokenSessao) {
 function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
+    cxsExigirCaixaDe_(sessao, id);
     tipo = String(tipo || "").toUpperCase();
     if (!CXS_TIPOS[tipo]) return { ok: false, mensagem: "Tipo inválido." };
     var p = cxsLinhaPonte_(id);

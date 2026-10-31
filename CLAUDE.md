@@ -244,6 +244,13 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   administrador, o usuário secretaria@ e quem tem o módulo Comunicação,
   Financeiro ou Caixa da Secretaria. Quem só tem outros módulos não abre.
   A condição dele é estar CATEGORIZADO — não tirar a categorização.
+- **ATUALIZADO EM 31/10/2026 — CADA UM COM A SUA CAIXA:** *"Quem acessar
+  pelo seu usuário vai ver somente uma caixa — a Marcelha vê a secretaria e
+  o Wanderson vê o financeiro."* A divisão é por CAIXA de e-mail, não por
+  assunto: a Marcelha vê tudo o que chega à secretaria@ (inclusive o que é
+  do Financeiro, em cópia), categorizado; o Wanderson, tudo o que chega à
+  financeiro@. Trava no servidor (cxsMeuPapel_/cxsExigirCaixaDe_). Quem não
+  é nenhum dos dois (outro administrador) vê as duas.
 
 ## 📬 CAIXA DE E-MAILS ÚNICA — DECISÕES DE 30/10/2026
 

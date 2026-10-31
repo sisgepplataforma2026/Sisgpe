@@ -115,6 +115,14 @@ b.passo("6. A trava vale para a financeiro@ também");
 b.ok(!g.caixaSecretariaDetalhe("F:t1", T_RH).ok, "quem só tem RH não abre");
 b.ok(!g.caixaSecretariaResponder("F:t1", "tentativa de resposta indevida", T_RH).ok, "nem responde");
 
+b.passo("6b. Cada um com a sua caixa: a Secretaria não abre a da financeiro@");
+ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["marcelha", g.gerarHashSenha_("Senha@2026"), "Marcelha Aline",
+  "secretaria@sindeducacao.com", "ADMINISTRADOR", "ATIVO", "NAO", ""]);
+const T_SEC = b.logar(g, "marcelha");
+b.ok(!g.caixaSecretariaDetalhe("F:t1", T_SEC).ok, "não abre a conversa da financeiro@");
+b.igual((g.caixaFinanceiroItens(T_SEC).itens || []).length, 0, "e a lista da financeiro@ vem vazia para ela");
+b.ok(!g.caixaSecretariaResponder("F:t1", "tentativa de responder pela outra caixa", T_SEC).ok, "nem responde por ela");
+
 b.passo("7. O Gmail não é mexido");
 b.igual(proibidas, [], "nada lido, arquivado, estrelado ou apagado pelo SISGEP");
 
@@ -156,28 +164,16 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
 win.spIr = m => { win.__foi = m; };
 (async function () {
   b.fluxo("CAIXA DE E-MAILS · a tela");
-  b.passo("8. Filtro por caixa");
+  b.passo("8. Cada um com a sua caixa (31/10/2026): o Wanderson vê só a financeiro@");
   win.cxsIniciar(); await t.assentar(150);
-  b.passo("8b. O Wanderson abre em 'Precisa de mim — Financeiro'");
-  b.ok(/Precisa de mim — Financeiro/.test(t.texto("#cxsCaixas")), "o departamento dele", t.texto("#cxsCaixas"));
   const nomes = () => Array.from(doc.querySelectorAll("#cxsLista .cxs-item")).map(x => x.textContent);
-  b.ok(nomes().length && nomes().every(x => !/para ciência/.test(x)), "só o que é dele (nada 'para ciência')");
-  b.igual(nomes().filter(x => /Comprovante de desconto em folha – out\/2026/.test(x)).length, 1,
-    "o comprovante que chegou nas duas caixas aparece uma vez só");
-  b.ok(nomes().some(x => /Comprovante de desconto/.test(x) && /financeiro@/.test(x)), "e é o da financeiro@");
-  t.clicar("[data-cxs='filtrarMeus'][data-arg='']"); await t.assentar(30);   // "Tudo" (não só o meu departamento)
-  b.ok(/Todas as caixas/.test(t.texto("#cxsCaixas")) && /secretaria@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")) &&
-    /financeiro@sindeducacao\.com \(\d+\)/.test(t.texto("#cxsCaixas")), "os botões das caixas, com o endereço de cada uma");
-  b.ok(/💰 financeiro@/.test(t.texto("#cxsLista")), "cada e-mail mostra por qual caixa chegou");
-  t.clicar("[data-cxs='filtrarCaixa'][data-arg='FINANCEIRO']"); await t.assentar(30);
-  const itens = () => Array.from(doc.querySelectorAll("#cxsLista .cxs-item")).map(x => x.textContent);
-  b.ok(itens().length && itens().every(x => /💰 financeiro@/.test(x)), "Financeiro: só os da financeiro@", itens().length);
-  t.clicar("[data-cxs='filtrarCaixa'][data-arg='SECRETARIA']"); await t.assentar(30);
-  b.ok(itens().every(x => !/💰 financeiro@/.test(x)), "Secretaria: nenhum da financeiro@");
-  t.clicar("[data-cxs='filtrarCaixa'][data-arg='']"); await t.assentar(30);
+  b.ok(/Caixa de E-mails — financeiro@sindeducacao\.com/.test(t.texto("#cxsTitulo")), "o título diz qual caixa", t.texto("#cxsTitulo"));
+  b.ok(nomes().length && nomes().every(x => /💰 financeiro@/.test(x)), "só e-mails da financeiro@", nomes().length);
+  b.ok(!nomes().some(x => /secretaria@/.test(x)), "nada da secretaria@ (nem a cópia do comprovante)");
+  b.ok(!/Todas as caixas/.test(t.texto("#cxsCaixas")), "sem botão para trocar de caixa");
+  b.ok(!doc.querySelector("#cxsTipos .cxs-tipo.voucher"), "voucher é da Secretaria: não aparece para ele");
 
   b.passo("9. Abrir uma conversa da financeiro@ diz por onde a resposta sai");
-  t.clicar("[data-cxs='filtrarCaixa'][data-arg='FINANCEIRO']"); await t.assentar(30);
   t.clicar("[data-cxs='abrir'][data-arg='F:t1']"); await t.assentar(150);
   b.ok(el("cxsModal").classList.contains("aberto"), "a conversa abriu");
   b.ok(/pela financeiro@/.test(t.texto("#cxsMRespostaRot")), "a resposta sai pela financeiro@");
