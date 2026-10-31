@@ -4,7 +4,25 @@ Projeto Google Apps Script (single global scope — arquivos `.gs`/`.html` sem i
 
 **Prompt mestre de arquitetura, auditoria e testes: `docs/PROMPT-MESTRE.md`.** É documento normativo, definido pelo usuário e mandado seguir à risca — ler antes de auditar, analisar ou reorganizar qualquer módulo. Em conflito, as regras de segurança abaixo prevalecem sobre ele — ver a nota de estado de operação logo abaixo.
 
-**Acesso que eu tenho:** só o repositório GitHub. Não tenho o projeto Apps Script, a planilha de produção nem o Drive de trabalho. O conector do Google Drive lê metadado (dá para listar o projeto `SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse MIME type não é suportado. Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
+**Acesso que eu tenho:** o repositório GitHub **e o deploy por GitHub Actions**
+(`deploy-homologacao.yml` e `deploy-producao.yml`). Publicar é comigo — não
+mandar arquivo para o usuário colar à mão. Não tenho o editor do Apps Script
+nem o Drive de trabalho.
+
+O conector do Google Drive lê metadado (dá para listar o projeto
+`SISGEP-OFICIOS`), mas **não lê o código-fonte** de projeto Apps Script — esse
+MIME type não é suportado.
+
+**E NÃO SERVE PARA LER A PLANILHA DE PRODUÇÃO — testado em 11/09/2026.** A
+`SISGEP - ATIVA` (id `1QPpsx19...040E`) tem 2,6 MB. O `read_file_content`
+devolve ~1,76 milhão de caracteres e **corta em silêncio, sem dizer onde**: no
+teste vieram as abas de Associados e Escolas, e **não vieram** nem
+`FILA_ENVIO_OFICIOS` nem `LOG_SISTEMA` — os nomes das abas sequer aparecem no
+texto. Eu quase concluí "cinco ofícios nunca foram reenviados" a partir de
+meia planilha. **Para esta planilha, pedir ao usuário um Ctrl+F na aba certa é
+mais rápido e infinitamente mais confiável do que baixar.**
+
+Portanto: toda afirmação sobre o que está no ar depende de o usuário confirmar.
 
 ## ⚠️ ESTADO REAL DE OPERAÇÃO (confirmado pelo usuário em 2026-08-06)
 
@@ -100,6 +118,28 @@ Duas regras de uso:
   Se ele disser que testa depois, a resposta é registrar a data e seguir com
   o trabalho — não repetir a cada mensagem.
 
+## 🤖 O ROBÔ É UM FUNCIONÁRIO QUE APRENDE — DIRETRIZ DO PROJETO (30/10/2026)
+
+O usuário: *"esse projeto é um projeto de automação ... esse robô, nada mais
+do que ele é como se fosse um trabalhador, um funcionário meu. Então, eu
+preciso que ele aprenda, tenha memória evolutiva, vai aprendendo os
+processos, para mais adiante ele fazer todo o processo."*
+
+Vale para todo módulo, não só e-mail. Todo fluxo novo nasce com as quatro
+partes abaixo — fluxo sem elas está incompleto:
+
+1. **Registrar** — toda decisão de pessoa vira exemplo guardado (o que o
+   robô sugeriu, o que a pessoa fez, quem, quando). Categoria trocada,
+   campo corrigido, texto editado, pendência derrubada, aprovação.
+2. **Usar o que aprendeu** — os exemplos voltam para o robô (na IA, como
+   exemplos do próprio sindicato; nas regras, como ajuste). Guardar e não
+   usar não é aprender.
+3. **Medir** — taxa de acerto por tarefa ("categoria", "documento que
+   falta", "texto da resposta"…), visível para o usuário.
+4. **Subir de nível só com o usuário** — quando uma tarefa acerta de forma
+   consistente, o sistema PROPÕE fazê-la sozinho; quem liga é o usuário,
+   por tarefa, e dá para desligar. Até ele ligar, vale "nada sai sozinho".
+
 ## 🚨 REGRA Nº 0.6 — AUTOMATIZAR É O PADRÃO, NÃO O EXTRA
 
 Definida pelo usuário em 2026-08-13: *"devemos pensar sempre em automatizar e
@@ -184,6 +224,83 @@ Se qualquer passo não puder ser concluído com certeza, o veredito é **"não c
 Quando houver dúvida entre remover e manter, a recomendação padrão é **manter e documentar como legado** no cabeçalho do arquivo (foi o que se fez com `GuiasPagamento.gs` no commit `3394040`, e foi a decisão certa). Remoção só acontece com pedido explícito do usuário, em commit separado, nunca junto de outra mudança.
 
 **Caso real que originou esta regra (2026-08-04):** `GuiasPagamento.gs` foi reportado como "3.262 linhas 100% mortas" com base só em grep de `.html`. Era falso — `Code.gs:163` ainda chama `guiasPagamento_registrarLeituraEmail()` na rota pública `?page=pub-pixel-nf`, e o cabeçalho do arquivo já documentava exatamente isso.
+
+## 🔐 E-MAILS DA SECRETARIA NO SISGEP — REGRA MUDADA EM 29/10/2026
+
+Até 29/10/2026 valia *"os e-mails da secretaria não devem ser acessados pelo
+financeiro"* (21/10), e só os pedidos de voucher entravam no SISGEP. Em
+29/10/2026 o usuário autorizou trazer **todos** os e-mails da Secretaria
+para o SISGEP ("Caixa da Secretaria"), com esta condição:
+
+- (29/10) Abria só Secretaria e administrador — ver a atualização de 30/10
+  abaixo. A trava é sempre no servidor, não só na tela.
+- O conteúdo passa a ficar numa planilha da conta do Financeiro (é onde o
+  SISGEP roda) — o usuário sabe e aceitou.
+- Propaganda e notificação automática continuam de fora.
+- **A Secretaria vê todos os e-mails da caixa dela**, de todos os tipos,
+  inclusive guia/boleto (usuário, 29/10/2026).
+- **ATUALIZADO EM 30/10/2026:** *"tanto secretaria quanto financeiro podem
+  olhar tudo. Se tiver categorizado, não tem problema."* A Caixa abre para
+  administrador, o usuário secretaria@ e quem tem o módulo Comunicação,
+  Financeiro ou Caixa da Secretaria. Quem só tem outros módulos não abre.
+  A condição dele é estar CATEGORIZADO — não tirar a categorização.
+- **ATUALIZADO EM 31/10/2026 — CADA UM COM A SUA CAIXA:** *"Quem acessar
+  pelo seu usuário vai ver somente uma caixa — a Marcelha vê a secretaria e
+  o Wanderson vê o financeiro."* A divisão é por CAIXA de e-mail, não por
+  assunto: a Marcelha vê tudo o que chega à secretaria@ (inclusive o que é
+  do Financeiro, em cópia), categorizado; o Wanderson, tudo o que chega à
+  financeiro@. Trava no servidor (cxsMeuPapel_/cxsExigirCaixaDe_). Quem não
+  é nenhum dos dois (outro administrador) vê as duas.
+
+## 📬 CAIXA DE E-MAILS ÚNICA — DECISÕES DE 30/10/2026
+
+- Uma tela só para e-mail (Comunicação › Caixa de E-mails): aba Secretaria
+  (secretaria@, KingHost) e aba Financeiro (financeiro@, Gmail do projeto),
+  com os vouchers dentro. Painel do Dia fica só como resumo.
+- ~~*"Tem que aparecer tudo"*: TODAS as pastas~~ — **REVISTO EM 31/10/2026:**
+  *"o robô vai ler somente caixa de entrada e o certificado 2027-1. Somente.
+  Itens enviados, rascunho, spam, lixeira, não tem necessidade."* A Caixa
+  NÃO ganha essas pastas. Não propor de novo sem ele pedir. (A leitura só
+  dos CABEÇALHOS de Enviados, que o robô já faz para saber quem já recebeu
+  o voucher, não é pasta da tela — continua até ele dizer o contrário.)
+- Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
+  tela de conferência. Recategorizar à mão como Voucher também.
+- *"A caixa de e-mail do SISGEP vai ser o e-mail onde a gente vai
+  trabalhar. Se apaga nele, apaga em todo. Vai para a lixeira em todo."*
+  Mandar para a Lixeira no SISGEP = mover para a lixeira do Gmail/KingHost
+  também (não é apagar de vez). Sempre com clique e confirmação, nunca em
+  lote sem mostrar o que vai.
+- Robô da KingHost e leitor leem SÓ a caixa de entrada e a CERTIFICADO
+  2027-1 (30/10/2026: "até para economizar ... se precisar de mais alguma
+  pasta, eu aviso"). 2026-1 e 2026-2 já passaram. Não acrescentar pasta
+  sem ele pedir.
+
+## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
+
+Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
+algum"*, e o sistema *"tem que aprender vendo a gente fazer"*.
+
+- Nenhuma mensagem (pedido de documento, resposta-padrão, voucher) sai sem
+  o clique de uma pessoa. Não propor envio automático até o usuário pedir.
+- Toda correção humana antes de enviar (campo editado, pendência derrubada,
+  texto mudado) fica registrada como exemplo — é com isso que o sistema
+  aprende e é com esses números que um dia se discute automatizar.
+- Nunca voucher para quem não tem direito: filiação conferida sempre.
+
+## 📜 CCT — CITAR SEMPRE A NUMERAÇÃO DO REGISTRO NO MTE
+
+Definida pelo usuário em 2026-10-29: *"Sempre o MTE."*
+
+A CCT 2026/2027 tem duas numerações: a do texto aprovado nas negociações
+(a que o `CCTCore.gs` usa: 56 mensalidade, 57 taxa negocial, 58 assistência
+médica) e a do texto registrado no MTE (registro **ES000256/2026**, sistema
+Mediador: 38ª mensalidade, 40ª taxa negocial). **Todo texto que sai para fora
+— ofício, e-mail, certificado, guia — cita a numeração do MTE**, de
+preferência com o número do registro ao lado. É o documento público que o
+contador e o advogado da escola conferem.
+
+Exceção: o módulo de Negociação Coletiva trabalha sobre o texto negociado e
+pode usar a numeração dele.
 
 ## Padrão visual obrigatório (Design System)
 

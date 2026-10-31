@@ -29,10 +29,12 @@ function analisarEscolaIA_Oficios_(cnpjOuNome, tokenSessao) {
 
   var escola = escolas[0];
 
+  /* O token desce — mesma correcao do IACore.gs. Sem ele, a analise saia
+     sem historico nenhum e ninguem era avisado. */
   var historico = listarHistoricoOficios({
     escola: escola.escola || escola.nome || "",
     cnpj: escola.cnpj || ""
-  });
+  }, tokenSessao);
 
   var itensHistorico = historico && historico.itens ? historico.itens : [];
 

@@ -1,0 +1,576 @@
+"""
+PEDIDOS DE VOUCHER SEM RESPOSTA NAS PASTAS DA KINGHOST — 29/10/2026.
+
+O usuário: "tem que buscar os 2026/2 e 2027/1 que estão sem responder
+(pendentes)" e, depois, "preciso que faça e não que dê trabalho".
+
+Os pedidos antigos estão nas pastas "CERTIFICADO 2026-2" e "CERTIFICADO
+2027-1" da caixa secretaria@ na KingHost, onde a Marcela os separa à mão. O
+redirecionamento para o Gmail da Secretaria só copia o que chegou depois de
+21/10, e a importação do Gmail só aceita POP (que não enxerga pastas). Então
+isto entra direto pelo IMAP:
+
+  1. lê as duas pastas (nunca as "…EMITIDOS") e a pasta de Enviados;
+  2. PENDENTE = mensagem de quem pediu que nenhum e-mail enviado responde —
+     nem por In-Reply-To/References, nem por "Re: mesmo assunto" para o
+     mesmo endereço;
+  3. deixa cada pendente, inteiro (o .eml original), numa pasta temporária do
+     Drive compartilhada com a conta da Secretaria. O leitor
+     (LeitorSecretaria.gs) põe no Gmail dela e daí segue o caminho normal.
+
+SÓ LÊ a KingHost: abre as pastas em modo leitura (EXAMINE) e busca com
+BODY.PEEK, que não marca nada como lido. Não apaga, não move, não responde.
+O log mostra só CONTAGENS — nem nome, nem endereço, nem assunto.
+Segredo KINGHOST_SECRETARIA_SENHA criado pelo usuário em 29/10/2026.
+"""
+import email
+import email.policy
+import email.utils
+import hashlib
+import imaplib
+import json
+import os
+import re
+import sys
+import urllib.parse
+import urllib.request
+
+CAIXA = "secretaria@sindeducacao.com"
+CONTA_LEITOR = "sindeducacaosecretaria@gmail.com"
+NOME_PASTA_DRIVE = "SISGEP — Pendentes KingHost (temporário)"
+# Só a CERTIFICADO 2027-1 (usuário, 30/10/2026: "2026-2 já aconteceu, 2026-1
+# já aconteceu. 2027-1 tem que ler porque ainda não foi enviado o
+# certificado ... até para economizar, caixa de entrada e certificado
+# 2027-1. Se porventura precisar de mais alguma pasta, eu aviso").
+PASTAS = re.compile(r"CERTIFICADO\s*2027\s*[-/.]?\s*1\b", re.I)
+# A CAIXA DE ENTRADA também (usuário, 29/10/2026: "tem que analisar toda a
+# caixa de entrada"): pedido que ninguém separou em pasta. Ali chega de tudo,
+# então só sai da KingHost o que fala de voucher — e a IA do leitor ainda
+# confere. Desde 01/06/2026 (os pedidos de 2026/2 começam aí).
+ENTRADA_DESDE = "01-Jun-2026"
+ROTULO_ENTRADA = "KINGHOST ENTRADA"
+FALA_DE_VOUCHER = re.compile(
+    r"voucher|bolsa|certificado\s+(de\s+)?(bolsa|desconto)|desconto\s+(de|para)\s+funcion|"
+    r"declara[cç][aã]o\s+(para|de)\s+(a\s+)?(concess|desconto)", re.I)
+AUTOMATICO = re.compile(r"^(no-?reply|nao-?responda|naoresponda|mailer|bounce|news|newsletter|marketing|notifica)", re.I)
+# Texto de quem MANDOU o voucher (não de quem pede documento): "segue em
+# anexo o certificado", "o voucher segue anexo".
+TEXTO_VOUCHER_ENVIADO = re.compile(
+    r"seg(ue|uem)\s+(em\s+)?anex\w*\s+(o|os|seu|seus|a)?\s*(voucher|certificado)|"
+    r"(voucher|certificado)s?\s+(de\s+\w+\s+)?(segue|seguem|em\s+anexo|anexad)", re.I)
+TEXTO_ITEM = "(BODY.PEEK[TEXT]<0.3000>)"
+ENVIADOS = re.compile(r"(^|[./])(sent|enviad|itens enviados)", re.I)
+
+
+# ── IMAP ─────────────────────────────────────────────────────────────────
+
+def decodificar_utf7(nome):
+    """Nome de pasta IMAP vem em UTF-7 modificado (RFC 3501)."""
+    def troca(m):
+        trecho = m.group(1)
+        if not trecho:
+            return "&"
+        b = trecho.replace(",", "/")
+        b += "=" * (-len(b) % 4)
+        import base64
+        return base64.b64decode(b).decode("utf-16-be")
+    return re.sub(r"&([^-]*)-", troca, nome)
+
+
+def listar_pastas(imap):
+    tipo, linhas = imap.list()
+    pastas = []
+    for linha in linhas or []:
+        s = linha.decode("utf-8", "replace") if isinstance(linha, bytes) else str(linha)
+        m = re.match(r'\((?P<flags>[^)]*)\) (?P<sep>"[^"]*"|NIL) (?P<nome>.+)$', s)
+        if not m:
+            continue
+        bruto = m.group("nome").strip()
+        if bruto.startswith('"') and bruto.endswith('"'):
+            bruto = bruto[1:-1]
+        pastas.append({"bruto": bruto, "nome": decodificar_utf7(bruto), "flags": m.group("flags")})
+    return pastas
+
+
+CAB_PEDIDO = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE MESSAGE-ID LIST-UNSUBSCRIBE)])"
+
+
+def mensagem_inteira(imap, bruto, uid, ja_aberta=False):
+    """Baixa o .eml inteiro (com anexos) de UMA mensagem — só dos pendentes."""
+    if not ja_aberta:
+        imap.select('"' + bruto + '"', readonly=True)
+    tipo, partes = imap.uid("FETCH", uid, "(BODY.PEEK[])")
+    for p in partes or []:
+        if isinstance(p, tuple) and len(p) >= 2:
+            return p[1]
+    return None
+
+
+# Concluído = a resposta levou o VOUCHER anexado (usuário, 29/10/2026: "tem
+# que conferir se foi enviado o voucher em anexo, assim dar como concluído").
+# Um "recebemos, aguarde" não conclui nada. O voucher sai sempre em PDF, no
+# modelo já aprovado; então a prova é um PDF anexado à resposta. O
+# BODYSTRUCTURE diz isso sem baixar o arquivo.
+CAB_ENVIADO = "(BODYSTRUCTURE BODY.PEEK[HEADER.FIELDS (TO CC SUBJECT DATE IN-REPLY-TO REFERENCES)])"
+
+
+def texto_legivel(trecho):
+    """O começo do corpo vem cru (MIME, quoted-printable). Basta para achar
+    uma frase: tira as quebras '=\\r\\n', decodifica =XX, e junta."""
+    t = trecho.decode("latin-1", "replace") if isinstance(trecho, bytes) else str(trecho or "")
+    t = re.sub(r"=\r?\n", "", t)
+    try:
+        t = re.sub(r"(=[0-9A-Fa-f]{2})+", lambda m: bytes.fromhex(m.group(0).replace("=", "")).decode("utf-8", "replace"), t)
+    except Exception:
+        pass
+    return re.sub(r"\s+", " ", t)
+
+
+# O VOUCHER É RECONHECIDO PELO NOME DO ARQUIVO (usuário, 31/10/2026: "ele não
+# precisa ler, baixar o arquivo, ele só precisa entender que arquivo que é.
+# Porque o voucher, a gente já tem um modelo pronto"). O nome vem na "ficha"
+# do e-mail (BODYSTRUCTURE): nada é baixado. O modelo do SISGEP sai como
+# "<data> - Voucher Bolsa - <protocolo> - <nome>.pdf"; os feitos à mão antes
+# do SISGEP costumam ter "voucher", "certificado" ou "bolsa" no nome. PDF com
+# outro nome (lista de documentos, comprovante…) NÃO conclui o pedido.
+# 31/10/2026, depois do log real: com "certificado/bolsa" no nome e com o
+# texto ("segue o voucher"), 6 pedidos da 2027-1 saíam como atendidos — e o
+# usuário confirmou: "nenhum voucher foi enviado para 2027-1. Nenhum". Os
+# vouchers de semestres passados (feitos à mão) não dizem a que semestre
+# são; o do SISGEP é o único que conclui. Só o MODELO DO SISGEP conta.
+NOME_VOUCHER = re.compile(r"voucher\s*bolsa", re.I)
+
+
+def nomes_pdf(estrutura):
+    """Os nomes dos PDFs anexados, lidos da ficha do e-mail."""
+    e = estrutura.decode("latin-1", "replace") if isinstance(estrutura, bytes) else str(estrutura or "")
+    nomes = re.findall(r'"(?:file)?name\*?"\s+"([^"]*\.pdf)"', e, re.I)
+    if not nomes and re.search(r'"application"\s+"(pdf|x-pdf)"', e, re.I):
+        nomes = ["(sem nome).pdf"]
+    return nomes
+
+
+def tem_pdf_anexo(estrutura):
+    """Levou o VOUCHER: um PDF com nome do modelo."""
+    return any(NOME_VOUCHER.search(n) for n in nomes_pdf(estrutura))
+
+
+# Pedidos 2026/2 e 2027/1 só existem de 2026 para cá; respostas, idem.
+ENVIADOS_DESDE = "01-Jan-2026"
+LOTE = 200   # mensagens por FETCH: uma ida ao servidor por lote, não por e-mail
+
+
+def mensagens_da_pasta(imap, bruto, so_cabecalho=False, item=None, com_uid=False, desde=None):
+    """desde: "01-Jan-2026" limita a busca (a pasta de Enviados tem anos)."""
+    tipo, _ = imap.select('"' + bruto + '"', readonly=True)
+    if tipo != "OK":
+        return []
+    tipo, dados = imap.uid("SEARCH", None, "SINCE", desde) if desde else imap.uid("SEARCH", None, "ALL")
+    uids = (dados[0] or b"").split() if tipo == "OK" else []
+    # Enviados: só os cabeçalhos que dizem a quem se respondeu — sem
+    # baixar anexo de cada e-mail que a Secretaria já mandou.
+    pedido = item or (CAB_ENVIADO if so_cabecalho else "(BODY.PEEK[])")
+    saida = []
+    for i in range(0, len(uids), LOTE):
+        lote = b",".join(u if isinstance(u, bytes) else str(u).encode() for u in uids[i:i + LOTE])
+        tipo, partes = imap.uid("FETCH", lote, pedido)
+        if tipo != "OK":
+            continue
+        # Cada mensagem vem como (prefixo, literal) e, às vezes, um resto
+        # solto depois. O BODYSTRUCTURE pode estar no prefixo ou no resto.
+        atual = None
+        for x in list(partes or []) + [None]:
+            if isinstance(x, tuple) or x is None:
+                if atual:
+                    _fechar(atual, saida, so_cabecalho, com_uid)
+                atual = {"meta": x[0], "raw": x[1]} if isinstance(x, tuple) and len(x) >= 2 else None
+            elif isinstance(x, bytes) and atual:
+                atual["meta"] += b" " + x
+    return saida
+
+
+def filtrar_entrada(cabecalhos, textos):
+    """Da caixa de entrada, só o que fala de voucher e não é automático."""
+    sel = []
+    for uid, raw in cabecalhos:
+        m = email.message_from_bytes(raw, policy=email.policy.compat32)
+        de = endereco(m.get("From"))
+        if AUTOMATICO.search(de) or m.get("List-Unsubscribe"):
+            continue
+        alvo = str(m.get("Subject", "") or "") + " " + texto_legivel(textos.get(uid, b""))
+        if FALA_DE_VOUCHER.search(alvo):
+            sel.append((uid, raw))
+    return sel
+
+
+def _fechar(m, saida, so_cabecalho, com_uid):
+    uid = (re.search(rb"UID (\d+)", m["meta"]) or [None, None])[1]
+    if so_cabecalho:
+        saida.append((uid, m["raw"], tem_pdf_anexo(m["meta"])) if com_uid else (m["raw"], tem_pdf_anexo(m["meta"])))
+    else:
+        saida.append((uid, m["raw"]) if com_uid else m["raw"])
+
+
+# ── A REGRA: o que é pendente ────────────────────────────────────────────
+
+def endereco(valor):
+    return (email.utils.parseaddr(valor or "")[1] or "").strip().lower()
+
+
+def assunto_base(s):
+    s = str(s or "").strip()
+    while True:
+        novo = re.sub(r"^\s*(re|res|fw|fwd|enc|tr)\s*:\s*", "", s, flags=re.I)
+        if novo == s:
+            return re.sub(r"\s+", " ", s).lower()
+        s = novo
+
+
+def data_de(msg):
+    try:
+        d = email.utils.parsedate_to_datetime(str(msg.get("Date", "") or ""))
+        return d.timestamp() if d else None
+    except Exception:
+        return None
+
+
+def ids_referenciados(msg):
+    ids = set()
+    for cab in ("In-Reply-To", "References"):
+        for i in re.findall(r"<[^>]+>", str(msg.get(cab, "") or "")):
+            ids.add(i.strip().lower())
+    return ids
+
+
+def separar_pendentes(pedidos_brutos, enviados_brutos, nossos):
+    """pedidos_brutos: {nome_da_pasta: [bytes | (uid, bytes)]}.
+    enviados_brutos: [(bytes, levou_pdf)] — bytes sozinho conta como SEM anexo.
+    levou_pdf já vem True quando o TEXTO do enviado diz que mandou o voucher.
+    Devolve (pendentes, contagem)."""
+    concluido_id, concluido_par = set(), set()      # resposta COM o voucher
+    pdf_para = {}                                   # endereço → datas em que recebeu PDF
+    respondido_id, respondido_par = set(), set()    # qualquer resposta
+    for item in enviados_brutos:
+        raw, levou_pdf = item if isinstance(item, tuple) else (item, False)
+        m = email.message_from_bytes(raw, policy=email.policy.compat32)
+        ids = ids_referenciados(m)
+        base = assunto_base(m.get("Subject"))
+        pares = set()
+        for campo in ("To", "Cc"):
+            for _, end in email.utils.getaddresses([str(m.get(campo, "") or "")]):
+                if end:
+                    pares.add((end.strip().lower(), base))
+        respondido_id |= ids
+        respondido_par |= pares
+        if levou_pdf:
+            concluido_id |= ids
+            concluido_par |= pares
+            # Voucher mandado num e-mail NOVO, com outro assunto, também
+            # conclui: PDF para o mesmo endereço depois da data do pedido.
+            quando = data_de(m)
+            for end, _ in pares:
+                pdf_para.setdefault(end, []).append(quando)
+    pendentes, cont = [], {"lidos": 0, "nossos": 0, "respondidos": 0, "pendentes": 0, "sem_voucher": 0}
+    for pasta, lista in pedidos_brutos.items():
+        for item in lista:
+            uid, raw = item if isinstance(item, tuple) else (None, item)
+            cont["lidos"] += 1
+            m = email.message_from_bytes(raw, policy=email.policy.compat32)
+            de = endereco(m.get("From"))
+            if not de or de in nossos:
+                cont["nossos"] += 1
+                continue
+            mid = str(m.get("Message-ID", "") or "").strip().lower()
+            par = (de, assunto_base(m.get("Subject")))
+            pedido_em = data_de(m)
+            pdf_depois = any(d is None or pedido_em is None or d >= pedido_em for d in pdf_para.get(de, []))
+            if (mid and mid in concluido_id) or par in concluido_par or pdf_depois:
+                cont["respondidos"] += 1
+                continue
+            if (mid and mid in respondido_id) or par in respondido_par:
+                cont["sem_voucher"] += 1    # respondido, mas sem o voucher: segue pendente
+            chave = hashlib.sha1((mid or (de + "|" + str(m.get("Date")) + "|" + str(m.get("Subject")))).encode()).hexdigest()[:20]
+            pendentes.append({"pasta": pasta, "chave": chave, "raw": raw, "uid": uid})
+            cont["pendentes"] += 1
+    return pendentes, cont
+
+
+# ── DRIVE (credencial do deploy: escopo drive.file) ──────────────────────
+
+def token_google():
+    rc = json.loads(os.environ["CLASPRC_JSON"])
+    toks = rc.get("tokens") or {}
+    t = toks.get("default") or (list(toks.values())[0] if toks else rc.get("token", {}))
+    corpo = urllib.parse.urlencode({
+        "client_id": t.get("client_id", ""), "client_secret": t.get("client_secret", ""),
+        "refresh_token": t.get("refresh_token", ""), "grant_type": "refresh_token"}).encode()
+    r = json.load(urllib.request.urlopen("https://oauth2.googleapis.com/token", corpo))
+    if "access_token" not in r:
+        raise SystemExit("Falha ao renovar o token Google: " + str(r.get("error")))
+    return r["access_token"]
+
+
+def drive(token, metodo, url, corpo=None, tipo="application/json"):
+    req = urllib.request.Request(url, data=corpo, method=metodo,
+                                 headers={"Authorization": "Bearer " + token, "Content-Type": tipo})
+    with urllib.request.urlopen(req) as r:
+        txt = r.read().decode()
+        return json.loads(txt) if txt else {}
+
+
+def pasta_drive(token):
+    q = urllib.parse.quote("name = '%s' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+                           % NOME_PASTA_DRIVE.replace("'", "\\'"))
+    achou = drive(token, "GET", "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id)")
+    if achou.get("files"):
+        return achou["files"][0]["id"]
+    nova = drive(token, "POST", "https://www.googleapis.com/drive/v3/files",
+                 json.dumps({"name": NOME_PASTA_DRIVE, "mimeType": "application/vnd.google-apps.folder"}).encode())
+    drive(token, "POST", "https://www.googleapis.com/drive/v3/files/%s/permissions?sendNotificationEmail=false" % nova["id"],
+          json.dumps({"type": "user", "role": "reader", "emailAddress": CONTA_LEITOR}).encode())
+    return nova["id"]
+
+
+def ja_enviados(token, pasta_id, com_id=False):
+    nomes, pagina = ({} if com_id else set()), ""
+    while True:
+        q = urllib.parse.quote("'%s' in parents and trashed = false" % pasta_id)
+        r = drive(token, "GET", "https://www.googleapis.com/drive/v3/files?q=" + q +
+                  "&fields=nextPageToken,files(id,name)&pageSize=1000" + ("&pageToken=" + pagina if pagina else ""))
+        for f in r.get("files", []):
+            if com_id:
+                nomes[f["name"]] = f["id"]
+            else:
+                nomes.add(f["name"])
+        pagina = r.get("nextPageToken")
+        if not pagina:
+            return nomes
+
+
+def subir(token, pasta_id, nome, raw):
+    limite = "sisgepfronteira"
+    meta = json.dumps({"name": nome, "parents": [pasta_id], "mimeType": "message/rfc822"}).encode()
+    corpo = (b"--" + limite.encode() + b"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta +
+             b"\r\n--" + limite.encode() + b"\r\nContent-Type: message/rfc822\r\n\r\n" + raw +
+             b"\r\n--" + limite.encode() + b"--")
+    drive(token, "POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+          corpo, "multipart/related; boundary=" + limite)
+
+
+def nome_arquivo(p):
+    # Na KingHost a pasta é "INBOX.CERTIFICADO 2027-1"; a etiqueta no Gmail
+    # é só "CERTIFICADO 2027-1" (o leitor procura por esse nome).
+    nome = re.split(r"[./]", p["pasta"])[-1]
+    pasta = re.sub(r"[^A-Za-z0-9-]+", "-", nome).strip("-")
+    return "%s__%s.eml" % (pasta, p["chave"])
+
+
+# ── LEVANTAMENTO DE ASSUNTOS (30/10/2026) ───────────────────────────────
+# O usuário pediu para conferir as categorias contra o que chega de verdade:
+# "ele não deveria buscar os assuntos na caixa de entrada?". Liga-se com o
+# arquivo LEVANTAR_ASSUNTOS ao lado deste; desliga-se apagando-o. Lê SÓ o
+# cabeçalho (de, assunto, data) da caixa de entrada dos últimos 60 dias —
+# nada é alterado — e grava uma planilha na pasta do robô no Drive (privada).
+# Tenta também a caixa de entrada do Gmail da conta do projeto (financeiro);
+# se o token não tiver acesso ao Gmail, só registra que não conseguiu.
+LEVANTAR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LEVANTAR_ASSUNTOS")
+MESES_IMAP = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def _desde_dias(dias):
+    import datetime
+    d = datetime.date.today() - datetime.timedelta(days=dias)
+    return "%02d-%s-%d" % (d.day, MESES_IMAP[d.month - 1], d.year)
+
+
+def decodificar(valor):
+    """Cabeçalho com =?utf-8?...?= vira texto legível."""
+    try:
+        import email.header
+        return str(email.header.make_header(email.header.decode_header(str(valor or ""))))
+    except Exception:
+        return str(valor or "")
+
+
+def _linha_cabecalho(raw, caixa):
+    m = email.message_from_bytes(raw, policy=email.policy.compat32)
+    nome, end = email.utils.parseaddr(decodificar(m.get("From", "")))
+    try:
+        quando = email.utils.parsedate_to_datetime(m.get("Date")).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        quando = ""
+    return [caixa, quando, nome, end.lower(), decodificar(m.get("Subject", "")).replace("\n", " ").strip()]
+
+
+def _gmail_financeiro(token, dias):
+    linhas, pagina, ids = [], "", []
+    base = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    q = urllib.parse.quote("in:inbox newer_than:%dd" % dias)
+    while len(ids) < 600:
+        r = drive(token, "GET", base + "?maxResults=200&q=" + q + ("&pageToken=" + pagina if pagina else ""))
+        ids += [x["id"] for x in r.get("messages", [])]
+        pagina = r.get("nextPageToken", "")
+        if not pagina:
+            break
+    for i in ids:
+        m = drive(token, "GET", base + "/" + i + "?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date")
+        h = {x["name"].lower(): x["value"] for x in m.get("payload", {}).get("headers", [])}
+        raw = ("From: %s\r\nSubject: %s\r\nDate: %s\r\n\r\n" % (h.get("from", ""), h.get("subject", ""), h.get("date", ""))).encode("utf-8")
+        linhas.append(_linha_cabecalho(raw, "financeiro@"))
+    return linhas
+
+
+def levantamento(imap, token, pid, dias=60):
+    import csv, io
+    linhas = []
+    entrada = [p for p in listar_pastas(imap) if p["nome"].upper() == "INBOX"]
+    for p in entrada:
+        for uid, raw in mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True, desde=_desde_dias(dias)):
+            linhas.append(_linha_cabecalho(raw, "secretaria@"))
+    print("Levantamento: secretaria@ — %d e-mails na entrada (%d dias)" % (len(linhas), dias))
+    try:
+        fin = _gmail_financeiro(token, dias)
+        linhas += fin
+        print("Levantamento: financeiro@ — %d e-mails" % len(fin))
+    except Exception as erro:
+        print("Levantamento: sem acesso ao Gmail do financeiro por este robô (%s)" % str(erro)[:120])
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["caixa", "data", "de_nome", "de_email", "assunto"])
+    w.writerows(sorted(linhas, key=lambda l: (l[0], l[1]), reverse=True))
+    limite = "sisgeplevantamento"
+    meta = json.dumps({"name": "SISGEP — Levantamento de assuntos (%d dias)" % dias, "parents": [pid],
+                       "mimeType": "application/vnd.google-apps.spreadsheet"}).encode()
+    corpo = (b"--" + limite.encode() + b"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta +
+             b"\r\n--" + limite.encode() + b"\r\nContent-Type: text/csv; charset=UTF-8\r\n\r\n" + buf.getvalue().encode("utf-8") +
+             b"\r\n--" + limite.encode() + b"--")
+    r = drive(token, "POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+              corpo, "multipart/related; boundary=" + limite)
+    print("Levantamento gravado na pasta do robô: planilha %s (%d linhas)" % (r.get("id"), len(linhas)))
+
+
+# ── PRINCIPAL ────────────────────────────────────────────────────────────
+
+def coletar(imap):
+    """Lê as pastas e devolve (pedidos, bruto_de, enviados) — só cabeçalhos e
+    o começo do texto; nada de anexo. Separado do main para o teste rodar
+    exatamente isto."""
+    pastas = listar_pastas(imap)
+    alvo = [p for p in pastas if PASTAS.search(p["nome"]) and not re.search(r"EMITID", p["nome"], re.I)]
+    entrada = [p for p in pastas if p["nome"].upper() == "INBOX"]
+    enviados = [p for p in pastas if ENVIADOS.search(p["nome"]) or "\\Sent" in p["flags"]]
+    print("Pastas de pedido: %s · pastas de enviados: %s" % (
+        ", ".join(p["nome"] for p in alvo) or "NENHUMA", ", ".join(p["nome"] for p in enviados) or "NENHUMA"))
+    if not alvo and not entrada:
+        print("Nenhuma pasta CERTIFICADO nem caixa de entrada encontrada. Nomes vistos: " +
+              ", ".join(p["nome"] for p in pastas))
+        return None
+    # Primeiro só os CABEÇALHOS: decidir o que é pendente não pede anexo.
+    bruto_de = {p["nome"]: p["bruto"] for p in alvo}
+    pedidos = {}
+    for p in alvo:
+        pedidos[p["nome"]] = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True)
+        print("  %s: %d mensagem(ns)" % (p["nome"], len(pedidos[p["nome"]])))
+    for p in entrada:
+        cab = mensagens_da_pasta(imap, p["bruto"], item=CAB_PEDIDO, com_uid=True, desde=ENTRADA_DESDE)
+        txt = dict(mensagens_da_pasta(imap, p["bruto"], item=TEXTO_ITEM, com_uid=True, desde=ENTRADA_DESDE))
+        sel = filtrar_entrada(cab, txt)
+        pedidos[ROTULO_ENTRADA] = sel
+        bruto_de[ROTULO_ENTRADA] = p["bruto"]
+        print("  caixa de entrada desde %s: %d mensagem(ns), %d falam de voucher" % (ENTRADA_DESDE, len(cab), len(sel)))
+    env = []
+    por_texto = 0
+    for p in enviados:
+        cabs = mensagens_da_pasta(imap, p["bruto"], so_cabecalho=True, desde=ENVIADOS_DESDE, com_uid=True)
+        # O texto ("segue o voucher") NÃO conclui mais (31/10/2026): só o PDF do
+        # modelo do SISGEP. Nem se baixa o texto dos enviados.
+        for uid, raw, pdf in cabs:
+            if pdf:
+                por_texto += 1
+            env.append((raw, pdf))
+    print("  enviados: %d mensagem(ns) · %d com o PDF do modelo do SISGEP (Voucher Bolsa)" % (len(env), por_texto))
+    return pedidos, bruto_de, env
+
+
+def main():
+    senha = os.environ.get("KINGHOST_SECRETARIA_SENHA", "")
+    if not senha:
+        print("Sem o segredo KINGHOST_SECRETARIA_SENHA: nada a fazer (o robô só roda quando ele existir).")
+        return 0
+    servidor = os.environ.get("KINGHOST_IMAP", "imap.kinghost.net")
+    print("Conectando a %s…" % servidor)
+    # Sem tempo-limite, uma conexão parada trava o job até o fim do prazo.
+    def conectar():
+        c = imaplib.IMAP4_SSL(servidor, 993, timeout=60)
+        c.login(CAIXA, senha)
+        return c
+    imap = conectar()
+    print("Conectado e logado (só leitura).")
+    col = coletar(imap)
+    if col is None:
+        return 0
+    pedidos, bruto_de, env = col
+    pendentes, cont = separar_pendentes(pedidos, env, {CAIXA, CONTA_LEITOR})
+    print("Lidos: %(lidos)d · da própria Secretaria: %(nossos)d · concluídos (voucher anexado): "
+          "%(respondidos)d · pendentes: %(pendentes)d (destes, %(sem_voucher)d tiveram resposta sem o voucher)" % cont)
+
+    if os.environ.get("SO_CONFERIR") == "1":
+        imap.logout()
+        print("Modo conferir: nada foi enviado ao Drive.")
+        return 0
+    token = token_google()
+    pid = pasta_drive(token)
+    existentes = ja_enviados(token, pid, com_id=True)
+    # O que deixou de ser pendente (a regra ficou mais precisa, ou o voucher
+    # saiu depois) sai da pasta — vai para a lixeira, só arquivo nosso.
+    agora = {nome_arquivo(p) for p in pendentes}
+    tirados = 0
+    for nome, fid in existentes.items():
+        if nome.endswith(".eml") and nome not in agora:
+            drive(token, "PATCH", "https://www.googleapis.com/drive/v3/files/" + fid, json.dumps({"trashed": True}).encode())
+            tirados += 1
+    if tirados:
+        print("Tirados da pasta (não são mais pendentes): %d" % tirados)
+    # A KingHost derruba a conexão parada (30/10/2026: caiu com "EOF" depois
+    # de o robô passar um tempo só no Drive). Reconecta e tenta de novo uma
+    # vez; a pasta só é aberta de novo quando muda (ou depois de reconectar).
+    novos = 0
+    aberta = None
+    for p in pendentes:
+        nome = nome_arquivo(p)
+        if nome in existentes:
+            continue
+        bruto = bruto_de[p["pasta"]]
+        try:
+            raw = mensagem_inteira(imap, bruto, p["uid"], ja_aberta=(aberta == bruto))
+        except (imaplib.IMAP4.abort, OSError) as erro:
+            print("  conexão com a KingHost caiu (%s) — reconectando" % erro)
+            try:
+                imap.logout()
+            except Exception:
+                pass
+            imap = conectar()
+            raw = mensagem_inteira(imap, bruto, p["uid"])
+        aberta = bruto
+        if not raw:
+            continue
+        subir(token, pid, nome, raw)
+        novos += 1
+        if novos % 10 == 0:
+            print("  entregues até agora: %d" % novos)
+    if os.path.exists(LEVANTAR):
+        try:
+            levantamento(imap, token, pid)
+        except (imaplib.IMAP4.abort, OSError):
+            imap = conectar()
+            levantamento(imap, token, pid)
+    try:
+        imap.logout()
+    except Exception:
+        pass
+    print("Entregues ao leitor agora: %d (já estavam lá: %d)." % (novos, len(pendentes) - novos))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

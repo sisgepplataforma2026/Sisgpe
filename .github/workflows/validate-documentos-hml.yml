@@ -1,0 +1,21 @@
+name: Validar Documentos HML
+
+on:
+  push:
+    branches: ["teste/documentos-ajustes-hml"]
+  pull_request:
+    branches: ["integracao/sisgep-homologacao"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar politica HML de e-mail
+        run: node tests/e2e/t-hml-oficios-email-policy.js

@@ -333,4 +333,3 @@ const reemitido = g.voucherPrepararEnvio(PROTOCOLO, ADM);
 b.igual(reemitido.codigo, "Z9Y8X7W6", "pega o código da reemissão, não o da primeira via");
 
 b.resumo();
-process.exit(0);

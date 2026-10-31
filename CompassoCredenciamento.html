@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Quem já entrou — Compasso 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --gold:#C9A84C;
+      --ok:#0f8a5f; --alerta:#d97706; --erro:#dc2626;
+      --fundo:#f1f5f9; --linha:#e2e8f0; --texto:#0f172a; --suave:#64748b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--fundo);color:var(--texto);
+      font-family:'Plus Jakarta Sans',system-ui,Arial,sans-serif;font-size:14px}
+    .topo{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+      padding:18px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .topo b{font-size:17px;font-weight:800;letter-spacing:.01em}
+    .topo .sub{font-size:12px;opacity:.78}
+    .topo .dir{margin-left:auto;display:flex;align-items:center;gap:10px}
+    .pulso{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;
+      font-weight:700;background:rgba(255,255,255,.14);padding:6px 11px;border-radius:999px}
+    .pulso i{width:7px;height:7px;border-radius:50%;background:#4ade80;display:block;
+      animation:bate 2.4s ease-in-out infinite}
+    @keyframes bate{0%,100%{opacity:1}50%{opacity:.25}}
+    @media (prefers-reduced-motion:reduce){.pulso i{animation:none}}
+
+    .corpo{padding:18px 22px;max-width:1100px;margin:0 auto}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+    .card{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:15px 17px;
+      box-shadow:0 1px 2px rgba(15,23,42,.05)}
+    .card .rot{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--suave)}
+    .card .num{font-size:33px;font-weight:800;line-height:1.1;margin-top:4px;
+      font-variant-numeric:tabular-nums}
+    .card .pe{font-size:11.5px;color:var(--suave);margin-top:3px}
+    .card.entrou .num{color:var(--ok)}
+    .card.recusa .num{color:var(--erro)}
+    .card.ritmo .num{color:var(--blue)}
+
+    .barra{display:flex;gap:9px;align-items:center;margin:18px 0 12px;flex-wrap:wrap}
+    input[type=search]{flex:1;min-width:210px;border:1px solid var(--linha);border-radius:10px;
+      padding:10px 13px;font-family:inherit;font-size:13.5px;background:#fff;color:var(--texto)}
+    input[type=search]:focus{outline:2px solid var(--blue);outline-offset:-1px}
+    .b{border:1.5px solid var(--linha);background:#fff;color:var(--suave);border-radius:10px;
+      padding:9px 14px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+    .b:hover{border-color:var(--blue);color:var(--navy)}
+    .b.perigo{border-color:#fca5a5;color:var(--erro);background:#fff5f5}
+
+    table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--linha);
+      border-radius:14px;overflow:hidden}
+    th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+      color:var(--suave);padding:11px 14px;background:#f8fafc;border-bottom:1px solid var(--linha)}
+    td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+    tr:last-child td{border-bottom:0}
+    .hora{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+    .nome{font-weight:700}
+    .det{font-size:11.5px;color:var(--suave);margin-top:2px}
+    .selo{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;
+      border-radius:999px;padding:3px 9px;white-space:nowrap}
+    .s-ok{background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0}
+    .s-no{background:#fff5f5;color:var(--erro);border:1px solid #fecaca}
+    .s-mao{background:#fffbeb;color:var(--alerta);border:1px solid #fde68a}
+    .vazio{padding:34px 14px;text-align:center;color:var(--suave);font-size:13px}
+    .nota{margin-top:12px;font-size:11.5px;color:var(--suave);line-height:1.5}
+    .erro{margin-top:12px;background:#fff5f5;border:1px solid #fecaca;color:#991b1b;
+      border-radius:11px;padding:11px 14px;font-weight:600;font-size:13px}
+    @media(max-width:620px){
+      .corpo{padding:14px}
+      th:nth-child(4),td:nth-child(4){display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="topo">
+    <div>
+      <b>Quem já entrou</b>
+      <div class="sub">Festa Compasso da Vida 2026 · 19 de dezembro</div>
+    </div>
+    <div class="dir">
+      <span class="pulso"><i></i><span id="pulsoTexto">atualizando sozinha</span></span>
+      <button class="b" onclick="carregar()">⟳ Atualizar</button>
+    </div>
+  </div>
+
+  <div class="corpo">
+    <div class="cards">
+      <div class="card entrou"><div class="rot">Entraram</div>
+        <div class="num" id="cEntraram">—</div>
+        <div class="pe" id="cEntraramPe">&nbsp;</div></div>
+      <div class="card"><div class="rot">Ainda não entraram</div>
+        <div class="num" id="cFaltam">—</div>
+        <div class="pe" id="cFaltamPe">&nbsp;</div></div>
+      <div class="card ritmo"><div class="rot">Nos últimos 10 min</div>
+        <div class="num" id="cRitmo">—</div>
+        <div class="pe" id="cRitmoPe">&nbsp;</div></div>
+      <div class="card recusa"><div class="rot">Recusas</div>
+        <div class="num" id="cRecusas">—</div>
+        <div class="pe" id="cRecusasPe">&nbsp;</div></div>
+    </div>
+
+    <div class="barra">
+      <input type="search" id="busca" placeholder="Filtrar por nome, escola ou nº do ingresso"
+             oninput="pintar()" autocomplete="off">
+      <button class="b perigo" id="btZerar" hidden onclick="zerar()">Zerar registro (teste)</button>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th style="width:96px">Hora</th>
+        <th>Pessoa</th>
+        <th style="width:180px">Ingresso</th>
+        <th style="width:150px">Entrada</th>
+      </tr></thead>
+      <tbody id="tb"><tr><td colspan="4" class="vazio">Carregando…</td></tr></tbody>
+    </table>
+
+    <div class="nota" id="nota"></div>
+    <div class="erro" id="msg" hidden></div>
+  </div>
+
+<script>
+/* ══ O REGISTRO DE ENTRADA ═══════════════════════════════════════════════
+   "Preciso ver como vai ficar o registro do ingresso lido."
+
+   Antes disto o check-in gravava tudo e ninguém lia. Na portaria a leitura
+   vira uma faixa verde de 2,5 segundos e some; no banco ficava um documento
+   por entrada que nenhuma tela abria.
+
+   ESTA TELA CUSTA DUAS LEITURAS POR ATUALIZAÇÃO — o documento-resumo e o
+   contador de emissão. Não é detalhe de implementação: listar as entradas
+   custaria uma leitura por pessoa, e a cada 15 segundos, a noite inteira,
+   isso estouraria a cota gratuita e pararia a portaria com fila na porta.
+   Quem mexer aqui precisa manter essa conta. */
+
+/* O TOKEN VEM DO SERVIDOR. Dentro do sandbox do Apps Script esta página roda
+   num iframe interno com endereço próprio, e `location.search` ali é sempre
+   vazio — foi o que fez a portaria dizer "sem sessão" no celular dele. A
+   leitura da URL fica de reserva, para quem abrir por outro caminho. */
+var TOKEN = (function(){
+  var doServidor = <?!= JSON.stringify(tokenSessao || '') ?>;
+  if (doServidor) return doServidor;
+  try { var m = String(location.search||'').match(/[?&]sessao=([^&]*)/);
+        return m ? decodeURIComponent(m[1]) : ''; } catch(e){ return ''; }
+})();
+
+var DADOS = null;
+var TIMER = null;
+var INTERVALO = 15000;
+
+function g(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function erro(t){ var m = g('msg'); m.textContent = t; m.hidden = !t; }
+
+function api(fn, args, cb){
+  var r = google.script.run
+    .withSuccessHandler(cb)
+    .withFailureHandler(function(e){ erro('Não foi possível ler o registro: ' +
+      ((e && e.message) || e)); });
+  r[fn].apply(r, (args||[]).concat([TOKEN]));
+}
+
+function carregar(){
+  api('compasso_checkinRegistro', [], function(r){
+    /* Resposta nula não vira zero. Zero é uma informação — "ninguém entrou" —
+       e ausência de resposta é outra. Confundir as duas foi o que fez o
+       painel de eventos mentir por dias, em 14/09. */
+    if (!r || !r.ok) return erro('O servidor respondeu sem o registro de entrada.');
+    erro('');
+    DADOS = r;
+    /* O botão de zerar só aparece onde zerar é permitido. Em produção a
+       função recusa de qualquer jeito, mas oferecer e depois negar é pior do
+       que não oferecer. O flag vem no próprio registro — sem uma segunda ida
+       ao servidor e sem abrir função global nova. */
+    g('btZerar').hidden = !r.homologacao;
+    pintar();
+  });
+}
+
+function hora(iso){
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  function dd(n){ return (n<10?'0':'') + n; }
+  return dd(d.getHours()) + ':' + dd(d.getMinutes()) + ':' + dd(d.getSeconds());
+}
+
+function pintar(){
+  if (!DADOS) return;
+  var r = DADOS;
+
+  g('cEntraram').textContent = r.entraram;
+  g('cEntraramPe').textContent = r.emitidos
+    ? 'de ' + r.emitidos + ' ingresso(s) emitido(s)' : 'nenhum ingresso emitido ainda';
+  g('cFaltam').textContent = r.faltam;
+  g('cFaltamPe').textContent = r.manuais
+    ? r.manuais + ' entrada(s) manual(is) até agora' : ' ';
+  g('cRitmo').textContent = r.ultimos10min;
+  /* O ritmo sai de uma janela de 60 eventos. Se ela couber inteira dentro dos
+     10 minutos, o número é um PISO, não a conta — e a tela diz isso em vez de
+     fingir uma precisão que não tem. */
+  g('cRitmoPe').textContent = r.ritmoEhPiso
+    ? 'pelo menos — a janela é de ' + r.janela : 'entradas por QR e manuais';
+  g('cRecusas').textContent = r.recusas;
+  g('cRecusasPe').textContent = r.recusas
+    ? 'ingresso repetido, cancelado ou inválido' : 'nenhuma até agora';
+
+  var termo = String(g('busca').value || '').toLowerCase().trim();
+  var itens = (r.ultimos || []).filter(function(x){
+    if (!termo) return true;
+    return [x.nome, x.escola, x.numero, x.categoria].join(' ').toLowerCase()
+             .indexOf(termo) > -1;
+  });
+
+  if (!itens.length){
+    g('tb').innerHTML = '<tr><td colspan="4" class="vazio">' +
+      (termo ? 'Ninguém com esse filtro nos últimos ' + r.janela + ' registros.'
+             : 'Ninguém passou pela portaria ainda.') + '</td></tr>';
+  } else {
+    g('tb').innerHTML = itens.map(function(x){
+      var entrou = x.tipo === 'ENTROU';
+      var selo = entrou
+        ? (x.manual ? '<span class="selo s-mao">✍️ manual</span>'
+                    : '<span class="selo s-ok">✅ liberado</span>')
+        : '<span class="selo s-no">❌ recusado</span>';
+      /* O MOTIVO DA ENTRADA MANUAL FICA À VISTA. Entrada manual sem motivo
+         visível é a porta pela qual se libera alguém sem ingresso e ninguém
+         percebe depois. O mesmo vale para o detalhe da recusa. */
+      var extra = x.manual && x.motivo ? 'motivo: ' + x.motivo
+                : (!entrou && x.detalhe ? x.detalhe : '');
+      return '<tr>' +
+        '<td class="hora">' + hora(x.em) + '</td>' +
+        '<td><div class="nome">' + esc(x.nome || '(sem nome)') + '</div>' +
+          (x.escola ? '<div class="det">' + esc(x.escola) + '</div>' : '') +
+          (extra ? '<div class="det">' + esc(extra) + '</div>' : '') + '</td>' +
+        '<td>' + esc(x.numero || '—') +
+          (x.categoria ? '<div class="det">' + esc(x.categoria) + '</div>' : '') + '</td>' +
+        '<td>' + selo +
+          (x.dispositivo ? '<div class="det">' + esc(x.dispositivo) + '</div>' : '') +
+          (x.por ? '<div class="det">' + esc(x.por) + '</div>' : '') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  g('nota').textContent = 'Mostrando os últimos ' + r.janela + ' registros. ' +
+    'O histórico completo fica guardado e não some daqui.' +
+    (r.atualizadoEm ? ' Última leitura na portaria às ' + hora(r.atualizadoEm) + '.' : '');
+}
+
+function zerar(){
+  if (!confirm('Zerar o registro de entrada? Só funciona em homologação.')) return;
+  api('compasso_checkinRegistroZerar', [], function(r){
+    if (!r || !r.ok) return erro((r && r.erro) || 'Não foi possível zerar.');
+    carregar();
+  });
+}
+
+/* A tela pede sozinha, e PARA quando ninguém está olhando. Aba escondida
+   consumindo leitura a noite inteira é cota queimada à toa — e é justamente
+   na noite do evento que ela faz falta. */
+function ligarRelogio(){
+  if (TIMER) clearInterval(TIMER);
+  TIMER = setInterval(function(){
+    if (document.hidden) return;
+    carregar();
+  }, INTERVALO);
+}
+
+document.addEventListener('visibilitychange', function(){
+  g('pulsoTexto').textContent = document.hidden ? 'pausada' : 'atualizando sozinha';
+  if (!document.hidden) carregar();
+});
+
+if (!TOKEN){
+  erro('Sessão não encontrada nesta URL. Abra o registro pelo botão da tela de Credenciamento.');
+  g('tb').innerHTML = '<tr><td colspan="4" class="vazio">Sem sessão.</td></tr>';
+} else {
+  carregar();
+  ligarRelogio();
+}
+</script>
+</body>
+</html>

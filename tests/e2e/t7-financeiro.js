@@ -187,4 +187,3 @@ b.naoTestavel("Conteúdo do PDF do comprovante e do ofício fiscal", "template d
 b.naoTestavel("Importação de extrato OFX real do banco", "depende de arquivo do banco");
 
 b.resumo();
-process.exit(0);

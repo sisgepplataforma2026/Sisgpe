@@ -100,8 +100,8 @@ const textosDistintos = new Set(Object.values(corpos)).size;
 b.ok(textosDistintos === TIPOS_NOMINAIS.length,
   "os " + TIPOS_NOMINAIS.length + " tipos têm textos diferentes entre si",
   textosDistintos + " textos distintos");
-b.ok(/Cláusula 57/.test(corpos.TAXA_NEGOCIAL),
-  "o texto da Taxa Negocial continua citando a Cláusula 57ª da CCT",
+b.ok(/Cláusula 40ª/.test(corpos.TAXA_NEGOCIAL),
+  "o texto da Taxa Negocial cita a Cláusula 40ª da CCT (numeração do MTE)",
   corpos.TAXA_NEGOCIAL.slice(0, 60).replace(/\n/g, " ") + "...");
 
 b.passo("5. Um só nome também sai (não é caso especial do 25)");

@@ -1,0 +1,1125 @@
+<style>
+/* ── Pedidos de voucher por e-mail — backend: VoucherPedidosEmail.gs (este arquivo é VoucherPedidosEmailUI.html — nome diferente do .gs de propósito: o Apps Script recusa .gs e .html com o mesmo nome) ──
+   Tokens e modal vêm de OficiosStyles.html (CSS mestre). Nada de paleta nova. */
+#vpeSecao { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 0 18px; }
+/* Mensagem e anexo na conversa (30/10/2026, mockup aprovado). Classes sg-*
+   porque a Caixa da Secretaria usa as mesmas. */
+.sg-msg { border: 1px solid var(--g200); border-radius: 12px; background: #fff; overflow: hidden; margin-bottom: 8px; }
+.sg-msg.nossa { border-color: #bfd3f2; }
+.sg-msg-cab { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--g50); border-bottom: 1px solid var(--g200); }
+.sg-msg.nossa .sg-msg-cab { background: var(--blue-lt); }
+.sg-av { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; background: var(--navy2); color: #fff; font-weight: 800;
+  font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.sg-msg.nossa .sg-av { background: var(--gold); color: var(--navy); }
+.sg-quem { flex: 1; min-width: 0; text-align: left; }
+.sg-quem b { display: block; font-size: 13px; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-quem span { display: block; font-size: 11.5px; color: var(--g500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-data { font-size: 11.5px; color: var(--g500); text-align: right; white-space: nowrap; line-height: 1.35; }
+.sg-msg-corpo { padding: 11px 14px; font-size: 13.5px; line-height: 1.55; color: var(--g800); white-space: pre-wrap;
+  word-break: break-word; max-height: 240px; overflow: auto; text-align: left; }
+.sg-anexo { display: flex; align-items: center; gap: 10px; border: 1px solid var(--g200); border-radius: 10px; padding: 8px 10px;
+  margin-bottom: 6px; background: #fff; text-align: left; }
+.sg-anexo.sel { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-lt); }
+.sg-ic { width: 34px; height: 40px; flex: 0 0 34px; border-radius: 6px; color: #fff; font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; background: var(--g500); }
+.sg-ic.pdf { background: #dc2626; }
+.sg-ic.img { background: #0f8a5f; }
+.sg-anexo-info { flex: 1; min-width: 0; }
+.sg-anexo-info b { display: block; font-size: 12.5px; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-anexo-info .sg-chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--blue-lt); color: var(--navy2); margin: 3px 4px 0 0; }
+.sg-anexo-info .sg-chip.ruim { background: var(--amber-lt); color: #92400e; }
+.sg-anexo-info span { font-size: 11px; color: var(--g500); }
+.sg-hist { margin-top: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 10px 12px; text-align: left; }
+.sg-hist-tit { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #065f46; margin-bottom: 8px; }
+.sg-hist-tl { border-left: 3px solid var(--blue); margin-left: 4px; padding-left: 12px; }
+.sg-hist-ev { margin-bottom: 7px; font-size: 12.5px; color: var(--g800); }
+.sg-hist-ev small { display: block; color: var(--g500); font-size: 11.5px; }
+.sg-hist-ev.ok b { color: #065f46; }
+.sg-hist-ev.erro b { color: #991b1b; }
+.sg-hist-vazio { font-size: 12px; color: var(--g500); }
+.sg-hist-lock { margin-top: 6px; font-size: 11px; color: var(--g500); }
+.sg-carregando { height: 12px; border-radius: 6px; background: var(--g100); margin: 8px 0; }
+#vpeSecao * { box-sizing: border-box; }
+#vpeSecao .vpe-topo {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, #1058b0 100%);
+  color: #fff; border-radius: 14px; padding: 16px 18px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; flex-wrap: wrap; box-shadow: var(--sh-sm);
+}
+#vpeSecao .vpe-titulo { font-size: 16px; font-weight: 800; }
+#vpeSecao .vpe-sub { font-size: 12px; color: rgba(255,255,255,.72); margin-top: 3px; }
+#vpeSecao .vpe-sub b { color: var(--gold2); font-weight: 700; }
+#vpeSecao .vpe-acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#vpeSecao .vpe-sel { border-radius: 9px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12);
+  color: #fff; padding: 7px 10px; font: inherit; font-size: 12px; }
+#vpeSecao .vpe-sel option { color: #0f172a; }
+#vpeSecao .vpe-b { border: 0; border-radius: 9px; padding: 8px 14px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+#vpeSecao .vpe-b-claro { background: #fff; color: var(--navy); }
+#vpeSecao .vpe-b-vidro { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28); }
+#vpeSecao .vpe-b:disabled { opacity: .55; cursor: wait; }
+#vpeSecao .vpe-cards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+#vpeSecao .vpe-card { background: var(--surface); border: var(--border); border-radius: 14px; padding: 12px 14px;
+  cursor: pointer; box-shadow: var(--sh-xs); border-top: 4px solid var(--g300); text-align: left; font: inherit; }
+#vpeSecao .vpe-card.ativo { box-shadow: 0 0 0 2px var(--blue); }
+#vpeSecao .vpe-card .n { font-size: 24px; font-weight: 800; color: var(--g900); line-height: 1.1; }
+#vpeSecao .vpe-card .l { font-size: 11.5px; font-weight: 700; color: var(--g600); margin-top: 2px; }
+#vpeSecao .c-PRONTO { border-top-color: #059669; }
+#vpeSecao .c-FALTA_DOC { border-top-color: #d97706; }
+#vpeSecao .c-NAO_ENCONTRADO { border-top-color: #dc2626; }
+#vpeSecao .c-PRECISA_VOCE { border-top-color: var(--g400); }
+#vpeSecao .c-AGUARDANDO { border-top-color: var(--blue); }
+#vpeSecao .c-CONCLUIDO_HOJE { border-top-color: var(--navy); }
+#vpeSecao .vpe-lista { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+#vpeSecao .vpe-item { background: var(--surface); border: var(--border); border-radius: 14px; padding: 12px 14px;
+  display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: var(--sh-xs); }
+#vpeSecao .vpe-item-nome { font-weight: 800; color: var(--g900); font-size: 14px; }
+#vpeSecao .vpe-item-meta { font-size: 12px; color: var(--g600); margin-top: 2px; }
+#vpeSecao .vpe-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+#vpeSecao .vpe-chip { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--g100); color: var(--g700); }
+#vpeSecao .vpe-chip.FALTA, #vpeModal .vpe-chip.FALTA { background: var(--amber-lt); color: #92400e; }
+#vpeSecao .vpe-chip.AVISO, #vpeModal .vpe-chip.AVISO { background: var(--amber-lt); color: #92400e; }
+#vpeSecao .vpe-chip.CONFLITO, #vpeModal .vpe-chip.CONFLITO { background: var(--red-lt); color: #991b1b; }
+#vpeSecao .vpe-chip.INTERNO, #vpeModal .vpe-chip.INTERNO { background: var(--blue-lt); color: var(--navy2); }
+#vpeSecao .vpe-chip.ERRO { background: var(--red-lt); color: #991b1b; }
+#vpeSecao .vpe-vazio { padding: 22px; text-align: center; color: var(--g500); font-size: 13px; background: var(--surface);
+  border: 1px dashed var(--g300); border-radius: 14px; }
+#vpeSecao .vpe-aviso { margin-top: 10px; background: var(--amber-lt); color: #92400e; border-radius: 10px; padding: 9px 12px; font-size: 12.5px; }
+
+#vpeModal .of-modal { max-width: 1120px; }
+#vpeModal .vpe-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+#vpeModal h4 { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); margin: 0 0 8px; }
+#vpeModal .vpe-msg { border: var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--g50); }
+#vpeModal .vpe-msg.nossa { background: var(--blue-lt); }
+#vpeModal .vpe-msg-cab { font-size: 11.5px; color: var(--g500); margin-bottom: 4px; }
+#vpeModal .vpe-msg-corpo { font-size: 13px; color: var(--g800); white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+#vpeModal .vpe-anexos { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 12px; }
+#vpeModal .vpe-anexo { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: var(--border);
+  border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+#vpeModal .vpe-anexo small { color: var(--g500); }
+#vpeModal .vpe-prev { border: var(--border); border-radius: 10px; min-height: 60px; max-height: 420px; overflow: auto; text-align: center; background: var(--g50); }
+#vpeModal .vpe-prev img { max-width: 100%; }
+#vpeModal .vpe-prev iframe { width: 100%; height: 400px; border: 0; }
+#vpeModal .vpe-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+#vpeModal .vpe-campo label { display: block; font-size: 11.5px; font-weight: 700; color: var(--g600); }
+#vpeModal .vpe-campo input, #vpeModal .vpe-campo select, #vpeModal textarea {
+  width: 100%; border: 1px solid var(--g300); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 13px; background: #fff; }
+#vpeModal .vpe-campo small { display: block; font-size: 10.5px; color: var(--g500); margin-top: 2px; min-height: 13px; }
+#vpeModal .vpe-campo small.ia { color: #7c3aed; }
+#vpeModal .vpe-campo small.edit { color: var(--amber); }
+#vpeModal textarea { min-height: 170px; resize: vertical; line-height: 1.5; }
+#vpeModal .vpe-pend { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#vpeModal .vpe-pend .vpe-chip { font-size: 12px; padding: 6px 10px; border-radius: 9px; display: block; }
+#vpeModal .vpe-ok { background: var(--green-lt); color: var(--green-dk); border-radius: 9px; padding: 8px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeModal .vpe-pct { margin: 8px 0 12px; font-size: 13px; color: var(--g700); }
+#vpeModal .vpe-pct b { color: var(--navy); font-size: 16px; }
+#vpeModal .of-modal-foot { flex-wrap: wrap; }
+#vpeModal .vpe-just { display: none; margin-top: 10px; }
+#vpeModal .vpe-falta { border: 1px solid var(--g200, #e2e8f0); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+#vpeModal .vpe-falta h5 { margin: 8px 0 4px; font-size: 11.5px; font-weight: 700; color: var(--g600); }
+#vpeModal .vpe-falta h5:first-child { margin-top: 0; }
+#vpeModal .vpe-falta label { display: flex; gap: 6px; align-items: flex-start; font-size: 12.5px; margin: 3px 0; cursor: pointer; }
+#vpeModal .vpe-falta label small { color: #7c3aed; font-size: 10.5px; }
+#vpeModal .vpe-falta input[type=text] { width: 100%; font-size: 12.5px; padding: 4px 6px; margin: 2px 0 4px 22px; max-width: calc(100% - 22px); }
+#vpeModal .vpe-texto-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#vpeModal .vpe-texto-aviso { display: none; font-size: 12px; color: var(--amber, #d97706); margin: 4px 0; }
+
+/* Abas: Pedidos por e-mail | Solicitações e certificados (21/10/2026) */
+#vpeAbas { display: flex; gap: 6px; border-bottom: 2px solid var(--g200); margin: 0 0 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+#vpeAbas .vpe-aba { border: 0; background: transparent; padding: 12px 18px; font: inherit; font-weight: 800; font-size: 14px;
+  color: var(--g500); border-radius: 12px 12px 0 0; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+#vpeAbas .vpe-aba.on { background: var(--surface); color: var(--navy); border: 2px solid var(--g200);
+  border-bottom: 2px solid var(--surface); margin-bottom: -2px; }
+#vpeAbas .vpe-badge { background: var(--red); color: #fff; border-radius: 999px; font-size: 11px; padding: 2px 8px; }
+#vpeSecao { margin-top: 0; }
+/* Filtros (29/10/2026) — Entrada e Emitidos */
+.vpe-filtros { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--g50); border: 1px solid var(--g200);
+  border-radius: 10px; padding: 8px 10px; margin-top: 10px; font-family: 'Plus Jakarta Sans', sans-serif; }
+.vpe-filtros input[type=search], .vpe-filtros select { border: 1px solid var(--g200); border-radius: 8px; padding: 6px 9px;
+  font: inherit; font-size: 12.5px; background: #fff; }
+.vpe-filtros input[type=search] { flex: 1; min-width: 220px; }
+.vpe-filtros label { font-size: 12.5px; color: var(--g600); display: inline-flex; gap: 4px; align-items: center; }
+.vpe-filtros .vpe-limpar { border: 0; background: none; color: var(--blue); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; margin-left: auto; }
+#vpeEmitidos { font-family: 'Plus Jakarta Sans', sans-serif; margin: 0 0 18px; }
+#vpeEmitidos .vpe-emi-barra { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+#vpeEmitidos .vpe-emi-linha { background: var(--surface); border: var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 6px;
+  display: grid; grid-template-columns: 26px 1.6fr 1.2fr 1.6fr 0.9fr 1fr; gap: 8px; align-items: center; font-size: 12.5px; }
+#vpeEmitidos .vpe-emi-linha small { color: var(--g500); display: block; }
+#vpeEmitidos .vpe-emi-aviso { grid-column: 2 / -1; background: var(--amber-lt); color: #92400e; border-radius: 8px; padding: 4px 8px; font-size: 11.5px; }
+#vpeEnvOverlay .vpe-env-lista { max-height: 320px; overflow: auto; font-size: 13px; margin: 8px 0; }
+#vpeEnvOverlay .vpe-env-lista div { padding: 6px 0; border-bottom: 1px solid var(--g100); }
+#vpeSecao .vpe-mini { margin: 10px 2px 4px; font-size: 12.5px; color: var(--g500); font-weight: 600; }
+#vpeSecao .vpe-mini button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; }
+#vpeSecao .vpe-mini button.ativo { color: var(--blue); text-decoration: underline; }
+#vpeSecao .vpe-resumo-ok { margin-top: 6px; display: inline-block; background: var(--green-lt); color: var(--green-dk);
+  border-radius: 9px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeSecao .vpe-resumo-aviso { margin-top: 6px; display: inline-block; background: var(--amber-lt); color: #92400e;
+  border-radius: 9px; padding: 6px 10px; font-size: 12.5px; font-weight: 600; }
+#vpeSecao .vpe-espera { font-weight: 700; color: var(--g700); }
+#vpeSecao .vpe-espera.longa { color: var(--red); }
+
+@media (max-width: 900px) {
+  #vpeSecao .vpe-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #vpeModal .vpe-grade { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  #vpeSecao .vpe-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #vpeSecao .vpe-item { flex-direction: column; align-items: stretch; }
+  #vpeModal .vpe-campos { grid-template-columns: 1fr; }
+}
+</style>
+
+<div id="vpeAbas" role="tablist">
+  <button type="button" class="vpe-aba" id="vpeAbaPedidos" role="tab" data-vpe="aba" data-arg="pedidos">
+    📨 1 · Entrada <span class="vpe-badge" id="vpeAbaBadge" style="display:none;"></span></button>
+  <button type="button" class="vpe-aba" id="vpeAbaEmitidos" role="tab" data-vpe="aba" data-arg="emitidos">
+    📄 2 · Emitidos — aguardando envio <span class="vpe-badge" id="vpeAbaBadgeEmi" style="display:none;background:var(--navy);"></span></button>
+  <button type="button" class="vpe-aba on" id="vpeAbaSolicitacoes" role="tab" data-vpe="aba" data-arg="solicitacoes">
+    🎓 3 · Solicitações, enviados e presenciais</button>
+</div>
+
+<div id="vpeSecao" style="display:none;">
+  <div class="vpe-topo">
+    <div>
+      <div class="vpe-titulo">📨 Pedidos de voucher por e-mail</div>
+      <div class="vpe-sub" id="vpeSub">Carregando…</div>
+    </div>
+    <div class="vpe-acoes">
+      <select class="vpe-sel" id="vpeCaixa" style="display:none;"></select>
+      <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnLer" data-vpe="lerAgora">↻ Ler agora</button>
+    </div>
+  </div>
+  <div id="vpeCorpo">
+    <div class="vpe-cards" id="vpeCards"></div>
+    <div class="vpe-mini" id="vpeMini"></div>
+    <div id="vpeAvisoGatilho" class="vpe-aviso" style="display:none;">
+      <span id="vpeAvisoTexto">A leitura automática ainda não está ligada. Até lá, use o botão "Ler agora".</span>
+      <button type="button" class="vpe-b vpe-b-claro" id="vpeBtnGatilho" data-vpe="ligarGatilho"
+              style="display:none;margin-left:8px;">Ligar leitura automática</button>
+    </div>
+    <div class="vpe-filtros" id="vpeFiltros">
+      <input type="search" id="vpeFBusca" placeholder="🔎 Buscar nome, CPF, e-mail ou protocolo…">
+      <select id="vpeFSemestre"><option value="">Semestre: todos</option></select>
+      <select id="vpeFEscola"><option value="">Escola: todas</option></select>
+      <select id="vpeFPara"><option value="">Para: titular e dependente</option><option value="TITULAR">Só titular</option><option value="DEPENDENTE">Só dependente</option></select>
+      <label><input type="checkbox" id="vpeFAntigos"> Só os esperando há 3 dias ou mais</label>
+      <button type="button" class="vpe-limpar" data-vpe="limparFiltros">Limpar filtros</button>
+    </div>
+    <div class="vpe-lista" id="vpeLista"></div>
+  </div>
+</div>
+
+<div id="vpeEmitidos" style="display:none;">
+  <div class="vpe-filtros">
+    <input type="search" id="vpeEBusca" placeholder="🔎 Buscar nome, CPF, e-mail ou protocolo…">
+    <select id="vpeESemestre"><option value="">Semestre: todos</option></select>
+    <select id="vpeEEscola"><option value="">Escola: todas</option></select>
+    <select id="vpeEConferido"><option value="">Conferido por: todos</option></select>
+    <button type="button" class="vpe-limpar" data-vpe="limparFiltrosEmi">Limpar filtros</button>
+  </div>
+  <div class="vpe-emi-barra">
+    <label style="font-size:12.5px;font-weight:700;color:var(--g600);"><input type="checkbox" id="vpeEmiTodos"> Marcar todos da lista</label>
+    <button type="button" class="btn btn-navy" id="vpeEmiEnviar" data-vpe="conferirEnvio">Enviar selecionados (0)</button>
+  </div>
+  <div id="vpeEmiLista"></div>
+  <div style="font-size:11.5px;color:var(--g500);margin-top:8px;">Ao enviar, o voucher é refeito com a <b>data do envio</b> (mesmo código, mesmo percentual)
+    e sai como <b>resposta no e-mail do pedido</b>, pela caixa da Secretaria. Presenciais: aba 3.</div>
+</div>
+
+<div class="of-modal-overlay" id="vpeEnvOverlay">
+  <div class="of-modal" style="max-width:640px;">
+    <div class="of-modal-head"><div class="of-modal-head-title">Conferir antes de enviar</div>
+      <button type="button" class="of-modal-close" data-vpe="fecharEnvio">✕</button></div>
+    <div class="of-modal-body">
+      <div id="vpeEnvResumo" style="font-size:13px;"></div>
+      <div class="vpe-env-lista" id="vpeEnvLista"></div>
+    </div>
+    <div class="of-modal-foot">
+      <button type="button" class="btn btn-outline" data-vpe="fecharEnvio">Cancelar</button>
+      <button type="button" class="btn btn-navy" id="vpeEnvConfirmar" data-vpe="enviarEmitidos">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="of-modal-overlay" id="vpeModal">
+  <div class="of-modal">
+    <div class="of-modal-head">
+      <div>
+        <div class="of-modal-head-title" id="vpeMTitulo">Pedido</div>
+        <div class="of-modal-head-sub" id="vpeMSub"></div>
+      </div>
+      <button type="button" class="of-modal-close" data-vpe="fechar">✕</button>
+    </div>
+    <div class="of-modal-body">
+      <div class="vpe-grade">
+        <div>
+          <h4>O que a pessoa mandou</h4>
+          <div id="vpeMResumo" style="font-size:12.5px;color:#7c3aed;margin-bottom:8px;"></div>
+          <div id="vpeMMensagens"></div>
+          <h4 style="margin-top:12px;" id="vpeMAnexosTit">Anexos</h4>
+          <div class="vpe-anexos" id="vpeMAnexos"></div>
+          <div class="vpe-prev" id="vpeMPrev"><div style="padding:18px;font-size:12px;color:#64748b;">Clique em "Ver" para abrir um anexo aqui.</div></div>
+        </div>
+        <div>
+          <h4>Conferência</h4>
+          <div class="vpe-pend" id="vpeMPend"></div>
+          <div id="vpeMEscola" style="display:none;margin:8px 0;border:1px solid var(--amber,#d97706);background:var(--amber-lt,#fef3c7);border-radius:10px;padding:10px 12px;font-size:12.5px;"></div>
+          <h4>Dados do pedido <span style="text-transform:none;letter-spacing:0;font-weight:600;">— confira e corrija</span></h4>
+          <div class="vpe-campos" id="vpeMCampos"></div>
+          <div class="vpe-pct" id="vpeMPct"></div>
+          <div id="vpeMHist" style="display:none;"></div>
+          <div id="vpeMRespostaBox">
+            <div id="vpeMFaltaBox">
+              <h4>O que está faltando? <span style="text-transform:none;letter-spacing:0;font-weight:600;">— o sistema já marcou o que viu; confira</span></h4>
+              <div class="vpe-falta" id="vpeMFalta"></div>
+            </div>
+            <div class="vpe-texto-cab">
+              <h4>E-mail que vai sair <span style="text-transform:none;letter-spacing:0;font-weight:600;">— pode editar</span></h4>
+              <button type="button" class="btn btn-outline" id="vpeMVoltarModelo" data-vpe="voltarModelo" style="padding:3px 10px;font-size:11.5px;">↺ Voltar ao modelo</button>
+            </div>
+            <div class="vpe-texto-aviso" id="vpeMTextoAviso">
+              Você alterou o texto à mão. <button type="button" class="btn btn-outline" data-vpe="voltarModelo" style="padding:2px 8px;font-size:11.5px;">Refazer a partir dos itens marcados</button>
+            </div>
+            <textarea id="vpeMResposta"></textarea>
+            <small id="vpeMTextoEditado" style="display:none;color:var(--amber,#d97706);font-size:11px;">✎ Texto alterado à mão</small>
+          </div>
+          <div class="vpe-just" id="vpeMJustBox">
+            <h4 id="vpeMJustTitulo">Por que validar com pendência?</h4>
+            <textarea id="vpeMJust" style="min-height:70px;" placeholder="Ex.: a escola atrasou o contracheque de setembro"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="of-modal-foot" id="vpeMAcoes"></div>
+  </div>
+</div>
+
+<script>
+/* PRÉVIA DE ANEXO (30/10/2026). O SISGEP roda dentro do iframe protegido do
+   Google, e ali o leitor de PDF do navegador não abre (o usuário viu o
+   ícone de arquivo quebrado). PDF é desenhado na página pelo pdf.js; se
+   falhar, ficam "Abrir em nova aba" e "Abrir no Google Drive". Imagem vai
+   direto. Global de propósito: a Caixa da Secretaria usa a mesma. */
+var SISGEP_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+/* Nome em minúsculo ("wanderson nascimento castelo") vira "Wanderson
+   Nascimento Castelo"; de/da/do/dos/das/e ficam minúsculos. */
+function sisgepNomeBonito(s) {
+  var t = String(s || "").replace(/["']/g, "").trim();
+  if (!t || t !== t.toLowerCase() && t !== t.toUpperCase()) return t;
+  return t.toLowerCase().split(/\s+/).map(function (p, i) {
+    return i && /^(de|da|do|das|dos|e)$/.test(p) ? p : p.charAt(0).toUpperCase() + p.slice(1);
+  }).join(" ");
+}
+function sisgepEsc_(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+/* Uma mensagem da conversa: inicial, nome, e-mail e data no cabeçalho. */
+function sisgepMsgHtml(m) {
+  var de = String(m.de || "");
+  var em = (de.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/) || [""])[0];
+  var nome = sisgepNomeBonito(de.replace(/<[^>]*>/, "").replace(em, "")) || em || "—";
+  var dt = String(m.data || "").split(" ");
+  return "<div class='sg-msg" + (m.nossa ? " nossa" : "") + "'><div class='sg-msg-cab'>" +
+    "<div class='sg-av'>" + sisgepEsc_(nome.charAt(0).toUpperCase()) + "</div>" +
+    "<div class='sg-quem'><b>" + sisgepEsc_(nome) + "</b>" + (em && em !== nome ? "<span>" + sisgepEsc_(em) + "</span>" : "") + "</div>" +
+    "<div class='sg-data'>" + sisgepEsc_(dt[0] || "") + (dt[1] ? "<br>" + sisgepEsc_(dt[1]) : "") + "</div></div>" +
+    "<div class='sg-msg-corpo'>" + sisgepEsc_(String(m.corpo || "(sem texto)").trim()) + "</div></div>";
+}
+/* Um anexo: ícone pelo tipo, nome legível, etiqueta do que a IA viu.
+   o = { attr: "data-vpe", etiqueta, pessoa, ruim, ver (false = sem botão), nota } */
+function sisgepAnexoHtml(a, o) {
+  var nome = String(a.nome || "anexo");
+  var ext = (nome.match(/\.([a-z0-9]+)$/i) || ["", ""])[1].toLowerCase();
+  var ic = ext === "pdf" || /pdf/.test(a.tipo || "") ? ["pdf", "PDF"]
+    : /^(jpe?g|png|gif|webp|heic|bmp)$/.test(ext) || /^image\//.test(a.tipo || "") ? ["img", "IMG"]
+    : ["", (ext || "ARQ").toUpperCase().slice(0, 4)];
+  var et = String(o.etiqueta || "").replace(/_/g, " ").trim();
+  if (et) et = et.length <= 4 ? et.toUpperCase() : et.charAt(0).toUpperCase() + et.slice(1).toLowerCase();
+  return "<div class='sg-anexo' data-anexo='" + Number(a.indice) + "'><div class='sg-ic " + ic[0] + "'>" + ic[1] + "</div>" +
+    "<div class='sg-anexo-info'><b title='" + sisgepEsc_(nome) + "'>" + sisgepEsc_(nome) + "</b>" +
+    (et ? "<span class='sg-chip" + (o.ruim ? " ruim" : "") + "'>" + sisgepEsc_(et) + "</span>" : "") +
+    (o.pessoa ? "<span>" + sisgepEsc_(sisgepNomeBonito(o.pessoa)) + "</span>" : "") +
+    (o.nota ? "<span> · " + sisgepEsc_(o.nota) + "</span>" : "") + "</div>" +
+    (o.ver === false ? "" : "<button type='button' class='btn btn-outline' " + o.attr + "='verAnexo' data-arg='" + Number(a.indice) + "'>Ver</button>") +
+    "</div>";
+}
+/* Destaca o anexo que está na prévia. */
+function sisgepMarcarAnexo(lista, indice) {
+  if (!lista) return;
+  Array.prototype.forEach.call(lista.querySelectorAll(".sg-anexo"), function (x) {
+    x.classList.toggle("sel", x.getAttribute("data-anexo") === String(indice));
+  });
+}
+/* O que a prévia abre sozinha: a prova de vínculo, se a IA achou; senão, o primeiro. */
+function sisgepAnexoPrincipal(lista, campo) {
+  var bons = (lista || []).filter(function (a) { return a.disponivel !== false; });
+  return bons.filter(function (a) { return /CONTRACHEQUE|DECLARA|CTPS/i.test(String(a[campo || "classificacao"] || "")); })[0] || bons[0] || null;
+}
+
+/* HISTÓRICO DO VOUCHER (31/10/2026): a linha do tempo — pedido, conferência,
+   emissão, fila, saída — com quem e quando. Registro permanente
+   (VoucherHistoricoEnvio.gs). Usado na ficha da Caixa/Voucher e na das
+   Solicitações. */
+function sisgepHistoricoVoucher(caixa, protocolo) {
+  if (!caixa) return;
+  if (!protocolo) { caixa.style.display = "none"; caixa.innerHTML = ""; return; }
+  caixa.style.display = "";
+  caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>Carregando…</div></div>";
+  var tk = (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : "";
+  google.script.run.withSuccessHandler(function (r) {
+    if (!r || !r.ok) { caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>" +
+      sisgepEsc_((r && r.mensagem) || "Não foi possível ler o histórico.") + "</div></div>"; return; }
+    var ev = r.eventos || [];
+    caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div>" + (ev.length ? "<div class='sg-hist-tl'>" +
+      ev.map(function (e) {
+        var cls = e.acao === "EMAIL_SAIU" || e.acao === "ENVIO_EMAIL" ? " ok" : e.acao === "EMAIL_ERRO" ? " erro" : "";
+        return "<div class='sg-hist-ev" + cls + "'><b>" + sisgepEsc_(e.quando) + " · " + sisgepEsc_(e.rotulo) + "</b>" +
+          "<small>" + sisgepEsc_([e.quem ? "por " + e.quem : "", e.detalhe].filter(String).join(" — ")) + "</small></div>";
+      }).join("") + "</div>" : "<div class='sg-hist-vazio'>Nada registrado ainda.</div>") +
+      "<div class='sg-hist-lock'>🔒 Registro permanente — ninguém edita nem apaga.</div></div>";
+  }).withFailureHandler(function (e) {
+    caixa.innerHTML = "<div class='sg-hist'><div class='sg-hist-tit'>🕑 Histórico</div><div class='sg-hist-vazio'>" + sisgepEsc_(e && e.message) + "</div></div>";
+  }).voucherHistoricoProtocolo(protocolo, tk);
+}
+
+/* Baixa o pdf.js uma vez só; quem pedir enquanto baixa entra na fila. É
+   chamado já ao abrir o pedido, para estar pronto quando clicarem "Ver". */
+var SISGEP_PDFJS_FILA = null;
+function sisgepCarregarPdfJs_(ok, erro) {
+  ok = ok || function () {}; erro = erro || function () {};
+  if (window.pdfjsLib) return ok(window.pdfjsLib);
+  if (SISGEP_PDFJS_FILA) { SISGEP_PDFJS_FILA.push([ok, erro]); return; }
+  SISGEP_PDFJS_FILA = [[ok, erro]];
+  function fim(lib) {
+    var fila = SISGEP_PDFJS_FILA; SISGEP_PDFJS_FILA = null;
+    fila.forEach(function (f) { lib ? f[0](lib) : f[1]("pdf.js não carregou"); });
+  }
+  var sc = document.createElement("script");
+  sc.src = SISGEP_PDFJS + "pdf.min.js";
+  sc.onload = function () {
+    try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = SISGEP_PDFJS + "pdf.worker.min.js"; } catch (e) {}
+    fim(window.pdfjsLib || null);
+  };
+  sc.onerror = function () { fim(null); };
+  document.head.appendChild(sc);
+}
+function sisgepPreviaAnexo(caixa, r) {
+  function e(x) { return String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  var bytes = null, blobUrl = "";
+  try {
+    var b64 = String(r.dataUrl || "").split(",")[1] || "";
+    var bin = atob(b64); bytes = new Uint8Array(bin.length);
+    for (var k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    blobUrl = URL.createObjectURL(new Blob([bytes], { type: r.tipo || "application/octet-stream" }));
+  } catch (x) {}
+  var links = "<div style='display:flex;gap:6px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #e2e8f0;font-size:12px;'>" +
+    (blobUrl ? "<a href='" + blobUrl + "' target='_blank' rel='noopener' class='btn btn-outline' style='padding:3px 10px;'>Abrir em nova aba</a>" : "") +
+    (r.driveUrl ? "<a href='" + e(r.driveUrl) + "' target='_blank' rel='noopener' class='btn btn-outline' style='padding:3px 10px;'>Abrir no Google Drive</a>" : "") +
+    "<span style='align-self:center;color:#64748b;'>" + e(r.nome) + "</span></div>";
+  if (/^image\//.test(r.tipo)) { caixa.innerHTML = links + "<img alt='" + e(r.nome) + "' src='" + r.dataUrl + "' style='max-width:100%;display:block;'>"; return; }
+  if (!/pdf/i.test(r.tipo) || !bytes) { caixa.innerHTML = links + "<div style='padding:14px;font-size:12px;'>Formato sem prévia: " + e(r.tipo) + "</div>"; return; }
+  caixa.innerHTML = links + "<div class='sisgep-pdf-paginas' style='padding:6px;'><div style='font-size:12px;color:#64748b;padding:10px;'>Desenhando o PDF…</div></div>";
+  var alvo = caixa.querySelector(".sisgep-pdf-paginas");
+  sisgepCarregarPdfJs_(function (pdfjs) {
+    pdfjs.getDocument({ data: bytes }).promise.then(function (pdf) {
+      alvo.innerHTML = "";
+      var n = Math.min(pdf.numPages, 5);
+      var cadeia = Promise.resolve();
+      for (var p = 1; p <= n; p++) (function (num) {
+        cadeia = cadeia.then(function () {
+          return pdf.getPage(num).then(function (pg) {
+            var vp = pg.getViewport({ scale: 1.3 });
+            var cv = document.createElement("canvas");
+            cv.width = vp.width; cv.height = vp.height;
+            cv.style.cssText = "width:100%;display:block;margin-bottom:6px;border:1px solid #e2e8f0;";
+            alvo.appendChild(cv);
+            return pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+          });
+        });
+      })(p);
+      cadeia.then(function () {
+        if (pdf.numPages > n) alvo.insertAdjacentHTML("beforeend", "<div style='font-size:12px;color:#64748b;padding:6px;'>Mostrando " + n + " de " + pdf.numPages + " páginas — abra em nova aba para ver todas.</div>");
+      });
+    }).catch(function () {
+      alvo.innerHTML = "<div style='font-size:12px;color:#dc2626;padding:10px;'>Não deu para desenhar este PDF aqui. Use \"Abrir em nova aba\" ou \"Abrir no Google Drive\".</div>";
+    });
+  }, function () {
+    alvo.innerHTML = "<div style='font-size:12px;color:#dc2626;padding:10px;'>A prévia de PDF não carregou. Use \"Abrir em nova aba\" ou \"Abrir no Google Drive\".</div>";
+  });
+}
+</script>
+<script>
+/* Pedidos de voucher por e-mail. Tudo dentro de VPE: os <script> do SISGEP
+   dividem um escopo global só, e nome solto aqui colidiria com outra tela. */
+var VPE = (function () {
+  var estado = { filtro: "", dados: null, atual: null, aba: "", abaEscolhida: false };
+  /* Os quatro que pedem ação viram card; os dois informativos, linha fina. */
+  var CARDS = ["PRONTO", "PRECISA_VOCE", "FALTA_DOC", "NAO_ENCONTRADO"];
+  var INFORMATIVOS = ["AGUARDANDO", "CONCLUIDO_HOJE"];
+  /* Ordem da lista: o que só falta um clique primeiro; o que espera o
+     associado por último. Dentro do grupo, o mais antigo primeiro. */
+  var PRIORIDADE = { PRONTO: 1, PRECISA_VOCE: 2, FALTA_DOC: 3, NAO_ENCONTRADO: 4, AGUARDANDO: 5, CONCLUIDO: 6 };
+  var ROTULOS = {
+    PRONTO: ["🟢", "Prontos para validar"],
+    FALTA_DOC: ["🟡", "Falta documento"],
+    NAO_ENCONTRADO: ["🔴", "Não encontrado na relação"],
+    PRECISA_VOCE: ["⚪", "Precisa de você"],
+    AGUARDANDO: ["⏳", "Aguardando associado"],
+    CONCLUIDO_HOJE: ["✔", "Concluídos hoje"]
+  };
+  var CAMPOS = [
+    ["nome", "Nome do associado"], ["cpf", "CPF"], ["telefone", "Telefone"], ["rg", "RG (vai no certificado)"],
+    ["escola", "Escola onde trabalha"],
+    ["comprovanteVinculo", "Vínculo comprovado por", ["CONTRACHEQUE", "DECLARACAO_ESCOLA", "CTPS"]],
+    ["curso", "Curso"], ["modalidade", "Nível do curso", "modalidades"],
+    ["area", "Área (graduação)", "areas"], ["instituicao", "Instituição de ensino"], ["periodo", "Semestre", "periodos"],
+    ["regime", "Regime", ["SEMESTRAL", "ANUAL"]], ["tipoBeneficiario", "Para quem é", "beneficiarios"],
+    ["nomeBeneficiario", "Nome do beneficiário"], ["dataNascimento", "Nascimento do beneficiário"],
+    ["ordemFilho", "Ordem do filho (ensino básico)"]
+  ];
+
+  function tk() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined") ? SISGEP_TOKEN_SESSAO : ""; }
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function aviso(msg, tipo) {
+    if (typeof toast === "function") toast(msg, tipo || "info", 5000);
+    else if (window.console) console.log(msg);
+  }
+  function rodar(fn, args, ok) {
+    var r = google.script.run
+      .withSuccessHandler(function (res) { ok(res || { ok: false, mensagem: "Sem resposta do servidor." }); })
+      .withFailureHandler(function (e) { ok({ ok: false, mensagem: (e && e.message) || String(e) }); });
+    r[fn].apply(r, args.concat([tk()]));
+  }
+
+  function carregar() {
+    var cx = el("vpeCaixa").value || "";
+    rodar("voucherPedidosPainel", [cx], function (r) {
+      if (!r.ok) { el("vpeSub").textContent = r.mensagem || "Não foi possível carregar."; return; }
+      estado.dados = r;
+      var sel = el("vpeCaixa");
+      if (r.caixas && r.caixas.length > 1) {
+        sel.style.display = "";
+        sel.innerHTML = r.caixas.map(function (c) {
+          return "<option value='" + esc(c) + "'" + (c === r.caixa ? " selected" : "") + ">Caixa: " +
+            esc(c === "SECRETARIA" ? "secretaria@" : c === "FINANCEIRO" ? "financeiro@" : "outras") + "</option>";
+        }).join("");
+      }
+      el("vpeSub").innerHTML = "Semestres abertos: <b>" + esc((r.periodosAbertos || []).join(" e ")) + "</b>" +
+        " · Última leitura: " + esc(r.ultimaLeitura || "nenhuma ainda") +
+        (r.gatilhoInstalado ? " · leitura automática a cada 15 min" : "");
+      var caixaAviso = el("vpeAvisoGatilho");
+      el("vpeBtnGatilho").style.display = "none";
+      if (!r.ponteConfigurada) {
+        caixaAviso.style.display = "";
+        el("vpeAvisoTexto").textContent = "O leitor da Secretaria ainda não foi ligado. Os pedidos só aparecem aqui " +
+          "depois de instalar o leitor na conta " + (r.contaLeitor || "da Secretaria") + ".";
+      } else if (!r.gatilhoInstalado) {
+        caixaAviso.style.display = "";
+        el("vpeAvisoTexto").textContent = "A leitura automática ainda não está ligada. Até lá, use o botão \"Ler agora\".";
+        if (r.podeLigarGatilho) el("vpeBtnGatilho").style.display = "";
+      } else {
+        caixaAviso.style.display = "none";
+      }
+      desenharCards(); desenharLista();
+      /* A aba abre em Pedidos quando há pedido esperando — só na primeira
+         carga; depois, a escolha de quem está usando manda. */
+      var c = r.contagens || {};
+      var esperando = (c.PRONTO || 0) + (c.PRECISA_VOCE || 0) + (c.FALTA_DOC || 0) + (c.NAO_ENCONTRADO || 0);
+      var badge = el("vpeAbaBadge");
+      badge.textContent = esperando; badge.style.display = esperando ? "" : "none";
+      var bEmi = el("vpeAbaBadgeEmi");
+      bEmi.textContent = c.EMITIDO || 0; bEmi.style.display = c.EMITIDO ? "" : "none";
+      preencherFiltros();
+      if (!estado.abaEscolhida) mostrarAba(esperando ? "pedidos" : "solicitacoes");
+    });
+  }
+
+  function mostrarAba(qual) {
+    estado.aba = qual;
+    el("vpeSecao").style.display = qual === "pedidos" ? "" : "none";
+    el("vpeEmitidos").style.display = qual === "emitidos" ? "" : "none";
+    var sol = document.getElementById("secCertificadoAdmin");
+    if (sol) sol.style.display = qual === "solicitacoes" ? "" : "none";
+    [["vpeAbaPedidos", "pedidos"], ["vpeAbaEmitidos", "emitidos"], ["vpeAbaSolicitacoes", "solicitacoes"]].forEach(function (a) {
+      el(a[0]).className = "vpe-aba" + (qual === a[1] ? " on" : "");
+      el(a[0]).setAttribute("aria-selected", qual === a[1] ? "true" : "false");
+    });
+    if (qual === "emitidos") carregarEmitidos();
+  }
+
+  function aba(qual) { estado.abaEscolhida = true; mostrarAba(qual); }
+
+  /* "há 3 dias" — prazo sem fazer conta. Vermelho a partir de 3 dias. */
+  function espera(ts) {
+    if (!ts) return "";
+    var min = Math.floor((Date.now() - ts) / 60000);
+    var txt = min < 60 ? "há " + Math.max(min, 1) + " min"
+      : min < 1440 ? "há " + Math.floor(min / 60) + " h"
+      : "há " + Math.floor(min / 1440) + (Math.floor(min / 1440) === 1 ? " dia" : " dias");
+    return "<span class='vpe-espera" + (min >= 3 * 1440 ? " longa" : "") + "'>" + txt + "</span>";
+  }
+
+  /* UMA frase por pedido. O erro da IA vinha duas vezes (como pendência e
+     como erro); agora sai uma vez, dizendo o que o sistema vai fazer. */
+  function resumoDoItem(i) {
+    var pend = (i.pendencias || []).map(function (p) { var t = p.split("|"); return { tipo: t[0], texto: t.slice(1).join("|") }; });
+    var falhaIA = i.erro && /^IA:|leitura pela IA falhou/i.test(i.erro + " " + pend.map(function (p) { return p.texto; }).join(" "));
+    if (falhaIA && i.estado === "PRECISA_VOCE" && !i.protocolo) {
+      var motivo = /credit balance/i.test(i.erro) ? "sem crédito na API" : String(i.erro).replace(/^IA:\s*/, "");
+      return "<div class='vpe-resumo-aviso'>⚠ A IA não conseguiu ler este pedido (" + esc(motivo) +
+        "). Ele será lido de novo sozinho na próxima leitura.</div>";
+    }
+    var html = "";
+    if (i.estado === "PRONTO" && !pend.length) {
+      html += "<div class='vpe-resumo-ok'>✔ Tudo conferido: associado na relação, documentos e dados completos</div>";
+    }
+    var chips = pend.slice(0, 4).map(function (p) {
+      return "<span class='vpe-chip " + esc(p.tipo) + "'>" + esc(p.texto) + "</span>";
+    }).join("");
+    if (i.erro && !falhaIA) chips += "<span class='vpe-chip ERRO'>" + esc(i.erro) + "</span>";
+    if (i.protocolo) chips += "<span class='vpe-chip'>Protocolo " + esc(i.protocolo) + "</span>";
+    if (i.envio) chips += "<span class='vpe-chip " + (i.envio.status === "ENVIADO" ? "" : i.envio.status === "PENDENTE" ? "INTERNO" : "ERRO") +
+      "'>Resposta: " + esc(i.envio.rotulo) + (i.envio.detalhe ? " — " + esc(i.envio.detalhe) : "") + "</span>";
+    return html + (chips ? "<div class='vpe-chips'>" + chips + "</div>" : "");
+  }
+
+  function desenharCards() {
+    var c = estado.dados.contagens || {};
+    el("vpeCards").innerHTML = CARDS.map(function (k) {
+      return "<button type='button' class='vpe-card c-" + k + (estado.filtro === k ? " ativo" : "") +
+        "' data-vpe='filtrar' data-arg='" + k + "'><div class='n'>" + (c[k] || 0) + "</div><div class='l'>" +
+        ROTULOS[k][0] + " " + esc(ROTULOS[k][1]) + "</div></button>";
+    }).join("");
+    el("vpeMini").innerHTML = INFORMATIVOS.map(function (k) {
+      return "<button type='button' class='" + (estado.filtro === k ? "ativo" : "") + "' data-vpe='filtrar' data-arg='" + k + "'>" +
+        ROTULOS[k][0] + " " + esc(ROTULOS[k][1]) + ": " + (c[k] || 0) + "</button>";
+    }).join(" &nbsp;·&nbsp; ");
+  }
+
+  function passaFiltros(i) {
+    var q = (el("vpeFBusca").value || "").trim().toLowerCase();
+    if (q && [i.nome, i.remetente, i.cpfMascarado, i.protocolo, i.curso, i.escola].join(" ").toLowerCase().indexOf(q) === -1) return false;
+    if (el("vpeFSemestre").value && i.periodo !== el("vpeFSemestre").value) return false;
+    if (el("vpeFEscola").value && (i.escola || "") !== el("vpeFEscola").value) return false;
+    var para = el("vpeFPara").value;
+    if (para === "TITULAR" && i.beneficiario) return false;
+    if (para === "DEPENDENTE" && !i.beneficiario) return false;
+    if (el("vpeFAntigos").checked && !(i.recebidoTs && Date.now() - i.recebidoTs >= 3 * 86400000)) return false;
+    return true;
+  }
+  function opcoesDe(sel, valores, rotulo) {
+    var atual = sel.value;
+    var uniq = valores.filter(function (v, k, a) { return v && a.indexOf(v) === k; }).sort();
+    sel.innerHTML = "<option value=''>" + esc(rotulo) + "</option>" + uniq.map(function (v) {
+      return "<option" + (v === atual ? " selected" : "") + ">" + esc(v) + "</option>";
+    }).join("");
+  }
+  function preencherFiltros() {
+    var it = (estado.dados && estado.dados.itens) || [];
+    opcoesDe(el("vpeFSemestre"), it.map(function (i) { return i.periodo; }), "Semestre: todos");
+    opcoesDe(el("vpeFEscola"), it.map(function (i) { return i.escola; }), "Escola: todas");
+  }
+  function limparFiltros() {
+    ["vpeFBusca", "vpeFSemestre", "vpeFEscola", "vpeFPara"].forEach(function (id) { el(id).value = ""; });
+    el("vpeFAntigos").checked = false;
+    desenharLista();
+  }
+
+  /* ── 2 · EMITIDOS, AGUARDANDO ENVIO (29/10/2026) ── */
+  function carregarEmitidos() {
+    rodar("voucherPedidosEmitidos", [], function (r) {
+      if (!r.ok) { el("vpeEmiLista").innerHTML = "<div class='vpe-vazio'>" + esc(r.mensagem || "Não foi possível carregar.") + "</div>"; return; }
+      estado.emitidos = r.itens || [];
+      opcoesDe(el("vpeESemestre"), estado.emitidos.map(function (i) { return i.periodo; }), "Semestre: todos");
+      opcoesDe(el("vpeEEscola"), estado.emitidos.map(function (i) { return i.escola; }), "Escola: todas");
+      opcoesDe(el("vpeEConferido"), estado.emitidos.map(function (i) { return i.conferidoPor; }), "Conferido por: todos");
+      desenharEmitidos();
+    });
+  }
+  function emitidosVisiveis() {
+    var q = (el("vpeEBusca").value || "").trim().toLowerCase();
+    return (estado.emitidos || []).filter(function (i) {
+      if (q && [i.nome, i.para, i.protocolo, i.curso, i.escola].join(" ").toLowerCase().indexOf(q) === -1) return false;
+      if (el("vpeESemestre").value && i.periodo !== el("vpeESemestre").value) return false;
+      if (el("vpeEEscola").value && i.escola !== el("vpeEEscola").value) return false;
+      if (el("vpeEConferido").value && i.conferidoPor !== el("vpeEConferido").value) return false;
+      return true;
+    });
+  }
+  function desenharEmitidos() {
+    estado.marcadosEmi = estado.marcadosEmi || {};
+    var vis = emitidosVisiveis();
+    if (!vis.length) {
+      el("vpeEmiLista").innerHTML = "<div class='vpe-vazio' style='margin-top:8px;'>" +
+        ((estado.emitidos || []).length ? "Nada com esses filtros." : "Nenhum voucher emitido aguardando envio.") + "</div>";
+    } else {
+      el("vpeEmiLista").innerHTML = vis.map(function (i) {
+        return "<div class='vpe-emi-linha'><input type='checkbox' class='vpe-emi-chk' data-id='" + esc(i.id) + "'" +
+          (estado.marcadosEmi[i.id] ? " checked" : "") + ">" +
+          "<div><b>" + esc(i.nome) + "</b>" + (i.beneficiario ? "<small>para " + esc(i.beneficiario) + "</small>" : "") + "<small>" + esc(i.protocolo) + "</small></div>" +
+          "<div>" + esc(i.periodo) + " · " + esc(i.curso) + (i.percentual !== "" ? " · " + esc(i.percentual) + "%" : "") + "</div>" +
+          "<div>↩ resposta no e-mail do pedido<small>" + esc(i.para) + " · caixa da Secretaria</small></div>" +
+          "<div>" + esc(i.emitidoEm) + "<small>sai com a data do envio</small></div>" +
+          "<div><small>conferido por</small>" + esc(i.conferidoPor) + "</div>" +
+          (i.aviso ? "<div class='vpe-emi-aviso'>⚠ " + esc(i.aviso) + "</div>" : "") + "</div>";
+      }).join("");
+    }
+    contarEmi();
+  }
+  function contarEmi() {
+    var n = Object.keys(estado.marcadosEmi || {}).filter(function (k) { return estado.marcadosEmi[k]; }).length;
+    el("vpeEmiEnviar").textContent = "Enviar selecionados (" + n + ")";
+    el("vpeEmiEnviar").disabled = !n;
+  }
+  function selecionadosEmi() {
+    return (estado.emitidos || []).filter(function (i) { return estado.marcadosEmi && estado.marcadosEmi[i.id]; });
+  }
+  function conferirEnvio() {
+    var sel = selecionadosEmi();
+    if (!sel.length) { aviso("Marque quem vai receber.", "warn"); return; }
+    el("vpeEnvResumo").innerHTML = "Vão sair <b>" + sel.length + "</b> voucher(s), datados de <b>hoje</b>, como resposta no e-mail de cada pedido:";
+    el("vpeEnvLista").innerHTML = sel.map(function (i) {
+      return "<div><b>" + esc(i.nome) + "</b> → " + esc(i.para) + " <small style='color:#64748b'>(" + esc(i.periodo) + " · " + esc(i.curso) + ")</small></div>";
+    }).join("");
+    el("vpeEnvConfirmar").textContent = "Enviar " + sel.length + " voucher(s)";
+    el("vpeEnvConfirmar").disabled = false;
+    el("vpeEnvOverlay").classList.add("aberto");
+  }
+  function fecharEnvio() { el("vpeEnvOverlay").classList.remove("aberto"); }
+  function enviarEmitidos() {
+    var ids = selecionadosEmi().map(function (i) { return i.id; });
+    el("vpeEnvConfirmar").disabled = true;
+    rodar("voucherPedidosEnviarEmitidos", [ids], function (r) {
+      aviso(r.mensagem || (r.ok ? "Enviado." : "Não foi possível."), r.ok ? "ok" : "err");
+      el("vpeEnvResumo").textContent = r.mensagem || "";
+      el("vpeEnvLista").innerHTML = (r.recusados || []).map(function (x) { return "<div>⚠ " + esc(x.mensagem) + "</div>"; }).join("");
+      (r.enviados || []).forEach(function (x) { delete estado.marcadosEmi[x.id]; });
+      carregarEmitidos(); carregar();
+    });
+  }
+
+  function desenharLista() {
+    var itens = (estado.dados.itens || []).filter(function (i) {
+      if (!estado.filtro) return i.estado !== "CONCLUIDO" && i.estado !== "EMITIDO";
+      if (estado.filtro === "CONCLUIDO_HOJE") return i.estado === "CONCLUIDO";
+      return i.estado === estado.filtro;
+    }).filter(passaFiltros);
+    itens = itens.slice().sort(function (a, b) {
+      var pa = PRIORIDADE[a.estado] || 9, pb = PRIORIDADE[b.estado] || 9;
+      return pa !== pb ? pa - pb : (a.recebidoTs || 0) - (b.recebidoTs || 0);
+    });
+    if (!itens.length) {
+      el("vpeLista").innerHTML = "<div class='vpe-vazio'>" + (estado.filtro
+        ? "Nada neste estado." : "Nenhum pedido aguardando. Os novos aparecem aqui depois da leitura da caixa.") + "</div>";
+      return;
+    }
+    el("vpeLista").innerHTML = itens.map(function (i) {
+      var r = ROTULOS[i.estado] || ROTULOS[i.estado === "CONCLUIDO" ? "CONCLUIDO_HOJE" : "PRECISA_VOCE"];
+      /* Só o que existe: dado vazio não pode virar " · · " solto na linha. */
+      var meta = [i.cpfMascarado, i.periodo, i.curso, i.beneficiario, i.percentual ? i.percentual + "%" : ""]
+        .filter(function (x) { return x !== undefined && x !== null && String(x).trim() !== ""; })
+        .map(esc).join(" · ");
+      var quando = (i.estado === "CONCLUIDO" ? "recebido " + esc(i.recebidoEm) : espera(i.recebidoTs) + " · " + esc(i.recebidoEm));
+      return "<div class='vpe-item'><div><div class='vpe-item-nome'>" + r[0] + " " + esc(i.nome || i.remetente) +
+        "</div><div class='vpe-item-meta'>" + (meta ? meta + " · " : "") + quando + " · " + esc(i.remetente) + "</div>" +
+        resumoDoItem(i) +
+        "</div><button type='button' class='btn btn-navy' data-vpe='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></div>";
+    }).join("");
+  }
+
+  function filtrar(k) { estado.filtro = estado.filtro === k ? "" : k; desenharCards(); desenharLista(); }
+
+
+  function lerAgora() {
+    var b = el("vpeBtnLer"); b.disabled = true; b.textContent = "Lendo… (até 2 min)";
+    rodar("voucherPedidosLerAgora", [], function (r) {
+      b.disabled = false; b.textContent = "↻ Ler agora";
+      aviso(r.mensagem || (r.ok ? "Leitura concluída." : "Falha na leitura."), r.ok ? "ok" : "err");
+      carregar();
+    });
+  }
+
+  /* ── o pedido aberto ── */
+  function abrir(id) {
+    /* Enquanto carrega, nada do pedido anterior fica na tela (o usuário viu
+       o título "Carregando…" em cima dos dados de outra pessoa). */
+    estado.atual = null;
+    el("vpeMTitulo").textContent = "Carregando o pedido…"; el("vpeMSub").textContent = "";
+    el("vpeMResumo").textContent = "";
+    var sk = "<div class='sg-carregando' style='width:45%'></div><div class='sg-carregando'></div><div class='sg-carregando' style='width:75%'></div>";
+    el("vpeMMensagens").innerHTML = sk;
+    ["vpeMAnexos", "vpeMPrev", "vpeMPend", "vpeMCampos", "vpeMAcoes", "vpeMHist"].forEach(function (k) { el(k).innerHTML = ""; });
+    if (el("vpeMEscola")) el("vpeMEscola").style.display = "none";
+    el("vpeModal").classList.add("aberto");
+    sisgepCarregarPdfJs_();
+    rodar("voucherPedidosDetalhe", [id], mostrar);
+  }
+
+  function mostrar(d) {
+    if (!d.ok) { aviso(d.mensagem, "err"); fechar(); return; }
+    estado.atual = d;
+    var it = d.item;
+    el("vpeMTitulo").textContent = (ROTULOS[it.estado] || ["", ""])[0] + " " + (it.nome || it.remetente);
+    el("vpeMSub").textContent = d.assunto + " · " + it.remetente + " · caixa " + it.caixa.toLowerCase() +
+      (it.protocolo ? " · protocolo " + it.protocolo : "") + (d.confirmadoPor ? " · associado confirmado por " + d.confirmadoPor : "");
+    el("vpeMResumo").textContent = d.resumoIA ? "Leitura da IA: " + d.resumoIA : "";
+    el("vpeMMensagens").innerHTML = (d.mensagens || []).map(sisgepMsgHtml).join("") ||
+      "<div class='vpe-vazio'>Conversa indisponível.</div>";
+    var anexos = d.anexos || [];
+    el("vpeMAnexosTit").textContent = "Anexos" + (anexos.length ? " (" + anexos.length + ")" : "");
+    el("vpeMAnexos").innerHTML = anexos.map(function (a) {
+      return sisgepAnexoHtml(a, { attr: "data-vpe",
+        etiqueta: a.classificacao || (a.lidoPelaIA ? "não identificado" : "não lido pela IA"),
+        ruim: !a.classificacao || a.legivel === false, pessoa: a.nomePessoa, nota: a.legivel === false ? "ilegível" : "" });
+    }).join("") || "<div style='font-size:12.5px;color:#64748b;'>Nenhum anexo.</div>";
+    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Clique em \"Ver\" para abrir um anexo aqui.</div>";
+    /* A prévia já abre com a prova de vínculo (ou o primeiro anexo): é o
+       que se confere primeiro. Pedido do usuário em 30/10/2026. */
+    var principal = sisgepAnexoPrincipal(anexos);
+    if (principal) verAnexo(Number(principal.indice));
+
+    var pend = d.pendencias || [];
+    el("vpeMPend").innerHTML = pend.length ? pend.map(function (p) {
+      return "<span class='vpe-chip " + esc(p.tipo) + "'>" + esc(p.texto) + "</span>";
+    }).join("") : "<div class='vpe-ok'>Tudo conferido: associado na relação, documentos e dados completos.</div>";
+
+    desenharEscola(d, it.estado);
+    var concl = it.estado === "CONCLUIDO";
+    el("vpeMCampos").innerHTML = CAMPOS.map(function (c) {
+      var chave = c[0], f = d.campos[chave] || { valor: "", origem: "" };
+      var lista = Array.isArray(c[2]) ? c[2] : (c[2] ? (d.opcoes[c[2]] || []) : null);
+      var origem = f.origem || "";
+      var cls = /editado/.test(origem) ? "edit" : /IA/.test(origem) ? "ia" : "";
+      var input;
+      if (lista) {
+        var vals = lista.slice(); if (f.valor && vals.indexOf(String(f.valor)) === -1) vals.unshift(String(f.valor));
+        input = "<select data-k='" + chave + "'" + (concl ? " disabled" : "") + "><option value=''>—</option>" +
+          vals.map(function (v) { return "<option" + (String(v) === String(f.valor) ? " selected" : "") + ">" + esc(v) + "</option>"; }).join("") + "</select>";
+      } else {
+        input = "<input data-k='" + chave + "' value='" + esc(f.valor) + "'" + (concl ? " disabled" : "") + ">";
+      }
+      return "<div class='vpe-campo' data-campo='" + chave + "'><label>" + esc(c[1]) + "</label>" + input +
+        "<small class='" + cls + "'>" + esc(origem ? "↳ " + origem : "") + "</small></div>";
+    }).join("");
+    ajustarBeneficiario();
+    sisgepHistoricoVoucher(el("vpeMHist"), it.protocolo);
+    el("vpeMPct").innerHTML = d.percentual
+      ? "Percentual: <b>" + esc(d.percentual.valor) + "%</b> <small>(" + esc(d.percentual.origem) + ")</small>"
+      : "<small>Percentual calculado na criação, pela regra da convenção.</small>";
+
+    var temResposta = !concl && (it.estado === "FALTA_DOC" || it.estado === "NAO_ENCONTRADO" || it.estado === "PRECISA_VOCE" || it.estado === "AGUARDANDO");
+    el("vpeMRespostaBox").style.display = temResposta ? "" : "none";
+    el("vpeMResposta").value = d.respostaSugerida || "";
+    montarFalta(d, temResposta && it.estado !== "NAO_ENCONTRADO");
+    el("vpeMJustBox").style.display = "none";
+    el("vpeMJust").value = "";
+    estado.modo = "";
+    botoes(it.estado);
+  }
+
+  function botoes(st) {
+    var b = [];
+    function add(rot, cls, fn, arg) {
+      b.push("<button type='button' class='btn " + cls + "' data-vpe='" + fn + "'" + (arg ? " data-arg='" + arg + "'" : "") + ">" + rot + "</button>");
+    }
+    if (st === "EMITIDO") {
+      b.push("<div style='flex-basis:100%;font-size:12.5px;color:#64748b;margin-bottom:6px;'>📄 Voucher emitido — está em " +
+        "<b>2 · Emitidos, aguardando envio</b>. Envie por lá, com a data do envio.</div>");
+    } else if (st !== "CONCLUIDO") {
+      add("Descartar", "btn-outline", "descartar");
+      add("Salvar e reconferir", "btn-outline", "salvar");
+      if (st === "NAO_ENCONTRADO") {
+        add("Confirmar que é associado", "btn-outline", "confirmarAssociado");
+        add("Encaminhar à sede", "btn-red", "responder", "SEDE");
+      } else {
+        if (st !== "PRONTO") add("Enviar pedido de complemento", "btn-outline", "responder", "COMPLEMENTO");
+        /* Emitir agora e enviar depois (29/10/2026) — e, para quando quiser,
+           conferir e enviar na hora. */
+        add(st === "PRONTO" ? "Conferir e enviar agora" : "Conferir e enviar mesmo assim", "btn-outline", "validar");
+        add(st === "PRONTO" ? "Conferir e emitir" : "Conferir e emitir mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validarEmitir");
+      }
+    }
+    b.push("<button type='button' class='btn btn-outline' data-vpe='fechar'>Fechar</button>");
+    /* Um botão só confere e envia (usuário, 29/10/2026): o aviso diz o que
+       o clique significa e para onde vai — fica registrado quem conferiu. */
+    var nota = (st !== "CONCLUIDO" && st !== "NAO_ENCONTRADO" && st !== "EMITIDO")
+      ? "<div id='vpeMNotaEnvio' style='flex-basis:100%;font-size:12px;color:#64748b;margin-bottom:6px;'>" +
+        "Ao clicar em <b>Conferir</b>, você confirma que conferiu os documentos e a filiação, e fica registrado que foi você. " +
+        "<b>Conferir e emitir</b> gera o voucher e deixa em \"Emitidos, aguardando envio\". " +
+        "<b>Conferir e enviar agora</b> já manda, datado de hoje, para <b>" +
+        esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") + "</b>.</div>" : "";
+    el("vpeMAcoes").innerHTML = nota + b.join("");
+  }
+
+  /* ── O QUE ESTÁ FALTANDO (29/10/2026) ──
+     Os itens marcados montam o texto com as peças fixas que vêm do
+     servidor (o mesmo modelo dos dois lados). A pessoa pode editar o texto;
+     se editou, mudar os itens NÃO apaga a edição — só avisa. */
+  function montarFalta(d, mostrar) {
+    var c = d.complemento || null;
+    estado.comp = c;
+    estado.textoSugerido = d.respostaSugerida || "";
+    estado.editado = false;
+    el("vpeMFaltaBox").style.display = (mostrar && c) ? "" : "none";
+    el("vpeMTextoAviso").style.display = "none";
+    el("vpeMTextoEditado").style.display = "none";
+    if (!mostrar || !c) { el("vpeMFalta").innerHTML = ""; return; }
+    var grupo = "", h = [];
+    c.itens.forEach(function (i) {
+      if (i.grupo !== grupo) { grupo = i.grupo; h.push("<h5>" + esc(grupo) + "</h5>"); }
+      var sug = Object.prototype.hasOwnProperty.call(c.sugeridos || {}, i.id);
+      h.push("<label><input type='checkbox' class='vpe-falta-chk' data-id='" + esc(i.id) + "'" + (sug ? " checked" : "") + "> <span>" +
+        esc(i.rotulo) + (sug ? " <small>marcado pelo sistema</small>" : "") + "</span></label>" +
+        (i.complemento ? "<input type='text' class='vpe-falta-txt' data-id='" + esc(i.id) + "' placeholder='qual documento?'>" : ""));
+    });
+    h.push("<h5>Outro</h5><input type='text' class='vpe-falta-txt' data-id='OUTRO' placeholder='escreva aqui, se faltar algo fora da lista' style='margin-left:0;max-width:100%;'>");
+    el("vpeMFalta").innerHTML = h.join("");
+  }
+  function itensMarcados() {
+    var c = estado.comp; if (!c) return [];
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMFalta .vpe-falta-chk"), function (x) {
+      if (!x.checked) return;
+      var id = x.getAttribute("data-id");
+      var item = c.itens.filter(function (i) { return i.id === id; })[0];
+      var txt = document.querySelector("#vpeMFalta .vpe-falta-txt[data-id='" + id + "']");
+      var pedir = (c.sugeridos && c.sugeridos[id]) || (item && item.pedir) || "";
+      if (txt && txt.value.trim()) pedir += ": " + txt.value.trim();
+      out.push({ id: id, pedir: pedir });
+    });
+    var outro = document.querySelector("#vpeMFalta .vpe-falta-txt[data-id='OUTRO']");
+    if (outro && outro.value.trim()) out.push({ id: "OUTRO", pedir: outro.value.trim() });
+    return out;
+  }
+  function textoDosItens() {
+    var c = estado.comp, itens = itensMarcados();
+    if (!c) return el("vpeMResposta").value;
+    if (!itens.length) return c.semNada ? estado.textoSugerido : "";
+    /* Quem não mandou nada recebe a resposta-padrão completa enquanto a
+       pessoa não mudar os itens que o sistema marcou. */
+    var ids = itens.map(function (x) { return x.id; }).sort().join(",");
+    if (c.semNada && ids === Object.keys(c.sugeridos || {}).sort().join(",")) return estado.textoSugerido;
+    return c.modelo.abertura + "\n\n" + itens.map(function (x) { return "• " + x.pedir + ";"; }).join("\n") +
+      "\n\n" + c.modelo.fechamento;
+  }
+  function itensMudaram() {
+    if (estado.editado) { el("vpeMTextoAviso").style.display = ""; return; }
+    el("vpeMResposta").value = textoDosItens();
+  }
+  function voltarModelo() {
+    el("vpeMResposta").value = textoDosItens();
+    estado.editado = false;
+    el("vpeMTextoAviso").style.display = "none";
+    el("vpeMTextoEditado").style.display = "none";
+  }
+
+  /* ── ESCOLA NO CADASTRO DO SISGEP (30/10/2026) ──
+     Não achou: escolher uma parecida, cadastrar (abre o cadastro já
+     preenchido) ou seguir com justificativa (o "mesmo assim" de sempre). */
+  /* Voucher para o titular não tem beneficiário: os campos dele somem
+     (pedido do usuário, 30/10/2026). Ordem do filho só para filho/enteado.
+     Sem "Para quem é" escolhido, tudo aparece. */
+  var SO_BENEFICIARIO = { nomeBeneficiario: ["FILHO", "ENTEADO", "CONJUGE"], dataNascimento: ["FILHO", "ENTEADO", "CONJUGE"],
+    ordemFilho: ["FILHO", "ENTEADO"] };
+  function ajustarBeneficiario() {
+    var sel = document.querySelector("#vpeMCampos [data-k='tipoBeneficiario']");
+    var tipo = sel ? String(sel.value || "").toUpperCase() : "";
+    Object.keys(SO_BENEFICIARIO).forEach(function (k) {
+      var box = document.querySelector("#vpeMCampos [data-campo='" + k + "']");
+      if (box) box.style.display = !tipo || SO_BENEFICIARIO[k].indexOf(tipo) > -1 ? "" : "none";
+    });
+  }
+
+  function desenharEscola(d, st) {
+    var box = el("vpeMEscola"), e = d.escola;
+    if (!e || e.achada || st === "CONCLUIDO" || st === "EMITIDO") { box.style.display = "none"; box.innerHTML = ""; return; }
+    estado.escolaLida = e;
+    box.style.display = "";
+    box.innerHTML = "<b>⚠ Escola não cadastrada no SISGEP</b><br>Lido no documento: <b>" + esc(e.lida) + "</b>" +
+      (e.cnpjLido ? " · CNPJ " + esc(e.cnpjLido) : "") +
+      ((e.parecidas || []).length ? "<div style='margin-top:6px;'>Parecidas no cadastro:</div>" + e.parecidas.map(function (p, k) {
+        return "<div style='display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:4px;'><span>" + esc(p.nome) +
+          (p.fantasia ? " <small>(" + esc(p.fantasia) + ")</small>" : "") + (p.cnpj ? " <small>CNPJ " + esc(p.cnpj) + "</small>" : "") +
+          "</span><button type='button' class='btn btn-outline' style='padding:2px 10px;font-size:11.5px;' data-vpe='escolherEscola' data-arg='" + k + "'>É esta</button></div>";
+      }).join("") : "<div style='margin-top:6px;color:#92400e;'>Nenhuma parecida no cadastro.</div>") +
+      "<div style='margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;'>" +
+      "<button type='button' class='btn btn-navy' style='padding:4px 12px;font-size:12px;' data-vpe='cadastrarEscola'>Cadastrar escola no SISGEP</button>" +
+      "<span style='font-size:11.5px;color:#92400e;align-self:center;'>ou siga com \"mesmo assim\", explicando o motivo.</span></div>";
+  }
+  function escolherEscola(k) {
+    var p = estado.escolaLida && estado.escolaLida.parecidas[Number(k)];
+    if (!p) return;
+    var inp = document.querySelector("#vpeMCampos [data-k='escola']");
+    if (inp) inp.value = p.nome;
+    salvar();
+  }
+  function cadastrarEscola() {
+    var e = estado.escolaLida || {};
+    fechar();
+    if (typeof spIr === "function") spIr("escolas", null);
+    /* O cadastro abre já preenchido com o que veio no documento. */
+    setTimeout(function () {
+      if (typeof limparForm === "function") { try { limparForm(); } catch (x) {} }
+      var n = document.getElementById("ceNomeEscola"), c = document.getElementById("ceCnpj");
+      if (n) n.value = e.lida || "";
+      if (c) c.value = e.cnpjLido || "";
+      if (n && n.focus) n.focus();
+      aviso("Cadastro de escola aberto com o nome" + (e.cnpjLido ? " e o CNPJ" : "") + " do documento. Confira e salve; depois volte ao pedido e clique em \"Salvar e reconferir\".", "info");
+    }, 700);
+  }
+
+  function camposDaTela() {
+    var o = {};
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMCampos [data-k]"), function (x) { o[x.getAttribute("data-k")] = x.value; });
+    return o;
+  }
+  function travar(sim) {
+    Array.prototype.forEach.call(document.querySelectorAll("#vpeMAcoes button"), function (x) { x.disabled = !!sim; });
+  }
+  function depois(r, fecharSeOk) {
+    travar(false);
+    aviso(r.mensagem || (r.ok ? "Feito." : "Não foi possível."), r.ok ? "ok" : "err");
+    if (r.ok && fecharSeOk) { fechar(); }
+    carregar();
+  }
+
+  function salvar() {
+    travar(true);
+    rodar("voucherPedidosSalvarCampos", [estado.atual.item.id, camposDaTela()], function (r) {
+      travar(false);
+      if (r.ok) { mostrar(r); aviso("Dados salvos e pedido reconferido.", "ok"); carregar(); }
+      else aviso(r.mensagem, "err");
+    });
+  }
+
+  function pedirMotivo(modo, titulo, dica) {
+    var just = el("vpeMJustBox");
+    if (estado.modo === modo && just.style.display !== "none") return el("vpeMJust").value;
+    estado.modo = modo;
+    el("vpeMJustTitulo").textContent = titulo;
+    el("vpeMJust").value = "";
+    just.style.display = ""; el("vpeMJust").focus();
+    aviso(dica, "warn");
+    return null;
+  }
+
+  function validarEmitir() { validar("emitir"); }
+  function validar(modo) {
+    var opc = {};
+    if (estado.atual.item.estado !== "PRONTO") {
+      var j = pedirMotivo("VALIDAR", "Por que validar com pendência?",
+        "Há pendências. Escreva por que validar mesmo assim e clique de novo.");
+      if (j === null) return;
+      opc = { forcar: true, justificativa: j };
+    }
+    travar(true);
+    rodar(modo === "emitir" ? "voucherPedidosConferirEmitir" : "voucherPedidosValidarEnviar",
+      [estado.atual.item.id, camposDaTela(), opc], function (r) { depois(r, true); });
+  }
+
+  function responder(tipo) {
+    var txt = el("vpeMResposta").value;
+    var c = estado.comp || {};
+    var meta = { sugeridos: Object.keys(c.sugeridos || {}),
+                 escolhidos: itensMarcados().map(function (x) { return x.id; }),
+                 textoSugerido: estado.textoSugerido };
+    travar(true);
+    rodar("voucherPedidosResponder", [estado.atual.item.id, tipo, txt, meta], function (r) { depois(r, true); });
+  }
+
+  function confirmarAssociado() {
+    travar(true);
+    rodar("voucherPedidosConfirmarAssociado", [estado.atual.item.id], function (r) {
+      travar(false);
+      if (r.ok) { mostrar(r); aviso("Associado confirmado. Pedido reconferido.", "ok"); carregar(); }
+      else aviso(r.mensagem, "err");
+    });
+  }
+
+  function descartar() {
+    var motivo = pedirMotivo("DESCARTAR", "Por que descartar este pedido? (nenhum e-mail será enviado)",
+      "Escreva o motivo do descarte e clique em Descartar de novo.");
+    if (motivo === null) return;
+    travar(true);
+    rodar("voucherPedidosDescartar", [estado.atual.item.id, motivo], function (r) { depois(r, true); });
+  }
+
+  /* Anexo já baixado fica guardado enquanto a tela está aberta: abrir de
+     novo o mesmo não volta ao servidor. */
+  var anexosVistos = {};
+  function verAnexo(i) {
+    if (!estado.atual) return;
+    var id = estado.atual.item.id, chave = id + "#" + i;
+    sisgepMarcarAnexo(el("vpeMAnexos"), i);
+    if (anexosVistos[chave]) return sisgepPreviaAnexo(el("vpeMPrev"), anexosVistos[chave]);
+    el("vpeMPrev").innerHTML = "<div style='padding:18px;font-size:12px;color:#64748b;'>Buscando o anexo na caixa da Secretaria…</div>";
+    rodar("voucherPedidosAnexo", [id, i], function (r) {
+      if (!estado.atual || estado.atual.item.id !== id) return;
+      if (!r.ok) { el("vpeMPrev").innerHTML = "<div style='padding:18px;color:#dc2626;'>" + esc(r.mensagem) + "</div>"; return; }
+      anexosVistos[chave] = r;
+      sisgepPreviaAnexo(el("vpeMPrev"), r);
+    });
+  }
+
+  function ligarGatilho() {
+    var b = el("vpeBtnGatilho"); b.disabled = true;
+    rodar("instalarGatilhoVoucherPedidosEmail", [], function (r) {
+      b.disabled = false;
+      var ok = typeof r === "string" || (r && r.ok !== false);
+      aviso(typeof r === "string" ? r : (r.mensagem || "Pronto."), ok ? "ok" : "err");
+      carregar();
+    });
+  }
+
+  function fechar() { el("vpeModal").classList.remove("aberto"); estado.atual = null; }
+
+  /* UM ouvinte de clique para a tela inteira, por data-vpe. Sem onclick
+     inline: o HTML é redesenhado a cada carga, e o ouvinte delegado
+     continua valendo para os botões que nascem depois. */
+  var ACOES = { lerAgora: lerAgora, aba: aba, fechar: fechar, filtrar: filtrar, abrir: abrir,
+                verAnexo: function (a) { verAnexo(Number(a)); }, salvar: salvar, validar: validar,
+                responder: responder, confirmarAssociado: confirmarAssociado, descartar: descartar,
+                ligarGatilho: ligarGatilho, voltarModelo: voltarModelo, validarEmitir: validarEmitir,
+                escolherEscola: escolherEscola, cadastrarEscola: cadastrarEscola,
+                limparFiltros: limparFiltros, limparFiltrosEmi: function () {
+                  ["vpeEBusca", "vpeESemestre", "vpeEEscola", "vpeEConferido"].forEach(function (id) { el(id).value = ""; });
+                  desenharEmitidos(); },
+                conferirEnvio: conferirEnvio, fecharEnvio: fecharEnvio, enviarEmitidos: enviarEmitidos };
+  document.addEventListener("click", function (ev) {
+    var alvo = ev.target && ev.target.closest ? ev.target.closest("[data-vpe]") : null;
+    if (!alvo || alvo.disabled) return;
+    if (!alvo.closest("#vpeSecao") && !alvo.closest("#vpeModal") && !alvo.closest("#vpeAbas") &&
+        !alvo.closest("#vpeEmitidos") && !alvo.closest("#vpeEnvOverlay")) return;
+    var fn = ACOES[alvo.getAttribute("data-vpe")];
+    if (fn) fn(alvo.getAttribute("data-arg"));
+  });
+  document.addEventListener("change", function (ev) {
+    if (ev.target && ev.target.id === "vpeCaixa") carregar();
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-k") === "tipoBeneficiario") ajustarBeneficiario();
+    if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-falta-chk")) itensMudaram();
+    if (ev.target && ["vpeFSemestre", "vpeFEscola", "vpeFPara", "vpeFAntigos"].indexOf(ev.target.id) > -1) desenharLista();
+    if (ev.target && ["vpeESemestre", "vpeEEscola", "vpeEConferido"].indexOf(ev.target.id) > -1) desenharEmitidos();
+    if (ev.target && ev.target.classList && ev.target.classList.contains("vpe-emi-chk")) {
+      estado.marcadosEmi[ev.target.getAttribute("data-id")] = ev.target.checked; contarEmi();
+    }
+    if (ev.target && ev.target.id === "vpeEmiTodos") {
+      emitidosVisiveis().forEach(function (i) { estado.marcadosEmi[i.id] = ev.target.checked; });
+      desenharEmitidos();
+    }
+  });
+  document.addEventListener("input", function (ev) {
+    var t = ev.target;
+    if (!t) return;
+    if (t.classList && t.classList.contains("vpe-falta-txt")) itensMudaram();
+    if (t.id === "vpeFBusca") desenharLista();
+    if (t.id === "vpeEBusca") desenharEmitidos();
+    if (t.id === "vpeMResposta") {
+      estado.editado = t.value !== textoDosItens();
+      el("vpeMTextoEditado").style.display = estado.editado ? "" : "none";
+      if (!estado.editado) el("vpeMTextoAviso").style.display = "none";
+    }
+  });
+
+  return { carregar: carregar, filtrar: filtrar, aba: aba, lerAgora: lerAgora, abrir: abrir,
+           salvar: salvar, validar: validar, responder: responder, confirmarAssociado: confirmarAssociado,
+           descartar: descartar, verAnexo: verAnexo, fechar: fechar };
+})();
+</script>

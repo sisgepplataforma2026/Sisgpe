@@ -526,4 +526,3 @@ b.ok(!rSim.avisos.some(a => /presencial/i.test(a)),
   "e o associado não recebe esse aviso");
 
 b.resumo();
-process.exit(0);

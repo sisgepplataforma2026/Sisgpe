@@ -123,4 +123,3 @@ b.naoTestavel("Ofício de autorização de entrada no China Park (PDF)", "depend
 b.naoTestavel("Entrega dos e-mails ao hóspede e ao parque", "Gmail real");
 
 b.resumo();
-process.exit(0);

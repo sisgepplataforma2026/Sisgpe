@@ -187,4 +187,3 @@ b.bloqueia(() => g.assocPainel(""), "assocPainel nega token vazio");
 b.naoTestavel("Desempenho com 8.000 linhas reais", "a base de teste tem 5");
 
 b.resumo();
-process.exit(0);

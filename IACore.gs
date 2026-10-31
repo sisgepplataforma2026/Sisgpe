@@ -49,7 +49,11 @@ function analisarEscolaIA(chave, tokenSessao) {
       var filtros = dadosEscola
         ? { escola: dadosEscola.escola || dadosEscola.NomeEscola || chave }
         : { escola: chave };
-      var hist = listarHistoricoOficios(filtros);
+      /* O token desce: listarHistoricoOficios pede o modulo Documentos.
+         Sem ele a chamada morria em "Sessao invalida" e a IA analisava a
+         escola SEM o historico de oficios dela, sem dizer que faltou.
+         Defeito anterior a 01/09/2026, achado ao cobrir o modulo. */
+      var hist = listarHistoricoOficios(filtros, tokenSessao);
       var itens = (hist && hist.itens) ? hist.itens : (Array.isArray(hist) ? hist : []);
       if (itens.length > 0) {
         historicoTexto = itens.slice(0, 10).map(function(of) {
@@ -142,10 +146,10 @@ function gerarOficioIA(dados, tokenSessao) {
     }
 
     var contextosTipo = {
-      "Filiação": "O ofício solicita à escola que realize descontos mensais de 2% sobre o salário-base dos trabalhadores filiados, conforme Cláusula 56ª da CCT 2026/2027 (vigência 01/03/2026 a 28/02/2027). O desconto exige autorização expressa do associado via ficha de filiação. O repasse deve ocorrer até o 10º dia do mês subsequente. Deve mencionar os colaboradores filiados e solicitar confirmação de recebimento.",
-      "Desfiliação": "O ofício solicita à escola que cesse imediatamente os descontos de mensalidade sindical (2% sobre salário-base) dos trabalhadores desfiliados, conforme Cláusula 56ª da CCT 2026/2027. Deve mencionar os colaboradores e solicitar confirmação.",
-      "Taxa Negocial": "O ofício notifica a escola sobre a Taxa Negocial devida conforme Cláusula 57ª da CCT 2026/2027. A taxa é de 6% paga em 3 parcelas mensais e sucessivas de 2%, com repasse até o 10º dia útil do mês subsequente ao desconto. Ficam isentos os filiados ao SindEducação-ES.",
-      "Taxa Assistencial": "O ofício notifica a escola sobre a Taxa Assistencial conforme Cláusula 58ª da CCT 2026/2027. O valor corresponde a 4% da folha salarial bruta dos educadores técnico-administrativos, em duas parcelas de 2%, com vencimentos em 15 de abril e 15 de maio de 2027. Escolas que praticam somente educação infantil recolhem 2% em parcelas de 1%.",
+      "Filiação": "O ofício solicita à escola que realize descontos mensais de 2% sobre o salário-base dos trabalhadores filiados, conforme Cláusula 38ª da CCT 2026/2027 (vigência 01/03/2026 a 28/02/2027). O desconto exige autorização expressa do associado via ficha de filiação. O repasse deve ocorrer até o 10º dia do mês subsequente. Deve mencionar os colaboradores filiados e solicitar confirmação de recebimento.",
+      "Desfiliação": "O ofício solicita à escola que cesse imediatamente os descontos de mensalidade sindical (2% sobre salário-base) dos trabalhadores desfiliados, conforme Cláusula 38ª da CCT 2026/2027. Deve mencionar os colaboradores e solicitar confirmação.",
+      "Taxa Negocial": "O ofício notifica a escola sobre a Taxa Negocial devida conforme Cláusula 40ª da CCT 2026/2027. A taxa é de 6% paga em 3 parcelas mensais e sucessivas de 2%, com repasse até o 10º dia útil do mês subsequente ao desconto. Ficam isentos os filiados ao SindEducação-ES.",
+      "Taxa Assistencial": "O ofício notifica a escola sobre a Taxa Assistencial conforme Cláusula 38ª – Assistência Médica, da CCT 2026/2027. O valor corresponde a 4% da folha salarial bruta dos educadores técnico-administrativos, em duas parcelas de 2%, com vencimentos em 15 de abril e 15 de maio de 2027. Escolas que praticam somente educação infantil recolhem 2% em parcelas de 1%.",
       "Ofício Livre": "O ofício trata do assunto indicado abaixo. Use linguagem formal sindical."
     };
 

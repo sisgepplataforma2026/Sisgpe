@@ -1,0 +1,168 @@
+<!-- DIÁLOGO DO SISTEMA — COMPONENTE COMPARTILHADO
+
+     Um só diálogo para toda pergunta que uma tela precisa fazer. Substitui
+     confirm() e prompt() nativos, que o CLAUDE.md proíbe e que, dentro do
+     Apps Script, anunciam "uma página incorporada em …googleusercontent.com
+     diz" — endereço cru numa caixa do navegador, no meio de uma exclusão.
+
+     POR QUE VIROU ARQUIVO PRÓPRIO — 26/08/2026
+
+     Ele nasceu dentro de CompassoInscricoes.html. Quando a Importação de
+     planilha virou fragmento e precisou perguntar "importar 201 linhas?", só
+     havia duas saídas ruins: copiar o diálogo para o segundo arquivo, ou
+     deixar o confirm() nativo — que foi o que o usuário viu na tela e mandou
+     corrigir. Extrair é a terceira saída: uma definição, dois consumidores.
+
+     COMO USAR
+
+       perguntar({ titulo, texto, campo, rotulo, perigo, ok, icone,
+                   semCancelar }, function(valor){ … })
+
+     `campo` liga a caixa de texto (o que era prompt) e, quando ligada, o
+     diálogo NÃO fecha com ela vazia: a mensagem de erro aparece ali dentro,
+     em vez de a ação seguir sem motivo. `semCancelar` é para diálogo que só
+     informa — sem isso ele mostraria dois botões para a mesma coisa.
+
+     ONDE INCLUIR
+
+     Em qualquer página que use `perguntar`, UMA vez só — incluir duas vezes
+     na mesma página duplica os IDs e o segundo `getElementById` passa a
+     devolver o elemento errado. Hoje: CompassoInscricoes.html (que serve a
+     Central e, dentro dela, a Importação) e a rota de Code.gs que serve a
+     Importação sozinha.
+
+     Depende de --navy, --navy2, --surface, --rad-xl e --g100, que vêm de
+     OficiosStyles. Os tokens locais do Compasso entram com valor de reserva,
+     para o componente não depender de estar dentro dele. -->
+<style>
+  .dg-fundo{position:fixed;inset:0;background:rgba(0,18,48,.65);display:none;
+            align-items:center;justify-content:center;z-index:80;padding:20px;
+            backdrop-filter:blur(6px)}
+  .dg-fundo.on{display:flex}
+  .dg{background:var(--surface,#fff);border-radius:var(--rad-xl,28px);width:min(520px,100%);
+      box-shadow:0 40px 90px rgba(0,20,60,.36),0 8px 30px rgba(0,20,60,.16);
+      border:1px solid rgba(255,255,255,.08);overflow:hidden;
+      animation:dgSobe .22s cubic-bezier(.4,0,.2,1)}
+  @keyframes dgSobe{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+  .dg-topo{display:flex;gap:14px;align-items:flex-start;padding:20px 24px;
+           color:#fff;
+           background:radial-gradient(ellipse at 90% 0%, rgba(201,168,76,.20) 0%, transparent 40%),
+                      linear-gradient(135deg, var(--navy,#001f4d) 0%, var(--navy2,#002f6c) 55%, #1058b0 100%)}
+  .dg-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;
+         justify-content:center;font-size:17px;flex-shrink:0;
+         background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22)}
+  .dg-fundo.perigo .dg-topo{background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 60%,#dc2626 100%)}
+  .dg-topo h3{margin:0;font-size:16px;font-weight:900;letter-spacing:-.2px;line-height:1.35}
+  .dg-topo p{margin:5px 0 0;font-size:11.5px;color:rgba(255,255,255,.70);line-height:1.55;
+             white-space:pre-wrap}
+  .dg-corpo{padding:20px 24px 4px}
+  .dg-corpo label{display:block;font-size:11px;font-weight:700;color:var(--suave,#6b7385);
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  .dg-corpo input{width:100%;padding:10px 12px;border:1.5px solid var(--linha,#d8e0ea);
+                  border-radius:10px;font-size:14px;font-family:inherit}
+  .dg-corpo input:focus{outline:0;border-color:var(--blue,#1565C0);
+                        box-shadow:0 0 0 3px rgba(21,101,192,.12)}
+  .dg-erro{font-size:12px;color:var(--erro,#dc2626);margin-top:6px;min-height:16px}
+  .dg-pe{display:flex;justify-content:flex-end;gap:9px;padding:16px 24px;
+         border-top:1px solid var(--g100,#f1f5f9);
+         background:linear-gradient(180deg,var(--surface,#fff) 0%,#fafcff 100%)}
+  /* `hidden` é `display:none` da folha do navegador, e QUALQUER `display` numa
+     regra de classe ganha dele. */
+  .dg-pe button[hidden]{display:none}
+
+  /* OS BOTÕES DO DIÁLOGO SE BASTAM. Eles usavam `.b`, que é do Compasso e não
+     existe fora dele — na rota que serve a Importação sozinha sairiam como
+     botão cru do navegador. Aqui a regra é mais específica que `.b`, então o
+     desenho é o mesmo nas duas rotas. */
+  .dg-pe .b{border:1.5px solid var(--linha,#d8e0ea);background:var(--surface,#fff);
+            border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;
+            font-family:inherit;cursor:pointer;color:var(--suave,#6b7385);
+            transition:all .18s cubic-bezier(.4,0,.2,1)}
+  .dg-pe .b:hover{border-color:var(--blue,#1565C0);color:var(--blue,#1565C0)}
+  .dg-pe .b.p{background:linear-gradient(135deg,var(--navy2,#002f6c) 0%,#0d52b5 100%);
+              color:#fff;border-color:transparent;
+              box-shadow:0 4px 14px rgba(0,47,108,.26)}
+  .dg-pe .b.p:hover{box-shadow:0 8px 24px rgba(0,47,108,.34)}
+  .dg-pe .b.perigo{background:#dc2626;color:#fff;border-color:transparent;
+                   box-shadow:0 4px 14px rgba(220,38,38,.28)}
+  .dg-pe .b.perigo:hover{background:#b91c1c}
+</style>
+
+<div class="dg-fundo" id="dgFundo">
+  <div class="dg" role="dialog" aria-modal="true" aria-labelledby="dgTitulo">
+    <div class="dg-topo">
+      <div class="dg-ic" id="dgIcone">?</div>
+      <div>
+        <h3 id="dgTitulo">—</h3>
+        <p id="dgTexto"></p>
+      </div>
+    </div>
+    <div class="dg-corpo" id="dgCampoBox" hidden>
+      <label id="dgRotulo">Motivo</label>
+      <input id="dgCampo" autocomplete="off">
+      <div class="dg-erro" id="dgErro"></div>
+    </div>
+    <div class="dg-pe">
+      <button class="b" onclick="dgFechar()" id="dgCancelar">Cancelar</button>
+      <button class="b p" onclick="dgConfirmar()" id="dgOk">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* SEM IIFE, DE PROPÓSITO. Este componente EXISTE para ser chamado de fora:
+   os `onclick` dos próprios botões acima e o `perguntar()` das telas moram no
+   escopo global. Fechá-lo numa função deixaria os botões mortos — foi
+   exatamente esse o defeito de 26/08 na Importação. */
+var DG_ACAO = null;
+var DG_EL = function(id){ return document.getElementById(id); };
+
+function perguntar(opcoes, aoConfirmar){
+  opcoes = opcoes || {};
+  DG_ACAO = aoConfirmar;
+  DG_EL('dgTitulo').textContent = opcoes.titulo || 'Confirmar';
+  DG_EL('dgTexto').textContent  = opcoes.texto || '';
+  DG_EL('dgTexto').style.display = opcoes.texto ? 'block' : 'none';
+  DG_EL('dgIcone').textContent  = opcoes.icone || (opcoes.perigo ? '⚠️' : '❓');
+  DG_EL('dgOk').textContent     = opcoes.ok || 'Confirmar';
+  DG_EL('dgOk').className       = 'b ' + (opcoes.perigo ? 'perigo' : 'p');
+  DG_EL('dgFundo').classList.toggle('perigo', !!opcoes.perigo);
+
+  /* Diálogo que só INFORMA não tem o que cancelar. Sem isto o link público
+     abria com "Cancelar" e "Fechar" lado a lado, dois botões para a mesma
+     coisa — que foi o que o usuário viu em 26/08. */
+  DG_EL('dgCancelar').hidden = !!opcoes.semCancelar;
+
+  DG_EL('dgCampoBox').hidden = !opcoes.campo;
+  DG_EL('dgRotulo').textContent = opcoes.rotulo || 'Motivo';
+  DG_EL('dgCampo').value = '';
+  DG_EL('dgErro').textContent = '';
+
+  DG_EL('dgFundo').classList.add('on');
+  if (opcoes.campo) setTimeout(function(){ try{ DG_EL('dgCampo').focus(); }catch(e){} }, 60);
+}
+
+function dgFechar(){ DG_EL('dgFundo').classList.remove('on'); DG_ACAO = null; }
+
+function dgConfirmar(){
+  var pedeCampo = !DG_EL('dgCampoBox').hidden;
+  var valor = String(DG_EL('dgCampo').value || '').trim();
+  if (pedeCampo && !valor){
+    DG_EL('dgErro').textContent = 'Preencha antes de confirmar.';
+    try{ DG_EL('dgCampo').focus(); }catch(e){}
+    return;
+  }
+  var acao = DG_ACAO;
+  dgFechar();
+  if (acao) acao(valor);
+}
+
+/* Enter confirma, Esc fecha — é o que a pessoa tenta antes de procurar o
+   botão, e era o que o diálogo nativo já fazia. */
+document.addEventListener('keydown', function(e){
+  var f = DG_EL('dgFundo');
+  if (!f || !f.classList.contains('on')) return;
+  if (e.key === 'Enter'){ e.preventDefault(); dgConfirmar(); }
+  if (e.key === 'Escape'){ e.preventDefault(); dgFechar(); }
+});
+</script>

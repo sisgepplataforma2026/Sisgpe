@@ -151,8 +151,21 @@ b.ok(String(html).indexOf("085.381.047-80") > -1,
 b.ok(String(html).indexOf(">8538104780<") === -1 &&
      String(html).indexOf(" 8538104780") === -1,
   "e o número cru de 10 dígitos não aparece em lugar nenhum");
-b.ok(/inscrito no CPF sob o nº/.test(html),
-  "com a mesma construção que o documento usa para o CNPJ");
+/* A CONSTRUÇÃO MUDOU EM 23/09/2026, com os dois modelos marcados na mão:
+   os papéis identificam por "portador do CPF nº" e não citam RG em lugar
+   nenhum. A oração composta que havia aqui ("portador da carteira de
+   identidade nº ... e inscrito no CPF sob o nº ...") não existe no
+   documento do sindicato. */
+/* SEM SABER O SEXO, A FORMA É NEUTRA — 23/09/2026, "flexibiliza no sexo".
+   Os modelos escrevem "portadora" para a associada e "portador" para o
+   associado; sem o dado, "portador(a)" é melhor do que tratar uma associada
+   no masculino num papel que leva o nome dela. A flexão em si se mede no
+   t61, que tem os três casos. */
+b.ok(/portador\(a\) do CPF nº/.test(html),
+  "com a construção dos modelos e a forma neutra, já que o sexo não foi informado",
+  (html.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+b.ok(!/carteira de identidade/.test(html),
+  "e sem a oração do RG, que os modelos não têm");
 
 b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário");
 /* O PDF que o sindicato emite, mandado pelo usuário em 13/08/2026. As frases
@@ -160,10 +173,24 @@ b.passo("12. O texto é o do documento real, e muda com quem é o beneficiário"
  * "documento que eu achei bonito". */
 b.ok(/CERTIFICADO DE HABILITAÇÃO À BOLSA DE ESTUDOS/.test(html), "o título é o do papel");
 b.ok(/SINEPE/.test(html), "cita o convênio com o SINEPE-ES");
-b.ok(/dependente de <strong>Fulano de Tal<\/strong>/.test(html),
-  "beneficiário diferente do titular ganha a oração 'dependente de'");
-b.ok(/ano letivo de 2026\/2/.test(html),
-  "e bolsa ANUAL diz 'ano letivo', não 'semestre letivo'");
+/* CAIXA ALTA NOS DOIS NOMES — 23/09/2026, "padronizar - caixa alta". O
+   titular vinha da base de Associados (maiúsculas) e o beneficiário do que a
+   pessoa digitou no portal (caixa mista): os dois padrões apareciam na mesma
+   frase do certificado. A caixa é do DOCUMENTO; o que está gravado na
+   solicitação não muda. */
+b.ok(/dependente de <strong>FULANO DE TAL<\/strong>/.test(html),
+  "beneficiário diferente do titular ganha a oração 'dependente de', em caixa alta",
+  (html.match(/dependente de <strong>[^<]*/) || ["(não achou)"])[0]);
+/* SEMPRE "SEMESTRE LETIVO" — 23/09/2026. Os dois certificados reais do
+   sindicato escrevem "referente ao semestre letivo de X", inclusive o cuja
+   bolsa é de educação infantil e cujo período é só "2026". "Ano letivo" não
+   aparece em nenhum deles: o código escolhia entre as duas formas pelo
+   REGIME da regra da convenção e produzia "ano letivo de 2027/1" — um ano
+   descrito com um semestre, na mesma linha. */
+b.ok(/semestre letivo de 2026\/2/.test(html),
+  "o dependente diz sempre 'semestre letivo', como nos dois modelos");
+b.ok(!/ano letivo/.test(html),
+  "e nunca 'ano letivo', que não existe nos papéis");
 
 const htmlTitular = g.gerarHtmlDocumentoVoucher_({
   protocolo: "BOLSA-2026-000002", codigo: "T2", percentual: 50,
@@ -174,7 +201,17 @@ const htmlTitular = g.gerarHtmlDocumentoVoucher_({
 });
 b.ok(!/dependente de/.test(htmlTitular),
   "quando o beneficiário é o próprio titular, a oração some");
-b.ok(/semestre letivo de 2026\/1/.test(htmlTitular), "e semestral diz 'semestre letivo'");
+/* O papel do TITULAR escreve o período mais curto que o do dependente:
+   "do Curso de X semestre 2026/1", sem o "letivo de". Confirmado nos dois
+   modelos que o usuário mandou em 18/08/2026 — ver t61. */
+/* O PAPEL DO TITULAR NÃO TRAZ PERÍODO — 23/09/2026, no modelo que o usuário
+   marcou "Titular": ele termina em "...escolar do Curso de ADMINISTRAÇÃO."
+   O código acrescentava "semestre 2026/1" ali, texto que o papel não tem. */
+b.ok(!/semestre 2026\/1/.test(htmlTitular) && !/semestre letivo/.test(htmlTitular),
+  "o certificado do titular não imprime período nenhum",
+  (htmlTitular.match(/escolar[^<]*/) || ["(não achou)"])[0]);
+b.ok(/do Curso de <strong>Direito<\/strong>\./.test(htmlTitular),
+  "ele termina no curso, com ponto — como o modelo");
 b.ok(/instituição <strong>MULTIVIX<\/strong>/.test(htmlTitular),
   "a instituição é o NOME FANTASIA");
 b.ok(/mantida pela <strong>EMBRAE S\/A<\/strong>/.test(htmlTitular),
@@ -186,7 +223,7 @@ b.passo("13. Oração sem dado não vira 'campo vazio' no documento");
  * não dizer nada: parece erro de emissão para quem recebe. */
 b.ok(!/carteira de identidade/.test(htmlTitular),
   "sem RG, a oração inteira desaparece");
-b.ok(!/inscrito no CPF/.test(htmlTitular),
+b.ok(!/do CPF nº/.test(htmlTitular),
   "e sem CPF, a do CPF também — cada oração some sozinha");
 
 b.passo("14. O RG digitado na emissão fica guardado na linha");
@@ -391,18 +428,36 @@ b.ok(validaBase >= TETO_TARJA,
   "validação em " + validaBase + "mm");
 b.ok(tarjaBase > 0, "e a tarja não encosta na borda de baixo da folha");
 
-b.passo("22. O QR e o código de validação FICAM — decisão do usuário, travada aqui");
+b.passo("22. O CÓDIGO de validação fica; o QR saiu — decisão revista pelo usuário");
 /* 13/08/2026. Eu apontei que o certificado de referência do sindicato não tem
- * QR nem código; o usuário respondeu "manter o QR code e código de validação".
- * Está escrito neste teste, e não só num comentário, porque comentário não
- * impede ninguém de "limpar" o que parece sobra. Aqui, quebra. */
+ * QR nem código; o usuário respondeu "manter o QR code e código de validação",
+ * e esta asserção travou isso — comentário não impede ninguém de "limpar" o
+ * que parece sobra, teste impede.
+ *
+ * 16/09/2026, ELE REVÊ A PRÓPRIA DECISÃO: "tem que tirar o qr code". A trava
+ * cumpriu o papel — reprovou e me obrigou a reconhecer que estava desfazendo
+ * uma escolha dele, em vez de a mudança passar despercebida.
+ *
+ * E ao conferir antes de mexer (REGRA Nº 1) apareceu o motivo de fundo: o QR
+ * apontava para `?page=pub-validar-voucher`, rota que NÃO EXISTE no doGet.
+ * Estava quebrado desde sempre, num documento oficial que a instituição de
+ * ensino recebe.
+ *
+ * O CÓDIGO EM TEXTO CONTINUA, e é ele que esta asserção protege agora: é o
+ * que a instituição usa para conferir por telefone. */
 const comQr = g.gerarHtmlDocumentoVoucher_({
   protocolo: "BOLSA-QR", codigo: "ZZZZ-9999",
   reg: { NOME_SOLICITANTE: "Fulano de Tal" }
 });
-b.ok(/class='valida-qr'/.test(comQr), "o QR está no documento");
-b.ok(/Código ZZZZ-9999/.test(comQr), "e o código de validação também");
-b.ok(/BOLSA-QR/.test(comQr), "com o protocolo embaixo");
+b.ok(!/class='valida-qr'/.test(comQr), "o QR NÃO está mais no documento");
+/* E NEM O CÓDIGO EM TEXTO — 23/09/2026, "pode tirar isso". Ver o cabeçalho
+   do bloco em gerarHtmlDocumentoVoucher_: o código continua gravado em
+   Voucher_Emitidos e no histórico; o que saiu foi a impressão. */
+b.ok(comQr.indexOf("ZZZZ-9999") === -1, "e o código de validação não é impresso");
+b.ok(comQr.slice(comQr.indexOf("<body")).indexOf("BOLSA-QR") === -1,
+  "nem o protocolo no corpo do documento — no <title> ele fica, que é o nome do arquivo");
+b.ok(comQr.indexOf("<div class='valida-box'>") === -1,
+  "o bloco cinza do rodapé não é mais desenhado");
 
 /* ══════════════════════════════════════════════════════════════════════
    A REDAÇÃO É A DO PAPEL
@@ -466,4 +521,3 @@ b.naoTestavel("A aparência final do PDF convertido pelo Apps Script",
   "conferir emitindo um certificado no ar e comparando com o papel do sindicato");
 
 b.resumo();
-process.exit(0);

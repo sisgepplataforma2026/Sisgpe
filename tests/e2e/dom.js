@@ -18,8 +18,10 @@
  *   - aparência: cor, alinhamento, o que cabe na tela. jsdom não desenha.
  *   - CSS: nenhuma folha de estilo é aplicada, então `display:none` vindo de
  *     classe não existe aqui. Visibilidade só se testa no navegador.
- *   - o Apps Script de verdade: o `include()`, o template engine e a
- *     implantação continuam fora do alcance.
+ *   - o Apps Script de verdade: o template engine e a implantação continuam
+ *     fora do alcance. O `include()` passou a ser resolvido aqui em
+ *     26/08/2026 — ver `resolverIncludes` —, mas resolver o include não é
+ *     rodar o Apps Script: scriptlet com lógica (`<? if … ?>`) continua fora.
  *
  * Ou seja: prova a LÓGICA da tela — o que ela pede ao servidor, o que faz
  * com a resposta, e o que acontece quando se clica. Não prova o desenho.
@@ -27,7 +29,13 @@
 const fs = require("fs");
 const path = require("path");
 
-const RAIZ = "/home/user/Sisgpe";
+/* A RAIZ SAI DO LOCAL DESTE ARQUIVO, NUNCA DE UM CAMINHO DE MÁQUINA.
+   Aqui havia "/home/user/Sisgpe" cravado. Funcionava na minha máquina e
+   estourava em qualquer outra: no runner do GitHub o repositório fica em
+   /home/runner/work/Sisgpe/Sisgpe, e todo teste que sobe o emulador
+   morria com ENOENT antes da primeira asserção. Foi o CI que achou, no
+   primeiro deploy de homologação — 19/08/2026. */
+const RAIZ = require("path").resolve(__dirname, "..", "..");
 
 /* jsdom não é dependência do projeto — o repositório não tem node_modules
  * versionado. Quem quiser rodar instala uma vez. Sem ele, o teste se declara
@@ -49,9 +57,43 @@ function carregarJsdom() {
   throw ultimo || new Error("jsdom não encontrado");
 }
 
+/* O `include()` PASSOU A SER RESOLVIDO AQUI — 26/08/2026.
+ *
+ * Este harness ignorava scriptlet: `<?!= include('X'); ?>` virava texto morto
+ * e o arquivo X simplesmente não entrava na página. Enquanto cada tela era um
+ * arquivo só, isso não aparecia. Apareceu quando o diálogo do sistema saiu de
+ * dentro de CompassoInscricoes.html e virou componente incluído: o teste da
+ * Central passou a estourar "perguntar is not defined" numa tela que, no
+ * navegador, funciona — porque lá o template engine resolve o include antes
+ * de o HTML existir.
+ *
+ * Um harness que não resolve include mede uma página que não existe. Pior:
+ * empurra a correção para o lado errado — a tentação é desfazer a extração
+ * para o teste voltar a passar.
+ *
+ * O que é fiel ao Apps Script: o include é textual, avaliado em qualquer
+ * posição, e o resultado é colado no lugar. O que NÃO é: aqui não há proteção
+ * contra recursão, então um arquivo que se inclui trava o Node em vez de
+ * estourar a memória do servidor. O limite de profundidade abaixo transforma
+ * isso num erro legível — é o mesmo defeito da REGRA Nº 0, e o teste tem de
+ * dizer o nome dele.
+ */
+function resolverIncludes(bruto, jaAbertos) {
+  jaAbertos = jaAbertos || [];
+  const marca = /<\?!?=?\s*include\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*\?>/g;
+  return bruto.replace(marca, function (_, nome) {
+    if (jaAbertos.indexOf(nome) >= 0)
+      throw new Error("include recursivo: " + jaAbertos.concat(nome).join(" → "));
+    const caminho = path.join(RAIZ, nome + ".html");
+    if (!fs.existsSync(caminho)) return "";  /* o Apps Script engole e segue */
+    return resolverIncludes(fs.readFileSync(caminho, "utf8"), jaAbertos.concat(nome));
+  });
+}
+
 /** Separa o HTML dos blocos de <script>, para poder rodar os dois na ordem. */
 function fatiar(arquivo) {
-  const bruto = fs.readFileSync(path.join(RAIZ, arquivo), "utf8");
+  const bruto = resolverIncludes(fs.readFileSync(path.join(RAIZ, arquivo), "utf8"),
+                                [arquivo.replace(/\.html$/, "")]);
   const scripts = [];
   const marca = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
   const corpo = bruto.replace(marca, function (_, js) { scripts.push(js); return ""; });
@@ -173,10 +215,62 @@ function montar(g, arquivos, opts) {
   const navegacoes = [];
   win.abrirEscolas = function () { navegacoes.push("escolas"); };
 
+  /* ══ SCRIPTLET DE EXPRESSÃO, RESOLVIDO COMO O TEMPLATE FARIA — 21/09/2026
+   *
+   * Telas de painel recebem o token da sessão por scriptlet, injetado pela
+   * rota em Code.gs (`t.tokenSessao = sessao.token`). Este harness não
+   * resolvia isso: o `<?!= … ?>` chegava cru ao `eval` e a tela estourava em
+   * "Unexpected token '<'" — na PRIMEIRA linha, antes de qualquer coisa.
+   *
+   * O efeito colateral era pior do que parece: nenhuma tela que recebe token
+   * assim podia ser montada aqui. A portaria, por exemplo, só tinha teste de
+   * GREP no arquivo — e grep não clica em nada. Ficavam todas na categoria
+   * "não testado" da REGRA Nº -1 por limitação do andaime, não do código.
+   *
+   * O QUE É FIEL: o Apps Script avalia a expressão e escreve o resultado no
+   * lugar. Aqui só se resolvem as variáveis que a rota realmente injeta, com
+   * os valores que o teste passou.
+   *
+   * O QUE NÃO É: scriptlet com LÓGICA (`<? if … ?>`) continua fora, como diz
+   * o cabeçalho deste arquivo. Se algum sobrar sem resolver, o erro abaixo diz
+   * qual é — em vez de deixar o `eval` reclamar de sintaxe e mandar quem lê
+   * procurar defeito na tela. */
+  const valoresTemplate = { tokenSessao: (opts && opts.token) || "" };
+
+  function resolverScriptlet(js, arquivo) {
+    /* DUAS FORMAS, COMO NO APPS SCRIPT DE VERDADE:
+         `<?!= tokenSessao ?>`                 imprime o valor CRU;
+         `<?!= JSON.stringify(tokenSessao) ?>` imprime o valor com aspas.
+
+       A distinção não é preciosismo. O index.html escreve
+       `var T = "<?!= tokenSessao ?>";` — o scriptlet já está DENTRO de
+       aspas. A primeira versão daqui devolvia sempre a forma com aspas e
+       produzia `var T = ""abc123";`, que estoura em "Unexpected identifier"
+       no meio de um arquivo de 3.000 linhas. Foram três testes vermelhos
+       (t108, t109, t113) para achar oito caracteres. */
+    const resolvido = js.replace(/<\?!?=\s*([\s\S]*?)\s*\?>/g, function (todo, expr) {
+      const comAspas = String(expr)
+        .match(/^JSON\.stringify\(\s*([A-Za-z_$][\w$]*)[\s\S]*\)$/);
+      if (comAspas && Object.prototype.hasOwnProperty.call(valoresTemplate, comAspas[1])) {
+        return JSON.stringify(valoresTemplate[comAspas[1]]);
+      }
+      const cru = String(expr).match(/^([A-Za-z_$][\w$]*)\s*(?:\|\|\s*(?:''|""))?$/);
+      if (cru && Object.prototype.hasOwnProperty.call(valoresTemplate, cru[1])) {
+        return String(valoresTemplate[cru[1]]);
+      }
+      return todo;
+    });
+    if (/<\?/.test(resolvido)) {
+      throw new Error("scriptlet não resolvido em " + arquivo + ": " +
+        (resolvido.match(/<\?[\s\S]{0,60}/) || [""])[0]);
+    }
+    return resolvido;
+  }
+
   partes.forEach(function (p, i) {
     p.scripts.forEach(function (js, k) {
       try {
-        win.eval(js);
+        win.eval(resolverScriptlet(js, arquivos[i]));
       } catch (e) {
         throw new Error("script " + (k + 1) + " de " + arquivos[i] + " quebrou: " + e.message);
       }
