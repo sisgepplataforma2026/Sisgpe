@@ -257,9 +257,12 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
 - Uma tela só para e-mail (Comunicação › Caixa de E-mails): aba Secretaria
   (secretaria@, KingHost) e aba Financeiro (financeiro@, Gmail do projeto),
   com os vouchers dentro. Painel do Dia fica só como resumo.
-- *"Tem que aparecer tudo"*: TODAS as pastas de cada caixa, igual ao
-  Gmail/KingHost (Entrada, Enviados, Rascunhos, Spam, Lixeira e as pastas
-  criadas, como CERTIFICADO 2027-1).
+- ~~*"Tem que aparecer tudo"*: TODAS as pastas~~ — **REVISTO EM 31/10/2026:**
+  *"o robô vai ler somente caixa de entrada e o certificado 2027-1. Somente.
+  Itens enviados, rascunho, spam, lixeira, não tem necessidade."* A Caixa
+  NÃO ganha essas pastas. Não propor de novo sem ele pedir. (A leitura só
+  dos CABEÇALHOS de Enviados, que o robô já faz para saber quem já recebeu
+  o voucher, não é pasta da tela — continua até ele dizer o contrário.)
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
   tela de conferência. Recategorizar à mão como Voucher também.
 - *"A caixa de e-mail do SISGEP vai ser o e-mail onde a gente vai
