@@ -6697,3 +6697,15 @@ Desenho aprovado (`docs/mock-robo-fichas-oficio.png`). Emulador: t229 (32, inclu
 | **Teste de acerto**: 10 fichas reais, incluindo as de letra difícil | anotar quantas vieram certas (escola, nome, CPF) |
 
 Etapa 2 (ainda não feita): conferência mensal (ofício enviado × lista de contribuição da escola) e o e-mail de cobrança.
+
+## 🔴 Contador de páginas da Caixa — HML 03/11/2026
+
+Pedido do usuário ("contador de páginas, exemplo 1-5"). Emulador: t230 (12). **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Caixa de E-mails com mais de 50 e-mails | "1–50 de N" em cima (e embaixo), ‹ › |
+| › / ‹ | 51–100 …; nas pontas o botão fica cinza |
+| Clicar num card ou mudar filtro | volta para a página 1 |
+| Marcar todos | marca só os 50 da página |
+| Lixeira / Todos os e-mails com muitos | "1–50 de 50+"; › busca os próximos no Gmail |
