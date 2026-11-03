@@ -308,6 +308,25 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   pasta, eu aviso"). 2026-1 e 2026-2 já passaram. Não acrescentar pasta
   sem ele pedir.
 
+## 📄 ROBÔ DAS FICHAS DO DRIVE → OFÍCIO (03/11/2026, em desenho)
+
+O usuário: a maioria dos ofícios nasce de FICHA EM PAPEL, digitalizada e
+salva no Drive (*"a pessoa preenche, a gente digitaliza e encaminha para a
+escola ... vou lá no SISGEP, documentos, ofício, e faço todo o
+procedimento"*). Pode haver várias fichas da mesma escola num PDF só (*"a
+gente junta numa só"*). A ficha de sindicalização NÃO tem CNPJ — a escola
+sai do cadastro (CPF na base, ou nome escrito mais parecido), com origem à
+vista; sem certeza, a pessoa escolhe. Pastas que o robô olha (Drive da conta
+do Financeiro, pasta-mãe 1JQOe8WTguf0vMxb83xVfezIySNSWnvu3):
+- FILIAÇÕES › FILIAÇÕES 2026 › **Ficha de Filiação** → ofício de filiação
+- DESFILIAÇÕES › **DESFILIAÇÃO 2026** → ofício de desfiliação
+- DESFILIAÇÕES › **TAXA NEGOCIAL 2026** → oposição à taxa negocial
+- **"Oficio de Filiação" NÃO** (lá ficam os ofícios já gerados).
+Depois do envio, no mês seguinte: conferir se a pessoa entrou (filiação)
+ou saiu (desfiliação/oposição) da lista de contribuição da escola, e
+propor o e-mail de cobrança. Nada sai sem o clique. Ofícios é a operação
+viva — a emissão continua no módulo de Ofícios, como hoje.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
