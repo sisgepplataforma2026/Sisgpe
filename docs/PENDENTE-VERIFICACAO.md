@@ -6769,3 +6769,13 @@ Emulador: t234 (38, inclusive a tela), t216 atualizado, suíte verde. **Não tes
 | Corrigir nome/CPF/escola → Abrir em Ofícios | vai para Documentos › Ofícios, Novo ofício preenchido com a ficha anexa; você confere e emite como sempre |
 | Arrastar um e-mail para outro card de ofício | muda e fica na memória do robô |
 | Como Wanderson (financeiro@) | os cards de Ofícios não aparecem |
+
+
+## 🔴 PRODUÇÃO publicada em 03/11/2026 — versão 751 (anterior: 750)
+
+Pedido do usuário: "Publicar já" (sem teste no navegador em homologação). Commit ed984ad; 45 arquivos (19 novos, 26 alterados, 0 removidos). Suíte verde no fluxo de produção. **Não testado no ar.** Para voltar: versão 750 (artefato de rollback guardado no fluxo #102).
+
+| Primeiro teste em PRODUÇÃO | Esperado |
+|---|---|
+| Marcela emite 1 ofício como sempre (Documentos › Ofícios) | sai igual a ontem; texto cita a Cláusula 38ª/40ª (numeração do MTE) |
+| Abrir Comunicação › Caixa de E-mails | abre, sem tela travada |
