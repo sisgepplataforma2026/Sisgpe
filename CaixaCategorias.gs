@@ -41,13 +41,30 @@ function cxcLinhas_() {
 
 /* As categorias criadas pela equipe entram no mapa de tipos (CXS_TIPOS) e
    na descrição que a IA recebe. Uma vez por execução. */
+/* Cards do sistema (03/11/2026: "renomear, excluir e criar outros cards"):
+   o nome e a exclusão valem só na financeiro@ — a secretaria@ não muda.
+   Nunca se excluem VOUCHER (fluxo próprio) e OUTRO (onde cai o resto). */
+var CXC_SISTEMA_FIXOS = ["VOUCHER", "OUTRO"];
+var CXC_ORIGINAIS = null;
 function cxcCarregar_() {
   if (CXC_CARREGADAS) return;
   CXC_CARREGADAS = true;
+  if (!CXC_ORIGINAIS) {
+    CXC_ORIGINAIS = {};
+    Object.keys(CXS_TIPOS).forEach(function (k) { if (!CXS_TIPOS[k].criada) CXC_ORIGINAIS[k] = true; });
+  }
+  Object.keys(CXC_ORIGINAIS).forEach(function (k) { if (CXS_TIPOS[k]) { delete CXS_TIPOS[k].rotuloFin; delete CXS_TIPOS[k].ocultoFin; } });
   cxcLinhas_().forEach(function (r) {
     var k = String(r.CHAVE || "");
     if (!k) return;
-    if (String(r.SITUACAO) === "ATIVA") {
+    var sit = String(r.SITUACAO);
+    if (CXC_ORIGINAIS[k]) {
+      if (sit === "RENOMEADA") CXS_TIPOS[k].rotuloFin = String(r.ROTULO);
+      else if (sit === "OCULTA") CXS_TIPOS[k].ocultoFin = true;
+      else if (sit === "RESTAURADA") { delete CXS_TIPOS[k].ocultoFin; }
+      return;
+    }
+    if (sit === "ATIVA") {
       CXS_TIPOS[k] = { rotulo: String(r.ROTULO), curto: String(r.ROTULO), icone: String(r.ICONE || "📁"), modulo: "", caixa: String(r.CAIXA || "FINANCEIRO"), criada: true };
       CXS_TIPOS_DESC[k] = String(r.DESCRICAO || r.ROTULO);
     } else if (CXS_TIPOS[k] && CXS_TIPOS[k].criada) {
@@ -110,7 +127,7 @@ function cxcPerguntarIA_() {
     return i.id + " | CARD ATUAL: " + i.tipo + " | ASSUNTO: " + String(i.assunto).substring(0, 100) + " | " + String(i.trecho).substring(0, 120);
   }).join("\n");
   var prompt = "Você ajuda a organizar a caixa de e-mails do FINANCEIRO de um sindicato de trabalhadores da educação. " +
-    "Os e-mails já estão em cards: " + Object.keys(CXS_TIPOS_DESC).filter(function (k) { return CXS_TIPOS[k]; })
+    "Os e-mails já estão em cards: " + Object.keys(CXS_TIPOS_DESC).filter(function (k) { return CXS_TIPOS[k] && !CXS_TIPOS[k].ocultoFin; })
       .map(function (k) { return k + " = " + CXS_TIPOS_DESC[k]; }).join("; ") + ".\n" +
     "Veja se existe um ASSUNTO QUE SE REPETE (pelo menos " + CXC_MIN_EMAILS + " e-mails do mesmo tipo de pedido) que hoje está " +
     "misturado num card maior ou em OUTRO, e que mereceria um card só dele. Não proponha o que já existe nem algo genérico. " +
@@ -181,13 +198,17 @@ function caixaRecusarCard(proposta, tokenSessao) {
 }
 
 /** Os cards criados pela equipe, com quantos e-mails cada um tem. */
+/** Todos os cards da financeiro@ (do sistema e criados), com quantos e-mails têm. */
 function caixaCardsCriados(tokenSessao) {
   try {
     cxpExigirFinanceiro_(tokenSessao);
     cxcCarregar_();
     var itens = cxcItensFinanceiro_();
-    var cards = Object.keys(CXS_TIPOS).filter(function (k) { return CXS_TIPOS[k].criada; }).map(function (k) {
-      return { chave: k, rotulo: CXS_TIPOS[k].rotulo, icone: CXS_TIPOS[k].icone,
+    var cards = Object.keys(CXS_TIPOS).filter(function (k) {
+      return k !== "VOUCHER" && (!CXS_TIPOS[k].caixa || CXS_TIPOS[k].caixa === "FINANCEIRO");
+    }).map(function (k) {
+      return { chave: k, rotulo: CXS_TIPOS[k].rotuloFin || CXS_TIPOS[k].rotulo, icone: CXS_TIPOS[k].icone,
+               sistema: !CXS_TIPOS[k].criada, excluido: !!CXS_TIPOS[k].ocultoFin, fixo: CXC_SISTEMA_FIXOS.indexOf(k) > -1,
                emails: itens.filter(function (i) { return i.tipo === k; }).length };
     });
     return { ok: true, cards: cards };
@@ -202,9 +223,41 @@ function caixaAlterarCard(chave, acao, novoNome, tokenSessao) {
     var sessao = cxpExigirFinanceiro_(tokenSessao);
     cxcCarregar_();
     chave = String(chave || "");
-    if (!CXS_TIPOS[chave] || !CXS_TIPOS[chave].criada) return { ok: false, mensagem: "Só dá para mudar os cards criados pela equipe." };
-    var n = cxcItensFinanceiro_().filter(function (i) { return i.tipo === chave; }).length;
-    if (n > 0) return { ok: false, mensagem: "O card tem " + n + " e-mail(s). Tire os e-mails dele antes (arraste para outro card)." };
+    acao = String(acao || "").toUpperCase();
+    if (!CXS_TIPOS[chave] || chave === "VOUCHER") return { ok: false, mensagem: "Card não encontrado." };
+    var t = CXS_TIPOS[chave], quem = sessao.email || sessao.usuario || "";
+    var linhaSis = function (sit, rot) {
+      cxcAba_().appendRow(CXC_COLUNAS.map(function (c) {
+        return { CHAVE: chave, CAIXA: "FINANCEIRO", ROTULO: rot || "", ICONE: "", DESCRICAO: "", SITUACAO: sit,
+                 CRIADO_POR: quem, CRIADO_EM: new Date(), EXEMPLOS: "" }[c];
+      }));
+      cxcRecarregar_();
+    };
+    if (!t.criada && acao === "RESTAURAR") {
+      linhaSis("RESTAURADA", "");
+      cxsAuditar_("CARD_RESTAURADO", chave, "Card \"" + t.rotulo + "\" de volta", sessao);
+      return { ok: true, mensagem: "Card \"" + (t.rotuloFin || t.rotulo) + "\" de volta." };
+    }
+    if (acao === "APAGAR" || acao === "APAGAR_CONFIRMADO") {
+      if (!t.criada && CXC_SISTEMA_FIXOS.indexOf(chave) > -1) return { ok: false, mensagem: "Este card não se exclui: é onde cai o que não tem outro lugar." };
+      var n = cxcItensFinanceiro_().filter(function (i) { return i.tipo === chave; }).length;
+      if (n > 0) return { ok: false, mensagem: "O card \"" + (t.rotuloFin || t.rotulo) + "\" tem " + n + " e-mail(s). Só dá para excluir com ele vazio — arraste os e-mails para outro card antes." };
+      if (acao !== "APAGAR_CONFIRMADO") return { ok: false, precisaConfirmar: true,
+        mensagem: "Excluir o card \"" + (t.rotuloFin || t.rotulo) + "\"? Ele está vazio. O robô deixa de usar esta categoria na financeiro@" +
+          (t.criada ? "." : " (dá para trazer de volta em ⚙ Cards).") };
+      if (!t.criada) {
+        linhaSis("OCULTA", "");
+        cxsAuditar_("CARD_EXCLUIDO", chave, "Card do sistema \"" + t.rotulo + "\" excluído da financeiro@ (estava vazio)", sessao);
+        return { ok: true, mensagem: "Card \"" + (t.rotuloFin || t.rotulo) + "\" excluído." };
+      }
+    }
+    if (acao === "RENOMEAR" && !t.criada) {
+      var nm = String(novoNome || "").trim().substring(0, 40);
+      if (nm.length < 3) return { ok: false, mensagem: "Dê um nome ao card." };
+      linhaSis("RENOMEADA", nm);
+      cxsAuditar_("CARD_RENOMEADO", chave, "\"" + (t.rotuloFin || t.rotulo) + "\" → \"" + nm + "\" (financeiro@)", sessao);
+      return { ok: true, mensagem: "Card renomeado para \"" + nm + "\"." };
+    }
     var linha = cxcLinhas_().filter(function (r) { return String(r.CHAVE) === chave && String(r.SITUACAO) === "ATIVA"; })[0];
     if (!linha) return { ok: false, mensagem: "Card não encontrado." };
     var sh = cxcAba_();
@@ -212,7 +265,7 @@ function caixaAlterarCard(chave, acao, novoNome, tokenSessao) {
     var dados = sh.getDataRange().getValues();
     var nLinha = -1;
     for (var i = 1; i < dados.length; i++) if (String(dados[i][cab.indexOf("CHAVE")]) === chave && String(dados[i][cab.indexOf("SITUACAO")]) === "ATIVA") nLinha = i + 1;
-    if (String(acao).toUpperCase() === "APAGAR") {
+    if (acao === "APAGAR_CONFIRMADO") {
       sh.getRange(nLinha, cab.indexOf("SITUACAO") + 1).setValue("APAGADA");
       cxsAuditar_("CARD_APAGADO", chave, "Card \"" + linha.ROTULO + "\" apagado (estava vazio)", sessao);
       cxcRecarregar_();

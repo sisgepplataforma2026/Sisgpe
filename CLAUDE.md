@@ -279,6 +279,14 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   O que ele descreveu para o futuro é o ROBÔ DA CONDOMOB: *"ele tinha que
   entrar dentro do Condomob, verificar quais escolas estão devendo, quais
   escolas ainda não pagaram, fazer essa rotina, para cobrar o pagamento."*
+- **CARDS (03/11/2026):** dá para criar, renomear e excluir qualquer card
+  (do sistema também) na financeiro@. *"Se for excluir deve ter uma
+  mensagem antes e sempre tem que estar vazio."* Excluir: só vazio, sempre
+  com confirmação; Outros e Voucher nunca se excluem; card do sistema
+  excluído volta por ⚙ Cards. Nome trocado vale só na financeiro@.
+- **RESPONDEU, SAI DO CARD (03/11/2026):** "a tratar" e os cards contam só
+  o que espera a equipe (NOVO). Respondido vai para "Respondidos" e volta
+  sozinho como "mensagem nova" se a pessoa escrever de novo.
 - **Itens enviados da financeiro@:** o robô lê só quando precisa (ex.: ao
   abrir uma conversa), nunca varrendo à toa (03/11/2026).
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a

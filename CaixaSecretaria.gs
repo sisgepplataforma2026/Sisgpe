@@ -245,7 +245,8 @@ function cxsClassificarFinanceiro_(linhas) {
           " | TEXTO: " + String(e.corpo || "").replace(/\s+/g, " ").substring(0, 300);
       }).join("\n");
       var prompt = "Você classifica e-mails que chegam ao FINANCEIRO de um sindicato de trabalhadores da educação " +
-        "(SindEducação-ES). Categorias: " + Object.keys(CXS_TIPOS_DESC).map(function (k) { return k + " = " + CXS_TIPOS_DESC[k]; }).join("; ") +
+        "(SindEducação-ES). Categorias: " + Object.keys(CXS_TIPOS_DESC).filter(function (k) { return !(CXS_TIPOS[k] && CXS_TIPOS[k].ocultoFin); })
+          .map(function (k) { return k + " = " + CXS_TIPOS_DESC[k]; }).join("; ") +
         ".\n\n" + cxsExemplosEquipe_() +
         "Responda SOMENTE com JSON: {\"resultados\":[{\"i\":0,\"tipo\":\"...\",\"pedido\":\"o que a pessoa quer, em poucas palavras\"}]}\n\nE-MAILS:\n" + lista;
       var r = vpeChamarIA_(prompt);
@@ -255,7 +256,7 @@ function cxsClassificarFinanceiro_(linhas) {
         if (!l) return;
         var t = String(x.tipo || "").toUpperCase();
         t = CXS_TIPO_ALIAS[t] || t;
-        if (!CXS_TIPOS[t] && CXS_FORA_DA_ENTRADA.indexOf(t) === -1) t = "OUTRO";
+        if ((!CXS_TIPOS[t] && CXS_FORA_DA_ENTRADA.indexOf(t) === -1) || (CXS_TIPOS[t] && CXS_TIPOS[t].ocultoFin)) t = "OUTRO";
         sh.appendRow([l.THREAD_ID, t, String(x.pedido || "").substring(0, 200), new Date(), "IA"]);
         guardados[l.THREAD_ID] = { TIPO: t, PEDIDO: String(x.pedido || "") };
       });
@@ -369,7 +370,8 @@ function cxsResumo_(p, est, envios) {
   var sit = cxsSituacao_(p, est);
   var meus = (envios[String(p.THREAD_ID)] || []);
   return {
-    id: String(p.THREAD_ID), tipo: tipo, tipoRotulo: (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).rotulo,
+    id: String(p.THREAD_ID), tipo: tipo,
+    tipoRotulo: (String(p.CAIXA) === "FINANCEIRO" && (CXS_TIPOS[tipo] || {}).rotuloFin) || (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).rotulo,
     icone: (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).icone,
     de: cxsEmail_(ultima.replyTo || ultima.de), nome: cxsNome_(ultima.de) || cxsEmail_(ultima.de),
     assunto: String(primeira.assunto || "(sem assunto)"), pedido: String(p.PEDIDO || ""),
@@ -486,11 +488,14 @@ function caixaSecretariaPainel(tokenSessao) {
        tela desenha a Secretaria na hora e junta o Financeiro quando chegar. */
     var erroFin = "";
     var porCaixa = { SECRETARIA: 0, FINANCEIRO: 0 };
-    itens.forEach(function (i) { if (i.estado !== CXS_ESTADOS.RESOLVIDO) porCaixa[i.caixa] = (porCaixa[i.caixa] || 0) + 1; });
+    /* 03/11/2026 — "se responder a mensagem ela sai desse card": conta só o
+       que espera a equipe (NOVO). Respondido volta sozinho se a pessoa
+       escrever de novo (cxsSituacao_). */
+    itens.forEach(function (i) { if (i.estado === CXS_ESTADOS.NOVO) porCaixa[i.caixa] = (porCaixa[i.caixa] || 0) + 1; });
     itens.sort(function (a, b) { return b.recebidoTs - a.recebidoTs; });
     var porTipo = {}, porEstado = { NOVO: 0, RESPONDIDO: 0, RESOLVIDO: 0 };
     itens.forEach(function (i) {
-      if (i.estado !== CXS_ESTADOS.RESOLVIDO) porTipo[i.tipo] = (porTipo[i.tipo] || 0) + 1;
+      if (i.estado === CXS_ESTADOS.NOVO) porTipo[i.tipo] = (porTipo[i.tipo] || 0) + 1;
       porEstado[i.estado] = (porEstado[i.estado] || 0) + 1;
     });
     var voucher = v.cont.PRONTO + v.cont.FALTA_DOC + v.cont.NAO_ENCONTRADO + v.cont.PRECISA_VOCE + v.cont.PRESENCIAL;
@@ -499,7 +504,8 @@ function caixaSecretariaPainel(tokenSessao) {
              meuPapel: cxsMeuPapel_(sessao), veSecretaria: veSecretaria, veFinanceiro: cxsPodeCaixa_(sessao, "FINANCEIRO"),
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
-                        icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo, caixa: CXS_TIPOS[k].caixa || "" };
+                        icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo, caixa: CXS_TIPOS[k].caixa || "",
+                        rotuloFin: CXS_TIPOS[k].rotuloFin || "", ocultoFin: !!CXS_TIPOS[k].ocultoFin };
              }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -568,8 +574,12 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
       vpeAssinaturaTexto_(sessao);   // de quem está logado (30/10/2026)
     return { ok: true, item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
              nota: est ? String(est.NOTA || "") : "",
-             tipos: Object.keys(CXS_TIPOS).filter(function (k) { return !CXS_TIPOS[k].caixa || CXS_TIPOS[k].caixa === resumo.caixa; })
-               .map(function (k) { return { chave: k, rotulo: CXS_TIPOS[k].rotulo, modulo: CXS_TIPOS[k].modulo }; }) };
+             tipos: Object.keys(CXS_TIPOS).filter(function (k) {
+                 return (!CXS_TIPOS[k].caixa || CXS_TIPOS[k].caixa === resumo.caixa) &&
+                   !(resumo.caixa === "FINANCEIRO" && CXS_TIPOS[k].ocultoFin && k !== resumo.tipo);
+               }).map(function (k) {
+                 return { chave: k, rotulo: (resumo.caixa === "FINANCEIRO" && CXS_TIPOS[k].rotuloFin) || CXS_TIPOS[k].rotulo, modulo: CXS_TIPOS[k].modulo };
+               }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
@@ -682,6 +692,7 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     cxsExigirCaixaDe_(sessao, id);
     tipo = String(tipo || "").toUpperCase();
     if (!CXS_TIPOS[tipo]) return { ok: false, mensagem: "Tipo inválido." };
+    if (cxsEhFinanceiro_(id) && CXS_TIPOS[tipo].ocultoFin) return { ok: false, mensagem: "Este card foi excluído na financeiro@ (dá para trazer de volta em ⚙ Cards)." };
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var quem = sessao.email || sessao.usuario || "";

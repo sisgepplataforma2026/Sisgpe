@@ -68,12 +68,13 @@ function caixaResumoDoDia(tokenSessao) {
       var f = caixaFinanceiroItens(tokenSessao);
       if (f.ok) itens = itens.concat(f.itens || []); else erroFin = f.mensagem;
     }
-    var emails = itens.filter(function (i) { return i.fonte === "EMAIL" && i.estado !== "RESOLVIDO"; });
+    /* "a tratar" = o que espera a equipe: respondido sai (03/11/2026). */
+    var emails = itens.filter(function (i) { return i.fonte === "EMAIL" && i.estado === "NOVO"; });
     var inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
     var porTipo = {};
     emails.forEach(function (i) { porTipo[i.tipo] = (porTipo[i.tipo] || 0) + 1; });
     var cards = (p.tipos || []).filter(function (t) { return t.chave !== "VOUCHER" && porTipo[t.chave]; })
-      .map(function (t) { return { chave: t.chave, rotulo: t.curto || t.rotulo, icone: t.icone, n: porTipo[t.chave] }; })
+      .map(function (t) { return { chave: t.chave, rotulo: (p.veSecretaria === false && t.rotuloFin) || t.curto || t.rotulo, icone: t.icone, n: porTipo[t.chave] }; })
       .sort(function (a, b) { return b.n - a.n; });
     var precisa = emails.filter(function (i) { return i.estado === "NOVO"; })
       .sort(function (a, b) { return (a.recebidoTs || 0) - (b.recebidoTs || 0); })

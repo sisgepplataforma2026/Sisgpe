@@ -6645,3 +6645,17 @@ Emulador: t228 (17), suíte 225 verde. **Não testado com a IA de verdade.**
 | Fechar e abrir de novo | a mesma proposta, na hora (sem esperar a IA) |
 | Começar a digitar antes da proposta chegar | o seu texto fica; aparece "o robô tem uma proposta" |
 | Responder 2 ou 3 pedidos parecidos, ajustando o texto | as próximas propostas ficam no seu jeito (usa o que você respondeu a quem escreveu e a e-mails do mesmo tipo) |
+
+## 🔴 Cards: criar/renomear/excluir (com confirmação) e "respondeu, sai do card" — HML 03/11/2026
+
+Emulador: t226 (61), t224 (53), suíte 225 verde. **Não testado no navegador.**
+
+| Roteiro em HML (wanderson) | Esperado |
+|---|---|
+| ⚙ Cards › Criar card | o card aparece; arrastar e-mails para ele funciona |
+| Renomear um card do sistema (ex.: Contas) | o nome muda na Caixa e no Painel do Dia (só na financeiro@; a Marcelha não vê a mudança) |
+| Excluir card com e-mail | botão desligado / mensagem "só dá para excluir com ele vazio" |
+| Excluir card vazio | aparece a mensagem "Excluir o card …?"; só com "Sim, excluir" ele sai |
+| Card do sistema excluído | aparece em ⚙ Cards como "excluído", com "↩ Trazer de volta" |
+| Responder um e-mail | ele sai do card e da lista "a tratar"; está em Situação › Respondidos |
+| A pessoa responde de volta | o e-mail volta para "a tratar" como "mensagem nova" |

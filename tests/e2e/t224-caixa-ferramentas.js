@@ -196,6 +196,8 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
 (async function () {
   b.fluxo("CAIXA · as ferramentas na tela");
   win.cxsIniciar(); await t.assentar(150);
+  b.ok(!doc.querySelector("[data-cxs='abrir'][data-arg='F:t1']"), "respondido sai da lista 'a tratar' (03/11/2026)");
+  el("cxsFEstado").value = ""; el("cxsFEstado").dispatchEvent(new win.Event("change", { bubbles: true })); await t.assentar(20);
   t.clicar("[data-cxs='abrir'][data-arg='F:t1']"); await t.assentar(200);
   b.ok(el("cxsModal").classList.contains("aberto"), "a conversa abriu");
   b.passo("9. As caixas da escola e do comprovante aparecem");
