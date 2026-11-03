@@ -263,6 +263,14 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   NÃO ganha essas pastas. Não propor de novo sem ele pedir. (A leitura só
   dos CABEÇALHOS de Enviados, que o robô já faz para saber quem já recebeu
   o voucher, não é pasta da tela — continua até ele dizer o contrário.)
+- **ESCLARECIDO EM 03/11/2026 — AS DUAS CONTAS SÃO DIFERENTES.** A regra
+  acima (só Entrada + CERTIFICADO 2027-1) é do ROBÔ DA SECRETARIA. Na conta
+  do FINANCEIRO (financeiro@, Gmail do projeto): *"Eu quero trabalhar dentro
+  do SISGEP com o meu e-mail. Então o e-mail tem que aparecer todas as
+  pastas de e-mail. Caixa de entrada, itens enviados, lixeira, etc."* — a
+  tela da financeiro@ mostra TODAS as pastas. O robô (categorização) na
+  conta do Financeiro lê Caixa de entrada e, quando precisar, Itens
+  enviados. Não confundir as duas contas de novo.
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
   tela de conferência. Recategorizar à mão como Voucher também.
 - *"A caixa de e-mail do SISGEP vai ser o e-mail onde a gente vai
