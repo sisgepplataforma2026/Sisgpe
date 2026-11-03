@@ -92,6 +92,8 @@ function cxsPode_(sessao) {
 }
 function cxsExigir_(tokenSessao) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
+  /* Os cards criados pela equipe (CaixaCategorias.gs) entram no mapa. */
+  if (typeof cxcCarregar_ === "function") cxcCarregar_();
   if (!cxsPode_(sessao)) {
     throw new Error("A Caixa da Secretaria abre para quem usa a Comunicação ou o Financeiro. " +
       "Peça ao administrador para liberar um desses módulos no seu usuário.");
@@ -497,7 +499,7 @@ function caixaSecretariaPainel(tokenSessao) {
              meuPapel: cxsMeuPapel_(sessao), veSecretaria: veSecretaria, veFinanceiro: cxsPodeCaixa_(sessao, "FINANCEIRO"),
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
-                        icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo };
+                        icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo, caixa: CXS_TIPOS[k].caixa || "" };
              }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -566,7 +568,8 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
       vpeAssinaturaTexto_(sessao);   // de quem está logado (30/10/2026)
     return { ok: true, item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
              nota: est ? String(est.NOTA || "") : "",
-             tipos: Object.keys(CXS_TIPOS).map(function (k) { return { chave: k, rotulo: CXS_TIPOS[k].rotulo, modulo: CXS_TIPOS[k].modulo }; }) };
+             tipos: Object.keys(CXS_TIPOS).filter(function (k) { return !CXS_TIPOS[k].caixa || CXS_TIPOS[k].caixa === resumo.caixa; })
+               .map(function (k) { return { chave: k, rotulo: CXS_TIPOS[k].rotulo, modulo: CXS_TIPOS[k].modulo }; }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

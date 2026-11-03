@@ -89,6 +89,12 @@ function caixaFinanceiroPasta(chave, inicio, tokenSessao) {
   try {
     cxpExigirFinanceiro_(tokenSessao);
     inicio = Math.max(0, Number(inicio) || 0);
+    if (chave === "DRAFTS") {
+      /* Rascunho tem id próprio (para abrir e continuar a escrever). */
+      var rs = cxnListarRascunhos_();
+      return { ok: true, pasta: "DRAFTS", itens: rs.slice(inicio, inicio + CXP_POR_PAGINA), inicio: inicio,
+               mais: rs.length > inicio + CXP_POR_PAGINA };
+    }
     var threads = cxpThreads_(String(chave || ""), inicio, CXP_POR_PAGINA + 1);
     var mais = threads.length > CXP_POR_PAGINA;
     threads = threads.slice(0, CXP_POR_PAGINA);

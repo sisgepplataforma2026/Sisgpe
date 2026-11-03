@@ -6607,3 +6607,17 @@ Emulador: t225 (44), suíte 222 verde. **Não testado com o Gmail de verdade nem
 | Lixeira › ↩ Restaurar | volta para a Entrada (no Gmail também) — **conferir no Gmail real** |
 | ⭐ Estrela / Mover para um marcador / Não é spam | o mesmo no Gmail |
 | Usuário da Marcelha | não aparece lateral de pastas da financeiro@ |
+
+## 🔴 Etapa B da financeiro@: Novo e-mail, rascunhos e cards que o robô propõe — HML 03/11/2026
+
+Fotos: `docs/previa-caixa-cards-propostos.png`, `docs/previa-caixa-novo-email.png`.
+Emulador: t226 (42), suíte 223 verde. **Não testado com o Gmail de verdade nem com a IA de verdade.**
+
+| Roteiro em HML (usuário wanderson) | Esperado |
+|---|---|
+| ✏ Novo e-mail → para um e-mail da equipe, com anexo | 1º clique mostra para quem vai; 2º envia; chega com a assinatura e o anexo |
+| Guardar rascunho | aparece em Rascunhos (no SISGEP e no Gmail); abrir continua de onde parou; Enviar manda |
+| Para fora da equipe (em HML) | bloqueado com [HML] |
+| Faixa verde do robô (se aparecer) | "Vi N e-mails de …" — Criar card leva os e-mails; Não: não volta |
+| ⚙ Cards criados pela equipe | renomear/apagar só com o card vazio |
+| A Central antiga | não aparece mais na Caixa |
