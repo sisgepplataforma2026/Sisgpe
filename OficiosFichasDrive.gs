@@ -16,7 +16,7 @@
      4. entrega à tela de Novo Ofício os dados para preencher.
    NÃO emite, NÃO envia, NÃO mexe na fila de ofícios: a emissão continua no
    módulo de Ofícios, como hoje (é a operação viva — Marcela, todo dia).
-   Fichas que já estavam nas pastas antes da 1ª vez contam como feitas.
+   Fichas salvas antes de 03/11/2026 contam como feitas ("a partir de hoje").
    ================================================================ */
 
 var OFD_PASTA_MAE = "1JQOe8WTguf0vMxb83xVfezIySNSWnvu3";
@@ -30,6 +30,7 @@ var OFD_CAMINHOS = [
   { tipo: "Oposição à Taxa Negocial", rotulo: "Oposição à taxa negocial", caminho: ["DESFILIAÇÕES", "TAXA NEGOCIAL {ano}"] }
 ];
 var OFD_MAX_BYTES = 18 * 1024 * 1024;
+var OFD_CORTE_PADRAO = "2026-11-03T03:00:00.000Z";   // 03/11/2026 00:00 em Brasília
 
 function ofdNorm_(s) {
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -96,8 +97,10 @@ function oficiosFichasListar(tokenSessao) {
   try {
     exigirSessaoDocumentos_(tokenSessao, false);
     var props = PropertiesService.getScriptProperties();
-    var corte = props.getProperty("OFD_CORTE");
-    if (!corte) { corte = new Date().toISOString(); props.setProperty("OFD_CORTE", corte); }
+    /* O usuário, 03/11/2026: "ele confere tudo a partir de hoje" — o corte é
+       a data da decisão, não a 1ª vez que alguém abre a aba (senão o que
+       fosse salvo até lá ficaria de fora). */
+    var corte = props.getProperty("OFD_CORTE") || OFD_CORTE_PADRAO;
     var corteTs = new Date(corte).getTime();
     var conhecidas = {};
     ofdLinhas_().forEach(function (o) { conhecidas[String(o.FILE_ID)] = o; });

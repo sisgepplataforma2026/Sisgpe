@@ -6688,7 +6688,7 @@ Desenho aprovado (`docs/mock-robo-fichas-oficio.png`). Emulador: t229 (32, inclu
 
 | Roteiro em HML | Esperado |
 |---|---|
-| Documentos › Ofícios › 🤖 Fichas do Drive (1ª vez) | lista vazia: o que já estava nas pastas conta como feito |
+| Documentos › Ofícios › 🤖 Fichas do Drive | só aparecem fichas salvas a partir de 03/11/2026 ("a partir de hoje") |
 | Salvar uma ficha nova (PDF com 2–4 fichas da mesma escola) em FILIAÇÕES 2026 › Ficha de Filiação | aparece na lista como Filiação |
 | 🤖 Ler com o robô | cada pessoa: ✔ ou ⚠ (CPF, escola); escola com a origem |
 | Preparar ofício → corrigir o que estiver amarelo → Abrir no Novo ofício | Novo ofício com tipo, escola, trabalhadores e a ficha do Drive anexada |
