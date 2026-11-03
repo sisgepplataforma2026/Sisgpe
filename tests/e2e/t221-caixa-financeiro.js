@@ -178,9 +178,8 @@ win.spIr = m => { win.__foi = m; };
   b.ok(el("cxsModal").classList.contains("aberto"), "a conversa abriu");
   b.ok(/pela financeiro@/.test(t.texto("#cxsMRespostaRot")), "a resposta sai pela financeiro@");
 
-  b.passo("10. Central antiga continua a um clique");
-  t.clicar("[data-cxs='centralAntiga']"); await t.assentar(10);
-  b.igual(win.__foi, "centralEmailIA", "leva à Central antiga do Financeiro");
+  b.passo("10. A Central antiga saiu da tela (03/11/2026): as ferramentas estão na conversa");
+  b.ok(!doc.querySelector("[data-cxs='centralAntiga']") && !/Central antiga/.test(t.texto("#cxsCaixas")), "sem o atalho para a Central antiga");
 
   b.naoTestavel("o Gmail de verdade e a aparência", "ver em HML");
   b.resumo();

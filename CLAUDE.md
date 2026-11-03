@@ -271,6 +271,16 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   tela da financeiro@ mostra TODAS as pastas. O robô (categorização) na
   conta do Financeiro lê Caixa de entrada e, quando precisar, Itens
   enviados. Não confundir as duas contas de novo.
+- **EM ESPERA (03/11/2026) — RECEBIMENTO DE TAXA NÃO É NO SISGEP, POR
+  ENQUANTO.** *"Hoje quem faz toda a conciliação bancária é o Condomob."*
+  Não ligar a Caixa ao "registrar recebimento" de TaxasSindicais.gs (nem o
+  botão "Lançar no Financeiro", nem a situação da guia na caixa da escola)
+  até ele pedir. O código de TaxasSindicais.gs fica como está.
+  O que ele descreveu para o futuro é o ROBÔ DA CONDOMOB: *"ele tinha que
+  entrar dentro do Condomob, verificar quais escolas estão devendo, quais
+  escolas ainda não pagaram, fazer essa rotina, para cobrar o pagamento."*
+- **Itens enviados da financeiro@:** o robô lê só quando precisa (ex.: ao
+  abrir uma conversa), nunca varrendo à toa (03/11/2026).
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a
   tela de conferência. Recategorizar à mão como Voucher também.
 - *"A caixa de e-mail do SISGEP vai ser o e-mail onde a gente vai
