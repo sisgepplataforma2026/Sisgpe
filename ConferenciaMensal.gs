@@ -180,3 +180,22 @@ function oficiosConferenciaTratado(chave, como, tokenSessao) {
     return { ok: false, mensagem: err.message };
   }
 }
+
+/* A equipe corrigiu a leitura do comprovante (mês ou tipo errado — robô dos
+   comprovantes, 03/11/2026): a lista guardada daquele e-mail passa a valer
+   com o mês/tipo certos, para a conferência não usar o mês errado. */
+function cfmCorrigirLista_(origem, refAntiga, refNova, tipoNovo) {
+  try {
+    var sh = cfmAba_(CFM_LISTAS_ABA, CFM_LISTAS_COL);
+    if (sh.getLastRow() < 2) return 0;
+    var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
+    var c = v[0].map(String), iO = c.indexOf("ORIGEM"), iR = c.indexOf("REFERENCIA"), iT = c.indexOf("TIPO"), n = 0;
+    for (var i = 1; i < v.length; i++) {
+      if (String(v[i][iO]) !== String(origem) || String(v[i][iR]) !== String(refAntiga)) continue;
+      if (refNova && cfmMes_(refNova)) sh.getRange(i + 1, iR + 1).setValue(String(refNova));
+      if (tipoNovo) sh.getRange(i + 1, iT + 1).setValue(/TAXA/.test(String(tipoNovo)) ? "TAXA_NEGOCIAL" : "MENSALIDADE");
+      n++;
+    }
+    return n;
+  } catch (e) { Logger.log("Conferência mensal: não corrigiu a lista — " + e.message); return 0; }
+}

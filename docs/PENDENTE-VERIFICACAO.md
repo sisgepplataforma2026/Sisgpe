@@ -6735,3 +6735,20 @@ Emulador: t232 (22, inclusive a tela e o Novo e-mail se abrindo escrito), suíte
 | ✉ Propor e-mail → Abrir no Novo e-mail | a Caixa abre o Novo e-mail já escrito (ofício nº, pessoas, CCT pelo MTE); você envia |
 | ✔ Já tratei | sai da conferência |
 | Ofício há mais de 35 dias sem lista da escola | aparece em "Sem lista da escola ainda" |
+
+## 🔴 Robô dos comprovantes (lê sozinho às 20h) — HML 03/11/2026
+
+Decisões do usuário (03/11/2026): rotina automática "sim"; **só a secretaria@**; **20h**; **limite 10** por vez.
+Emulador: t233 (39, inclusive a tela), suíte verde. **Não testado: o agendamento disparar às 20h de verdade, a IA lendo comprovante real, o navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Rodapé da Caixa (como administrador) | "🧾 Robô dos comprovantes … ○ Desligado" e o botão **Ligar** |
+| Ligar | "● Ligado"; no editor do Apps Script › Acionadores: `caixaRoboComprovantesRodar`, diário, 20h |
+| No dia seguinte, rodapé | "Última vez (dd/MM 20:0x): leu N …"; se havia mais de 10, "X ficaram para a próxima" |
+| Abrir um comprovante da secretaria@ (card Contribuições) | "🤖 Lido pelo robô em …" — aparece na hora, sem esperar a IA |
+| ✔ Está certo / ✎ Corrigir (mês, tipo) | grava; a Conferência mensal passa a usar o mês corrigido; o acerto aparece no rodapé |
+| ↻ Ler de novo | a IA lê outra vez, no seu nome |
+| Conferir a caixa da secretaria@ no KingHost | nada respondido, movido ou marcado pelo robô |
+| Desligar | o acionador some |
+| Se no dia seguinte o rodapé NÃO mostrar "Última vez" | o gatilho não foi reconhecido (a trava confere o id do gatilho); me avise — não testado fora do emulador |

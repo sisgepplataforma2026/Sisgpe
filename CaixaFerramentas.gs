@@ -28,6 +28,10 @@ function cxfConversa_(id, sessao) {
   cxsExigirCaixaDe_(sessao, id);
   var p = cxsLinhaPonte_(id);
   if (!p) throw new Error("Conversa não encontrada na Caixa.");
+  return cxfConversaDe_(p);
+}
+/* Sem a trava (o robô dos comprovantes, que roda sem sessão). */
+function cxfConversaDe_(p) {
   var msgs = vpeJson_(p.MENSAGENS_JSON, []);
   var fora = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
   return { p: p, msgs: msgs, primeiro: fora[0] || msgs[0] || {}, ultimo: fora[fora.length - 1] || msgs[msgs.length - 1] || {} };
@@ -105,54 +109,81 @@ function caixaContexto(id, tokenSessao) {
 
 /* ── 2. O COMPROVANTE ── */
 /** A IA lê o comprovante (texto + PDF anexo) e confere com os associados da escola. */
-function caixaLerComprovante(id, tokenSessao) {
+/* (id, token) ou (id, forcar, token). 03/11/2026: a leitura fica guardada
+   (Caixa_Comprovantes_Lidos, CaixaRoboComprovantes.gs) — abrir o e-mail de
+   novo mostra a leitura já feita (pelo robô da noite ou por quem abriu
+   antes), sem gastar IA; "Ler de novo" (forcar) lê outra vez. */
+function caixaLerComprovante(id, a2, a3) {
+  var forcar = a3 !== undefined ? a2 === true : false;
+  var tokenSessao = a3 !== undefined ? a3 : a2;
   try {
     var sessao = cxsExigir_(tokenSessao);
     var conv = cxfConversa_(id, sessao);
-    var blocos = [];
-    var anexos = vpeJson_(conv.p.ANEXOS_JSON, []);
-    for (var i = 0; i < anexos.length && blocos.length < 2; i++) {
-      var r = caixaSecretariaAnexo(id, i, tokenSessao);
-      if (r && r.ok && /pdf|image/.test(r.tipo)) {
-        var b64 = String(r.dataUrl).split(",")[1];
-        blocos.push(/pdf/.test(r.tipo)
-          ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
-          : { type: "image", source: { type: "base64", media_type: r.tipo, data: b64 } });
-      }
+    if (!forcar && typeof crcLeituraGuardada_ === "function") {
+      var g0 = crcLeituraGuardada_(id, conv.p.ULTIMA_MENSAGEM_ID);
+      if (g0) return { ok: true, comprovante: g0.comprovante, leitura: g0.leitura };
     }
-    var texto = conv.msgs.map(function (m) { return "Assunto: " + (m.assunto || "") + "\n" + (m.corpo || ""); }).join("\n---\n");
-    var prompt = "Você lê comprovantes de desconto em folha (mensalidade sindical ou taxa negocial) que escolas mandam a um " +
-      "sindicato. Do e-mail e dos anexos, extraia. Responda SOMENTE com JSON: {\"e_comprovante\":true|false,\"tipo\":\"MENSALIDADE|TAXA_NEGOCIAL|OUTRO\"," +
-      "\"escola\":\"\",\"cnpj\":\"\",\"mes\":\"MM\",\"ano\":\"AAAA\",\"valor\":\"R$ …\",\"quantidade\":0," +
-      "\"pessoas\":[{\"nome\":\"\",\"cpf\":\"\"}]} — pessoas só se o comprovante listar nomes.\n\nE-MAIL:\n" + texto.substring(0, 6000);
-    var j = vpeChamarIA_(prompt, blocos);
-    if (!j || j.e_comprovante === false) return { ok: true, comprovante: null };
-    var achou = cxfAcharEscola_(conv);
-    var mens = achou ? cxfMensalidades_(String(achou.e.escola || "")) : null;
-    var faltaram = [];
-    if (mens && Array.isArray(j.pessoas) && j.pessoas.length) {
-      var cpfs = j.pessoas.map(function (x) { return cxfSoDigitos_(x.cpf); }).filter(String);
-      var nomes = j.pessoas.map(function (x) { return String(x.nome || "").toUpperCase().trim(); });
-      faltaram = mens.nomes.filter(function (a) {
-        return !(cpfs.indexOf(cxfSoDigitos_(a.cpf)) > -1 || nomes.indexOf(String(a.nome || "").toUpperCase().trim()) > -1);
-      }).map(function (a) { return a.nome; });
-    }
-    /* Etapa 2 do robô das fichas (03/11/2026): a lista com os nomes fica
-       guardada para a conferência mensal (ofício enviado × lista da escola). */
-    if (achou && Array.isArray(j.pessoas) && j.pessoas.length && typeof cfmGuardarLista_ === "function") {
-      cfmGuardarLista_(achou.e.cnpj, achou.e.escola || achou.e.Fantasia, j.tipo, [j.mes, j.ano].filter(String).join("/"), j.pessoas, id, sessao.email || "");
-    }
-        roboMemoriaRegistrar_({ tarefa: "comprovante-lido", origem: String(conv.p.CAIXA || ""), chave: id,
-      remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto, sugerido: JSON.stringify({ m: j.mes, a: j.ano, v: j.valor, q: j.quantidade }),
-      decidido: "", quem: sessao.email || "" });
-    return { ok: true, comprovante: {
-      tipo: String(j.tipo || ""), escola: String(j.escola || ""), referencia: [j.mes, j.ano].filter(String).join("/"),
-      valor: String(j.valor || ""), quantidade: Number(j.quantidade || 0) || (j.pessoas || []).length,
-      esperado: mens ? mens.total : null, faltaram: faltaram, listaNomes: !!(j.pessoas && j.pessoas.length)
-    } };
+    var r = cxfLerComprovanteCore_(id, conv, sessao.email || "");
+    return { ok: true, comprovante: r.comprovante, leitura: r.leitura };
   } catch (err) {
     return { ok: false, mensagem: err.message };
   }
+}
+
+/* O miolo, sem a trava (a tela confere a sessão; o robô da noite roda sem
+   sessão). quem = e-mail de quem abriu, ou "ROBÔ". Guarda a leitura. */
+function cxfLerComprovanteCore_(id, conv, quem) {
+  var blocos = [];
+  var anexos = vpeJson_(conv.p.ANEXOS_JSON, []);
+  for (var i = 0; i < anexos.length && blocos.length < 2; i++) {
+    var r = cxsAnexoInterno_(conv.p, i);
+    if (r && r.ok && /pdf|image/.test(r.tipo)) {
+      var b64 = String(r.dataUrl).split(",")[1];
+      blocos.push(/pdf/.test(r.tipo)
+        ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
+        : { type: "image", source: { type: "base64", media_type: r.tipo, data: b64 } });
+    }
+  }
+  var texto = conv.msgs.map(function (m) { return "Assunto: " + (m.assunto || "") + "\n" + (m.corpo || ""); }).join("\n---\n");
+  var prompt = "Você lê comprovantes de desconto em folha (mensalidade sindical ou taxa negocial) que escolas mandam a um " +
+    "sindicato. Do e-mail e dos anexos, extraia. Responda SOMENTE com JSON: {\"e_comprovante\":true|false,\"tipo\":\"MENSALIDADE|TAXA_NEGOCIAL|OUTRO\"," +
+    "\"escola\":\"\",\"cnpj\":\"\",\"mes\":\"MM\",\"ano\":\"AAAA\",\"valor\":\"R$ …\",\"quantidade\":0," +
+    "\"pessoas\":[{\"nome\":\"\",\"cpf\":\"\"}]} — pessoas só se o comprovante listar nomes.\n\n" +
+    (typeof crcExemplosCorrecao_ === "function" ? crcExemplosCorrecao_() : "") +
+    "E-MAIL:\n" + texto.substring(0, 6000);
+  var j = vpeChamarIA_(prompt, blocos);
+  if (!j || j.e_comprovante === false) {
+    var nada = { comprovante: null, leitura: null };
+    if (typeof crcGuardar_ === "function") nada.leitura = crcGuardar_(id, conv, quem, j ? "NAO_E_COMPROVANTE" : "FALHOU", null, j ? "" : "a IA não respondeu");
+    return nada;
+  }
+  var achou = cxfAcharEscola_(conv);
+  var mens = achou ? cxfMensalidades_(String(achou.e.escola || "")) : null;
+  var faltaram = [];
+  if (mens && Array.isArray(j.pessoas) && j.pessoas.length) {
+    var cpfs = j.pessoas.map(function (x) { return cxfSoDigitos_(x.cpf); }).filter(String);
+    var nomes = j.pessoas.map(function (x) { return String(x.nome || "").toUpperCase().trim(); });
+    faltaram = mens.nomes.filter(function (a) {
+      return !(cpfs.indexOf(cxfSoDigitos_(a.cpf)) > -1 || nomes.indexOf(String(a.nome || "").toUpperCase().trim()) > -1);
+    }).map(function (a) { return a.nome; });
+  }
+  var referencia = [j.mes, j.ano].filter(String).join("/");
+  /* Etapa 2 do robô das fichas (03/11/2026): a lista com os nomes fica
+     guardada para a conferência mensal (ofício enviado × lista da escola). */
+  if (achou && Array.isArray(j.pessoas) && j.pessoas.length && typeof cfmGuardarLista_ === "function") {
+    cfmGuardarLista_(achou.e.cnpj, achou.e.escola || achou.e.Fantasia, j.tipo, referencia, j.pessoas, id, quem);
+  }
+  roboMemoriaRegistrar_({ tarefa: "comprovante-lido", origem: String(conv.p.CAIXA || ""), chave: id,
+    remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto, sugerido: JSON.stringify({ m: j.mes, a: j.ano, v: j.valor, q: j.quantidade }),
+    decidido: "", quem: quem });
+  var comp = {
+    tipo: String(j.tipo || ""), escola: String(j.escola || ""), referencia: referencia,
+    valor: String(j.valor || ""), quantidade: Number(j.quantidade || 0) || (j.pessoas || []).length,
+    esperado: mens ? mens.total : null, faltaram: faltaram, listaNomes: !!(j.pessoas && j.pessoas.length),
+    escolaCnpj: achou ? String(achou.e.cnpj || "") : ""
+  };
+  var leitura = typeof crcGuardar_ === "function" ? crcGuardar_(id, conv, quem, "LIDO", comp, "") : null;
+  return { comprovante: comp, leitura: leitura };
 }
 
 /* ── 3. A RESPOSTA PELA IA ── */

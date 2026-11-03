@@ -18,7 +18,8 @@ var PDD_TAREFAS = {
   "categoria-email": "Categoria do e-mail",
   "resposta-email": "Resposta enviada sem mudança",
   "voucher-falta": "Documentos que faltam (voucher)",
-  "voucher-texto": "Texto do voucher sem mudança"
+  "voucher-texto": "Texto do voucher sem mudança",
+  "comprovante-conferido": "Leitura de comprovante"
 };
 var PDD_DIAS_ROBO = 90;
 

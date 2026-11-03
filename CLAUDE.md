@@ -327,6 +327,16 @@ ou saiu (desfiliação/oposição) da lista de contribuição da escola, e
 propor o e-mail de cobrança. Nada sai sem o clique. Ofícios é a operação
 viva — a emissão continua no módulo de Ofícios, como hoje.
 
+## 🧾 ROBÔ DOS COMPROVANTES (03/11/2026)
+
+Rotina que lê sozinha os comprovantes (o mesmo "Ler comprovante" da Caixa),
+decidida pelo usuário: **só a secretaria@, às 20h, no máximo 10 por vez**.
+Só lê e anota (CaixaRoboComprovantes.gs, aba Caixa_Comprovantes_Lidos) — não
+responde, não move, não marca nada. Começa desligado; quem liga é
+administrador, no rodapé da Caixa. A financeiro@ não entra até ele pedir.
+Existe uma rotina antiga, `processarEmailsMensalidade` (MensalidadeCore.gs),
+que põe etiqueta no Gmail; não foi tocada (REGRA 1).
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento

@@ -592,7 +592,15 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
 function caixaSecretariaAnexo(id, indice, tokenSessao) {
   try {
     cxsExigirCaixaDe_(cxsExigir_(tokenSessao), id);
-    var p = cxsLinhaPonte_(id);
+    return cxsAnexoInterno_(cxsLinhaPonte_(id), indice);
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+/* Sem a trava: quem chama já conferiu (a tela, acima) ou é o robô dos
+   comprovantes, que roda agendado, sem sessão (CaixaRoboComprovantes.gs). */
+function cxsAnexoInterno_(p, indice) {
+  try {
     var a = p ? vpeJson_(p.ANEXOS_JSON, [])[Number(indice)] : null;
     if (a && a.gmail) {
       var msg = cxsGmailFinanceiro_().getMessageById(String(a.msgId));
