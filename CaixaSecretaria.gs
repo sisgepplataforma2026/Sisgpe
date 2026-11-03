@@ -368,6 +368,10 @@ function cxsResumo_(p, est, envios) {
   var primeira = msgs[0] || {}, ultima = msgs[msgs.length - 1] || {};
   var tipo = cxsTipo_((est && est.TIPO_CORRIGIDO) || p.TIPO || "OUTRO");
   var sit = cxsSituacao_(p, est);
+  /* 03/11/2026: a última mensagem é NOSSA (mandamos, ou respondemos direto
+     pelo Gmail/KingHost) — nada a responder: não é "a tratar". Volta como
+     mensagem nova quando a pessoa escrever. */
+  if (sit.estado === CXS_ESTADOS.NOVO && CXS_NOSSOS.indexOf(cxsEmail_(ultima.de)) > -1) sit = { estado: CXS_ESTADOS.RESPONDIDO, mensagemNova: false };
   var meus = (envios[String(p.THREAD_ID)] || []);
   return {
     id: String(p.THREAD_ID), tipo: tipo,

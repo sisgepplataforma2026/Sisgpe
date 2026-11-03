@@ -6659,3 +6659,15 @@ Emulador: t226 (61), t224 (53), suíte 225 verde. **Não testado no navegador.**
 | Card do sistema excluído | aparece em ⚙ Cards como "excluído", com "↩ Trazer de volta" |
 | Responder um e-mail | ele sai do card e da lista "a tratar"; está em Situação › Respondidos |
 | A pessoa responde de volta | o e-mail volta para "a tratar" como "mensagem nova" |
+
+## 🔴 Arquivar vários, pasta nova, e-mail nosso não é "a tratar" — HML 03/11/2026
+
+Emulador: t225 (55), suíte 225 verde. **Não testado com o Gmail de verdade.**
+
+| Roteiro em HML (wanderson) | Esperado |
+|---|---|
+| Marcar vários › 📦 Arquivar | saem da Entrada (no Gmail também); estão em Todos os e-mails |
+| Mover para… › ➕ Nova pasta… | cria a pasta no Gmail e move os marcados para ela |
+| Lateral › ➕ Nova pasta | a pasta aparece nos marcadores |
+| Os 45 "Relação nominal" que nós mandamos | saem do "a tratar"; quando a escola responde, voltam |
+| "RELACAO_NOMINAL" | aparece como "Relação nominal" |

@@ -125,7 +125,8 @@ function caixaFinanceiroPasta(chave, inicio, tokenSessao) {
 
 var CXP_ACOES = {
   RESOLVER: "resolvido", ESTRELA: "com estrela", TIRAR_ESTRELA: "sem estrela", LIXEIRA: "mandado(s) para a lixeira",
-  RESTAURAR: "restaurado(s) para a Caixa de entrada", NAO_SPAM: "devolvido(s) para a Caixa de entrada", MOVER: "movido(s)"
+  RESTAURAR: "restaurado(s) para a Caixa de entrada", NAO_SPAM: "devolvido(s) para a Caixa de entrada", MOVER: "movido(s)",
+  ARQUIVAR: "arquivado(s) — saíram da Caixa de entrada e continuam em Todos os e-mails"
 };
 
 /**
@@ -163,6 +164,7 @@ function caixaFinanceiroAcao(ids, acao, extra, tokenSessao) {
         else if (acao === "ESTRELA") { if (msgs.length) msgs[msgs.length - 1].star(); }
         else if (acao === "TIRAR_ESTRELA") msgs.forEach(function (m) { if (!m.isStarred || m.isStarred()) m.unstar(); });
         else if (acao === "LIXEIRA") th.moveToTrash();
+        else if (acao === "ARQUIVAR") th.moveToArchive();   /* 03/11/2026: "arquivar vários" — como no Gmail */
         else if (acao === "RESTAURAR" || acao === "NAO_SPAM") th.moveToInbox();
         else if (acao === "MOVER") { if (lab) { th.addLabel(lab); th.moveToArchive(); } else th.moveToInbox(); }
         feitos++;
@@ -173,6 +175,25 @@ function caixaFinanceiroAcao(ids, acao, extra, tokenSessao) {
     cxsAuditar_("PASTA_" + acao, ids.join(","), feitos + " " + CXP_ACOES[acao] + destino + ": " + assuntos.join(" | "), sessao);
     return { ok: feitos > 0, feitos: feitos, erros: erros,
              mensagem: feitos + " e-mail(s) " + CXP_ACOES[acao] + destino + "." + (erros.length ? " " + erros.length + " não deu: " + erros.join("; ") : "") };
+  } catch (err) {
+    return { ok: false, mensagem: err.message };
+  }
+}
+
+/** Pasta nova no Gmail da financeiro@ (03/11/2026: "criar novas pastas também").
+    É um marcador do Gmail — aparece lá também. Sub-pasta: "pai/filha". */
+function caixaFinanceiroCriarPasta(nome, tokenSessao) {
+  try {
+    var sessao = cxpExigirFinanceiro_(tokenSessao);
+    nome = String(nome || "").replace(/\s+/g, " ").trim().substring(0, 80);
+    if (nome.length < 2) return { ok: false, mensagem: "Dê um nome à pasta." };
+    if (/^(inbox|spam|trash|sent|drafts|caixa de entrada|lixeira)$/i.test(nome)) return { ok: false, mensagem: "Esse nome é de pasta do próprio Gmail." };
+    var gm = cxsGmailFinanceiro_();
+    var ja = gm.getUserLabelByName(nome);
+    if (!ja) gm.createLabel(nome);
+    cxpLimparCache_();
+    cxsAuditar_("PASTA_CRIADA", "financeiro@", "Pasta \"" + nome + "\"" + (ja ? " (já existia)" : " criada"), sessao);
+    return { ok: true, chave: CXP_LABEL + nome, mensagem: ja ? "A pasta \"" + nome + "\" já existia." : "Pasta \"" + nome + "\" criada (no Gmail também)." };
   } catch (err) {
     return { ok: false, mensagem: err.message };
   }

@@ -53,8 +53,9 @@ th("s1", "SENT", msg("Wanderson <financeiro@sindeducacao.com>", "Escola Beta <rh
 th("x1", "SPAM", msg("Ganhe <promo@spam.exemplo.com>", "financeiro@sindeducacao.com", "Você ganhou", "clique", new Date(agora - 4e6)));
 th("l1", "TRASH", msg("Escola Gama <rh@gama.exemplo.com>", "financeiro@sindeducacao.com", "Guia antiga", "guia", new Date(agora - 5e6)));
 th("a1", "ARQUIVO", msg("Contador <c@contab.exemplo.com>", "financeiro@sindeducacao.com", "Balancete", "anexo", new Date(agora - 6e6)), ["Contabilidade"]);
-const LABELS = ["Contabilidade", "Escolas"].map(n => ({ getName: () => n, getUnreadCount: () => 1,
-  getThreads: (i, m) => Object.values(T).filter(t => t.labels.indexOf(n) > -1 && t.pasta !== "TRASH").slice(i, i + m).map(t => t.obj) }));
+const novoLabel = n => ({ getName: () => n, getUnreadCount: () => 1,
+  getThreads: (i, m) => Object.values(T).filter(t => t.labels.indexOf(n) > -1 && t.pasta !== "TRASH").slice(i, i + m).map(t => t.obj) });
+const LABELS = ["Contabilidade", "Escolas"].map(novoLabel);
 const buscas = [];
 const fake = {
   search: (q, i, m) => {
@@ -75,7 +76,8 @@ const fake = {
   getThreadById: id => (T[id] || {}).obj || null,
   getMessageById: id => { for (const t of Object.values(T)) for (const x of t.msgs) if (x.getId() === id) return x; return null; },
   getUserLabels: () => LABELS,
-  getUserLabelByName: n => LABELS.find(l => l.getName() === n) || null
+  getUserLabelByName: n => LABELS.find(l => l.getName() === n) || null,
+  createLabel: n => { const l = novoLabel(n); LABELS.push(l); feito.push("createLabel " + n); return l; }
 };
 g.cxsGmailFinanceiro_ = () => fake;
 const limpa = () => { g.CacheService.getScriptCache().remove("cxs_fin_lista_v1"); g.CacheService.getScriptCache().remove("cxp_pastas_v1"); };
@@ -113,12 +115,36 @@ const mv = g.caixaFinanceiroAcao(["F:i1"], "MOVER", { para: "LABEL:Escolas" }, T
 b.ok(mv.ok && T.i1.labels.indexOf("Escolas") > -1 && T.i1.pasta === "ARQUIVO", "mover para o marcador (sai da Entrada, como no Gmail)", mv.mensagem);
 b.ok(!g.caixaFinanceiroAcao(["F:i1"], "MOVER", { para: "LABEL:Nao existe" }, TOKEN).ok, "marcador que não existe: recusa");
 b.ok(g.caixaFinanceiroAcao(["F:i1"], "MOVER", { para: "INBOX" }, TOKEN).ok && T.i1.pasta === "INBOX", "e de volta para a Entrada");
+const ar = g.caixaFinanceiroAcao(["F:i1", "F:i2"], "ARQUIVAR", {}, TOKEN);
+b.ok(ar.ok && ar.feitos === 2 && T.i1.pasta === "ARQUIVO" && T.i2.pasta === "ARQUIVO", "arquivar vários de uma vez (como no Gmail)", ar.mensagem);
+b.ok(g.caixaFinanceiroPasta("ALL", 0, TOKEN).itens.some(i => i.id === "F:i1"), "arquivado continua em Todos os e-mails");
+b.ok(g.caixaFinanceiroAcao(["F:i1", "F:i2"], "MOVER", { para: "INBOX" }, TOKEN).ok && T.i1.pasta === "INBOX", "e volta para a Entrada");
 limpa();
 b.ok(g.caixaFinanceiroAcao(["F:i1"], "RESOLVER", {}, TOKEN).ok, "resolver em lote");
 b.igual(g.caixaFinanceiroItens(TOKEN).itens.find(i => i.id === "F:i1").estado, "RESOLVIDO", "fica resolvido no SISGEP");
 b.ok(!g.caixaFinanceiroAcao(["T123"], "ESTRELA", {}, TOKEN).ok, "e-mail da secretaria@ não entra nas ações da financeiro@");
 const aud = JSON.stringify(ss.getSheets().filter(s => /Auditoria/i.test(s.getName())).map(s => s.getDataRange().getValues()));
 b.ok(/PASTA_LIXEIRA/.test(aud) && /Boleto de outubro/.test(aud), "a auditoria guarda o que foi para a lixeira, e o assunto");
+
+b.passo("3b. Pasta nova e mover para ela");
+const np = g.caixaFinanceiroCriarPasta("Relações nominais 2026", TOKEN);
+b.ok(np.ok && LABELS.some(l => l.getName() === "Relações nominais 2026"), "cria a pasta no Gmail", np.mensagem);
+b.ok(g.caixaFinanceiroAcao(["F:i1"], "MOVER", { para: np.chave }, TOKEN).ok && T.i1.labels.indexOf("Relações nominais 2026") > -1, "e move o e-mail para ela");
+b.ok(g.caixaFinanceiroCriarPasta("Relações nominais 2026", TOKEN).ok && LABELS.filter(l => l.getName() === "Relações nominais 2026").length === 1, "a mesma de novo: não duplica");
+b.ok(!g.caixaFinanceiroCriarPasta("Lixeira", TOKEN).ok, "nome de pasta do Gmail: recusa");
+g.CacheService.getScriptCache().remove("cxp_pastas_v1");
+b.ok(g.caixaFinanceiroPastas(TOKEN).marcadores.some(m => m.rotulo === "Relações nominais 2026"), "aparece na lateral");
+g.caixaFinanceiroAcao(["F:i1"], "MOVER", { para: "INBOX" }, TOKEN);
+b.passo("3c. E-mail cuja última mensagem é nossa não é 'a tratar'");
+th("n1", "INBOX", msg("Financeiro SindEducação <financeiro@sindeducacao.com>", "rh@escola.exemplo.com", "Relação nominal — Cláusula 37ª", "Solicitamos a relação.", new Date(agora - 7e6)));
+limpa();
+const nosso = g.caixaFinanceiroItens(TOKEN).itens.find(i => i.id === "F:n1");
+b.ok(nosso && nosso.estado === "RESPONDIDO", "o que nós mandamos fica como respondido (aguardando a escola)", nosso && nosso.estado);
+T.n1.msgs.push(msg("Escola <rh@escola.exemplo.com>", "financeiro@sindeducacao.com", "Re: Relação nominal", "Segue a relação.", new Date(agora - 1e5)));
+limpa();
+b.igual(g.caixaFinanceiroItens(TOKEN).itens.find(i => i.id === "F:n1").estado, "NOVO", "a escola respondeu: volta para a tratar");
+T.n1.pasta = "ARQUIVO";
+limpa();
 
 b.passo("4. Cada um com a sua caixa");
 b.ok(!g.caixaFinanceiroPastas(T_SEC).ok, "a Secretaria não vê as pastas da financeiro@");
@@ -159,6 +185,7 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
   b.ok(chk, "o e-mail tem a caixinha de marcar");
   chk.checked = true; chk.dispatchEvent(new win.Event("change", { bubbles: true })); await t.assentar(20);
   b.ok(/1 marcado/.test(t.texto("#cxsLote")), "1 marcado");
+  b.ok(doc.querySelector("[data-cxs='lote'][data-arg='ARQUIVAR']"), "tem o botão Arquivar na Entrada");
   t.clicar("[data-cxs='lote'][data-arg='LIXEIRA']"); await t.assentar(30);
   b.ok(el("cxsLoteConf").style.display !== "none" && /Boleto de outubro/.test(t.texto("#cxsLoteConf")) && /do Gmail também/.test(t.texto("#cxsLoteConf")),
     "mostra o que vai e avisa que vai para a lixeira do Gmail", t.texto("#cxsLoteConf"));
