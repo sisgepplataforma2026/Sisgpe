@@ -82,6 +82,8 @@ g.roboMemoriaRegistrar_({ tarefa: "categoria-email", origem: "SECRETARIA", chave
 const r2 = g.caixaResumoDoDia(TOKEN);
 const cat = r2.robo.find(x => x.tarefa === "categoria-email");
 b.ok(cat && cat.n === 3 && cat.pct === 67, "categoria: 2 de 3 certas na financeiro@ = 67%", JSON.stringify(r2.robo));
+const med = g.caixaRoboMedicao(TOKEN);
+b.ok(med.ok && med.robo.find(x => x.tarefa === "categoria-email").pct === 67, "a mesma medição no rodapé da Caixa", JSON.stringify(med.robo));
 b.passo("4. Quem não pode abrir a Caixa não abre o Painel");
 ss.getSheetByName(g.ABA_USUARIOS_LOGIN).appendRow(["rhzinho", g.gerarHashSenha_("Senha@2026"), "Só RH", "rh@sindeducacao.com", "USUARIO", "ATIVO", "NAO", "rh"]);
 b.ok(!g.caixaResumoDoDia(b.logar(g, "rhzinho")).ok, "só RH: não abre");
@@ -105,6 +107,7 @@ win.spIr = m => { foi.push(m); if (m === "caixaSecretaria") win.cxsIniciar(); };
   b.ok(el("pddVoucherBloco").style.display === "none", "sem vouchers para ele");
   b.passo("6. Clicar no card abre a Caixa já filtrada");
   t.clicar("#pddCards [data-pdd='tipo'][data-arg='CONTAS']"); await t.assentar(250);
+  b.ok(/O robô, nos últimos 90 dias/.test(t.texto("#cxsRobo")) && /67%/.test(t.texto("#cxsRobo")), "o rodapé da Caixa mostra quanto o robô acerta", t.texto("#cxsRobo"));
   b.igual(foi[foi.length - 1], "caixaSecretaria", "foi para a Caixa");
   const ativo = doc.querySelector("#cxsTipos .cxs-tipo.ativo");
   b.ok(ativo && /Contas/.test(ativo.textContent), "com o card Contas selecionado", ativo && ativo.textContent);

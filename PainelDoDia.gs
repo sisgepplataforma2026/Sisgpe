@@ -104,3 +104,14 @@ function caixaResumoDoDia(tokenSessao) {
     return { ok: false, mensagem: err.message };
   }
 }
+
+/** A medição do robô no rodapé da Caixa (03/11/2026: o Painel do Dia saiu do
+    menu e o "Medir" da diretriz precisava de lugar). Só lê Robo_Memoria. */
+function caixaRoboMedicao(tokenSessao) {
+  try {
+    var sessao = cxsExigir_(tokenSessao);
+    return { ok: true, robo: pddRobo_(cxsMeuPapel_(sessao) || "") };
+  } catch (err) {
+    return { ok: false, mensagem: err.message, robo: [] };
+  }
+}
