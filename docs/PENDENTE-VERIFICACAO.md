@@ -6633,3 +6633,15 @@ Desenho aprovado ("Aprovo"). Emulador: t227 (23), suíte 224 verde. **Não testa
 | "Precisa de você hoje" › Abrir | abre a conversa na Caixa |
 | Marcelha › Painel do Dia | caixa secretaria@ e o bloco de vouchers |
 | 📈 O robô | taxa de acerto por tarefa (vazio até a equipe decidir alguma coisa) |
+
+## 🔴 A Caixa propõe a resposta ao abrir — HML 03/11/2026
+
+Pedido do usuário (print do pedido de boleto da Zelia): "deveria me propor a resposta ... sempre aprendendo".
+Emulador: t228 (17), suíte 225 verde. **Não testado com a IA de verdade.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Abrir um pedido de boleto | o campo já vem com a proposta do robô + "📎 Lembre de anexar: …" |
+| Fechar e abrir de novo | a mesma proposta, na hora (sem esperar a IA) |
+| Começar a digitar antes da proposta chegar | o seu texto fica; aparece "o robô tem uma proposta" |
+| Responder 2 ou 3 pedidos parecidos, ajustando o texto | as próximas propostas ficam no seu jeito (usa o que você respondeu a quem escreveu e a e-mails do mesmo tipo) |

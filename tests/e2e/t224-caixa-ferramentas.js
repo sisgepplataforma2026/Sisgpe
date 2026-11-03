@@ -114,7 +114,7 @@ b.ok(/COLEGIO BETA LTDA/.test(pedidoResp) && /Associados da escola na mensalidad
 b.ok(/ES000256\/2026/.test(pedidoResp), "e a regra de citar a CCT pelo MTE");
 b.igual(respostas.length + encaminhadas.length, 0, "nada saiu sozinho");
 g.vpeChamarIA_ = () => ({ resposta: "" });
-b.ok(!g.caixaSugerirResposta("F:t1", TOKEN).ok, "IA sem texto: avisa, não manda vazio");
+b.ok(!g.caixaSugerirResposta("F:t1", true, TOKEN).ok, "IA sem texto (pedindo de novo): avisa, não manda vazio");
 
 b.passo("4. Encaminhar (financeiro@): só com o clique");
 b.ok(!g.caixaEncaminhar("F:t1", "nao-e-email", "", TOKEN).ok, "e-mail inválido é recusado");

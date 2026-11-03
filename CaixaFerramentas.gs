@@ -151,14 +151,23 @@ function caixaLerComprovante(id, tokenSessao) {
 }
 
 /* ── 3. A RESPOSTA PELA IA ── */
-/* Como a equipe responde: as últimas respostas que ela mesma mudou. */
-function cxfExemplosResposta_(caixa) {
+/* Como a equipe responde (03/11/2026: "sempre aprendendo com o que estou
+   fazendo"): primeiro o que se respondeu a ESTE remetente, depois a e-mails
+   do MESMO tipo, depois os mais recentes da caixa — até 4 exemplos. */
+function cxfExemplosResposta_(caixa, tipoEmail, remetente) {
   try {
     var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ROBO_MEM_ABA);
     if (!sh || sh.getLastRow() < 2) return "";
     var v = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn()).getValues();
-    var c = v[0].map(String), iT = c.indexOf("TAREFA"), iO = c.indexOf("ORIGEM"), iD = c.indexOf("DECIDIDO"), iA = c.indexOf("ASSUNTO");
-    var ex = v.slice(1).filter(function (l) { return l[iT] === "resposta-email" && String(l[iO]) === caixa && l[iD]; }).slice(-4);
+    var c = v[0].map(String), iT = c.indexOf("TAREFA"), iO = c.indexOf("ORIGEM"), iD = c.indexOf("DECIDIDO"), iA = c.indexOf("ASSUNTO"),
+        iR = c.indexOf("REMETENTE"), iK = c.indexOf("TIPO_EMAIL");
+    var todas = v.slice(1).filter(function (l) { return l[iT] === "resposta-email" && String(l[iO]) === caixa && l[iD]; }).reverse();
+    var rem = String(remetente || "").toLowerCase(), vistos = {}, ex = [];
+    [function (l) { return rem && String(l[iR]).toLowerCase() === rem; },
+     function (l) { return tipoEmail && iK > -1 && String(l[iK]) === tipoEmail; },
+     function () { return true; }].forEach(function (f) {
+      todas.forEach(function (l, i) { if (ex.length < 4 && !vistos[i] && f(l)) { vistos[i] = 1; ex.push(l); } });
+    });
     if (!ex.length) return "";
     return "Respostas que a equipe enviou (siga o tom e o jeito):\n" + ex.map(function (l) {
       return "— Sobre \"" + String(l[iA]).substring(0, 80) + "\":\n" + String(l[iD]).substring(0, 600);
@@ -167,10 +176,19 @@ function cxfExemplosResposta_(caixa) {
 }
 
 /** Uma resposta escrita pela IA com o e-mail + o que o SISGEP sabe. Não envia. */
-function caixaSugerirResposta(id, tokenSessao) {
+/* (id, token) ou (id, forcar, token): o clique em ✨ pede uma nova; ao abrir
+   a conversa, a já feita vale. */
+function caixaSugerirResposta(id, a2, a3) {
+  var forcar = a3 !== undefined ? a2 === true : false;
+  var tokenSessao = a3 !== undefined ? a3 : a2;
   try {
     var sessao = cxsExigir_(tokenSessao);
     var conv = cxfConversa_(id, sessao);
+    /* A mesma conversa, sem mensagem nova: a proposta já feita vale
+       (abrir de novo não gasta IA). */
+    var chaveCache = "cxf_resp_" + String(id).replace(/[^\w]/g, "") + "_" + String(conv.ultimo.id || "").replace(/[^\w]/g, "");
+    var cache = null;
+    try { cache = CacheService.getScriptCache(); var c0 = forcar ? null : cache.get(chaveCache); if (c0) return JSON.parse(c0); } catch (e0) {}
     var ctx = caixaContexto(id, tokenSessao);
     var sabe = [];
     if (ctx.ok && ctx.escola) {
@@ -183,15 +201,20 @@ function caixaSugerirResposta(id, tokenSessao) {
     var conversa = conv.msgs.slice(-4).map(function (m) { return "De: " + m.de + "\nAssunto: " + (m.assunto || "") + "\n" + String(m.corpo || "").substring(0, 1500); }).join("\n---\n");
     var prompt = "Você escreve, em português, a resposta de um sindicato de trabalhadores da educação (SindEducação-ES) " +
       "a um e-mail. Seja cordial, objetivo e não invente dado que não esteja no e-mail ou no que o sistema sabe. " +
-      "Cite a CCT, se precisar, pela numeração do registro no MTE (ES000256/2026). Não assine (a assinatura entra depois).\n\n" +
-      cxfExemplosResposta_(String(conv.p.CAIXA || "SECRETARIA")) +
+      "Cite a CCT, se precisar, pela numeração do registro no MTE (ES000256/2026). Não assine (a assinatura entra depois). " +
+      "Responda ao que foi pedido de fato: se a pessoa pede um documento (boleto, guia, declaração, relação), escreva como quem " +
+      "envia o documento em anexo e diga em \"anexar\" o que precisa ir junto. Comece cumprimentando pelo primeiro nome.\n\n" +
+      cxfExemplosResposta_(String(conv.p.CAIXA || "SECRETARIA"), cxsTipo_((cxsEstados_()[String(id)] || {}).TIPO_CORRIGIDO || conv.p.TIPO),
+        cxsEmail_(conv.ultimo.replyTo || conv.ultimo.de)) +
       (sabe.length ? "O QUE O SISTEMA SABE:\n" + sabe.join("\n") + "\n\n" : "") +
       "CONVERSA (a última é a que se responde):\n" + conversa +
-      "\n\nResponda SOMENTE com JSON: {\"resposta\":\"texto da resposta, sem assinatura\"}";
+      "\n\nResponda SOMENTE com JSON: {\"resposta\":\"texto da resposta, sem assinatura\",\"anexar\":\"o que anexar, ou vazio\"}";
     var j = vpeChamarIA_(prompt);
     var corpo = String((j && j.resposta) || "").trim();
     if (!corpo) return { ok: false, mensagem: "A IA não devolveu texto. Escreva a resposta à mão." };
-    return { ok: true, texto: corpo + "\n\n" + vpeAssinaturaTexto_(sessao) };
+    var out = { ok: true, texto: corpo + "\n\n" + vpeAssinaturaTexto_(sessao), anexar: String((j && j.anexar) || "").trim().substring(0, 200) };
+    try { cache.put(chaveCache, JSON.stringify(out), 21600); } catch (e1) {}
+    return out;
   } catch (err) {
     return { ok: false, mensagem: err.message };
   }
