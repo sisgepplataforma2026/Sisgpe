@@ -133,6 +133,9 @@ win.certAbrirSolicitacao = s => { solAberta = s; };
   t.clicar("[data-cxs='filtrarTipo'][data-arg='VOUCHER']");
   await t.assentar(30);
   b.ok(!/desfiliar/.test(lista()) && /ANA MARIA/i.test(lista()), "clicar no card deixa só os vouchers");
+  /* 03/11/2026 (desenho da Caixa da Secretaria): o botão diz o que abre. */
+  b.igual(doc.querySelector("[data-cxs='abrir'][data-arg='" + vAna.id + "']").textContent, "Ver voucher", "o voucher tem o botão Ver voucher");
+  b.igual(doc.querySelector("[data-cxs='abrir'][data-arg='VCH-PRES-001']").textContent, "Ver solicitação", "a presencial, Ver solicitação");
   t.clicar("[data-cxs='filtrarTipo'][data-arg='VOUCHER']");
   await t.assentar(30);
 
