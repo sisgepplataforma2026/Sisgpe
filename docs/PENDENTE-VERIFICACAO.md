@@ -6680,3 +6680,20 @@ Pedido do usuário. Suíte verde. **Não testado no navegador.**
 |---|---|
 | Menu › Comunicação | abre direto a Caixa de E-mails (sem submenu Painel do Dia) |
 | Página inicial › "E-mails a tratar na sua caixa" | o número é o mesmo "a tratar" da Caixa; clicar abre a Caixa |
+
+## 🔴 Robô das fichas do Drive → Ofício (etapa 1) — HML 03/11/2026
+
+Desenho aprovado (`docs/mock-robo-fichas-oficio.png`). Emulador: t229 (32, inclusive o Novo Ofício real se preenchendo no jsdom), suíte 226 verde.
+**Não testado: a letra de mão de verdade, o Drive de verdade, e no navegador.** A emissão é a de sempre (não mudou).
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Documentos › Ofícios › 🤖 Fichas do Drive (1ª vez) | lista vazia: o que já estava nas pastas conta como feito |
+| Salvar uma ficha nova (PDF com 2–4 fichas da mesma escola) em FILIAÇÕES 2026 › Ficha de Filiação | aparece na lista como Filiação |
+| 🤖 Ler com o robô | cada pessoa: ✔ ou ⚠ (CPF, escola); escola com a origem |
+| Preparar ofício → corrigir o que estiver amarelo → Abrir no Novo ofício | Novo ofício com tipo, escola, trabalhadores e a ficha do Drive anexada |
+| Emitir/enviar | como sempre |
+| Uma ficha de DESFILIAÇÃO 2026 e uma de TAXA NEGOCIAL 2026 | tipo Desfiliação / Oposição à taxa negocial |
+| **Teste de acerto**: 10 fichas reais, incluindo as de letra difícil | anotar quantas vieram certas (escola, nome, CPF) |
+
+Etapa 2 (ainda não feita): conferência mensal (ofício enviado × lista de contribuição da escola) e o e-mail de cobrança.
