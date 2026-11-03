@@ -48,6 +48,17 @@
   </div>
 </div>
 
+<div id="blocoConferenciaMensal" style="display:none;">
+  <div class="ofd-box">
+    <h4>📋 Conferência mensal — ofício enviado, mas a pessoa não está como devia na lista da escola</h4>
+    <div class="ofd-orig" style="margin-bottom:8px;">Filiação: a pessoa tem que aparecer na lista de mensalidade. Desfiliação: não pode mais aparecer. Oposição: não pode aparecer na lista da taxa negocial.
+      Só vale a lista de um mês depois do ofício. As listas chegam pela Caixa da financeiro@ (o robô lê o comprovante/relação quando o e-mail é aberto).</div>
+    <div id="cfmLista"><div class="ofd-vazio">⏳ Conferindo…</div></div>
+  </div>
+  <div class="ofd-box" id="cfmEmailBox" style="display:none;"></div>
+  <div class="ofd-box"><h4>⏳ Sem lista da escola ainda (ofício há mais de 35 dias)</h4><div id="cfmSemLista"><div class="ofd-vazio">—</div></div></div>
+</div>
+
 <script>
 (function () {
   function el(id) { return document.getElementById(id); }
@@ -64,21 +75,28 @@
   /* ── a aba ── */
   var BLOCOS = ["blocoOficioNovo", "blocoOficioHistorico", "blocoTaxaAssistencial", "blocoMonitoramento", "blocoConferencia", "blocoEscolas", "centralEmailIA", "sisgepDashboardExecutivo"];
   var ABAS = ["abaOficioNovo", "abaOficioHistorico", "abaTaxaAssistencial", "abaMonitoramento", "abaConferencia"];
-  function mostrar() {
+  function mostrar(qual) {
     BLOCOS.forEach(function (id) { if (el(id)) el(id).style.display = "none"; });
     ABAS.forEach(function (id) { if (el(id)) el(id).classList.remove("active"); });
+    esconder();
+    if (qual === "conf") {
+      el("blocoConferenciaMensal").style.display = "block";
+      if (el("abaConferenciaMensal")) el("abaConferenciaMensal").classList.add("active");
+      return carregarConf();
+    }
     el("blocoFichasDrive").style.display = "block";
     if (el("abaFichasDrive")) el("abaFichasDrive").classList.add("active");
     carregar();
   }
   function esconder() {
-    if (el("blocoFichasDrive")) el("blocoFichasDrive").style.display = "none";
-    if (el("abaFichasDrive")) el("abaFichasDrive").classList.remove("active");
+    ["blocoFichasDrive", "blocoConferenciaMensal"].forEach(function (id) { if (el(id)) el(id).style.display = "none"; });
+    ["abaFichasDrive", "abaConferenciaMensal"].forEach(function (id) { if (el(id)) el(id).classList.remove("active"); });
   }
   document.addEventListener("click", function (ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest("button") : null;
     if (!t) return;
     if (t.id === "abaFichasDrive") return mostrar();
+    if (t.id === "abaConferenciaMensal") return mostrar("conf");
     if (ABAS.indexOf(t.id) > -1) esconder();
     var a = t.getAttribute("data-ofd");
     if (!a) return;
@@ -90,6 +108,10 @@
     else if (a === "abrirNovoSim") abrirNovo(true);
     else if (a === "fecharPrep") { el("ofdPrepBox").style.display = "none"; est.atual = null; }
     else if (a === "carregar") carregar();
+    else if (a === "cfmEmail") cfmEmail(arg);
+    else if (a === "cfmTratado") cfmTratado(arg);
+    else if (a === "cfmAbrirNovo") cfmAbrirNovo();
+    else if (a === "cfmCopiar") cfmCopiar();
   });
 
   /* ── a lista ── */
@@ -249,6 +271,50 @@
     });
     if (window.Oficio && typeof window.Oficio.atualizarResumoTrabalhadores === "function") { try { window.Oficio.atualizarResumoTrabalhadores(); } catch (e) {} }
     aviso("Novo ofício preenchido com " + o.pessoas.length + " pessoa(s). Confira e emita como sempre.", "ok");
+  }
+
+  /* ── CONFERÊNCIA MENSAL (etapa 2, 03/11/2026) ── */
+  var cfm = { email: null, chave: "" };
+  function carregarConf() {
+    rodar("oficiosConferenciaMensal", [], function (r) {
+      if (!r.ok) { el("cfmLista").innerHTML = "<div class='ofd-vazio'>🔒 " + esc(r.mensagem) + "</div>"; return; }
+      el("cfmLista").innerHTML = r.problemas.length ? r.problemas.map(function (p) {
+        return "<div class='ofd-linha'><div><b>" + esc(p.escola) + "</b><br><small>" + esc(p.tipo) + " nº " + esc(p.numero) + " · enviado " + esc(p.data) + "</small></div>" +
+          "<div><span class='ofd-p ofd-am'>" + esc(p.situacao) + " (" + p.problema.length + ")</span><br><small>lista de " + esc(p.referencia) + "</small></div>" +
+          "<div>" + p.problema.map(function (x) { return "<span class='ofd-p ofd-am'>" + esc(x.nome) + "</span>"; }).join("") +
+            (p.ok.length ? "<br>" + p.ok.map(function (x) { return "<span class='ofd-p ofd-ok'>✔ " + esc(x.nome) + "</span>"; }).join("") : "") + "</div>" +
+          "<div style='display:flex;gap:6px;flex-wrap:wrap;'><button type='button' class='btn btn-teal' data-ofd='cfmEmail' data-arg='" + esc(p.chave) + "'>✉ Propor e-mail</button>" +
+          "<button type='button' class='btn btn-outline' data-ofd='cfmTratado' data-arg='" + esc(p.chave) + "'>✔ Já tratei</button></div></div>";
+      }).join("") : "<div class='ofd-vazio'>✅ Nenhuma pendência: " + r.conferidos + " ofício(s) conferido(s) com a lista da escola" + (r.listas ? "" : " (ainda não há listas guardadas — elas entram quando a Caixa lê o comprovante/relação)") + ".</div>";
+      el("cfmSemLista").innerHTML = r.semLista.length ? r.semLista.map(function (x) {
+        return "<div class='ofd-linha' style='grid-template-columns:1.2fr .8fr 1fr'><div><b>" + esc(x.escola) + "</b></div><div><small>" + esc(x.tipo) + " nº " + esc(x.numero) + "</small></div><div><small>enviado " + esc(x.data) + "</small></div></div>";
+      }).join("") : "<div class='ofd-vazio'>—</div>";
+    });
+  }
+  function cfmEmail(chave) {
+    rodar("oficiosConferenciaEmail", [chave], function (r) {
+      if (!r.ok) return aviso(r.mensagem, "err");
+      cfm.email = r.email; cfm.chave = chave;
+      el("cfmEmailBox").innerHTML = "<h4>✉ E-mail proposto para " + esc(r.email.escola) + "</h4>" +
+        "<div class='ofd-orig'>Para: <b>" + esc(r.email.para || "(sem e-mail no cadastro — preencha)") + "</b> · Assunto: <b>" + esc(r.email.assunto) + "</b></div>" +
+        "<textarea id='cfmTexto' style='width:100%;min-height:200px;margin-top:6px;border:1px solid var(--g200);border-radius:10px;padding:10px;font:inherit;font-size:13px;'>" + esc(r.email.texto) + "</textarea>" +
+        "<div style='display:flex;gap:6px;justify-content:flex-end;margin-top:8px;'><button type='button' class='btn btn-outline' data-ofd='cfmCopiar'>📋 Copiar texto</button>" +
+        "<button type='button' class='btn btn-navy' data-ofd='cfmAbrirNovo'>✉ Abrir no Novo e-mail (financeiro@)</button></div>" +
+        "<div class='ofd-orig' style='margin-top:6px;'>Nada sai sozinho: você confere e envia. Depois, marque ✔ Já tratei.</div>";
+      el("cfmEmailBox").style.display = "";
+    });
+  }
+  function cfmCopiar() {
+    var t = el("cfmTexto"); if (!t) return;
+    try { navigator.clipboard.writeText(t.value); aviso("Texto copiado.", "ok"); } catch (e) { t.select(); aviso("Selecionado — Ctrl+C para copiar.", "info"); }
+  }
+  function cfmAbrirNovo() {
+    if (!cfm.email) return;
+    window.__cxsNovoInicial = { para: cfm.email.para, assunto: cfm.email.assunto, texto: el("cfmTexto") ? el("cfmTexto").value : cfm.email.texto };
+    if (typeof window.spIr === "function") window.spIr("caixaSecretaria", null);
+  }
+  function cfmTratado(chave) {
+    rodar("oficiosConferenciaTratado", [chave, "marcado na tela"], function (r) { aviso(r.mensagem, r.ok ? "ok" : "err"); el("cfmEmailBox").style.display = "none"; carregarConf(); });
   }
 
   window.ofdPreencherNovoOficio = preencherNovoOficio;   // para teste

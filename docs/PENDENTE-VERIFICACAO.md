@@ -6722,3 +6722,16 @@ Emulador: t231 (16), suíte verde. **Não testado no navegador.**
 | Responder para a equipe | "⏳ Enviando…", janela fecha, faixa verde "✅ Resposta enviada para …" |
 | Novo e-mail com Cco | idem |
 | Itens enviados (financeiro@) | a resposta aparece lá (é o Gmail da conta) |
+
+## 🔴 Conferência mensal (ofício enviado × lista da escola) — etapa 2 do robô das fichas — HML 03/11/2026
+
+Emulador: t232 (22, inclusive a tela e o Novo e-mail se abrindo escrito), suíte verde. **Não testado com comprovante real nem no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Caixa (financeiro@) › abrir um comprovante/relação com NOMES | a lista fica guardada para a conferência |
+| Documentos › Ofícios › 📋 Conferência mensal | filiação: quem não consta; desfiliação: quem ainda é descontado; oposição: quem está na lista da taxa |
+| Só lista do mês SEGUINTE ao ofício conta | ofício de outubro × lista de novembro |
+| ✉ Propor e-mail → Abrir no Novo e-mail | a Caixa abre o Novo e-mail já escrito (ofício nº, pessoas, CCT pelo MTE); você envia |
+| ✔ Já tratei | sai da conferência |
+| Ofício há mais de 35 dias sem lista da escola | aparece em "Sem lista da escola ainda" |

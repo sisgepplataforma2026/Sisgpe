@@ -137,7 +137,12 @@ function caixaLerComprovante(id, tokenSessao) {
         return !(cpfs.indexOf(cxfSoDigitos_(a.cpf)) > -1 || nomes.indexOf(String(a.nome || "").toUpperCase().trim()) > -1);
       }).map(function (a) { return a.nome; });
     }
-    roboMemoriaRegistrar_({ tarefa: "comprovante-lido", origem: String(conv.p.CAIXA || ""), chave: id,
+    /* Etapa 2 do robô das fichas (03/11/2026): a lista com os nomes fica
+       guardada para a conferência mensal (ofício enviado × lista da escola). */
+    if (achou && Array.isArray(j.pessoas) && j.pessoas.length && typeof cfmGuardarLista_ === "function") {
+      cfmGuardarLista_(achou.e.cnpj, achou.e.escola || achou.e.Fantasia, j.tipo, [j.mes, j.ano].filter(String).join("/"), j.pessoas, id, sessao.email || "");
+    }
+        roboMemoriaRegistrar_({ tarefa: "comprovante-lido", origem: String(conv.p.CAIXA || ""), chave: id,
       remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto, sugerido: JSON.stringify({ m: j.mes, a: j.ano, v: j.valor, q: j.quantidade }),
       decidido: "", quem: sessao.email || "" });
     return { ok: true, comprovante: {
