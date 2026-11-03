@@ -612,6 +612,12 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
     var msgs = vpeJson_(p.MENSAGENS_JSON, []);
     var ultima = msgs[msgs.length - 1] || {};
     var quem = sessao.email || sessao.usuario || "";
+    /* Anexos (03/11/2026: "se eu quiser anexar?"): do computador (ficam
+       guardados no Drive, de registro) e do SISGEP (por id). Até 20 MB. */
+    var idsAnexos = (meta && ((meta.anexos || []).length || (meta.anexosSisgep || []).length))
+      ? cxfGuardarAnexos_(meta, quem) : [];
+    var nomesAnexos = idsAnexos.map(function (fid) { try { return DriveApp.getFileById(fid).getName(); } catch (e) { return fid; } });
+    var notaAnexos = nomesAnexos.length ? " · com " + nomesAnexos.length + " anexo(s): " + nomesAnexos.join(", ") : "";
     if (cxsEhFinanceiro_(id)) {
       /* A financeiro@ é a própria conta do SISGEP: responde direto, na
          conversa, para quem escreveu por último (de fora). Só com o clique;
@@ -624,18 +630,21 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       var mOrig = cxsGmailFinanceiro_().getMessageById(String(alvo.id));
       if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa do Financeiro." };
       var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("FINANCEIRO", sessao));
-      mOrig.reply("", { htmlBody: html, replyTo: "financeiro@sindeducacao.com" });
+      var opF = { htmlBody: html, replyTo: "financeiro@sindeducacao.com" };
+      if (idsAnexos.length) opF.attachments = idsAnexos.map(function (fid) { return DriveApp.getFileById(fid).getBlob(); });
+      mOrig.reply("", opF);
       cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
-      cxsAuditar_("RESPONDER", id, "Resposta (financeiro@) para " + paraF, sessao);
+      cxsAuditar_("RESPONDER", id, "Resposta (financeiro@) para " + paraF + notaAnexos, sessao);
       try { CacheService.getScriptCache().remove("cxs_fin_lista_v1"); } catch (eC) {}
-      return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela financeiro@." };
+      return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela financeiro@" + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)." : ".") };
     }
     var para = vpeResponderThread_({ REMETENTE_EMAIL: cxsEmail_(ultima.replyTo || ultima.de), CAIXA: "SECRETARIA",
-      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), [], quem,
+      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), idsAnexos, quem,
       /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao));
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
-    cxsAuditar_("RESPONDER", id, "Resposta para " + para, sessao);
-    return { ok: true, mensagem: "Resposta para " + para + " na fila da Secretaria — sai em até 15 minutos." };
+    cxsAuditar_("RESPONDER", id, "Resposta para " + para + notaAnexos, sessao);
+    return { ok: true, mensagem: "Resposta para " + para + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)," : "") +
+      " na fila da Secretaria — sai em até 15 minutos." };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

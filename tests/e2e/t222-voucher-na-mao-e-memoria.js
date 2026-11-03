@@ -37,7 +37,7 @@ shA.appendRow(["11144477735", "ANA MARIA SOUZA", "SIM", "ana@exemplo.com", "2799
 
 const SIM = require("./vpe-simulador").instalar(g, amb);
 SIM.EXTRACOES.ANA = SIM.base({ titular: { nome: "Ana Maria Souza", cpf: "11144477735" },
-  anexos: [SIM.CC("ANA MARIA SOUZA", "11144477735", "09/2026", "COLEGIO ALFA"), SIM.RG(2, "ANA MARIA SOUZA", "11144477735")] });
+  anexos: [SIM.CC("ANA MARIA SOUZA", "11144477735", b.mes(-1), "COLEGIO ALFA"), SIM.RG(2, "ANA MARIA SOUZA", "11144477735")] });
 /* A IA do leitor errou: um pedido escrito sem a palavra "voucher". */
 const thAna = SIM.novaThread("Documentos para o desconto do meu curso", "Ana <ana@exemplo.com>",
   "Segue meu contracheque e RG para o desconto de Pedagogia. TIPO:OUTRO CASO:ANA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);

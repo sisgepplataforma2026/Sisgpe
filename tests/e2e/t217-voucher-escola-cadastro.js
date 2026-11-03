@@ -39,7 +39,7 @@ shA.appendRow([P.EDU, "EDU MELO", "SIM", "edu@exemplo.com", "5", "COLÉGIO ALFA"
 
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const { EXTRACOES, novaThread, CC, RG, base } = SIM;
-const cc = (nome, cpf, emp, cnpj) => Object.assign(CC(nome, cpf, "09/2026", emp), { cnpj_empregador: cnpj || "" });
+const cc = (nome, cpf, emp, cnpj) => Object.assign(CC(nome, cpf, b.mes(-1), emp), { cnpj_empregador: cnpj || "" });
 EXTRACOES.ANA = base({ titular: { nome: "Ana Souza", cpf: P.ANA }, anexos: [cc("ANA SOUZA", P.ANA, "SOC EDUC ALFA", "11222333000181"), RG(2, "ANA SOUZA", P.ANA)] });
 EXTRACOES.BIA = base({ titular: { nome: "Bia Lima", cpf: P.BIA }, anexos: [cc("BIA LIMA", P.BIA, "INSTITUTO BETA - UNIDADE 2", "44555666000270"), RG(2, "BIA LIMA", P.BIA)] });
 EXTRACOES.CAIO = base({ titular: { nome: "Caio Dias", cpf: P.CAIO }, anexos: [cc("CAIO DIAS", P.CAIO, "Novo Horizonte", ""), RG(2, "CAIO DIAS", P.CAIO)] });

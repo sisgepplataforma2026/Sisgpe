@@ -59,7 +59,7 @@ solicitacao({ NUMERO_PROTOCOLO: "VCH-PRES-002", NOME: "JA EMITIDO", STATUS_SOLIC
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const { EXTRACOES, novaThread, CC, RG, base } = SIM;
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: "11144477735" },
-  anexos: [CC("ANA MARIA SOUZA", "11144477735", "09/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
+  anexos: [CC("ANA MARIA SOUZA", "11144477735", b.mes(-1), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
 EXTRACOES.BIA = base({ titular: { nome: "Bia Lima", cpf: "52998224725" }, anexos: [RG(1, "BIA LIMA", "52998224725")] });
 novaThread("Voucher 2027/1", "Ana <ana@exemplo.com>", "Quero o voucher de Pedagogia. CASO:ANA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 novaThread("Bolsa", "Bia <bia@exemplo.com>", "Voucher 2027/1 Enfermagem. CASO:BIA", [SIM.jpg("rg.jpg")]);

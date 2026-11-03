@@ -52,14 +52,14 @@ const thJoao = novaThread("Quero me desfiliar", "João <joao@exemplo.com>", "Que
 novaThread("Promoção", "Loja <ofertas@loja.exemplo.com>", "50% off! TIPO:PROPAGANDA");
 /* Pedido antigo, que o robô da KingHost deixou no Drive. */
 EXTRACOES.IGOR = base({ titular: { nome: "Igor Melo", cpf: CPF_IGOR },
-  anexos: [Object.assign(CC("IGOR MELO", CPF_IGOR, "09/2026", "SOC EDUC ALFA"), { cnpj_empregador: "11222333000181" }), RG(2, "IGOR MELO", CPF_IGOR)] });
+  anexos: [Object.assign(CC("IGOR MELO", CPF_IGOR, b.mes(-1), "SOC EDUC ALFA"), { cnpj_empregador: "11222333000181" }), RG(2, "IGOR MELO", CPF_IGOR)] });
 SIM.drivePendentes.existe = true;
 SIM.drivePendentes.arquivos.push({ nome: "CERTIFICADO-2027-1__igor.eml", raw:
   "From: Igor <igor@exemplo.com>\r\nTo: secretaria@sindeducacao.com\r\nSubject: Voucher 2027/1\r\nDate: Mon, 05 Oct 2026 10:00:00 -0300\r\n\r\nVoucher de Pedagogia. CASO:IGOR" });
 const CPF_RITA = "39053344705";
 shA.appendRow([CPF_RITA, "RITA LOPES", "SIM", "rita@exemplo.com", "27999990003", "COLÉGIO ALFA"]);
 EXTRACOES.RITA = base({ titular: { nome: "Rita Lopes", cpf: CPF_RITA },
-  anexos: [Object.assign(CC("RITA LOPES", CPF_RITA, "09/2026", "SOC EDUC ALFA"), { cnpj_empregador: "11222333000181" }), RG(2, "RITA LOPES", CPF_RITA)] });
+  anexos: [Object.assign(CC("RITA LOPES", CPF_RITA, b.mes(-1), "SOC EDUC ALFA"), { cnpj_empregador: "11222333000181" }), RG(2, "RITA LOPES", CPF_RITA)] });
 novaThread("Voucher Letras", "rita@exemplo.com", "Voucher Letras 2027/1. CASO:RITA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 const outInicial = amb.outbox.length;
 SIM.ciclo(); SIM.ciclo();
@@ -100,7 +100,7 @@ b.igual(ped("paula@exemplo.com").ESTADO, "AGUARDANDO", "aguardando a Paula");
 
 b.fluxo("JORNADA · 3. Paula responde com os documentos");
 EXTRACOES.PAULA = base({ titular: { nome: "Paula Reis", cpf: CPF_PAULA }, curso: "Pedagogia", instituicao: "FACULDADE X",
-  anexos: [Object.assign(CC("PAULA REIS", CPF_PAULA, "09/2026", "COLEGIO ALFA"), { cnpj_empregador: "11222333000181", indice: 1 }),
+  anexos: [Object.assign(CC("PAULA REIS", CPF_PAULA, b.mes(-1), "COLEGIO ALFA"), { cnpj_empregador: "11222333000181", indice: 1 }),
            RG(2, "PAULA REIS", CPF_PAULA)] });
 responder(thPaula, "paula@exemplo.com", "Segue o contracheque e o RG. Pedagogia na Faculdade X, 2027/1. CASO:PAULA",
   [SIM.pdf("contracheque.pdf"), SIM.jpg("rg.jpg")]);

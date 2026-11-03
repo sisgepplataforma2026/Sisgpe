@@ -34,9 +34,9 @@ shA.appendRow(["52998224725", "EDUARDO MELO", "SIM", "edu@exemplo.com", "2799999
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const { EXTRACOES, novaThread, CC, RG, base } = SIM;
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: "11144477735" },
-  anexos: [CC("ANA MARIA SOUZA", "11144477735", "09/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
+  anexos: [CC("ANA MARIA SOUZA", "11144477735", b.mes(-1), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
 EXTRACOES.EDU = base({ titular: { nome: "Eduardo Melo", cpf: "52998224725" },
-  anexos: [CC("EDUARDO MELO", "52998224725", "09/2026", "ESCOLA BETA"), RG(2, "EDUARDO MELO", "52998224725")] });
+  anexos: [CC("EDUARDO MELO", "52998224725", b.mes(-1), "ESCOLA BETA"), RG(2, "EDUARDO MELO", "52998224725")] });
 const thAna = novaThread("Voucher 2027/1", "Ana <ana@exemplo.com>", "Quero o voucher de Pedagogia. CASO:ANA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 const thEdu = novaThread("Bolsa", "Edu <edu@exemplo.com>", "Voucher de Direito. CASO:EDU", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 SIM.ciclo();

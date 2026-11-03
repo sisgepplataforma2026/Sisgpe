@@ -82,7 +82,7 @@ const pdf = SIM.pdf, jpg = SIM.jpg;
 b.fluxo("PEDIDOS POR E-MAIL · 1. Ler a caixa e separar");
 
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: "", telefone: "" },
-  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, "09/2026", "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", CPF_ANA, "3.111.222")] });
+  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, b.mes(-1), "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", CPF_ANA, "3.111.222")] });
 const thAna = novaThread("Voucher 2027/1", "Ana Souza <ana@exemplo.com>",
   "Bom dia, quero o voucher de Pedagogia para 2027/1. Seguem os documentos. CASO:ANA",
   [pdf("contracheque.pdf"), jpg("rg.jpg")]);
@@ -95,27 +95,27 @@ const thBia = novaThread("Bolsa de estudos", "bia@exemplo.com",
 
 EXTRACOES.VELHO = base({ titular: { nome: "Ana Maria Souza", cpf: CPF_ANA },
   periodo: "2026/2", curso: "Letras",
-  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, "07/2026", "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
+  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, b.mes(-3), "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
 
 EXTRACOES.NAIR = base({ titular: { nome: "Nair Nogueira", cpf: CPF_NAO },
-  anexos: [CC("NAIR NOGUEIRA", CPF_NAO, "09/2026", "ESCOLA GAMA"), RG(2, "NAIR NOGUEIRA", CPF_NAO)] });
+  anexos: [CC("NAIR NOGUEIRA", CPF_NAO, b.mes(-1), "ESCOLA GAMA"), RG(2, "NAIR NOGUEIRA", CPF_NAO)] });
 const thNair = novaThread("voucher", "nair@exemplo.com", "Quero voucher de bolsa. CASO:NAIR",
   [pdf("cc.pdf"), pdf("rg.pdf")]);
 
 EXTRACOES.FORA = base({ titular: { nome: "Fulano Fora", cpf: CPF_FORA },
-  anexos: [CC("FULANO FORA", CPF_FORA, "09/2026", "ESCOLA Z"), RG(2, "FULANO FORA", CPF_FORA)] });
+  anexos: [CC("FULANO FORA", CPF_FORA, b.mes(-1), "ESCOLA Z"), RG(2, "FULANO FORA", CPF_FORA)] });
 const thFora = novaThread("Pedido de voucher", "fulano@exemplo.com", "Preciso do voucher da faculdade. CASO:FORA",
   [pdf("cc.pdf"), pdf("rg.pdf")]);
 
 EXTRACOES.CPFDIF = base({ titular: { nome: "Ana Maria Souza", cpf: CPF_BIA },
-  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, "09/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
+  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, b.mes(-1), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
 const thCpf = novaThread("voucher", "ana@exemplo.com",
   "Voucher, CPF 529.982.247-25. CASO:CPFDIF", [pdf("cc.pdf"), pdf("rg.pdf")]);
 
 EXTRACOES.ENTEADO = base({ titular: { nome: "Caio Pereira Dias", cpf: CPF_CAIO },
   beneficiario: { tipo: "ENTEADO", nome: "Lucas Prado", data_nascimento: "10/03/2008" },
   curso: "Direito", area: "HUMANAS",
-  anexos: [CC("CAIO PEREIRA DIAS", CPF_CAIO, "10/2026", "ESCOLA DELTA"), RG(2, "CAIO PEREIRA DIAS", CPF_CAIO),
+  anexos: [CC("CAIO PEREIRA DIAS", CPF_CAIO, b.mes(0), "ESCOLA DELTA"), RG(2, "CAIO PEREIRA DIAS", CPF_CAIO),
            RG(3, "LUCAS PRADO", "", "999", "10/03/2008")] });
 const thEnteado = novaThread("Voucher para enteado", "caio@exemplo.com",
   "Voucher de Direito 2027/1 para meu enteado Lucas. CASO:ENTEADO",
@@ -123,7 +123,7 @@ const thEnteado = novaThread("Voucher para enteado", "caio@exemplo.com",
 
 EXTRACOES.FILHO26 = base({ titular: { nome: "Daniela Rocha", cpf: CPF_DANI },
   beneficiario: { tipo: "FILHO", nome: "Pedro Rocha", data_nascimento: "" },
-  anexos: [CC("DANIELA ROCHA", CPF_DANI, "09/2026", "ESCOLA EPSILON"), RG(2, "DANIELA ROCHA", CPF_DANI),
+  anexos: [CC("DANIELA ROCHA", CPF_DANI, b.mes(-1), "ESCOLA EPSILON"), RG(2, "DANIELA ROCHA", CPF_DANI),
            { indice: 3, tipo: "CERTIDAO_NASCIMENTO", nome_pessoa: "PEDRO ROCHA", data_nascimento: "01/01/2000", legivel: true }] });
 const thFilho = novaThread("Bolsa filho", "dani@exemplo.com", "Voucher pro meu filho Pedro. CASO:FILHO26",
   [pdf("cc.pdf"), pdf("rg.pdf"), pdf("certidao.pdf")]);
@@ -200,7 +200,7 @@ b.igual(new Set(ids).size, ids.length, "nenhum ID de pedido repetido (" + ids.le
 b.ok(pedidoDa(thColA).ID_PEDIDO !== pedidoDa(thColB).ID_PEDIDO, "dois e-mails lidos juntos, dois IDs");
 
 b.passo("2. Cada pedido no seu estado");
-b.igual(pedidoDa(thAna).ESTADO, "PRONTO", "Ana: filiada, contracheque de 09/2026, RG → PRONTO");
+b.igual(pedidoDa(thAna).ESTADO, "PRONTO", "Ana: filiada, contracheque do mês passado, RG → PRONTO");
 b.igual(pedidoDa(thBia).ESTADO, "FALTA_DOC", "Bia: sem contracheque → FALTA DOCUMENTO");
 b.igual(pedidoDa(thNair).ESTADO, "NAO_ENCONTRADO", "Nair: está na base mas NÃO filiada → não encontrada");
 b.igual(pedidoDa(thFora).ESTADO, "NAO_ENCONTRADO", "Fulano: CPF fora da relação → não encontrado");
@@ -373,7 +373,7 @@ b.igual(pedidoDa(thBia).ESTADO, "AGUARDANDO", "e o pedido fica aguardando a asso
 
 b.passo("11. Ela responde com o contracheque: o pedido é relido inteiro");
 EXTRACOES.BIA = base({ titular: { nome: "Beatriz Lima Costa", cpf: CPF_BIA }, curso: "Enfermagem", area: "SAUDE",
-  anexos: [RG(1, "BEATRIZ LIMA COSTA", CPF_BIA), Object.assign(CC("BEATRIZ LIMA COSTA", CPF_BIA, "09/2026", "ESCOLA BETA"), { indice: 2 })] });
+  anexos: [RG(1, "BEATRIZ LIMA COSTA", CPF_BIA), Object.assign(CC("BEATRIZ LIMA COSTA", CPF_BIA, b.mes(-1), "ESCOLA BETA"), { indice: 2 })] });
 responder(thBia, "bia@exemplo.com", "Segue o contracheque. CASO:BIA", [pdf("contracheque-set.pdf")]);
 ler();
 b.igual(pedidoDa(thBia).ESTADO, "PRONTO", "agora está PRONTO");
@@ -386,9 +386,9 @@ b.passo("12. Contracheque de julho: você decide, com justificativa");
 const thVelho = novaThread("voucher 2026/2", "ana@exemplo.com", "Voucher de Letras 2026/2. CASO:VELHO",
   [pdf("cc-julho.pdf"), pdf("rg.pdf")]);
 ler();
-b.igual(pedidoDa(thVelho).ESTADO, "FALTA_DOC", "contracheque de 07/2026 → falta documento");
+b.igual(pedidoDa(thVelho).ESTADO, "FALTA_DOC", "contracheque de 3 meses atrás → falta documento");
 const pVelho = g.voucherPedidosDetalhe(pedidoDa(thVelho).ID_PEDIDO, TOKEN_SEC);
-b.ok(pVelho.pendencias.some(p => p.tipo === "FALTA" && /07\/2026/.test(p.texto) && /não é o último/.test(p.texto)),
+b.ok(pVelho.pendencias.some(p => p.tipo === "FALTA" && p.texto.includes(b.mes(-3)) && /não é o último/.test(p.texto)),
   "contracheque antigo é FALTA: tem que ser sempre o último");
 const semConf = g.voucherPedidosValidarEnviar(pedidoDa(thVelho).ID_PEDIDO, {}, {}, TOKEN_SEC);
 b.igual(semConf.precisaConfirmar, true, "validar sem confirmar pede confirmação");
@@ -404,7 +404,7 @@ b.ok(/Documentos e filiação conferidos por /.test(lVelho.OBSERVACOES), "e quem
 b.passo("13. Mesmo semestre de novo: a trava de duplicidade do Voucher vale aqui também");
 const thDup = novaThread("voucher de novo", "ana@exemplo.com", "Outro voucher 2026/2. CASO:VELHO2",
   [pdf("cc.pdf"), pdf("rg.pdf")]);
-EXTRACOES.VELHO2 = Object.assign({}, EXTRACOES.VELHO, { anexos: [CC("ANA MARIA SOUZA", CPF_ANA, "10/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
+EXTRACOES.VELHO2 = Object.assign({}, EXTRACOES.VELHO, { anexos: [CC("ANA MARIA SOUZA", CPF_ANA, b.mes(0), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
 ler();
 const dup = g.voucherPedidosValidarEnviar(pedidoDa(thDup).ID_PEDIDO, {}, {}, TOKEN_SEC);
 b.igual(dup.ok, false, "não cria a segunda");
@@ -471,7 +471,7 @@ b.ok(/instalado/i.test(t1), "instala", t1);
 b.igual(amb.triggers.filter(t => t.fn === "voucherPedidosLerCaixaAgendado").length, 1, "um gatilho, de 15 em 15 minutos");
 b.igual((amb.triggers.find(t => t.fn === "voucherPedidosLerCaixaAgendado") || { detalhe: {} }).detalhe.minutos, 15, "a cada 15 minutos");
 
-b.passo("19. O leitor não responde fora de um pedido, nem anexa o que não é PDF");
+b.passo("19. O leitor não responde fora de um pedido, nem anexa o que não é documento (03/11/2026: PDF, imagem, Word, Excel, CSV/TXT)");
 /* A fila é escrita pela conta do SISGEP. Se ela pudesse mandar qualquer
    coisa, quem tem acesso à ponte usaria a conta da Secretaria para escrever
    a qualquer pessoa. O leitor só responde em conversa que ele mesmo copiou
@@ -480,12 +480,12 @@ const envioAntes = amb.outbox.length;
 const filaCrua = SIM.aba("Saida");
 g.vpeGravar_({ ID: "ENV_INVASOR", THREAD_ID: thProp.id, MENSAGEM_ID: thProp.msgs[0].getId(),
   HTML: "<p>oi</p>", STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
-const naoPdf = g.DriveApp.createFile(g.Utilities.newBlob("x", "text/plain", "planilha.txt"));
+const naoPdf = g.DriveApp.createFile(g.Utilities.newBlob("x", "application/x-msdownload", "programa.exe"));
 g.vpeGravar_({ ID: "ENV_NAO_PDF", THREAD_ID: thNair.id, MENSAGEM_ID: pedidoDa(thNair).ULTIMA_MENSAGEM_ID,
   HTML: "<p>oi</p>", ANEXOS_FILE_IDS: naoPdf.getId(), STATUS: "PENDENTE", CRIADO_EM: new Date() }, filaCrua);
 SIM.ciclo();
 b.igual(saida().find(r => r.ID === "ENV_INVASOR").STATUS, "RECUSADO", "resposta numa conversa que o leitor não copiou: recusada");
-b.igual(saida().find(r => r.ID === "ENV_NAO_PDF").STATUS, "ERRO", "anexo que não é PDF: não sai");
+b.igual(saida().find(r => r.ID === "ENV_NAO_PDF").STATUS, "ERRO", "anexo que não é documento (um .exe): não sai");
 b.igual(amb.outbox.length, envioAntes, "e nenhum dos dois saiu");
 
 b.passo("20. O leitor não vai no deploy do SISGEP");
@@ -509,13 +509,13 @@ const avaliar = anexos => g.vpeAvaliar_({ titular: { nome: "Ana Maria Souza", cp
   curso: "Letras", modalidade: "GRADUACAO", area: "HUMANAS", instituicao: "FAC X", periodo: "2027/1", anexos },
   { hoje: OUT26, buscarAssociado: assocAna });
 const RGa = { indice: 1, tipo: "RG", nomePessoa: "ANA MARIA SOUZA", cpf: CPF_ANA, rg: "123", legivel: true };
-const decl = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", nomePessoa: "ANA MARIA SOUZA", competencia: "10/2026",
+const decl = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", nomePessoa: "ANA MARIA SOUZA", competencia: b.mes(0),
   empregador: "COLEGIO NOVO", legivel: true }]);
 b.igual(decl.estado, "PRONTO", "recém-contratada só com a declaração da escola: PRONTO", JSON.stringify(decl.pendencias));
 b.igual(decl.campos.comprovanteVinculo.valor, "DECLARACAO_ESCOLA", "a tela diz que o vínculo veio da declaração");
 b.igual(decl.campos.escola.valor, "COLEGIO NOVO", "e a escola sai da declaração");
-const declVelha = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", competencia: "03/2026", empregador: "COLEGIO NOVO" }]);
-b.ok(declVelha.pendencias.some(p => p.tipo === "AVISO" && /03\/2026/.test(p.texto)), "declaração antiga: aviso para conferir");
+const declVelha = avaliar([RGa, { indice: 2, tipo: "DECLARACAO_ESCOLA", competencia: b.mes(-7), empregador: "COLEGIO NOVO" }]);
+b.ok(declVelha.pendencias.some(p => p.tipo === "AVISO" && p.texto.includes(b.mes(-7))), "declaração antiga: aviso para conferir");
 const ctps = avaliar([RGa, { indice: 2, tipo: "CTPS", nomePessoa: "ANA MARIA SOUZA", empregador: "COLEGIO ALFA" }]);
 b.igual(ctps.campos.comprovanteVinculo.valor, "CTPS", "carteira de trabalho aceita");
 b.ok(ctps.pendencias.some(p => /data de saída/.test(p.texto)), "com o lembrete de conferir se o contrato não tem saída");
@@ -523,9 +523,9 @@ b.ok(!ctps.pendencias.some(p => p.tipo === "FALTA"), "e não pede contracheque")
 const nada = avaliar([RGa]);
 b.ok(nada.pendencias.some(p => p.tipo === "FALTA" && /contracheque, declaração da escola ou carteira de trabalho/.test(p.texto)),
   "sem nenhum dos três: falta o comprovante, dizendo as três formas");
-const ccVelho = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: "07/2026", empregador: "COLEGIO ALFA" }]);
+const ccVelho = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: b.mes(-3), empregador: "COLEGIO ALFA" }]);
 b.igual(ccVelho.estado, "FALTA_DOC", "contracheque de julho em outubro: falta o último");
-const ccOk = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: "09/2026", empregador: "COLEGIO ALFA" }]);
+const ccOk = avaliar([RGa, { indice: 2, tipo: "CONTRACHEQUE", competencia: b.mes(-1), empregador: "COLEGIO ALFA" }]);
 b.igual(ccOk.estado, "PRONTO", "contracheque de setembro em 29/10: é o último, PRONTO");
 
 b.naoTestavel("a IA real lendo contracheque escaneado", "a IA está simulada aqui — testar no ar com pedidos reais");

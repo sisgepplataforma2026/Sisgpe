@@ -33,9 +33,9 @@ const pedidoDa = th => g.vpeLinhas_().find(r => r.THREAD_ID === th.id);
 const saida = () => g.vpeLinhas_(SIM.aba("Saida"));
 
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: CPF_ANA },
-  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, "09/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
+  anexos: [CC("ANA MARIA SOUZA", CPF_ANA, b.mes(-1), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", CPF_ANA)] });
 EXTRACOES.EDU = base({ titular: { nome: "Eduardo Melo", cpf: CPF_EDU }, curso: "Direito", periodo: "2026/2",
-  anexos: [CC("EDUARDO MELO", CPF_EDU, "09/2026", "ESCOLA BETA"), RG(2, "EDUARDO MELO", CPF_EDU)] });
+  anexos: [CC("EDUARDO MELO", CPF_EDU, b.mes(-1), "ESCOLA BETA"), RG(2, "EDUARDO MELO", CPF_EDU)] });
 const thAna = novaThread("Voucher 2027/1", "Ana <ana@exemplo.com>", "Quero o voucher de Pedagogia. CASO:ANA",
   [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 const thEdu = novaThread("Bolsa 2026/2", "Edu <edu@exemplo.com>", "Voucher de Direito 2026/2. CASO:EDU",

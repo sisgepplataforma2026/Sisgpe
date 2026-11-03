@@ -35,11 +35,11 @@ shA.appendRow(["39053344705", "CARLA DIAS", "SIM", "carla@exemplo.com", "2799999
 const SIM = require("./vpe-simulador").instalar(g, amb);
 const { EXTRACOES, novaThread, CC, RG, base } = SIM;
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: "11144477735" },
-  anexos: [CC("ANA MARIA SOUZA", "11144477735", "09/2026", "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
+  anexos: [CC("ANA MARIA SOUZA", "11144477735", b.mes(-1), "COLEGIO ALFA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
 EXTRACOES.EDU = base({ titular: { nome: "Eduardo Melo", cpf: "52998224725" }, curso: "Direito", periodo: "2026/2",
-  anexos: [CC("EDUARDO MELO", "52998224725", "09/2026", "ESCOLA BETA"), RG(2, "EDUARDO MELO", "52998224725")] });
+  anexos: [CC("EDUARDO MELO", "52998224725", b.mes(-1), "ESCOLA BETA"), RG(2, "EDUARDO MELO", "52998224725")] });
 EXTRACOES.CARLA = base({ titular: { nome: "Carla Dias", cpf: "39053344705" }, curso: "Letras",
-  anexos: [CC("CARLA DIAS", "39053344705", "09/2026", "COLEGIO ALFA"), RG(2, "CARLA DIAS", "39053344705")] });
+  anexos: [CC("CARLA DIAS", "39053344705", b.mes(-1), "COLEGIO ALFA"), RG(2, "CARLA DIAS", "39053344705")] });
 novaThread("Voucher", "ana@exemplo.com", "Voucher Pedagogia 2027/1. CASO:ANA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 novaThread("Bolsa", "edu@exemplo.com", "Voucher Direito 2026/2. CASO:EDU", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 novaThread("Bolsa", "carla@exemplo.com", "Voucher Letras 2027/1. CASO:CARLA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);

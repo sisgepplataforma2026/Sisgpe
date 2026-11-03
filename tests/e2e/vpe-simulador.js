@@ -76,6 +76,9 @@ function instalar(g, amb, opcoes) {
       isUnread: () => true, isStarred: () => false,
       markRead: () => tocadas.push("markRead " + id),
       moveToArchive: () => tocadas.push("archive " + id),
+      forward(para, op) {
+        amb.outbox.push(Object.assign({ via: "forward", encaminhada: id, to: para, subject: "Fwd: " + th.assunto }, op || {}));
+      },
       reply(body, op) {
         amb.outbox.push(Object.assign({ via: "reply", emResposta: id, to: vpeEmail(de),
           subject: "Re: " + th.assunto, body }, op || {}));

@@ -43,13 +43,13 @@ const SIM = require("./vpe-simulador").instalar(g, amb);
 const { EXTRACOES, novaThread, CC, RG, base } = SIM;
 
 EXTRACOES.ANA = base({ titular: { nome: "Ana Maria Souza", cpf: "" },
-  anexos: [CC("ANA MARIA SOUZA", "11144477735", "09/2026", "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
+  anexos: [CC("ANA MARIA SOUZA", "11144477735", b.mes(-1), "COLEGIO ALFA LTDA"), RG(2, "ANA MARIA SOUZA", "11144477735")] });
 novaThread("Voucher", "ana@exemplo.com", "Voucher de Pedagogia 2027/1. CASO:ANA", [SIM.pdf("cc.pdf"), SIM.jpg("rg.jpg")]);
 EXTRACOES.BIA = base({ titular: { nome: "Beatriz Lima Costa", cpf: "52998224725" }, curso: "Enfermagem", area: "SAUDE",
   anexos: [RG(1, "BEATRIZ LIMA COSTA", "52998224725")] });
 novaThread("Bolsa", "bia@exemplo.com", "Voucher 2027/1 Enfermagem. CASO:BIA", [SIM.jpg("rg.jpg")]);
 EXTRACOES.FORA = base({ titular: { nome: "Fulano Fora", cpf: "15350946056" },
-  anexos: [CC("FULANO FORA", "15350946056", "09/2026", "ESCOLA Z"), RG(2, "FULANO FORA", "15350946056")] });
+  anexos: [CC("FULANO FORA", "15350946056", b.mes(-1), "ESCOLA Z"), RG(2, "FULANO FORA", "15350946056")] });
 novaThread("voucher", "fulano@exemplo.com", "Voucher da faculdade. CASO:FORA", [SIM.pdf("a.pdf"), SIM.pdf("b.pdf")]);
 novaThread("voucher", "josiane@exemplo.com", "Quero voucher. CASO:FALHA", []);   // a IA sem crédito
 SIM.ciclo();                       // o leitor, na conta da Secretaria, copia para a ponte
