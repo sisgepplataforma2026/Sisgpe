@@ -53,7 +53,10 @@ function montar(token) {
   win.cxsIniciar();
   await t.assentar(150);
   b.passo("2. Cards por tipo e a lista");
-  b.ok(doc.querySelectorAll("#cxsTipos .cxs-tipo").length >= 7, "um card por tipo (+ o atalho do Voucher)");
+  b.ok(doc.querySelector("#cxsTipos .cxs-tipo.todos"), "o card Todos (03/11/2026)");
+  const cardsCom = Array.from(doc.querySelectorAll("#cxsTipos .cxs-tipo:not(.todos):not(.voucher)"));
+  b.ok(cardsCom.length >= 2 && cardsCom.every(c => Number(c.querySelector(".n").textContent) > 0),
+    "cards dinâmicos: só os que têm e-mail", cardsCom.map(c => c.textContent).join(" | "));
   /* 31/10/2026, o usuário: "cada um com o seu" — a Marcelha vê a caixa
      secretaria@ inteira (inclusive o que é do Financeiro, em cópia). */
   b.ok(/Caixa de E-mails — secretaria@sindeducacao\.com/.test(t.texto("#cxsTitulo")), "a Marcelha vê a caixa dela",

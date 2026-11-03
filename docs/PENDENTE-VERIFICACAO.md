@@ -6592,3 +6592,18 @@ Emulador: t224 (52), suíte 221 verde. **Não testado no navegador, nem com a IA
 | Para fora da equipe, em HML | bloqueado com [HML] |
 
 Fora do mockup, ainda não feito: situação da guia de taxa negocial da escola e o botão "Lançar no Financeiro".
+
+## 🔴 Pastas do Gmail da financeiro@ + cards dinâmicos — HML 03/11/2026
+
+Mockup aprovado (`docs/mock-caixa-pastas-financeiro.png`) + card Todos. Foto da tela: `docs/previa-caixa-pastas-financeiro.png`.
+Emulador: t225 (44), suíte 222 verde. **Não testado com o Gmail de verdade nem no navegador.**
+
+| Roteiro em HML (usuário wanderson) | Esperado |
+|---|---|
+| Caixa de E-mails | lateral com Entrada, Com estrela, Enviados, Rascunhos, Todos, marcadores do Gmail, Spam, Lixeira |
+| Cards | primeiro "📚 Todos"; card sem e-mail não aparece; ao arrastar um e-mail, todos aparecem |
+| Clicar em Itens enviados | lista do que saiu, com "Para: …"; abrir funciona |
+| Marcar 1 e-mail › 🗑 Lixeira | mostra o assunto e pede confirmação; confirmou → some da Entrada e está na Lixeira do Gmail |
+| Lixeira › ↩ Restaurar | volta para a Entrada (no Gmail também) — **conferir no Gmail real** |
+| ⭐ Estrela / Mover para um marcador / Não é spam | o mesmo no Gmail |
+| Usuário da Marcelha | não aparece lateral de pastas da financeiro@ |
