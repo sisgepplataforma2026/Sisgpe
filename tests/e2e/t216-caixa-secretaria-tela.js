@@ -83,7 +83,7 @@ function montar(token) {
   b.ok(/cancelar a filia/.test(t.texto("#cxsMMensagens") || ""), "a mensagem do João");
   b.igual(el("cxsMTipo").value, "FILIACAO", "o tipo sugerido pela IA");
   b.ok(/Olá, João!/.test(el("cxsMResposta").value), "resposta com saudação, para editar");
-  b.ok(el("cxsMModulo").style.display !== "none" && /Filia/.test(el("cxsMModulo").textContent), "atalho para o módulo certo");
+  b.ok(el("cxsMModulo").style.display !== "none" && /Sindicaliza/.test(el("cxsMModulo").textContent), "atalho para o módulo certo");
 
   b.passo("4. Responder: sai só pelo clique, na fila da Secretaria");
   const out0 = amb.outbox.length;
