@@ -54,6 +54,8 @@ SIM.novaThread("Pedido de desfiliação", "João Lima <joao@exemplo.com>", "Venh
 SIM.novaThread("Carta de oposição", "Ana Reis <ana@exemplo.com>", "Manifesto minha oposição à taxa negocial. TIPO:FINANCEIRO", [SIM.pdf("oposicao.pdf")]);
 SIM.novaThread("Dúvida sobre filiação", "Bia <bia@exemplo.com>", "Como faço para saber se sou filiada? TIPO:FILIACAO", []);
 SIM.novaThread("Comprovante de outubro", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue o comprovante de desconto. TIPO:FINANCEIRO", [SIM.pdf("comp.pdf")]);
+SIM.novaThread("Mensalidade e taxa negocial de outubro", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue a relação da mensalidade sindical e da taxa negocial de outubro. TIPO:FINANCEIRO", [SIM.pdf("relacao.pdf")]);
+SIM.novaThread("Mensalidade e contribuição assistencial", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue a mensalidade sindical e a contribuição assistencial. TIPO:FINANCEIRO", []);
 SIM.ciclo();
 const painel = () => g.caixaSecretariaPainel(T_SEC);
 const item = assunto => painel().itens.find(i => i.assunto === assunto);
@@ -66,15 +68,28 @@ b.igual(item("Dúvida sobre filiação").tipo, "FILIACAO", "dúvida sem ficha co
 b.igual(item("Comprovante de outubro").tipo, "FINANCEIRO", "comprovante continua em Contribuições");
 b.ok(item("Ficha de filiação — Maria Souza").grupo === "OFICIOS", "o item sabe que é de ofício (para o botão Ver ofício)");
 const p0 = painel();
-b.ok(p0.tipos.filter(t => t.grupo === "OFICIOS").length === 5 && p0.tipos.filter(t => t.grupo === "OFICIOS").every(t => t.caixa === "SECRETARIA"),
-  "5 cards de ofício, todos da secretaria@");
+b.ok(p0.tipos.filter(t => t.grupo === "OFICIOS").length === 4 && p0.tipos.filter(t => t.grupo === "OFICIOS").every(t => t.caixa === "SECRETARIA"),
+  "4 cards de ofício (as duas taxas num só), todos da secretaria@");
 b.ok(g.crcCandidatos_().every(c => JSON.parse(c.p.MENSAGENS_JSON)[0].assunto !== "Carta de oposição"), "o robô dos comprovantes não lê a carta de oposição");
+
+b.passo("1b. Taxa junto com a mensalidade (\"geralmente pede junto\"): fica em Contribuições, com o aviso");
+const iTN = item("Mensalidade e taxa negocial de outubro"), iTA = item("Mensalidade e contribuição assistencial");
+b.ok(iTN.tipo === "FINANCEIRO" && iTN.oficioJunto === "OFICIO_TAXA" && /Taxa negocial \/ assistencial/.test(iTN.oficioJuntoRotulo), "fica em Contribuições e avisa: também pede ofício de taxa");
+b.ok(!item("Comprovante de outubro").oficioJunto && !item("Carta de oposição").oficioJunto, "comprovante sem taxa e oposição: sem aviso");
+b.ok(g.crcCandidatos_().some(c => JSON.parse(c.p.MENSAGENS_JSON)[0].assunto === "Mensalidade e taxa negocial de outubro"), "o robô dos comprovantes continua lendo este e-mail");
+const ofTN = g.caixaOficioJuntoDoEmail(iTN.id, T_SEC).oficio, ofTA = g.caixaOficioJuntoDoEmail(iTA.id, T_SEC).oficio;
+b.igual([ofTN.tipo, ofTA.tipo, ofTN.escola && ofTN.escola.cnpj], ["Taxa Negocial", "Taxa Assistencial", "11.222.333/0001-81"], "o ofício de taxa: negocial ou assistencial pelo texto, escola pelo e-mail");
+b.ok(g.caixaOficioDoEmail(iTN.id, T_SEC).oficio === null, "e o e-mail em si não vira card de ofício (fica num lugar só)");
+const prTN = g.caixaOficioPreparar(iTN.id, { tipo: "Taxa Negocial", escolaCnpj: "11222333000181", card: "OFICIO_TAXA", pessoas: [{ nome: "Maria Souza", cpf: "11144477735" }] }, T_SEC);
+b.ok(prTN.ok && prTN.oficio.tipo === "Taxa Negocial", "prepara para o Novo Ofício", prTN.mensagem);
+b.ok(g.caixaSecretariaReclassificar(iTA.id, "OFICIO_TAXA_ASSISTENCIAL", T_SEC).ok && item("Mensalidade e contribuição assistencial").tipo === "OFICIO_TAXA", "o nome antigo do card vai para o card único");
+g.caixaSecretariaReclassificar(iTA.id, "FINANCEIRO", T_SEC);
 
 b.passo("2. Só da secretaria@");
 const idDuv = item("Dúvida sobre filiação").id;
 b.ok(!g.caixaSecretariaReclassificar("F:t1", "OFICIO_FILIACAO", TOKEN).ok, "na financeiro@, card de ofício não se aceita");
 const det = g.caixaSecretariaDetalhe(item("Comprovante de outubro").id, T_SEC);
-b.ok(det.tipos.some(t => t.chave === "OFICIO_TAXA_NEGOCIAL"), "na secretaria@, os cards de ofício estão no Mudar o tipo");
+b.ok(det.tipos.some(t => t.chave === "OFICIO_TAXA"), "na secretaria@, os cards de ofício estão no Mudar o tipo");
 
 b.passo("3. Arrastar ensina; o leitor recebe o tipo que conhece");
 const rc = g.caixaSecretariaReclassificar(idDuv, "OFICIO_FILIACAO", T_SEC);
@@ -116,7 +131,7 @@ b.igual([pr.oficio.tipo, pr.oficio.escola.cnpj, pr.oficio.pessoas[0].nome, pr.of
 b.ok(pr.oficio.ficha && /ficha-filiacao\.pdf/.test(pr.oficio.ficha.nome), "com a ficha anexa do e-mail", JSON.stringify(pr.oficio.ficha));
 b.igual((ss.getSheetByName(g.PLANILHA_REGISTRO) || { getLastRow: () => 0 }).getLastRow(), linhasOficioAntes, "nenhum ofício emitido");
 const mem2 = ss.getSheetByName(g.ROBO_MEM_ABA).getDataRange().getValues();
-const oe = mem2.filter(l => l[cab.indexOf("TAREFA")] === "oficio-email");
+const oe = mem2.filter(l => l[cab.indexOf("TAREFA")] === "oficio-email" && String(l[cab.indexOf("CHAVE")]) === idF);
 b.ok(oe.length === 1 && oe[0][cab.indexOf("ACERTOU")] === "NAO", "a memória: o nome foi corrigido (o robô errou)");
 b.ok(g.pddRobo_("SECRETARIA").some(t => t.tarefa === "oficio-email"), "e entra na medição do robô");
 
@@ -134,7 +149,7 @@ g.listarEscolas = () => ESCOLAS.map(e => ({ nome: e.Fantasia, cnpj: e.documentoM
   const sel = doc.createElement("select"); sel.id = "escola"; sel.innerHTML = "<option></option><option>Alfa</option>"; doc.body.appendChild(sel);
   win.cxsIniciar(); await t.assentar(300);
   const txt = t.texto("#cxsTipos");
-  b.ok(/Ofícios/.test(txt) && /Ofício de filiação/.test(txt) && /Taxa assistencial/.test(txt), "a linha Ofícios com os 5 cards", txt.slice(0, 200));
+  b.ok(/Ofícios/.test(txt) && /Ofício de filiação/.test(txt) && /Taxa negocial \/ assistencial/.test(txt) && !/📄 Taxa assistencial/.test(txt), "a linha Ofícios com os 4 cards (as duas taxas num só)", txt.slice(0, 200));
   b.ok(/Certificados e demais/.test(txt), "e a linha dos demais");
   el("cxsFEstado").value = ""; el("cxsFEstado").dispatchEvent(new win.Event("change", { bubbles: true })); await t.assentar(30);
   const bt = doc.querySelector("[data-cxs='abrir'][data-arg='" + idF + "']");

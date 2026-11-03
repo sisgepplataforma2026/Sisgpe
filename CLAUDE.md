@@ -339,12 +339,13 @@ que põe etiqueta no Gmail; não foi tocada (REGRA 1).
 
 ## 📄 CARDS DE OFÍCIOS NA CAIXA DA SECRETARIA (03/11/2026)
 
-Desenho aprovado (docs/mock-caixa-secretaria-oficios.png). Cinco cards só da
-secretaria@ (OFICIO_* em CaixaSecretaria.gs). Quem decide o card é uma REGRA
+Desenho aprovado (docs/mock-caixa-secretaria-oficios.png). Quatro cards só da
+secretaria@ (as duas taxas num card só — "deixa em uma somente", 03/11/2026) (OFICIO_* em CaixaSecretaria.gs). Quem decide o card é uma REGRA
 no SISGEP (cxsOficioPorRegra_) — o leitor da Secretaria não mudou e continua
 dizendo Filiação/Contribuições; o exemplo que vai para a IA dele volta ao
-tipo que ele conhece. Taxa negocial (cobrança) e taxa assistencial: só
-arrastando, até o usuário dizer como esses e-mails chegam. "Ver ofício"
+tipo que ele conhece. Taxa negocial/assistencial: *"geralmente pede junto com
+a mensalidade sindical"*, no mesmo e-mail da escola — o e-mail fica em
+Contribuições com o aviso "também pede ofício" e o botão para preparar. "Ver ofício"
 (CaixaOficioEmail.gs) prepara; a EMISSÃO continua no módulo de Ofícios.
 
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO

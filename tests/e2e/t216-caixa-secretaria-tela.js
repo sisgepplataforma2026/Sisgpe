@@ -56,7 +56,7 @@ function montar(token) {
   b.ok(doc.querySelector("#cxsTipos .cxs-tipo.todos"), "o card Todos (03/11/2026)");
   const cardsCom = Array.from(doc.querySelectorAll("#cxsTipos .cxs-tipo:not(.todos):not(.voucher):not(.oficio)"));
   /* Os cards de Ofícios (03/11/2026) ficam sempre à vista, numa linha própria. */
-  b.igual(doc.querySelectorAll("#cxsTipos .cxs-tipo.oficio").length, 5, "a linha de Ofícios com os 5 cards, mesmo vazios");
+  b.igual(doc.querySelectorAll("#cxsTipos .cxs-tipo.oficio").length, 4, "a linha de Ofícios com os 4 cards, mesmo vazios");
   b.ok(cardsCom.length >= 1 && cardsCom.every(c => Number(c.querySelector(".n").textContent) > 0),
     "cards dinâmicos: só os que têm e-mail", cardsCom.map(c => c.textContent).join(" | "));
   /* 31/10/2026, o usuário: "cada um com o seu" — a Marcelha vê a caixa

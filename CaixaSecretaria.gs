@@ -49,15 +49,17 @@ var CXS_TIPOS = {
   OFICIO_FILIACAO: { rotulo: "Ofício de filiação", curto: "Ofício de filiação", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Filiação" },
   OFICIO_DESFILIACAO: { rotulo: "Ofício de desfiliação", curto: "Ofício de desfiliação", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Desfiliação" },
   OFICIO_OPOSICAO: { rotulo: "Oposição à taxa negocial", curto: "Oposição à taxa negocial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Oposição à Taxa Negocial" },
-  OFICIO_TAXA_NEGOCIAL: { rotulo: "Taxa negocial", curto: "Taxa negocial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Taxa Negocial" },
-  OFICIO_TAXA_ASSISTENCIAL: { rotulo: "Taxa assistencial", curto: "Taxa assistencial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Taxa Assistencial" }
+  /* Um card só para as duas taxas (usuário, 03/11/2026: "deixa em uma
+     somente"); o tipo do ofício (negocial ou assistencial) sai do texto do
+     e-mail e dá para trocar no Ver ofício. */
+  OFICIO_TAXA: { rotulo: "Taxa negocial / assistencial", curto: "Taxa negocial / assistencial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Taxa Negocial" }
 };
 /* Que e-mail da secretaria@ é pedido de ofício: pela REGRA, no SISGEP (o
    leitor da Secretaria não muda — ele continua dizendo Filiação/Contribuições).
    Conservadora de propósito: na dúvida fica no card de antes, e arrastar para
-   o card certo corrige e fica na memória do robô. Taxa negocial (cobrança) e
-   taxa assistencial: só arrastando, até a equipe mostrar como esses e-mails
-   chegam. */
+   o card certo corrige e fica na memória do robô. Taxa negocial/assistencial:
+   vem junto com a mensalidade, no e-mail da escola — fica em Contribuições
+   com o aviso (cxsOficioJunto_), ou vai ao card arrastando. */
 function cxsSemAcento_(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
 function cxsOficioPorRegra_(p, base) {
   if (["FILIACAO", "FINANCEIRO", "OUTRO"].indexOf(base) === -1) return "";
@@ -71,6 +73,18 @@ function cxsOficioPorRegra_(p, base) {
   if (base === "FILIACAO" && temArquivo && /ficha|filiacao d[aoe]|sindicalizacao|quer(o|em)? (se )?filiar|nova filiacao/.test(t)) return "OFICIO_FILIACAO";
   return "";
 }
+/* Taxa negocial/assistencial: o usuário (03/11/2026) — "geralmente pede junto
+   com a mensalidade sindical", no MESMO e-mail da escola. O e-mail fica em
+   Contribuições (o robô dos comprovantes lê ali) e ganha o aviso "também
+   pede ofício de taxa", com o botão para preparar. Oposição não entra aqui
+   (tem card próprio). */
+function cxsOficioJunto_(p, tipo) {
+  if (String(p.CAIXA || "SECRETARIA") !== "SECRETARIA" || tipo !== "FINANCEIRO") return "";
+  var t = cxsSemAcento_(vpeJson_(p.MENSAGENS_JSON, []).filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; })
+    .map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" "));
+  if (/oposi/.test(t)) return "";
+  return /(taxa|contribuicao) assistencial|taxa negocial/.test(t) ? "OFICIO_TAXA" : "";
+}
 function cxsTipoDoEmail_(p, est) {
   if (est && est.TIPO_CORRIGIDO) return cxsTipo_(est.TIPO_CORRIGIDO);
   var base = cxsTipo_(p.TIPO || "OUTRO");
@@ -78,7 +92,8 @@ function cxsTipoDoEmail_(p, est) {
   return cxsOficioPorRegra_(p, base) || base;
 }
 /* Tipos antigos ou de fora da Entrada, para o nome novo. */
-var CXS_TIPO_ALIAS = { CONVENCAO: "NEGOCIACAO", OFICIO_ESCOLA: "FINANCEIRO" };
+var CXS_TIPO_ALIAS = { CONVENCAO: "NEGOCIACAO", OFICIO_ESCOLA: "FINANCEIRO",
+  OFICIO_TAXA_NEGOCIAL: "OFICIO_TAXA", OFICIO_TAXA_ASSISTENCIAL: "OFICIO_TAXA" };   // os dois cards de taxa viraram um (03/11/2026)
 var CXS_FORA_DA_ENTRADA = ["PROPAGANDA", "NOTIFICACAO"];
 /* CADA UM COM A SUA CAIXA (usuário, 31/10/2026): "Quem acessar pelo seu
    usuário vai ver somente uma caixa — a Marcelha vê a secretaria e o
@@ -411,6 +426,7 @@ function cxsResumo_(p, est, envios) {
     id: String(p.THREAD_ID), tipo: tipo,
     tipoRotulo: (String(p.CAIXA) === "FINANCEIRO" && (CXS_TIPOS[tipo] || {}).rotuloFin) || (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).rotulo,
     icone: (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).icone, grupo: (CXS_TIPOS[tipo] || {}).grupo || "",
+    oficioJunto: cxsOficioJunto_(p, tipo), oficioJuntoRotulo: (CXS_TIPOS[cxsOficioJunto_(p, tipo)] || {}).rotulo || "",
     de: cxsEmail_(ultima.replyTo || ultima.de), nome: cxsNome_(ultima.de) || cxsEmail_(ultima.de),
     assunto: String(primeira.assunto || "(sem assunto)"), pedido: String(p.PEDIDO || ""),
     trecho: String(ultima.corpo || "").replace(/\s+/g, " ").substring(0, 160),
@@ -744,6 +760,7 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     var sessao = cxsExigir_(tokenSessao);
     cxsExigirCaixaDe_(sessao, id);
     tipo = String(tipo || "").toUpperCase();
+    tipo = CXS_TIPO_ALIAS[tipo] || tipo;
     if (!CXS_TIPOS[tipo]) return { ok: false, mensagem: "Tipo inválido." };
     if (cxsEhFinanceiro_(id) && CXS_TIPOS[tipo].ocultoFin) return { ok: false, mensagem: "Este card foi excluído na financeiro@ (dá para trazer de volta em ⚙ Cards)." };
     if (CXS_TIPOS[tipo].caixa && CXS_TIPOS[tipo].caixa !== (cxsEhFinanceiro_(id) ? "FINANCEIRO" : "SECRETARIA")) {

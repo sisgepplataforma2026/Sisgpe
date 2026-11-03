@@ -147,7 +147,7 @@ g.CacheService.getScriptCache().remove("cxs_fin_lista_v1");
 painelTudo(TOKEN);
 b.igual(pedidosIA.length, 1, "abrir de novo não pergunta à IA outra vez (ficou guardado)");
 b.ok(Object.keys(g.CXS_TIPOS).join(",") === "VOUCHER,FILIACAO,FINANCEIRO,NOTA_FISCAL,CONTAS,JURIDICO,NEGOCIACAO,ENTIDADES,EVENTO,OUTRO," +
-  "OFICIO_FILIACAO,OFICIO_DESFILIACAO,OFICIO_OPOSICAO,OFICIO_TAXA_NEGOCIAL,OFICIO_TAXA_ASSISTENCIAL",   // + cards de Ofícios, só secretaria@ (03/11/2026)
+  "OFICIO_FILIACAO,OFICIO_DESFILIACAO,OFICIO_OPOSICAO,OFICIO_TAXA",   // + cards de Ofícios, só secretaria@ (03/11/2026)
   "as categorias aprovadas (levantamento de 60 dias), na ordem", Object.keys(g.CXS_TIPOS).join(","));
 b.igual(g.cxsTipo_("CONVENCAO"), "NEGOCIACAO", "o que era Convenção aparece em Negociação e reuniões");
 b.igual(g.cxsTipo_("OFICIO_ESCOLA"), "FINANCEIRO", "o que era Escola aparece em Escolas: contribuições");

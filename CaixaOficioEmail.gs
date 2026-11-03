@@ -25,18 +25,33 @@ function cxoTipoOficio_(tipoCard) {
   return (CXS_TIPOS[tipoCard] && CXS_TIPOS[tipoCard].oficio) || "";
 }
 
+function cxoChave_(id, p, card) {
+  return "cxo_" + String(id).replace(/[^\w]/g, "") + "_" + String(p.ULTIMA_MENSAGEM_ID || "").replace(/[^\w]/g, "") + "_" + String(card || "");
+}
+
 /** O ofício que o robô preparou deste e-mail. (id, token) ou (id, forcar, token). */
 function caixaOficioDoEmail(id, a2, a3) {
   var forcar = a3 !== undefined ? a2 === true : false;
-  var tokenSessao = a3 !== undefined ? a3 : a2;
+  return cxoDoEmail_(id, "", forcar, a3 !== undefined ? a3 : a2);
+}
+/** O ofício de taxa que vem JUNTO com um e-mail de Contribuições (o aviso "também pede ofício"). */
+function caixaOficioJuntoDoEmail(id, a2, a3) {
+  var forcar = a3 !== undefined ? a2 === true : false;
+  return cxoDoEmail_(id, "JUNTO", forcar, a3 !== undefined ? a3 : a2);
+}
+function cxoDoEmail_(id, modo, forcar, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
     var conv = cxfConversa_(id, sessao);
     var est = cxsEstados_()[String(id)];
     var card = cxsTipoDoEmail_(conv.p, est);
+    var junto = modo === "JUNTO";
+    if (junto) card = cxsOficioJunto_(conv.p, card);
     var tipo = cxoTipoOficio_(card);
     if (!tipo) return { ok: true, oficio: null };
-    var chave = "cxo_" + String(id).replace(/[^\w]/g, "") + "_" + String(conv.p.ULTIMA_MENSAGEM_ID || "").replace(/[^\w]/g, "");
+    /* O card de taxa é um só: o texto do e-mail diz qual das duas. */
+    if (card === "OFICIO_TAXA" && /(taxa|contribuicao) assistencial/.test(cxsSemAcento_(conv.msgs.map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" ")))) tipo = "Taxa Assistencial";
+    var chave = cxoChave_(id, conv.p, card);
     var cache = null;
     try { cache = CacheService.getScriptCache(); var c0 = forcar ? null : cache.get(chave); if (c0) return JSON.parse(c0); } catch (e0) {}
 
@@ -100,7 +115,8 @@ function caixaOficioDoEmail(id, a2, a3) {
     });
     var escola = pessoas.length && pessoas[0].escola ? pessoas[0].escola : (escolaGeral ? ofdEscolaCurta_(escolaGeral.escola) : null);
     var out = { ok: true, oficio: {
-      tipo: tipo, card: card, tipoOrigem: est && est.TIPO_CORRIGIDO ? "pelo card que a equipe escolheu" : "pelo assunto e pelo anexo (regra) — confira",
+      tipo: tipo, card: card, tipoOrigem: junto ? "o e-mail fala de " + tipo.toLowerCase() + " junto com a mensalidade — confira"
+        : est && est.TIPO_CORRIGIDO ? "pelo card que a equipe escolheu" : "pelo assunto e pelo anexo (regra) — confira",
       escola: escola, escolaOrigem: pessoas.length ? pessoas[0].escolaOrigem : (escolaGeral ? escolaGeral.origem : ""),
       para: escola ? escola.email : "", paraOrigem: escola && escola.email ? "e-mail da escola no cadastro" : "a escola não tem e-mail no cadastro",
       pessoas: pessoas, arquivos: arquivos, semPessoa: !pessoas.length
@@ -147,7 +163,7 @@ function caixaOficioPreparar(id, conferido, tokenSessao) {
     /* O que o robô tinha proposto (da última leitura) × o que a pessoa conferiu. */
     var proposto = null;
     try {
-      var c = CacheService.getScriptCache().get("cxo_" + String(id).replace(/[^\w]/g, "") + "_" + String(conv.p.ULTIMA_MENSAGEM_ID || "").replace(/[^\w]/g, ""));
+      var c = CacheService.getScriptCache().get(cxoChave_(id, conv.p, String(conferido.card || cxsTipoDoEmail_(conv.p, cxsEstados_()[String(id)]))));
       proposto = c ? JSON.parse(c).oficio : null;
     } catch (e1) {}
     if (proposto) {

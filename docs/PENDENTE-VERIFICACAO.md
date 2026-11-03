@@ -6760,7 +6760,8 @@ Emulador: t234 (38, inclusive a tela), t216 atualizado, suíte verde. **Não tes
 
 | Roteiro em HML (como Marcelha / secretaria@) | Esperado |
 |---|---|
-| Caixa de E-mails | linha **Ofícios** com 5 cards (filiação, desfiliação, oposição, taxa negocial, taxa assistencial) e, embaixo, os demais |
+| Caixa de E-mails | linha **Ofícios** com 4 cards (filiação, desfiliação, oposição, taxa negocial / assistencial) e, embaixo, os demais |
+| E-mail da escola com mensalidade + taxa negocial/assistencial | fica em Contribuições com "📄 também pede ofício"; ao abrir, botão **Preparar ofício** |
 | E-mail com ficha de filiação anexa | card "Ofício de filiação", botão **Ver ofício** |
 | Pedido de desfiliação / carta de oposição | cards "Ofício de desfiliação" / "Oposição à taxa negocial" |
 | Dúvida de filiação sem ficha / comprovante | continuam em Filiação / Contribuições |
