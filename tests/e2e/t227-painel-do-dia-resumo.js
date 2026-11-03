@@ -71,7 +71,7 @@ b.igual(chamouIA, iaAntes, "o Painel não chamou a IA");
 b.passo("2. Marcelha → secretaria@ e os vouchers");
 const rs = g.caixaResumoDoDia(T_SEC);
 b.ok(rs.ok && rs.caixa === "secretaria@sindeducacao.com", "a caixa dela", rs.mensagem);
-b.ok(rs.cards.some(c => c.chave === "FILIACAO") && !rs.precisa.some(p => /^F:/.test(p.id)), "só a secretaria@, nada da financeiro@");
+b.ok(rs.cards.some(c => /FILIACAO/.test(c.chave)) && !rs.precisa.some(p => /^F:/.test(p.id)), "só a secretaria@, nada da financeiro@");
 b.ok(rs.voucher && typeof rs.voucher.aConferir === "number", "com o bloco de vouchers");
 b.passo("3. O robô: a taxa de acerto vem da memória");
 b.igual(r.robo, [], "sem decisões ainda: vazio");

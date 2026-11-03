@@ -53,11 +53,11 @@ b.fluxo("CAIXA DA SECRETARIA · categorizado");
 b.passo("2. Cada e-mail com o seu tipo; propaganda de fora");
 const pn = g.caixaSecretariaPainel(T_SEC);
 const tipoDe = th => (pn.itens.find(i => i.id === th.id) || {}).tipo;
-b.igual(tipoDe(thFil), "FILIACAO", "desfiliação → Filiação");
+b.igual(tipoDe(thFil), "OFICIO_DESFILIACAO", "desfiliação → card Ofício de desfiliação (03/11/2026)");
 b.igual(tipoDe(thEsc), "FINANCEIRO", "relação da escola → Escolas: contribuições (categorias de 30/10/2026)");
 b.igual(tipoDe(thGuia), "FINANCEIRO", "guia → Financeiro");
 b.ok(!pn.itens.some(i => i.id === thProp.id), "propaganda não aparece");
-b.igual(pn.porTipo.FILIACAO, 1, "contagem por tipo");
+b.igual(pn.porTipo.OFICIO_DESFILIACAO, 1, "contagem por tipo");
 b.igual(pn.porEstado.NOVO, 3, "três novos");
 
 b.passo("3. A conversa inteira e o anexo");

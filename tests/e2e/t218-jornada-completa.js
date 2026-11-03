@@ -70,7 +70,7 @@ b.ok(!!ped("paula@exemplo.com"), "Paula (só texto) está nos pedidos de voucher
 const pIgor = ped("igor@exemplo.com");
 b.ok(!!pIgor, "Igor (pedido antigo da KingHost, via Drive) também");
 const caixa = g.caixaSecretariaPainel(T_MAR);
-b.ok(caixa.itens.some(i => i.id === thJoao.id && i.tipo === "FILIACAO"), "João (desfiliação) na Caixa da Secretaria, como Filiação");
+b.ok(caixa.itens.some(i => i.id === thJoao.id && i.tipo === "OFICIO_DESFILIACAO"), "João (desfiliação) na Caixa da Secretaria, no card Ofício de desfiliação");
 b.ok(!caixa.itens.some(i => /loja/.test(i.de)), "a propaganda em lugar nenhum");
 b.igual(amb.outbox.length, outInicial, "NADA saiu sozinho");
 

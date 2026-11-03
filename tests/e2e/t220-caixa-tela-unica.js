@@ -92,7 +92,7 @@ const pres = p.itens.find(i => i.fonte === "PRESENCIAL");
 b.ok(pres && pres.id === "VCH-PRES-001" && /Presencial/.test(pres.selo) && pres.sol && pres.sol.protocolo === "VCH-PRES-001",
   "a solicitação presencial pendente também", JSON.stringify(pres && pres.selo));
 b.ok(!p.itens.some(i => i.id === "VCH-PRES-002"), "a presencial já emitida não (não precisa de ninguém)");
-b.ok(p.itens.some(i => i.fonte === "EMAIL" && i.tipo === "FILIACAO"), "e os outros e-mails continuam ali");
+b.ok(p.itens.some(i => i.fonte === "EMAIL" && /FILIACAO/.test(i.tipo)), "e os outros e-mails continuam ali");
 b.igual(p.porTipo.VOUCHER, 3, "o card de voucher conta 3 a tratar");
 b.ok(p.voucher.pode && p.voucher.cont.PRONTO === 1 && p.voucher.cont.FALTA_DOC === 1 && p.voucher.cont.PRESENCIAL === 1,
   "com as contagens por situação", JSON.stringify(p.voucher.cont));

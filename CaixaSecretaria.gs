@@ -765,7 +765,8 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     var de = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; })[0] || msgs[0] || {};
     roboMemoriaRegistrar_({ tarefa: "categoria-email", origem: String(p.CAIXA || "SECRETARIA"), chave: id,
       remetente: cxsEmail_(de.replyTo || de.de), assunto: de.assunto, trecho: de.corpo,
-      sugerido: tipoAntes, decidido: tipo, quem: quem });
+      /* o que o ROBÔ sugeriu (IA + regra), não uma correção anterior de pessoa */
+      sugerido: cxsTipoDoEmail_(p, null), decidido: tipo, quem: quem });
     if (tipo === "VOUCHER") return cxsVirarVoucher_(id, p, sessao);
     return { ok: true, mensagem: "Tipo corrigido para " + CXS_TIPOS[tipo].rotulo + ". O robô guardou o exemplo." };
   } catch (e) {
