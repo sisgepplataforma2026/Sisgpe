@@ -54,8 +54,10 @@ function montar(token) {
   await t.assentar(150);
   b.passo("2. Cards por tipo e a lista");
   b.ok(doc.querySelector("#cxsTipos .cxs-tipo.todos"), "o card Todos (03/11/2026)");
-  const cardsCom = Array.from(doc.querySelectorAll("#cxsTipos .cxs-tipo:not(.todos):not(.voucher)"));
-  b.ok(cardsCom.length >= 2 && cardsCom.every(c => Number(c.querySelector(".n").textContent) > 0),
+  const cardsCom = Array.from(doc.querySelectorAll("#cxsTipos .cxs-tipo:not(.todos):not(.voucher):not(.oficio)"));
+  /* Os cards de Ofícios (03/11/2026) ficam sempre à vista, numa linha própria. */
+  b.igual(doc.querySelectorAll("#cxsTipos .cxs-tipo.oficio").length, 5, "a linha de Ofícios com os 5 cards, mesmo vazios");
+  b.ok(cardsCom.length >= 1 && cardsCom.every(c => Number(c.querySelector(".n").textContent) > 0),
     "cards dinâmicos: só os que têm e-mail", cardsCom.map(c => c.textContent).join(" | "));
   /* 31/10/2026, o usuário: "cada um com o seu" — a Marcelha vê a caixa
      secretaria@ inteira (inclusive o que é do Financeiro, em cópia). */
@@ -84,9 +86,10 @@ function montar(token) {
   await t.assentar(120);
   b.ok(el("cxsModal").classList.contains("aberto"), "abriu");
   b.ok(/cancelar a filia/.test(t.texto("#cxsMMensagens") || ""), "a mensagem do João");
-  b.igual(el("cxsMTipo").value, "FILIACAO", "o tipo sugerido pela IA");
+  /* 03/11/2026: "quero cancelar a filiação" é pedido de ofício de desfiliação. */
+  b.igual(el("cxsMTipo").value, "OFICIO_DESFILIACAO", "o tipo: ofício de desfiliação (pela regra da secretaria@)");
   b.ok(/Olá, João!/.test(el("cxsMResposta").value), "resposta com saudação, para editar");
-  b.ok(el("cxsMModulo").style.display !== "none" && /Sindicaliza/.test(el("cxsMModulo").textContent), "atalho para o módulo certo");
+  b.ok(el("cxsMModulo").style.display !== "none" && /Of[ií]cio/i.test(el("cxsMModulo").textContent), "atalho para o módulo certo (Ofícios)", el("cxsMModulo").textContent);
 
   b.passo("4. Responder: sai só pelo clique, na fila da Secretaria");
   const out0 = amb.outbox.length;

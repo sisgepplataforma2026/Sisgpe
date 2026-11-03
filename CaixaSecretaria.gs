@@ -41,8 +41,42 @@ var CXS_TIPOS = {
   NEGOCIACAO: { rotulo: "Negociação e reuniões", curto: "Negociação", icone: "🤝", modulo: "negociacao" },
   ENTIDADES: { rotulo: "Entidades e órgãos", curto: "Entidades", icone: "🏛", modulo: "" },
   EVENTO: { rotulo: "Eventos do sindicato", curto: "Eventos", icone: "📅", modulo: "eventos" },
-  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "" }
+  OUTRO: { rotulo: "Outros", curto: "Outros", icone: "❓", modulo: "" },
+  /* CARDS DE OFÍCIOS — só da secretaria@ (03/11/2026, desenho aprovado:
+     docs/mock-caixa-secretaria-oficios.png). Um dos dois gargalos da
+     Secretaria. "Ver ofício" mostra o ofício que o robô preparou do e-mail
+     (CaixaOficioEmail.gs); a emissão continua no módulo de Ofícios. */
+  OFICIO_FILIACAO: { rotulo: "Ofício de filiação", curto: "Ofício de filiação", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Filiação" },
+  OFICIO_DESFILIACAO: { rotulo: "Ofício de desfiliação", curto: "Ofício de desfiliação", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Desfiliação" },
+  OFICIO_OPOSICAO: { rotulo: "Oposição à taxa negocial", curto: "Oposição à taxa negocial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Oposição à Taxa Negocial" },
+  OFICIO_TAXA_NEGOCIAL: { rotulo: "Taxa negocial", curto: "Taxa negocial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Taxa Negocial" },
+  OFICIO_TAXA_ASSISTENCIAL: { rotulo: "Taxa assistencial", curto: "Taxa assistencial", icone: "📄", modulo: "oficios", caixa: "SECRETARIA", grupo: "OFICIOS", oficio: "Taxa Assistencial" }
 };
+/* Que e-mail da secretaria@ é pedido de ofício: pela REGRA, no SISGEP (o
+   leitor da Secretaria não muda — ele continua dizendo Filiação/Contribuições).
+   Conservadora de propósito: na dúvida fica no card de antes, e arrastar para
+   o card certo corrige e fica na memória do robô. Taxa negocial (cobrança) e
+   taxa assistencial: só arrastando, até a equipe mostrar como esses e-mails
+   chegam. */
+function cxsSemAcento_(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+function cxsOficioPorRegra_(p, base) {
+  if (["FILIACAO", "FINANCEIRO", "OUTRO"].indexOf(base) === -1) return "";
+  var msgs = vpeJson_(p.MENSAGENS_JSON, []).filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
+  var anexos = vpeJson_(p.ANEXOS_JSON, []);
+  var t = cxsSemAcento_(msgs.map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" ") + " " +
+    anexos.map(function (a) { return a.nome || ""; }).join(" "));
+  if (/oposi/.test(t) && /negocial/.test(t)) return "OFICIO_OPOSICAO";
+  if (/desfilia|cancelar? (a |minha )?filiacao|cancelamento d[ae] (minha )?filiacao|desligamento do sindicato|nao (quero|desejo) mais (ser |estar |ficar )?(filiad|associad|sindicalizad)/.test(t)) return "OFICIO_DESFILIACAO";
+  var temArquivo = anexos.some(function (a) { return /pdf|image/i.test(String(a.tipo || "")); });
+  if (base === "FILIACAO" && temArquivo && /ficha|filiacao d[aoe]|sindicalizacao|quer(o|em)? (se )?filiar|nova filiacao/.test(t)) return "OFICIO_FILIACAO";
+  return "";
+}
+function cxsTipoDoEmail_(p, est) {
+  if (est && est.TIPO_CORRIGIDO) return cxsTipo_(est.TIPO_CORRIGIDO);
+  var base = cxsTipo_(p.TIPO || "OUTRO");
+  if (String(p.CAIXA || "SECRETARIA") !== "SECRETARIA") return base;
+  return cxsOficioPorRegra_(p, base) || base;
+}
 /* Tipos antigos ou de fora da Entrada, para o nome novo. */
 var CXS_TIPO_ALIAS = { CONVENCAO: "NEGOCIACAO", OFICIO_ESCOLA: "FINANCEIRO" };
 var CXS_FORA_DA_ENTRADA = ["PROPAGANDA", "NOTIFICACAO"];
@@ -366,7 +400,7 @@ function cxsSituacao_(p, est) {
 function cxsResumo_(p, est, envios) {
   var msgs = vpeJson_(p.MENSAGENS_JSON, []);
   var primeira = msgs[0] || {}, ultima = msgs[msgs.length - 1] || {};
-  var tipo = cxsTipo_((est && est.TIPO_CORRIGIDO) || p.TIPO || "OUTRO");
+  var tipo = cxsTipoDoEmail_(p, est);
   var sit = cxsSituacao_(p, est);
   /* 03/11/2026: a última mensagem é NOSSA (mandamos, ou respondemos direto
      pelo Gmail/KingHost) — nada a responder: não é "a tratar". Volta como
@@ -376,7 +410,7 @@ function cxsResumo_(p, est, envios) {
   return {
     id: String(p.THREAD_ID), tipo: tipo,
     tipoRotulo: (String(p.CAIXA) === "FINANCEIRO" && (CXS_TIPOS[tipo] || {}).rotuloFin) || (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).rotulo,
-    icone: (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).icone,
+    icone: (CXS_TIPOS[tipo] || CXS_TIPOS.OUTRO).icone, grupo: (CXS_TIPOS[tipo] || {}).grupo || "",
     de: cxsEmail_(ultima.replyTo || ultima.de), nome: cxsNome_(ultima.de) || cxsEmail_(ultima.de),
     assunto: String(primeira.assunto || "(sem assunto)"), pedido: String(p.PEDIDO || ""),
     trecho: String(ultima.corpo || "").replace(/\s+/g, " ").substring(0, 160),
@@ -509,7 +543,7 @@ function caixaSecretariaPainel(tokenSessao) {
              tipos: Object.keys(CXS_TIPOS).map(function (k) {
                return { chave: k, rotulo: CXS_TIPOS[k].rotulo, curto: CXS_TIPOS[k].curto || CXS_TIPOS[k].rotulo,
                         icone: CXS_TIPOS[k].icone, modulo: CXS_TIPOS[k].modulo, caixa: CXS_TIPOS[k].caixa || "",
-                        rotuloFin: CXS_TIPOS[k].rotuloFin || "", ocultoFin: !!CXS_TIPOS[k].ocultoFin };
+                        rotuloFin: CXS_TIPOS[k].rotuloFin || "", ocultoFin: !!CXS_TIPOS[k].ocultoFin, grupo: CXS_TIPOS[k].grupo || "" };
              }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -527,7 +561,7 @@ function cxsMemoriaResposta_(id, texto, meta, sessao) {
       remetente: cxsEmail_(de.replyTo || de.de), assunto: de.assunto, trecho: de.corpo,
       sugerido: String((meta && meta.sugerido) || "").trim().substring(0, 2000),
       decidido: String(texto).substring(0, 2000), quem: sessao.email || sessao.usuario || "",
-      tipoEmail: String(est.TIPO_CORRIGIDO || (p && p.TIPO) || "") });
+      tipoEmail: p ? cxsTipoDoEmail_(p, est) : "" });
   } catch (e) {}
 }
 
@@ -712,11 +746,14 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     tipo = String(tipo || "").toUpperCase();
     if (!CXS_TIPOS[tipo]) return { ok: false, mensagem: "Tipo inválido." };
     if (cxsEhFinanceiro_(id) && CXS_TIPOS[tipo].ocultoFin) return { ok: false, mensagem: "Este card foi excluído na financeiro@ (dá para trazer de volta em ⚙ Cards)." };
+    if (CXS_TIPOS[tipo].caixa && CXS_TIPOS[tipo].caixa !== (cxsEhFinanceiro_(id) ? "FINANCEIRO" : "SECRETARIA")) {
+      return { ok: false, mensagem: "Este card é da caixa " + (CXS_TIPOS[tipo].caixa === "FINANCEIRO" ? "financeiro@" : "secretaria@") + "." };
+    }
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var quem = sessao.email || sessao.usuario || "";
     var est = cxsEstados_()[String(id)] || {};
-    var tipoAntes = String(est.TIPO_CORRIGIDO || p.TIPO || "");
+    var tipoAntes = cxsTipoDoEmail_(p, est);
     var corr = vpeJson_(est.CORRECOES_JSON, []);
     corr.push({ em: Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd HH:mm"), por: quem,
                 deTipo: tipoAntes, paraTipo: tipo });
@@ -728,7 +765,7 @@ function caixaSecretariaReclassificar(id, tipo, tokenSessao) {
     var de = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; })[0] || msgs[0] || {};
     roboMemoriaRegistrar_({ tarefa: "categoria-email", origem: String(p.CAIXA || "SECRETARIA"), chave: id,
       remetente: cxsEmail_(de.replyTo || de.de), assunto: de.assunto, trecho: de.corpo,
-      sugerido: String(p.TIPO || ""), decidido: tipo, quem: quem });
+      sugerido: tipoAntes, decidido: tipo, quem: quem });
     if (tipo === "VOUCHER") return cxsVirarVoucher_(id, p, sessao);
     return { ok: true, mensagem: "Tipo corrigido para " + CXS_TIPOS[tipo].rotulo + ". O robô guardou o exemplo." };
   } catch (e) {

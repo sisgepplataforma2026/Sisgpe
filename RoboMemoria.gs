@@ -63,6 +63,14 @@ function roboMemoriaRegistrar_(o) {
   }
 }
 
+/* Os cards de Ofícios são do SISGEP (regra em CaixaSecretaria.gs); o leitor
+   da Secretaria só conhece Filiação e Contribuições. */
+function roboMemoriaTipoLeitor_(t) {
+  t = String(t || "");
+  if (t === "OFICIO_FILIACAO" || t === "OFICIO_DESFILIACAO") return "FILIACAO";
+  if (t.indexOf("OFICIO_") === 0) return "FINANCEIRO";
+  return t;
+}
 /* A correção vira exemplo para a IA do leitor (que roda na conta da
    Secretaria e só enxerga a ponte). */
 function roboMemoriaExemploPonte_(linha) {
@@ -73,7 +81,9 @@ function roboMemoriaExemploPonte_(linha) {
     sh.getRange(1, 1, 1, ROBO_MEM_PONTE_COLUNAS.length).setValues([ROBO_MEM_PONTE_COLUNAS]);
   }
   var m = { EM: linha.EM, REMETENTE: linha.REMETENTE, ASSUNTO: linha.ASSUNTO, TRECHO: linha.TRECHO,
-            TIPO_IA: linha.SUGERIDO, TIPO_CERTO: linha.DECIDIDO, QUEM: linha.QUEM };
+            TIPO_IA: roboMemoriaTipoLeitor_(linha.SUGERIDO), TIPO_CERTO: roboMemoriaTipoLeitor_(linha.DECIDIDO), QUEM: linha.QUEM };
+  /* Trocar só entre cards de ofício (o leitor não os conhece) não ensina nada a ele. */
+  if (m.TIPO_IA === m.TIPO_CERTO) return;
   sh.appendRow(ROBO_MEM_PONTE_COLUNAS.map(function (c) { return m[c]; }));
 }
 

@@ -240,7 +240,7 @@ function caixaSugerirResposta(id, a2, a3) {
       "Cite a CCT, se precisar, pela numeração do registro no MTE (ES000256/2026). Não assine (a assinatura entra depois). " +
       "Responda ao que foi pedido de fato: se a pessoa pede um documento (boleto, guia, declaração, relação), escreva como quem " +
       "envia o documento em anexo e diga em \"anexar\" o que precisa ir junto. Comece cumprimentando pelo primeiro nome.\n\n" +
-      cxfExemplosResposta_(String(conv.p.CAIXA || "SECRETARIA"), cxsTipo_((cxsEstados_()[String(id)] || {}).TIPO_CORRIGIDO || conv.p.TIPO),
+      cxfExemplosResposta_(String(conv.p.CAIXA || "SECRETARIA"), cxsTipoDoEmail_(conv.p, cxsEstados_()[String(id)]),
         cxsEmail_(conv.ultimo.replyTo || conv.ultimo.de)) +
       (sabe.length ? "O QUE O SISTEMA SABE:\n" + sabe.join("\n") + "\n\n" : "") +
       "CONVERSA (a última é a que se responde):\n" + conversa +

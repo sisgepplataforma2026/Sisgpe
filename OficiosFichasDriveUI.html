@@ -260,18 +260,23 @@
       var n = card.querySelector(".input-nome-trabalhador"), c = card.querySelector(".input-cpf-trabalhador");
       if (n) { n.value = p.nome; n.dispatchEvent(new Event("input", { bubbles: true })); }
       if (c) { c.value = cpfMask(p.cpf); c.dispatchEvent(new Event("input", { bubbles: true })); }
-      if (k === 0) {
+      if (k === 0 && o.ficha) {
         /* O PDF das fichas vai uma vez só (como quando se anexa do Drive à mão). */
         card._fichasDrive = [o.ficha];
         var cont = card.querySelector(".ficha-contador"); if (cont) cont.textContent = "1 ficha (☁️ Nuvem) — " + o.pessoas.length + " pessoa(s)";
         var prev = card.querySelector(".ficha-preview-individual");
         if (prev) prev.innerHTML = "<div style='padding:7px 11px;background:var(--green-lt);border-radius:9px;border:1.5px solid #6ee7b7;font-size:12px;font-weight:700;color:var(--green-dk);'>📄 " +
-          esc(o.ficha.nome) + " <span style='font-size:10px;color:var(--g500);'>☁️ Nuvem · pelo robô das fichas</span></div>";
+          esc(o.ficha.nome) + " <span style='font-size:10px;color:var(--g500);'>☁️ Nuvem · " + esc(o.origem || "pelo robô das fichas") + "</span></div>";
       }
     });
     if (window.Oficio && typeof window.Oficio.atualizarResumoTrabalhadores === "function") { try { window.Oficio.atualizarResumoTrabalhadores(); } catch (e) {} }
     aviso("Novo ofício preenchido com " + o.pessoas.length + " pessoa(s). Confira e emita como sempre.", "ok");
   }
+
+  /* A Caixa da secretaria@ ("Ver ofício", 03/11/2026) preenche o Novo
+     Ofício pelo mesmo caminho das fichas do Drive. */
+  window.ofdPreencherNovoOficio = preencherNovoOficio;
+  window.ofdFormularioComDados = formularioComDados;
 
   /* ── CONFERÊNCIA MENSAL (etapa 2, 03/11/2026) ── */
   var cfm = { email: null, chave: "" };

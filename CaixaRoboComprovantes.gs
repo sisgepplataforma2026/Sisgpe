@@ -134,7 +134,7 @@ function crcCandidatos_() {
   return cxsLinhasPonte_().filter(function (p) {
     if (String(p.CAIXA || "SECRETARIA") !== "SECRETARIA") return false;
     var e = est[String(p.THREAD_ID)];
-    if (cxsTipo_((e && e.TIPO_CORRIGIDO) || p.TIPO) !== "FINANCEIRO") return false;
+    if (cxsTipoDoEmail_(p, e) !== "FINANCEIRO") return false;
     var temArquivo = vpeJson_(p.ANEXOS_JSON, []).some(function (a) { return a.fileId && /pdf|image/i.test(String(a.tipo || "")); });
     if (!temArquivo) return false;
     var l = lidos[String(p.THREAD_ID)];

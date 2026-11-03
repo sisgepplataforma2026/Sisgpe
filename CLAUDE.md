@@ -337,6 +337,16 @@ administrador, no rodapé da Caixa. A financeiro@ não entra até ele pedir.
 Existe uma rotina antiga, `processarEmailsMensalidade` (MensalidadeCore.gs),
 que põe etiqueta no Gmail; não foi tocada (REGRA 1).
 
+## 📄 CARDS DE OFÍCIOS NA CAIXA DA SECRETARIA (03/11/2026)
+
+Desenho aprovado (docs/mock-caixa-secretaria-oficios.png). Cinco cards só da
+secretaria@ (OFICIO_* em CaixaSecretaria.gs). Quem decide o card é uma REGRA
+no SISGEP (cxsOficioPorRegra_) — o leitor da Secretaria não mudou e continua
+dizendo Filiação/Contribuições; o exemplo que vai para a IA dele volta ao
+tipo que ele conhece. Taxa negocial (cobrança) e taxa assistencial: só
+arrastando, até o usuário dizer como esses e-mails chegam. "Ver ofício"
+(CaixaOficioEmail.gs) prepara; a EMISSÃO continua no módulo de Ofícios.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento

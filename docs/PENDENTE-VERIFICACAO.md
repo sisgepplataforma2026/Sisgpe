@@ -6752,3 +6752,19 @@ Emulador: t233 (39, inclusive a tela), suíte verde. **Não testado: o agendamen
 | Conferir a caixa da secretaria@ no KingHost | nada respondido, movido ou marcado pelo robô |
 | Desligar | o acionador some |
 | Se no dia seguinte o rodapé NÃO mostrar "Última vez" | o gatilho não foi reconhecido (a trava confere o id do gatilho); me avise — não testado fora do emulador |
+
+## 🔴 Caixa da Secretaria com os cards de Ofícios + "Ver ofício" — HML 03/11/2026
+
+Desenho aprovado: docs/mock-caixa-secretaria-oficios.png ("2 - Inicia"). Prévias: docs/previa-caixa-secretaria-oficios.png, docs/previa-ver-oficio.png.
+Emulador: t234 (38, inclusive a tela), t216 atualizado, suíte verde. **Não testado: a IA lendo ficha/carta real, o Novo Ofício de verdade se preenchendo a partir da Caixa, o navegador.**
+
+| Roteiro em HML (como Marcelha / secretaria@) | Esperado |
+|---|---|
+| Caixa de E-mails | linha **Ofícios** com 5 cards (filiação, desfiliação, oposição, taxa negocial, taxa assistencial) e, embaixo, os demais |
+| E-mail com ficha de filiação anexa | card "Ofício de filiação", botão **Ver ofício** |
+| Pedido de desfiliação / carta de oposição | cards "Ofício de desfiliação" / "Oposição à taxa negocial" |
+| Dúvida de filiação sem ficha / comprovante | continuam em Filiação / Contribuições |
+| Ver ofício | painel verde: tipo, escola (com a origem), para, trabalhador lido do anexo com CPF, situação |
+| Corrigir nome/CPF/escola → Abrir em Ofícios | vai para Documentos › Ofícios, Novo ofício preenchido com a ficha anexa; você confere e emite como sempre |
+| Arrastar um e-mail para outro card de ofício | muda e fica na memória do robô |
+| Como Wanderson (financeiro@) | os cards de Ofícios não aparecem |
