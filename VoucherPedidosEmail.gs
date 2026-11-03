@@ -1503,7 +1503,9 @@ function vpeEmailsDaEquipe_() {
 /* O ID da última resposta posta na fila — o histórico do voucher guarda para
    conferir depois que ela saiu (VoucherHistoricoEnvio.gs). */
 var VPE_ULTIMA_SAIDA_ID = "";
-function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
+/* extras (03/11/2026) = { cc: [e-mails], cco: [e-mails] } — o leitor manda junto. */
+function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml, extras) {
+  extras = extras || {};
   var para = String(reg.REMETENTE_EMAIL || "").trim();
   if (!para) throw new Error("O pedido não tem e-mail do remetente.");
   vpeChecarDestinoAmbiente_(para);
@@ -1511,6 +1513,10 @@ function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
   /* Célula de planilha guarda até 50.000 caracteres. */
   if (html.length > 49000) throw new Error("A resposta ficou grande demais para a fila (" + html.length + " caracteres).");
   var sh = vpePonteAba_("Saida");
+  if ((extras.cc || []).length || (extras.cco || []).length) {
+    var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+    ["CC", "CCO"].forEach(function (c) { if (cab.indexOf(c) === -1) { sh.getRange(1, cab.length + 1).setValue(c); cab.push(c); } });
+  }
 
   var conta = vpeContaLeitor_();
   (anexosIds || []).forEach(function (id) {
@@ -1527,7 +1533,9 @@ function vpeResponderThread_(reg, htmlCorpo, anexosIds, quem, assinaturaHtml) {
     ANEXOS_FILE_IDS: (anexosIds || []).join(","),
     STATUS: "PENDENTE",
     CRIADO_EM: new Date(),
-    CRIADO_POR: String(quem || "")
+    CRIADO_POR: String(quem || ""),
+    CC: (extras.cc || []).join(","),
+    CCO: (extras.cco || []).join(",")
   }, sh);
   return para;
 }

@@ -64,15 +64,16 @@ function caixaFinanceiroNovoEmail(dados, tokenSessao) {
   try {
     var sessao = cxpExigirFinanceiro_(tokenSessao);
     dados = dados || {};
-    var para = cxnEmails_(dados.para), cc = cxnEmails_(dados.cc);
+    var para = cxnEmails_(dados.para), cc = cxnEmails_(dados.cc), cco = cxnEmails_(dados.cco);
     var assunto = String(dados.assunto || "").trim(), texto = String(dados.texto || "").trim();
     var soGuardar = dados.soGuardar === true;
     cxnValidar_(para, "Para", !soGuardar);
     cxnValidar_(cc, "Cc", false);
+    cxnValidar_(cco, "Cco", false);
     if (!soGuardar) {
       if (!assunto) return { ok: false, mensagem: "Escreva o assunto antes de enviar." };
       if (texto.length < 5) return { ok: false, mensagem: "Escreva o texto antes de enviar." };
-      para.concat(cc).forEach(vpeChecarDestinoAmbiente_);
+      para.concat(cc).concat(cco).forEach(vpeChecarDestinoAmbiente_);
     }
     var quem = sessao.email || sessao.usuario || "";
     var ids = cxfGuardarAnexos_({ anexos: dados.anexos || [], anexosSisgep: dados.anexosSisgep || [] }, quem);
@@ -84,6 +85,7 @@ function caixaFinanceiroNovoEmail(dados, tokenSessao) {
     var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) || !texto ? "" : vpeAssinaturaHtml_("FINANCEIRO", sessao));
     var op = { htmlBody: html, name: "SindEducação-ES — Financeiro" };
     if (cc.length) op.cc = cc.join(",");
+    if (cco.length) op.bcc = cco.join(",");
     if (blobs.length) op.attachments = blobs;
     var destino = para.join(", ");
     if (soGuardar) {
@@ -95,7 +97,7 @@ function caixaFinanceiroNovoEmail(dados, tokenSessao) {
     if (rasc) { rasc.update(destino, assunto, texto, op); rasc.send(); }
     else gm.sendEmail(destino, assunto, texto, op);
     var nomesAnexos = blobs.map(function (b) { return b.getName(); });
-    cxsAuditar_("NOVO_EMAIL", "financeiro@", "Enviado para " + destino + (cc.length ? " (cc " + cc.join(", ") + ")" : "") + ": " + assunto +
+    cxsAuditar_("NOVO_EMAIL", "financeiro@", "Enviado para " + destino + (cc.length ? " (cc " + cc.join(", ") + ")" : "") + (cco.length ? " (cco " + cco.join(", ") + ")" : "") + ": " + assunto +
       (nomesAnexos.length ? " · com " + nomesAnexos.length + " anexo(s): " + nomesAnexos.join(", ") : ""), sessao);
     roboMemoriaRegistrar_({ tarefa: "novo-email", origem: "FINANCEIRO", chave: destino, remetente: para[0], assunto: assunto,
       trecho: texto, sugerido: "", decidido: texto.substring(0, 2000), quem: quem });

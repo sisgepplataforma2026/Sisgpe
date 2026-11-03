@@ -6709,3 +6709,16 @@ Pedido do usuário ("contador de páginas, exemplo 1-5"). Emulador: t230 (12). *
 | Clicar num card ou mudar filtro | volta para a página 1 |
 | Marcar todos | marca só os 50 da página |
 | Lixeira / Todos os e-mails com muitos | "1–50 de 50+"; › busca os próximos no Gmail |
+
+## 🔴 Cc/Cco, aviso de erro na janela e faixa de enviado — HML 03/11/2026
+
+Pedidos do usuário ("não tem cópia e cópia oculta"; "enviei e não aconteceu nada" — era a trava de HML com o erro escondido atrás da janela).
+Emulador: t231 (16), suíte verde. **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Responder com Cc e Cco para e-mails da equipe | chega com cópia; Cco não aparece para os outros |
+| Responder para fora da equipe (em HML) | aviso vermelho DENTRO da janela: "Não foi enviado: [HML] …" |
+| Responder para a equipe | "⏳ Enviando…", janela fecha, faixa verde "✅ Resposta enviada para …" |
+| Novo e-mail com Cco | idem |
+| Itens enviados (financeiro@) | a resposta aparece lá (é o Gmail da conta) |
