@@ -6621,3 +6621,15 @@ Emulador: t226 (42), suíte 223 verde. **Não testado com o Gmail de verdade nem
 | Faixa verde do robô (se aparecer) | "Vi N e-mails de …" — Criar card leva os e-mails; Não: não volta |
 | ⚙ Cards criados pela equipe | renomear/apagar só com o card vazio |
 | A Central antiga | não aparece mais na Caixa |
+
+## 🔴 Painel do Dia como resumo da Caixa — HML 03/11/2026
+
+Desenho aprovado ("Aprovo"). Emulador: t227 (23), suíte 224 verde. **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Wanderson › Comunicação › Painel do Dia | "Bom dia, Wanderson", caixa financeiro@; "a tratar" igual ao da Caixa |
+| Clicar num card (ex.: Contas) | abre a Caixa com o card já selecionado |
+| "Precisa de você hoje" › Abrir | abre a conversa na Caixa |
+| Marcelha › Painel do Dia | caixa secretaria@ e o bloco de vouchers |
+| 📈 O robô | taxa de acerto por tarefa (vazio até a equipe decidir alguma coisa) |

@@ -412,6 +412,7 @@
 
       <!-- ──── MÓDULOS EXISTENTES ──── -->
       <div id="mComunicacao" class="spM" style="display:none;height:100%;">
+        <?!= include('PainelDoDiaUI'); ?>
         <?!= include('CockpitInteligente'); ?>
       </div>
       <div id="mCentralEmailIA" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
@@ -1240,7 +1241,9 @@ button,input{font-family:inherit;}
 .spPHActions{display:flex!important;gap:10px;justify-content:center;flex-wrap:wrap;margin:20px 0 0!important;font-size:0!important;}
 .spPHActions button{height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:12px;font-weight:800;padding:0 14px;cursor:pointer;}
 .spPHActions button:first-child{background:linear-gradient(135deg,#0ea5e9,#2563eb);border-color:rgba(14,165,233,.45);}
-#mComunicacao #cockpitInteligente{display:flex!important;margin:0!important;height:100%!important;}
+/* 03/11/2026: o Painel do Dia é o resumo da Caixa (PainelDoDiaUI); o Cockpit antigo fica no arquivo, desligado. */
+#mComunicacao #cockpitInteligente{display:none!important;}
+#mComunicacao{overflow:auto!important;}
 
 /* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos) */
 /* Documentos — accordion de subcamadas dentro do menu lateral principal */
@@ -1724,13 +1727,10 @@ function initDocumentos(opts){
 
 function initComunicacao(opts){
   opts=opts||{};
-  callFn("ckInit");
-
-  setTimeout(function(){
-    if(opts.acao==="emails"){
-      callFn("carregarEmailsIA") || callFn("carregarEmails") || callFn("atualizarCockpitInteligente");
-    }
-  },180);
+  /* 03/11/2026: Painel do Dia = resumo lido da Caixa (PainelDoDia.gs).
+     "Ir para os e-mails" abre a própria Caixa de E-mails. */
+  if(opts.acao==="emails") return spIr("caixaSecretaria",null);
+  callFn("pddIniciar");
 }
 
 function initEscolas(opts){

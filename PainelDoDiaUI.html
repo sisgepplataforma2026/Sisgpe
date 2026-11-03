@@ -1,0 +1,123 @@
+<style>
+/* ── Painel do Dia — só resumo, lido da Caixa (PainelDoDia.gs, 03/11/2026) ──
+   Tokens de OficiosStyles.html. Nada de paleta nova. */
+#pddSecao { font-family: 'Plus Jakarta Sans', sans-serif; padding: 18px; }
+#pddSecao * { box-sizing: border-box; }
+#pddSecao .pdd-topo { background: linear-gradient(135deg, var(--navy), var(--navy2)); color: #fff; border-radius: 14px; padding: 16px 20px;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; box-shadow: var(--sh-sm); }
+#pddSecao .pdd-titulo { font-size: 20px; font-weight: 800; }
+#pddSecao .pdd-sub { font-size: 12.5px; opacity: .85; margin-top: 2px; }
+#pddSecao .pdd-b { border: 0; border-radius: 9px; padding: 8px 14px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  background: #fff; color: var(--navy); }
+#pddSecao .pdd-cards { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#pddSecao .pdd-card { flex: 1 1 0; min-width: 110px; background: var(--surface); border: 1px solid var(--g200); border-radius: 12px; padding: 10px 12px;
+  text-align: left; font: inherit; cursor: pointer; box-shadow: var(--sh-xs); }
+#pddSecao .pdd-card .n { font-size: 22px; font-weight: 800; color: var(--navy); line-height: 1.1; }
+#pddSecao .pdd-card .l { font-size: 11.5px; font-weight: 700; color: var(--g600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pddSecao .pdd-card.destaque { border-color: var(--navy2); }
+#pddSecao .pdd-card.robo { border-color: #a7f3d0; background: #ecfdf5; }
+#pddSecao .pdd-bloco { background: var(--surface); border: 1px solid var(--g200); border-radius: 14px; padding: 14px 16px; margin-top: 12px; box-shadow: var(--sh-xs); }
+#pddSecao .pdd-bloco h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--g600); }
+#pddSecao .pdd-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--g100); font-size: 13.5px; }
+#pddSecao .pdd-linha:first-of-type { border-top: 0; }
+#pddSecao .pdd-linha small { color: var(--g500); }
+#pddSecao .pdd-dois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) { #pddSecao .pdd-dois { grid-template-columns: 1fr; } }
+#pddSecao .pdd-barra { height: 8px; background: var(--g100); border-radius: 999px; overflow: hidden; margin-top: 3px; }
+#pddSecao .pdd-barra > div { height: 100%; background: var(--green, #059669); }
+#pddSecao .pdd-vazio { color: var(--g500); font-size: 13px; padding: 8px 0; }
+</style>
+
+<div id="pddSecao">
+  <div class="pdd-topo">
+    <div>
+      <div class="pdd-titulo" id="pddTitulo">Bom dia! 👋</div>
+      <div class="pdd-sub" id="pddSub">Resumo da sua Caixa de E-mails.</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="pdd-b" data-pdd="caixa">📬 Abrir a Caixa</button>
+      <button type="button" class="pdd-b" data-pdd="carregar">↻ Atualizar</button>
+    </div>
+  </div>
+  <div class="pdd-cards" id="pddCards"><div class="pdd-vazio">⏳ Carregando…</div></div>
+  <div class="pdd-bloco">
+    <h3>⏰ Precisa de você hoje</h3>
+    <div id="pddPrecisa"><div class="pdd-vazio">⏳</div></div>
+  </div>
+  <div class="pdd-dois">
+    <div class="pdd-bloco" id="pddVoucherBloco" style="display:none;">
+      <h3>🎓 Vouchers</h3>
+      <div id="pddVoucher"></div>
+    </div>
+    <div class="pdd-bloco">
+      <h3>📈 O robô</h3>
+      <div id="pddRobo"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var PDD = (function () {
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function tk() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) || window.SISGEP_TOKEN_SESSAO || ""; }
+  function aviso(m, t) { if (typeof toast === "function") toast(m, t || "info", 5000); }
+  var dados = null;
+
+  function carregar() {
+    el("pddCards").innerHTML = "<div class='pdd-vazio'>⏳ Carregando… (a primeira vez do dia pode levar até 1 minuto)</div>";
+    google.script.run.withSuccessHandler(function (r) { desenhar(r || {}); })
+      .withFailureHandler(function (e) { desenhar({ ok: false, mensagem: (e && e.message) || String(e) }); })
+      .caixaResumoDoDia(tk());
+  }
+  function desenhar(r) {
+    dados = r;
+    if (!r.ok) {
+      el("pddCards").innerHTML = "<div class='pdd-vazio'>🔒 " + esc(r.mensagem || "Não foi possível abrir.") + "</div>";
+      el("pddPrecisa").innerHTML = ""; el("pddRobo").innerHTML = ""; el("pddVoucherBloco").style.display = "none";
+      return;
+    }
+    var h = new Date().getHours();
+    el("pddTitulo").textContent = (h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite") + (r.nome ? ", " + r.nome : "") + "! 👋";
+    el("pddSub").textContent = "Resumo da Caixa de E-mails — " + r.caixa + ". Os números são os mesmos da Caixa.";
+    if (r.erroFinanceiro) aviso(r.erroFinanceiro, "err");
+    var c = ["<button type='button' class='pdd-card destaque' data-pdd='tipo' data-arg=''><div class='n'>" + r.aTratar + "</div><div class='l'>📬 a tratar</div></button>",
+             "<button type='button' class='pdd-card' data-pdd='tipo' data-arg=''><div class='n'>" + r.novosHoje + "</div><div class='l'>🆕 novos hoje</div></button>"];
+    r.cards.forEach(function (k) {
+      c.push("<button type='button' class='pdd-card' data-pdd='tipo' data-arg='" + esc(k.chave) + "' title='" + esc(k.rotulo) + "'><div class='n'>" + k.n +
+        "</div><div class='l'>" + esc(k.icone + " " + k.rotulo) + "</div></button>");
+    });
+    if (r.propostas) c.push("<button type='button' class='pdd-card robo' data-pdd='tipo' data-arg=''><div class='n'>🤖 " + r.propostas +
+      "</div><div class='l'>card proposto</div></button>");
+    el("pddCards").innerHTML = c.join("");
+    el("pddPrecisa").innerHTML = r.precisa.length ? r.precisa.map(function (i) {
+      return "<div class='pdd-linha'><span>" + esc(i.icone) + " <b>" + esc(i.nome) + "</b> — " + esc(i.assunto) + "</span>" +
+        "<span style='display:flex;gap:8px;align-items:center;white-space:nowrap;'><small>" + esc(i.ha) + "</small>" +
+        "<button type='button' class='btn btn-navy' style='padding:5px 12px;font-size:12px;' data-pdd='abrir' data-arg='" + esc(i.id) + "'>Abrir</button></span></div>";
+    }).join("") : "<div class='pdd-vazio'>✅ Nada esperando resposta. Bom trabalho!</div>";
+    el("pddVoucherBloco").style.display = r.voucher ? "" : "none";
+    if (r.voucher) el("pddVoucher").innerHTML = "<div class='pdd-linha'><span><b>" + r.voucher.aConferir + "</b> a conferir · <b>" + r.voucher.emitidos +
+      "</b> emitido(s) aguardando envio</span><button type='button' class='btn btn-outline' style='padding:5px 12px;font-size:12px;' data-pdd='tipo' data-arg='VOUCHER'>Ver</button></div>";
+    el("pddRobo").innerHTML = r.robo.length ? r.robo.map(function (x) {
+      return "<div class='pdd-linha' style='display:block;'><div style='display:flex;justify-content:space-between;'><span>" + esc(x.rotulo) +
+        "</span><b>" + x.pct + "% <small>(" + x.n + ")</small></b></div><div class='pdd-barra'><div style='width:" + x.pct + "%'></div></div></div>";
+    }).join("") + "<div class='pdd-vazio' style='font-size:11.5px;'>Quanto o robô acertou nos últimos 90 dias (entre parênteses, quantas vezes a equipe decidiu). Nada sai sozinho.</div>"
+      : "<div class='pdd-vazio'>Ainda sem decisões da equipe para medir. Cada categoria corrigida e cada resposta enviada entra aqui.</div>";
+  }
+  function irCaixa(o) {
+    window.__cxsInicial = o || null;
+    if (typeof spIr === "function") spIr("caixaSecretaria", null);
+  }
+  document.addEventListener("click", function (ev) {
+    var a = ev.target && ev.target.closest ? ev.target.closest("[data-pdd]") : null;
+    if (!a || !el("pddSecao") || !el("pddSecao").contains(a)) return;
+    var acao = a.getAttribute("data-pdd"), arg = a.getAttribute("data-arg") || "";
+    if (acao === "carregar") carregar();
+    else if (acao === "caixa") irCaixa(null);
+    else if (acao === "tipo") irCaixa({ tipo: arg });
+    else if (acao === "abrir") irCaixa({ abrir: arg });
+  });
+  return { carregar: carregar };
+})();
+function pddIniciar() { PDD.carregar(); }
+</script>
