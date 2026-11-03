@@ -38,7 +38,7 @@ function getResumoInicioSISGEP(tokenSessao) {
   fontes.emails = inicio_executarFonte_(
     sessao,
     "comunicacao",
-    "E-mails urgentes",
+    "E-mails a tratar",
     function () { return inicio_contarEmailsUrgentes_(tokenSessao); }
   );
 
@@ -150,10 +150,13 @@ function inicio_contarNotasFiscaisAguardando_() {
   return Number(r.resumo.totalDocRecebido || 0);
 }
 
+/* 03/11/2026: a Home conta o mesmo "a tratar" da Caixa de E-mails (cada um
+   com a sua caixa), não mais o Cockpit antigo (getCockpit), que tinha
+   categorias e IA próprias e não batia com a Caixa. */
 function inicio_contarEmailsUrgentes_(tokenSessao) {
-  var r = getCockpit(tokenSessao);
-  if (!r || !r.ok || !r.indicadores) throw new Error("cockpit de e-mails indisponível");
-  return Number(r.indicadores.urgentes || 0);
+  var r = caixaResumoDoDia(tokenSessao);
+  if (!r || !r.ok) throw new Error((r && r.mensagem) || "caixa de e-mails indisponível");
+  return Number(r.aTratar || 0);
 }
 
 /**

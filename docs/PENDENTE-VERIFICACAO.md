@@ -6671,3 +6671,12 @@ Emulador: t225 (55), suíte 225 verde. **Não testado com o Gmail de verdade.**
 | Lateral › ➕ Nova pasta | a pasta aparece nos marcadores |
 | Os 45 "Relação nominal" que nós mandamos | saem do "a tratar"; quando a escola responde, voltam |
 | "RELACAO_NOMINAL" | aparece como "Relação nominal" |
+
+## 🔴 Painel do Dia saiu do menu — HML 03/11/2026
+
+Pedido do usuário. Suíte verde. **Não testado no navegador.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Menu › Comunicação | abre direto a Caixa de E-mails (sem submenu Painel do Dia) |
+| Página inicial › "E-mails a tratar na sua caixa" | o número é o mesmo "a tratar" da Caixa; clicar abre a Caixa |

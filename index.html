@@ -112,15 +112,18 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
       </div>
 
-      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('comunicacao',this)">
-        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
+      <!-- 03/11/2026: o Painel do Dia saiu ("está conflitando com o dashboard
+           executivo da página inicial ... só deixar a comunicação e e-mails").
+           Comunicação abre direto a Caixa de E-mails. PainelDoDiaUI e
+           CockpitInteligente continuam no projeto, desligados (REGRA 1). -->
+      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('caixaSecretaria',this)">
+        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Caixa de e-mails</small></div>
       </button>
       <!-- Cockpit e Central IA de E-mails sao a mesma caixa Gmail, com o
            Cockpit reaproveitando as acoes da Central IA. Dois botoes de
            primeiro nivel para praticamente a mesma coisa confundia a
            navegacao: viraram as duas visoes de um modulo so. -->
       <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA,caixaSecretaria" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacao" onclick="spIr('comunicacao',null)">📊 Painel do Dia</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="caixaSecretaria" onclick="spIr('caixaSecretaria',null)">📬 Caixa de E-mails</button>
       </div>
 
@@ -389,7 +392,7 @@
           <div class="spRailCard">
             <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span id="spPrioridadesTotal">—</span></div>
             <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b id="spPrioNF" style="color:#ef4444;">—</b></button>
-            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails urgentes para sua resposta</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
+            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails a tratar na sua caixa</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
             <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios não enviados</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
             <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos com prazo em 15 dias</p><b id="spPrioJuridico" style="color:#8b5cf6;">—</b></button>
             <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b id="spPrioEscolas" style="color:#3b82f6;">—</b></button>
@@ -1729,8 +1732,9 @@ function initComunicacao(opts){
   opts=opts||{};
   /* 03/11/2026: Painel do Dia = resumo lido da Caixa (PainelDoDia.gs).
      "Ir para os e-mails" abre a própria Caixa de E-mails. */
-  if(opts.acao==="emails") return spIr("caixaSecretaria",null);
-  callFn("pddIniciar");
+  /* 03/11/2026: o Painel do Dia saiu do menu — todo atalho para
+     "comunicacao" (página inicial, SOFIA) cai na Caixa de E-mails. */
+  return spIr("caixaSecretaria",null);
 }
 
 function initEscolas(opts){

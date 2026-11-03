@@ -256,7 +256,13 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
 
 - Uma tela só para e-mail (Comunicação › Caixa de E-mails): aba Secretaria
   (secretaria@, KingHost) e aba Financeiro (financeiro@, Gmail do projeto),
-  com os vouchers dentro. Painel do Dia fica só como resumo.
+  com os vouchers dentro. ~~Painel do Dia fica só como resumo.~~ **03/11/2026:
+  o Painel do Dia SAIU do menu** — *"está conflitando com o dashboard
+  executivo da página inicial, que deveria fazer o contexto de tudo ... só
+  deixar a comunicação e e-mails."* Comunicação abre a Caixa de E-mails; o
+  contador de e-mails da Home usa o "a tratar" da Caixa. PainelDoDia.gs,
+  PainelDoDiaUI.html, CockpitInteligente.html e CentralEmailIA.gs ficam no
+  projeto (REGRA 1). A medição do robô (taxa de acerto) precisa de lugar.
 - ~~*"Tem que aparecer tudo"*: TODAS as pastas~~ — **REVISTO EM 31/10/2026:**
   *"o robô vai ler somente caixa de entrada e o certificado 2027-1. Somente.
   Itens enviados, rascunho, spam, lixeira, não tem necessidade."* A Caixa
