@@ -65,7 +65,7 @@ function cxcCarregar_() {
       return;
     }
     if (sit === "ATIVA") {
-      CXS_TIPOS[k] = { rotulo: String(r.ROTULO), curto: String(r.ROTULO), icone: String(r.ICONE || "📁"), modulo: "", caixa: String(r.CAIXA || "FINANCEIRO"), criada: true };
+      CXS_TIPOS[k] = { rotulo: cxcNomeLegivel_(r.ROTULO), curto: cxcNomeLegivel_(r.ROTULO), icone: String(r.ICONE || "📁"), modulo: "", caixa: String(r.CAIXA || "FINANCEIRO"), criada: true };
       CXS_TIPOS_DESC[k] = String(r.DESCRICAO || r.ROTULO);
     } else if (CXS_TIPOS[k] && CXS_TIPOS[k].criada) {
       delete CXS_TIPOS[k]; delete CXS_TIPOS_DESC[k];
@@ -74,6 +74,17 @@ function cxcCarregar_() {
 }
 function cxcRecarregar_() { CXC_CARREGADAS = false; cxcCarregar_(); }
 
+/* Nome de card legível (03/11/2026: a IA devolveu "RELACAO_NOMINAL" e o
+   card saiu com cara de código). Só mexe no que parece código. */
+var CXC_ACENTOS = { relacao: "relação", funcionarios: "funcionários", contribuicao: "contribuição", contribuicoes: "contribuições",
+  declaracao: "declaração", declaracoes: "declarações", negociacao: "negociação", notificacao: "notificação", filiacao: "filiação",
+  rescisao: "rescisão", homologacao: "homologação", solicitacao: "solicitação", solicitacoes: "solicitações", guias: "guias" };
+function cxcNomeLegivel_(rotulo) {
+  var r = String(rotulo || "").trim();
+  if (!/^[A-Z0-9_]+$/.test(r) || r.indexOf("_") === -1) return r;
+  var p = r.toLowerCase().split("_").filter(String).map(function (w) { return CXC_ACENTOS[w] || w; }).join(" ");
+  return p.charAt(0).toUpperCase() + p.slice(1);
+}
 function cxcChave_(rotulo) {
   var base = String(rotulo || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "");
   return "C_" + (base || "CARD").substring(0, 30);
@@ -132,12 +143,12 @@ function cxcPerguntarIA_() {
     "Veja se existe um ASSUNTO QUE SE REPETE (pelo menos " + CXC_MIN_EMAILS + " e-mails do mesmo tipo de pedido) que hoje está " +
     "misturado num card maior ou em OUTRO, e que mereceria um card só dele. Não proponha o que já existe nem algo genérico. " +
     "Se não houver, devolva lista vazia. Proponha no máximo 2.\n" +
-    "Responda SOMENTE com JSON: {\"propostas\":[{\"rotulo\":\"nome curto do card\",\"icone\":\"um emoji\"," +
+    "Responda SOMENTE com JSON: {\"propostas\":[{\"rotulo\":\"nome curto do card, em português com acentos, ex.: Relação nominal\",\"icone\":\"um emoji\"," +
     "\"descricao\":\"o que entra neste card, para classificar os próximos\",\"ids\":[\"F:...\"]}]}\n\nE-MAILS:\n" + lista;
   try {
     var r = vpeChamarIA_(prompt);
     return ((r && r.propostas) || []).filter(function (p) { return p && p.rotulo && Array.isArray(p.ids); }).map(function (p) {
-      return { rotulo: String(p.rotulo).substring(0, 40), icone: String(p.icone || "📁").substring(0, 4),
+      return { rotulo: cxcNomeLegivel_(String(p.rotulo)).substring(0, 40), icone: String(p.icone || "📁").substring(0, 4),
                descricao: String(p.descricao || "").substring(0, 300), ids: p.ids.map(String) };
     });
   } catch (e) { Logger.log("Cards: a IA não propôs agora — " + e.message); return []; }
@@ -149,7 +160,7 @@ function caixaCriarCard(proposta, tokenSessao) {
     var sessao = cxpExigirFinanceiro_(tokenSessao);
     cxcCarregar_();
     proposta = proposta || {};
-    var rotulo = String(proposta.rotulo || "").trim().substring(0, 40);
+    var rotulo = cxcNomeLegivel_(String(proposta.rotulo || "")).substring(0, 40);
     if (rotulo.length < 3) return { ok: false, mensagem: "Dê um nome ao card." };
     var chave = cxcChave_(rotulo);
     if (Object.keys(CXS_TIPOS).some(function (k) { return k === chave || cxcMesmoNome_(CXS_TIPOS[k].rotulo, rotulo); })) {

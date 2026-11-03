@@ -176,6 +176,9 @@ b.ok(g.caixaAlterarCard("JURIDICO", "RESTAURAR", "", TOKEN).ok && !g.caixaSecret
 b.passo("8c. Criar card à mão");
 const cm = g.caixaCriarCard({ rotulo: "Pedidos de boleto", icone: "🧾", descricao: "escola pedindo boleto de mensalidade ou taxa", ids: [] }, TOKEN);
 b.ok(cm.ok && g.caixaSecretariaPainel(TOKEN).tipos.some(t => t.chave === cm.chave), "criado, entra na lista", cm.mensagem);
+const cod = g.caixaCriarCard({ rotulo: "NOTIFICACAO_DE_RESCISAO", icone: "📋", ids: [] }, TOKEN);
+b.ok(cod.ok && g.caixaSecretariaPainel(TOKEN).tipos.find(t => t.chave === cod.chave).rotulo === "Notificação de rescisão",
+  "nome com cara de código (como a IA devolveu) vira nome legível", cod.mensagem);
 
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 /* Para a tela: uma proposta nova à espera. */

@@ -1,7 +1,9 @@
 <style>
 /* ── Painel do Dia — só resumo, lido da Caixa (PainelDoDia.gs, 03/11/2026) ──
    Tokens de OficiosStyles.html. Nada de paleta nova. */
-#pddSecao { font-family: 'Plus Jakarta Sans', sans-serif; padding: 18px; }
+/* 03/11/2026: o container do Painel tem fundo escuro (era do Cockpit) — a
+   tela traz o fundo e a cor de letra dela, como as outras. */
+#pddSecao { font-family: 'Plus Jakarta Sans', sans-serif; padding: 18px; background: var(--g50, #f0f4f8); color: var(--g900, #0f172a); min-height: 100%; }
 #pddSecao * { box-sizing: border-box; }
 #pddSecao .pdd-topo { background: linear-gradient(135deg, var(--navy), var(--navy2)); color: #fff; border-radius: 14px; padding: 16px 20px;
   display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; box-shadow: var(--sh-sm); }
