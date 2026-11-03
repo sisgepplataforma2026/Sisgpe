@@ -6574,3 +6574,21 @@ Emulador: t215, t216, t220, t221, t222, t223 (suíte 220 verde). **Não testado 
 | Abrir um voucher presencial pela Caixa | abre a ficha da solicitação (conserto de 31/10) |
 | Emitir e enviar um voucher de teste | ficha mostra 🕑 Histórico: recebido → emitido → na fila → saiu, com quem e quando |
 | Benefícios › Voucher › Solicitações | coluna "Enviado em / por", filtros de envio, Exportar com quem enviou |
+
+## 🔴 Ferramentas da Central antiga dentro da Caixa — HML 03/11/2026 (run #210)
+
+Mockup aprovado (`docs/mock-caixa-ferramentas-financeiro.png`) + anexo.
+Emulador: t224 (52), suíte 221 verde. **Não testado no navegador, nem com a IA, o Gmail e o Drive de verdade.**
+
+| Roteiro em HML | Esperado |
+|---|---|
+| Wanderson › abrir um e-mail de escola | caixa 🏫 com a escola, "achada pelo …", mensalidades e último ofício |
+| Abrir um comprovante de desconto | caixa 🧾 com mês, valor, descontados × esperado; "Nada foi lançado" |
+| ✨ Resposta pela IA | o campo enche com o texto + assinatura; **nada sai** |
+| 📎 Do computador (PDF) e 📎 Do SISGEP (ofício) → Enviar | a resposta chega com os 2 anexos; arquivo do computador fica na pasta "SISGEP — Anexos enviados pela Caixa" |
+| Anexar um .exe | não deixa |
+| ↪ Encaminhar para um e-mail da equipe | chega encaminhado com a nota |
+| Marcelha › encaminhar pela secretaria@ | sai em até 15 min (leitor), como encaminhamento |
+| Para fora da equipe, em HML | bloqueado com [HML] |
+
+Fora do mockup, ainda não feito: situação da guia de taxa negocial da escola e o botão "Lançar no Financeiro".
