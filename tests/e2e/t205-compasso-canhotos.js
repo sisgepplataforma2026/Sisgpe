@@ -184,7 +184,12 @@ if (!dom.jsdomDisponivel()) {
   b.ok(t.chamadas.some(c => c.fn === "compassoCanhotos_arte"), "busca a arte só na hora de gerar");
   const doc = (janelas[0] || {}).html || "";
   const folhas = doc.split('<section class="folha">').slice(1);
-  b.ok(folhas.length >= 10, "gera as folhas (6 por folha, o padrão): " + folhas.length);
+  b.ok(folhas.length >= 10, "gera as folhas (paisagem, 3 na 1ª e 4 nas demais, o padrão desde 04/11/2026): " + folhas.length);
+  /* 04/11/2026: "o título do controle somente na primeira página". */
+  const comBanner = folhas.filter(f => /class="bn-wrap"/.test(f)).length;
+  const primeiras = folhas.filter(f => /folha 1 de \d+/.test(f)).length;
+  b.igual(comBanner, primeiras, "a faixa do título só na 1ª folha de cada faixa de letras (" + comBanner + " de " + folhas.length + ")");
+  b.ok(/size:A4 landscape/.test(doc), "a folha sai deitada (A4 paisagem)");
   let alinhado = true, umaVez = true, faixaCerta = true, cabecalho = true;
   let semNumero = true, cortesOk = true;
   const vistos = {};
@@ -202,7 +207,7 @@ if (!dom.jsdomDisponivel()) {
     faixasCan.forEach(x => { if (x !== rot.replace("–", " - ")) faixaCerta = false; });
     nomesCan.forEach(n => { if (vistos[n]) umaVez = false; vistos[n] = true; });
   });
-  b.ok(cabecalho, "TODA folha repete as letras da faixa no cabeçalho");
+  b.ok(cabecalho, "TODA folha repete as letras da faixa no cabeçalho (a faixa do título na 1ª, o cabeçalho fino nas demais)");
   b.ok(alinhado, "o canhoto de cada pessoa está na MESMA linha do nome dela na relação");
   b.ok(faixaCerta, "a faixa escrita no canhoto é a da folha");
   b.ok(semNumero, "o canhoto NÃO traz o número — fica só na relação da portaria (pedido de 01/10/2026)");
@@ -216,7 +221,7 @@ if (!dom.jsdomDisponivel()) {
   t.clicar("#canhBtPrevia");
   await t.assentar(60);
   const previa = (janelas[1] || {}).html || "";
-  b.igual(previa.split('<section class="folha">').length - 1, 1, "a prévia mostra uma folha");
+  b.igual(previa.split('<section class="folha">').length - 1, 2, "a prévia mostra duas folhas: a 1ª (com o título) e a 2ª (sem)");
   b.ok(!/setTimeout\(function\(\)\{window\.print\(\);\},400\)/.test(previa), "e não abre a impressão sozinha");
 
   b.naoTestavel("aparência impressa (texto dentro das caixas da arte, cores)",
