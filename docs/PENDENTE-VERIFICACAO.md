@@ -6792,3 +6792,14 @@ Desenho aprovado ("Aprovo"). Prévia: docs/previa-reenvio-motivo.png. Emulador: 
 | Ofício de desfiliação/oposição | o texto diz "continua sendo feito" |
 | Ofício emitido em lote | aviso: as fichas estão num PDF só e vão todas |
 | Reenviar | o e-mail chega com a observação; só as fichas marcadas; o log do sistema registra o motivo e quem |
+
+## 🔴 Canhotos do sorteio em paisagem — HML 04/11/2026
+
+Mockup aprovado ("Aprovo, pode publicar"): docs/mock-canhotos-paisagem-1.png e -2.png. Emulador: t205 (45). **Não testado com a planilha real nem impresso.**
+
+| Roteiro em HML (Eventos › Sorteios › Canhotos) | Esperado |
+|---|---|
+| Carregar a planilha real · Folha: Paisagem | "nas demais folhas, 4 · canhoto de ~15,6 × 3,9 cm" |
+| 👁 Prévia | 1ª folha com o título de ponta a ponta; 2ª só com a faixa amarela fina |
+| Nomes e escolas longos | encolhem para caber na caixa, sem vazar |
+| Imprimir / Salvar PDF | sai deitado (A4 paisagem), cores certas, linhas de corte |
