@@ -347,9 +347,11 @@
      k = tamanho da letra pela altura do canhoto; o ajustar() encolhe quando
      não cabe. */
   var CAMPOS={
-    nome:  {l:40.0, t:4.0,  w:58.6, h:36.0, k:.68},
-    escola:{l:40.0, t:43.5, w:58.6, h:31.0, k:.54},
-    faixa: {l:40.0, t:78.0, w:58.6, h:18.5, k:.30},
+    /* 04/11/2026 ("tira a faixa alfabética do canhoto"): só nome e escola,
+       que ganharam a altura toda. As letras continuam no cabeçalho da folha
+       e na capa da faixa. */
+    nome:  {l:40.0, t:5.0,  w:58.6, h:46.0, k:.80},
+    escola:{l:40.0, t:56.0, w:58.6, h:39.0, k:.62},
     urna:  {l:1.0,  t:80.5, w:37.0, h:16.0, k:.22}
   };
   /* LINHA DE CORTE ENTRE AS PESSOAS — 01/10/2026. A primeira versão só
@@ -382,12 +384,6 @@
       '%;font-size:'+(alt*c.k*.72).toFixed(2)+'pt"><span class="rot">'+rot+'</span><span class="cv-in fit '+nome+'" style="font-size:'+
       (alt*c.k).toFixed(2)+'pt">'+esc(texto)+'</span></div>';
   }
-  /* A faixa: o rótulo e as letras, como sempre (o t205 lê assim). */
-  function campoFaixa(texto, alt){
-    var c=CAMPOS.faixa;
-    return '<div class="cv faixa cx" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
-      '%;font-size:'+(alt*c.k).toFixed(2)+'pt"><span class="rot">Faixa alfabética:</span><b>'+esc(texto)+'</b></div>';
-  }
   function campoUrna(alt){
     var c=CAMPOS.urna;
     return '<div class="cv urna" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
@@ -407,7 +403,7 @@
         '<div class="canh-arte cv-c" style="top:'+(topo+(G.altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
           (G.artW<largC-.5 ? '<div class="canh-arte cv-art"></div>' : '')+
           caixa('nome','Nome:',p.nome,altC)+caixa('escola','Escola:',p.escola,altC)+
-          campoFaixa(f.rotulo.replace('–',' - '),altC)+campoUrna(altC)+
+          campoUrna(altC)+
         '</div>';
     }
     /* A faixa do título (banner) só na 1ª folha da faixa de letras; nas

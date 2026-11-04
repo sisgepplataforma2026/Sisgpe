@@ -203,7 +203,7 @@ if (!dom.jsdomDisponivel()) {
     const nomesCan = [...f.matchAll(/class="cv-in fit nome"[^>]*>([^<]*)</g)].map(m => m[1]);
     const faixasCan = [...f.matchAll(/class="cv faixa cx"[^>]*><span class="rot">Faixa alfabética:<\/span><b>([^<]*)<\/b>/g)].map(m => m[1]);
     const nCanhotos = (f.match(/class="canh-arte cv-c"/g) || []).length;
-    if (faixasCan.length !== nCanhotos) faixaCerta = false;
+    if (faixasCan.length !== 0) faixaCerta = false;   // 04/11/2026: a faixa saiu do canhoto
     if (/class="cv[^"]*numero/.test(f)) semNumero = false;
     if ((f.match(/class="ch"/g) || []).length !== nCanhotos + 1) cortesOk = false;
     if (nomesTab.join("|") !== nomesCan.join("|")) alinhado = false;
@@ -212,7 +212,7 @@ if (!dom.jsdomDisponivel()) {
   });
   b.ok(cabecalho, "TODA folha repete as letras da faixa no cabeçalho (a faixa do título na 1ª, o cabeçalho fino nas demais)");
   b.ok(alinhado, "o canhoto de cada pessoa está na MESMA linha do nome dela na relação");
-  b.ok(faixaCerta, "a faixa escrita no canhoto é a da folha");
+  b.ok(faixaCerta, "o canhoto não tem mais a faixa alfabética (fica no cabeçalho e na capa)");
   b.ok(semNumero, "o canhoto NÃO traz o número — fica só na relação da portaria (pedido de 01/10/2026)");
   b.ok(cortesOk, "linha de corte ENTRE as pessoas: uma acima de cada canhoto e uma abaixo do último");
   b.ok(umaVez && Object.keys(vistos).length === 60, "cada pessoa tem exatamente um canhoto: " + Object.keys(vistos).length);
