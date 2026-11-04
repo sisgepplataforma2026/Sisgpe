@@ -261,7 +261,7 @@ emissão, que a preserva junto do carimbo.
 
 ### 127. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
 
-> **04/11/2026 — nova versão aprovada, publicada em HML (não testado na folha):**
+> **04/11/2026 — nova versão aprovada, publicada em HML e em PRODUÇÃO (versão 754; volta = 753). Não testado na folha:**
 > capa por faixa (arte na largura toda, MESA, LETRAS grandes, primeiro/último
 > nome, "Canhotos entregues ___ de N"); lista da portaria em UMA coluna (nome e,
 > embaixo, a escola); canhoto na largura toda, só com **nome e escola** (a faixa
