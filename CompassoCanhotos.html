@@ -336,7 +336,10 @@
        fonte do nome e da escola"): .36→.40 e .30→.35. O ajustar() encolhe
        sozinho quando o texto não cabe na caixa. */
     nome:  {l:60.2, t:3.7,  w:38.6, h:15.9, k:.40},
-    escola:{l:69.5, t:24.3, w:29.2, h:14.0, k:.35},
+    /* 04/11/2026, "o nome da escola no canhoto está pequeno": a caixa cobre
+       o rótulo comprido da arte ("Escola/Instituição:") e escreve um curto
+       ("Escola:") — a escola ganha quase o dobro de largura. */
+    escola:{l:52.6, t:24.3, w:45.9, h:14.0, k:.40},
     /* A caixa do número saiu do canhoto em 01/10/2026 ("o número não
        deveria estar no canhoto"): a linha inteira é da faixa. */
     faixa: {l:52.4, t:44.9, w:46.2, h:15.0, k:.38},
@@ -367,6 +370,11 @@
     return '<div class="cv faixa" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
       '%;font-size:'+(alt*c.k).toFixed(2)+'pt"><span class="rot">Faixa alfabética:</span><b>'+esc(texto)+'</b></div>';
   }
+  function campoEscola(texto, alt){
+    var c=CAMPOS.escola;
+    return '<div class="cv escola-cx" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
+      '%;font-size:'+(alt*c.k*.85).toFixed(2)+'pt"><span class="rot">Escola:</span><span class="cv-in fit escola" style="font-size:'+(alt*c.k).toFixed(2)+'pt">'+esc(texto)+'</span></div>';
+  }
   function folha(f, pessoas, idx, total, G){
     var prim=idx===0, topoTab=prim?G.topoPrim:G.topoDem, cabTop=prim?G.cabPrim:G.cabDem;
     var nLinhas=prim?G.nPrim:G.nDem, altC=G.altC, largC=G.largC;
@@ -379,7 +387,7 @@
       var topo=topoTab+ALT_TH+i*G.altLinha; n++;
       canhotos+='<span class="tes" style="top:'+(topo+G.altLinha/2-2.6).toFixed(2)+'mm">✂</span>'+
         '<div class="canh-arte cv-c" style="top:'+(topo+(G.altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
-          campo('nome',p.nome,altC)+campo('escola',p.escola,altC)+
+          campo('nome',p.nome,altC)+campoEscola(p.escola,altC)+
           campoFaixa(f.rotulo.replace('–',' - '),altC)+campo('urna','e concorra aos prêmios da Festa dos Educadores',altC)+
         '</div>';
     }
@@ -449,6 +457,8 @@
     '.cv-c{position:absolute;left:'+G.canhL+'mm;background-size:100% 100%;border-radius:1mm}'+
     '.cv{position:absolute;display:flex;align-items:center;white-space:nowrap;overflow:hidden;line-height:1;color:#0b1446}'+
     '.cv.nome{font-weight:700;text-transform:uppercase}.cv.escola{font-weight:500}'+
+    '.cv.escola-cx{background:#fff;border-radius:.6mm;gap:1.2mm;padding:0 .8mm}.cv.escola-cx .rot{font-weight:600;color:#1f4fd0;flex:none}'+
+    '.cv-in{display:flex;align-items:center;flex:1;min-width:0;height:100%;white-space:nowrap;overflow:hidden;font-weight:600}'+
     '.cv.faixa{font-weight:700;gap:1.4mm}.cv.faixa .rot{font-weight:600;color:#1f4fd0}.cv.urna{font-weight:500;color:#1a1a1a}'+
     '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
     '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
