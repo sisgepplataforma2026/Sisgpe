@@ -315,25 +315,23 @@
   function geometria(o, pf){
     var G = o==='retrato'
       ? { o:'retrato', W:210, H:297, FIM:289, bnEsc:1, bnLeft:0, cabPrim:73, topoPrim:83, cabDem:14, topoDem:24,
-          listaW:78, colN:12, colEs:27, corteX:85.5, canhL:90, canhWmax:116, fNm:10.5, fEs:10, fN:12 }
+          listaW:70, colN:12, corteX:77.5, canhL:82, fNm:10.5, fEs:9, fN:12 }
       : { o:'paisagem', W:297, H:210, FIM:202, bnEsc:0.8, bnLeft:(297-210*0.8)/2, cabPrim:59, topoPrim:69, cabDem:14, topoDem:24,
-          listaW:122, colN:15, colEs:50, corteX:129.5, canhL:134, canhWmax:158, fNm:13.5, fEs:13, fN:14 };
+          listaW:92, colN:14, corteX:99.5, canhL:104, fNm:13, fEs:11, fN:14 };
     /* CAPA POR FAIXA — 04/11/2026 ("A capa — LETRA DE A - C"): o título grande
        vai na capa de cada faixa; TODAS as folhas da lista levam o cabeçalho
        fino e o mesmo número de pessoas. */
     G.altLinha=(G.FIM-G.topoDem-ALT_TH)/pf;
     G.nPrim=pf; G.nDem=pf;
-    G.altC=Math.min(G.altLinha-2.4, G.canhWmax/PROP);
-    G.largC=G.altC*PROP;
-    /* SEM VAZIO À DIREITA — 04/11/2026 (o usuário, com 5 por folha: o
-       canhoto pequeno deixava um vazio). O canhoto não estica (a arte
-       deformaria): ele encosta na margem direita e a LISTA cresce para
-       ocupar o que sobrou, com a escola mais larga. */
-    var sobra=G.canhWmax-G.largC;
-    if(sobra>1){
-      G.canhL+=sobra; G.corteX+=sobra; G.listaW+=sobra;
-      G.colEs=Math.round(G.colEs+sobra*0.45);
-    }
+    /* LISTA EM UMA COLUNA SÓ — 04/11/2026 ("ao invés de duas colunas?"):
+       nome e, embaixo, a escola. A lista ficou estreita e o canhoto ocupa
+       TODA a largura que sobrou até a margem direita. A arte não estica: ela
+       fica na proporção, à esquerda (.cv-art), sobre a mesma arte esticada,
+       cujo lado direito é só o fundo azul — ele se estende atrás das caixas. */
+    G.canhWmax=G.W-3-G.canhL;
+    G.altC=G.altLinha-2.4;
+    G.artW=Math.min(G.altC*PROP, G.canhWmax);
+    G.largC=G.canhWmax;
     return G;
   }
   /* 1ª folha com nPrim pessoas, as seguintes com nDem. */
@@ -349,8 +347,8 @@
      k = tamanho da letra pela altura do canhoto; o ajustar() encolhe quando
      não cabe. */
   var CAMPOS={
-    nome:  {l:40.0, t:4.0,  w:58.6, h:36.0, k:.60},
-    escola:{l:40.0, t:43.5, w:58.6, h:31.0, k:.50},
+    nome:  {l:40.0, t:4.0,  w:58.6, h:36.0, k:.68},
+    escola:{l:40.0, t:43.5, w:58.6, h:31.0, k:.54},
     faixa: {l:40.0, t:78.0, w:58.6, h:18.5, k:.30},
     urna:  {l:1.0,  t:80.5, w:37.0, h:16.0, k:.22}
   };
@@ -366,6 +364,17 @@
          '<span class="tes-h" style="top:'+(y-2.6).toFixed(2)+'mm">✂</span>';
     }
     return h;
+  }
+  /* As % de CAMPOS são da ARTE (artW). Com o canhoto mais largo que a arte,
+     as caixas começam no mesmo ponto da arte e esticam até a direita. */
+  var CAMPOS_BASE=JSON.parse(JSON.stringify(CAMPOS));
+  function camposPara(G){
+    var f=G.artW/G.largC;
+    Object.keys(CAMPOS_BASE).forEach(function(k){
+      var b=CAMPOS_BASE[k], c=CAMPOS[k];
+      c.l=+(b.l*f).toFixed(2);
+      c.w=k==='urna' ? +(b.w*f).toFixed(2) : +(98.6-b.l*f).toFixed(2);
+    });
   }
   function caixa(nome, rot, texto, alt){
     var c=CAMPOS[nome];
@@ -386,16 +395,17 @@
   }
   function folha(f, pessoas, idx, total, G){
     var prim=false, topoTab=G.topoDem, cabTop=G.cabDem;   // o título grande está na capa da faixa
-    var nLinhas=prim?G.nPrim:G.nDem, altC=G.altC, largC=G.largC;
+    var nLinhas=prim?G.nPrim:G.nDem, altC=G.altC, largC=G.largC; camposPara(G);
     var linhas='', canhotos='', n=0;
     for(var i=0;i<nLinhas;i++){
       var p=pessoas[i];
       var tr='<tr style="height:'+G.altLinha.toFixed(2)+'mm"';
-      if(!p){ linhas+=tr+' class="vz"><td></td><td></td><td></td></tr>'; continue; }
-      linhas+=tr+'><td class="n">'+esc(p.numero)+'</td><td class="nm">'+esc(p.nome)+'</td><td class="es">'+esc(p.escola)+'</td></tr>';
+      if(!p){ linhas+=tr+' class="vz"><td></td><td></td></tr>'; continue; }
+      linhas+=tr+'><td class="n">'+esc(p.numero)+'</td><td class="nm">'+esc(p.nome)+'<span class="es">'+esc(p.escola)+'</span></td></tr>';
       var topo=topoTab+ALT_TH+i*G.altLinha; n++;
       canhotos+='<span class="tes" style="top:'+(topo+G.altLinha/2-2.6).toFixed(2)+'mm">✂</span>'+
         '<div class="canh-arte cv-c" style="top:'+(topo+(G.altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
+          (G.artW<largC-.5 ? '<div class="canh-arte cv-art"></div>' : '')+
           caixa('nome','Nome:',p.nome,altC)+caixa('escola','Escola:',p.escola,altC)+
           campoFaixa(f.rotulo.replace('–',' - '),altC)+campoUrna(altC)+
         '</div>';
@@ -410,10 +420,10 @@
       : '<div class="cont"><span>CONTROLE E CANHOTOS DO SORTEIO · SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></span>'+
           '<span>folha '+(idx+1)+' de '+total+'</span></div>';
     return '<section class="folha">'+topoPag+
-      '<div class="cab esq" style="top:'+cabTop+'mm"><b>LISTA DE CONTROLE</b> (permanece na portaria)</div>'+
+      '<div class="cab esq" style="top:'+cabTop+'mm"><b>LISTA DE CONTROLE</b> '+(G.o==='retrato'?'(fica na portaria)':'(permanece na portaria)')+'</div>'+
       '<div class="cab dir" style="top:'+cabTop+'mm"><b>CANHOTOS</b> (destacar e entregar ao participante)</div>'+
-      '<table style="top:'+topoTab+'mm"><colgroup><col style="width:'+G.colN+'mm"><col><col style="width:'+G.colEs+'mm"></colgroup>'+
-        '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Nome do participante</th><th>Escola</th></tr>'+
+      '<table style="top:'+topoTab+'mm"><colgroup><col style="width:'+G.colN+'mm"><col></colgroup>'+
+        '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Participante e escola</th></tr>'+
         linhas+
       '</table>'+
       /* A faixa amarela do lado dos canhotos, na altura do cabeçalho da
@@ -481,7 +491,7 @@
     'td{border:.45mm solid #1c3fae;padding:0 1.8mm;vertical-align:middle;overflow:hidden}'+
     'td.n{text-align:center;font-weight:700;font-size:'+G.fN+'pt;padding:0}'+
     'td.nm{font-weight:700;font-size:'+G.fNm+'pt;line-height:1.12;text-transform:uppercase}'+
-    'td.es{font-weight:600;font-size:'+G.fEs+'pt;line-height:1.15}'+
+    'td.nm .es{display:block;margin-top:1.2mm;font-weight:600;font-size:'+G.fEs+'pt;line-height:1.15;text-transform:none;color:#1f3a8a}'+
     '.th-dir{position:absolute;left:'+G.canhL+'mm;right:3mm;background:#ffd51c;border:.45mm solid #1c3fae;display:flex;align-items:center;'+
       'justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10pt;color:#0b1446;white-space:nowrap;overflow:hidden}'+
     'tr.vz td{background:repeating-linear-gradient(135deg,#fff 0 2mm,#f2f4fa 2mm 4mm)}'+
@@ -489,7 +499,8 @@
     '.ch{position:absolute;left:'+G.corteX+'mm;right:3mm;border-top:.8mm dashed #0b1446}'+
     '.tes-h{position:absolute;right:2mm;width:6mm;text-align:center;font-size:12pt;line-height:5.2mm;background:#fff;color:#0b1446;transform:rotate(180deg)}'+
     '.tes{position:absolute;left:'+(G.corteX-2.9).toFixed(1)+'mm;width:6.8mm;text-align:center;font-size:15pt;line-height:5.2mm;background:#fff;color:#0b1446}'+
-    '.cv-c{position:absolute;left:'+G.canhL+'mm;background-size:100% 100%;border-radius:1mm}'+
+    '.cv-c{position:absolute;left:'+G.canhL+'mm;background-size:100% 100%;border-radius:1mm;overflow:hidden}'+
+    '.cv-art{position:absolute;left:0;top:0;bottom:0;width:'+G.artW.toFixed(2)+'mm;background-size:100% 100%}'+
     '.cv{position:absolute;display:flex;align-items:center;white-space:nowrap;overflow:hidden;line-height:1;color:#0b1446}'+
     '.cv.cx{background:#fff;border-radius:1mm;gap:1.2mm;padding:0 1.2mm;box-shadow:0 0 0 .25mm #c9d6ff inset}.cv.cx .rot{font-weight:600;color:#1f4fd0;flex:none}'+
     '.cv-in{display:flex;align-items:center;flex:1;min-width:0;height:100%;white-space:nowrap;overflow:hidden}'+

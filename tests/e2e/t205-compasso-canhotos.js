@@ -199,7 +199,7 @@ if (!dom.jsdomDisponivel()) {
   folhas.forEach(f => {
     const rot = (f.match(/LETRAS <b>([^<]+)<\/b>/) || [])[1];
     if (!rot) cabecalho = false;
-    const nomesTab = [...f.matchAll(/<td class="nm">([^<]*)<\/td>/g)].map(m => m[1]);
+    const nomesTab = [...f.matchAll(/<td class="nm">([^<]*)</g)].map(m => m[1]);
     const nomesCan = [...f.matchAll(/class="cv-in fit nome"[^>]*>([^<]*)</g)].map(m => m[1]);
     const faixasCan = [...f.matchAll(/class="cv faixa cx"[^>]*><span class="rot">Faixa alfabética:<\/span><b>([^<]*)<\/b>/g)].map(m => m[1]);
     const nCanhotos = (f.match(/class="canh-arte cv-c"/g) || []).length;
