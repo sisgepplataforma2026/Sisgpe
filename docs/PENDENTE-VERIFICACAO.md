@@ -261,6 +261,14 @@ emissão, que a preserva junto do carimbo.
 
 ### 127. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
 
+> **04/11/2026 — nova versão aprovada, publicada em HML (não testado na folha):**
+> capa por faixa (arte na largura toda, MESA, LETRAS grandes, primeiro/último
+> nome, "Canhotos entregues ___ de N"); lista da portaria em UMA coluna (nome e,
+> embaixo, a escola); canhoto na largura toda, só com **nome e escola** (a faixa
+> alfabética saiu do canhoto — fica no cabeçalho e na capa). **Roteiro:** em HML,
+> gerar uma faixa em paisagem com 5 por folha, imprimir a capa e uma folha, cortar
+> um canhoto e conferir: cores do fundo escuro, nome inteiro legível, linha de corte.
+
 **NO AR em 01/10/2026:** homologação versão **190** (run #178) e produção versão **748**
 (run #97; rollback = versão 747). Falta abrir no sistema e imprimir a folha de prova.
 
