@@ -317,7 +317,7 @@
       ? { o:'retrato', W:210, H:297, FIM:289, bnEsc:1, bnLeft:0, cabPrim:73, topoPrim:83, cabDem:14, topoDem:24,
           listaW:78, colN:12, colEs:27, corteX:85.5, canhL:90, canhWmax:116, fNm:10.5, fEs:10, fN:12 }
       : { o:'paisagem', W:297, H:210, FIM:202, bnEsc:0.8, bnLeft:(297-210*0.8)/2, cabPrim:59, topoPrim:69, cabDem:14, topoDem:24,
-          listaW:122, colN:15, colEs:44, corteX:129.5, canhL:134, canhWmax:158, fNm:13.5, fEs:12.5, fN:14 };
+          listaW:122, colN:15, colEs:50, corteX:129.5, canhL:134, canhWmax:158, fNm:13.5, fEs:13, fN:14 };
     G.altLinha=(G.FIM-G.topoPrim-ALT_TH)/pf;
     G.nPrim=pf;
     G.nDem=Math.max(pf, Math.floor((G.FIM-G.topoDem-ALT_TH)/G.altLinha+1e-6));
@@ -332,8 +332,11 @@
     return pags.length?pags:[[]];
   }
   var CAMPOS={
-    nome:  {l:60.2, t:3.7,  w:38.6, h:15.9, k:.36},
-    escola:{l:69.5, t:24.3, w:29.2, h:14.0, k:.30},
+    /* k = tamanho da letra pela altura do canhoto. 04/11/2026 ("aumentar a
+       fonte do nome e da escola"): .36→.40 e .30→.35. O ajustar() encolhe
+       sozinho quando o texto não cabe na caixa. */
+    nome:  {l:60.2, t:3.7,  w:38.6, h:15.9, k:.40},
+    escola:{l:69.5, t:24.3, w:29.2, h:14.0, k:.35},
     /* A caixa do número saiu do canhoto em 01/10/2026 ("o número não
        deveria estar no canhoto"): a linha inteira é da faixa. */
     faixa: {l:52.4, t:44.9, w:46.2, h:15.0, k:.38},
@@ -383,7 +386,8 @@
     /* A faixa do título (banner) só na 1ª folha da faixa de letras; nas
        seguintes, um cabeçalho fino que ainda diz as letras e a folha. */
     var topoPag = prim
-      ? '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
+      ? (G.o==='paisagem' ? '<div class="bn-fundo"></div>' : '')+
+        '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
           '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
           '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'
       : '<div class="cont"><span>CONTROLE E CANHOTOS DO SORTEIO · SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></span>'+
@@ -395,6 +399,9 @@
         '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Nome do participante</th><th>Escola</th></tr>'+
         linhas+
       '</table>'+
+      /* A faixa amarela do lado dos canhotos, na altura do cabeçalho da
+         tabela (04/11/2026: o espaço vazio acima do 1º canhoto). */
+      '<div class="th-dir" style="top:'+topoTab+'mm;height:'+ALT_TH+'mm">✂ Destaque pela linha pontilhada e entregue ao participante</div>'+
       '<div class="corte" style="top:'+(cabTop-1)+'mm"></div>'+cortes(n, G, topoTab)+canhotos+
       '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span>'+
         '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
@@ -408,6 +415,13 @@
     '.folha{width:'+G.W+'mm;height:'+G.H+'mm;margin:10mm auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.2)}'+
     '.bn-wrap{position:absolute;left:'+G.bnLeft.toFixed(2)+'mm;top:0;width:210mm;height:70mm;transform:scale('+G.bnEsc+');transform-origin:top left}'+
     '.bn{position:absolute;left:0;top:0;width:210mm;height:70mm;background-size:100% 100%}'+
+    /* "O cabeçalho na folha inteira" (04/11/2026): na paisagem a arte fica
+       nítida no centro e os lados são o próprio fundo dela, ampliado e
+       desfocado — de ponta a ponta, sem esticar o logo nem as letras. */
+    '.bn-fundo{position:absolute;left:0;top:0;width:'+G.W+'mm;height:'+(70*G.bnEsc).toFixed(2)+'mm;background-image:none!important;'+
+      'background:linear-gradient(90deg,#0b1a78 0%,#1b2a9e 22%,#2a1a8c 50%,#3b1384 78%,#2a0d6b 100%)!important}'+
+    (G.o==='paisagem' ? '.bn-wrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);'+
+      'mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%)}' : '')+
     '.bn-tit{position:absolute;left:32.8mm;top:39.9mm;width:144.4mm;height:8.4mm;display:flex;align-items:center;justify-content:center;'+
       'font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:19pt;color:#0b1446;letter-spacing:-.01em;line-height:1}'+
     '.bn-sub{position:absolute;left:47.8mm;top:51.1mm;width:114.4mm;height:5.2mm;display:flex;align-items:center;justify-content:center;gap:1.6mm;'+
@@ -424,7 +438,9 @@
     'td{border:.45mm solid #1c3fae;padding:0 1.8mm;vertical-align:middle;overflow:hidden}'+
     'td.n{text-align:center;font-weight:700;font-size:'+G.fN+'pt;padding:0}'+
     'td.nm{font-weight:700;font-size:'+G.fNm+'pt;line-height:1.12;text-transform:uppercase}'+
-    'td.es{font-weight:500;font-size:'+G.fEs+'pt;line-height:1.15}'+
+    'td.es{font-weight:600;font-size:'+G.fEs+'pt;line-height:1.15}'+
+    '.th-dir{position:absolute;left:'+G.canhL+'mm;right:3mm;background:#ffd51c;border:.45mm solid #1c3fae;display:flex;align-items:center;'+
+      'justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10pt;color:#0b1446}'+
     'tr.vz td{background:repeating-linear-gradient(135deg,#fff 0 2mm,#f2f4fa 2mm 4mm)}'+
     '.corte{position:absolute;left:'+G.corteX+'mm;bottom:'+(G.H-G.FIM-1)+'mm;border-left:1mm dashed #0b1446}'+
     '.ch{position:absolute;left:'+G.corteX+'mm;right:3mm;border-top:.8mm dashed #0b1446}'+
