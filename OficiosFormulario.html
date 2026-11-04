@@ -798,6 +798,32 @@
                 <span style="color:#64748b;">Tipo</span><strong id="histReenvTipo">—</strong>
               </div>
 
+              <!-- MOTIVO DO REENVIO — 04/11/2026 (desenho aprovado). "Só
+                   reenviar" é o de sempre; "Alguns" deixa marcar quem (só as
+                   fichas dessas pessoas vão) e a observação vai no e-mail. -->
+              <div id="histReenvMotivoBox">
+                <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px;">Motivo do reenvio</div>
+                <div id="histReenvMotivos" style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;">
+                  <label><input type="radio" name="histReenvMotivo" value="" checked onchange="Historico.motivoMudou()"> Só reenviar, sem observação</label>
+                  <label><input type="radio" name="histReenvMotivo" value="ALGUNS" onchange="Historico.motivoMudou()"> <span id="histReenvRotAlguns">Alguns funcionários não estão sendo descontados</span></label>
+                  <label><input type="radio" name="histReenvMotivo" value="TODOS" onchange="Historico.motivoMudou()"> <span id="histReenvRotTodos">Nenhum funcionário está sendo descontado</span></label>
+                  <label><input type="radio" name="histReenvMotivo" value="OUTRO" onchange="Historico.motivoMudou()"> Outro motivo</label>
+                </div>
+                <div id="histReenvPessoasBox" style="display:none;margin-top:8px;">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#334155;">Quem
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="Historico.pessoasTodas(true)">Marcar todos</button>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="Historico.pessoasTodas(false)">Nenhum</button>
+                  </div>
+                  <div id="histReenvPessoas" style="border:1.5px solid #e2e8f0;border-radius:12px;padding:6px 8px;max-height:170px;overflow-y:auto;font-size:12.5px;"></div>
+                  <div id="histReenvPessoasNota" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
+                </div>
+                <div id="histReenvObsBox" style="display:none;margin-top:8px;">
+                  <div style="font-size:12px;font-weight:700;color:#334155;">Observação <span style="font-weight:400;color:#64748b;">(vai no e-mail — pode editar)</span></div>
+                  <textarea id="histReenvObs" rows="5" oninput="Historico.obsEditada()"
+                            style="width:100%;margin-top:4px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:10px;font:inherit;font-size:12.5px;"></textarea>
+                </div>
+              </div>
+
               <!-- SELETOR DE DESTINATARIOS — 03/09/2026.
                    Antes havia aqui um campo readonly rotulado "Vai para (do
                    cadastro)". O rotulo mentia: ele nunca leu o cadastro da

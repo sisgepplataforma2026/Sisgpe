@@ -348,6 +348,14 @@ a mensalidade sindical"*, no mesmo e-mail da escola — o e-mail fica em
 Contribuições com o aviso "também pede ofício" e o botão para preparar. "Ver ofício"
 (CaixaOficioEmail.gs) prepara; a EMISSÃO continua no módulo de Ofícios.
 
+## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
+
+Desenho aprovado. No reenvio: motivo (só reenviar = como antes / alguns não
+descontados / nenhum / outro), quem (vão só as fichas dos marcados; lote vai
+inteiro), observação editável no e-mail com a cláusula pelo MTE. O PDF do
+ofício é o mesmo e o número também — nada é reemitido. OficiosReenvioMotivo.gs;
+o reenvio em si continua em reenviarOficio (EmailOficios.gs).
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento

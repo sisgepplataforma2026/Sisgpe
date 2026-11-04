@@ -360,7 +360,15 @@ function ofDest_sugerir_(escola, jaListados) {
    ══════════════════════════════════════════════════════════════════════════ */
 function preverReenvioOficio(dados, tokenSessao) {
   exigirModulo_(tokenSessao, "documentos", false);
-  return ofDest_preverReenvio_(dados || {});
+  var r = ofDest_preverReenvio_(dados || {});
+  /* O motivo do reenvio e quem (04/11/2026, OficiosReenvioMotivo.gs). Nunca
+     derruba a prévia: sem isto, o reenvio continua o de sempre. */
+  if (r && r.ok && typeof ofrPreviaMotivo_ === "function") {
+    try {
+      r.motivo = ofrPreviaMotivo_(r.numero, r.tipo, ofDest_lerRegistroOficio_(r.numero), (r.anexos && r.anexos.itens) || [], tokenSessao);
+    } catch (eMot) { Logger.log("Reenvio — motivo: " + (eMot && eMot.message || eMot)); }
+  }
+  return r;
 }
 
 function ofDest_preverReenvio_(dados) {
@@ -487,6 +495,7 @@ function ofDest_mapaRegistroOficios_() {
     var cTipo  = hm["Tipo"];
     var cFicha = hm["Link Ficha"];
     var cData  = hm["Data envio ofício"] || hm["Data envio oficio"];
+    var cColab = hm["Colaborador(es)"];
     if (!cNum) {
       saida.mensagem = "Coluna do número do ofício não encontrada.";
       ofDest_cacheRegistro_ = saida;
@@ -512,7 +521,8 @@ function ofDest_mapaRegistroOficios_() {
         escola: cEsc  ? String(dados[i][cEsc  - 1] || "").trim() : "",
         tipo:   cTipo ? String(dados[i][cTipo - 1] || "").trim() : "",
         linkFicha: cFicha ? String(dados[i][cFicha - 1] || "").trim() : "",
-        dataEnvio: quando
+        dataEnvio: quando,
+        colaboradores: cColab ? String(dados[i][cColab - 1] || "") : ""
       };
     }
     saida.ok = true;

@@ -1420,9 +1420,21 @@ function reenviarOficio(registro, tokenSessao) {
     var anexos  = reuniao.blobs;
     var pacote  = { reconstruido: reuniao.reconstruido };
 
+    /* MOTIVO DO REENVIO — 04/11/2026 (OficiosReenvioMotivo.gs). Sem motivo,
+       nada muda: o texto e os anexos são os de sempre. */
+    var mot = { motivo: "", observacao: "", avisos: [], pessoas: [] };
+    if (typeof ofrAplicarMotivo_ === "function") {
+      var pessoasDoOficio = [];
+      try { pessoasDoOficio = ofrPessoasDoRegistro_((ofDest_lerRegistroOficio_(numero) || {}).colaboradores); } catch (ePes) {}
+      mot = ofrAplicarMotivo_(registro, anexos, pessoasDoOficio);
+      if (mot.erro) return { erro: true, mensagem: mot.erro };
+      anexos = mot.anexos;
+    }
+
     var htmlBody = montarEmailHTML_(
       "Reenvio — " + tipo, numero, obterLabelTipoOficio_(tipo), 0,
-      "Reenviamos, em anexo, o ofício Nº " + numero + " referente a " + escola + ", conforme solicitado."
+      "Reenviamos, em anexo, o ofício Nº " + numero + " referente a " + escola + ", conforme solicitado." +
+      (mot.observacao ? "\n\n" + ofrEscaparHtml_(mot.observacao) : "")
     );
 
     var opcoes = enviarEmailOficio_(
@@ -1447,13 +1459,22 @@ function reenviarOficio(registro, tokenSessao) {
       numero:  numero + (emailsExtras
                  ? (somenteExtras ? " (REENVIO - ENDERECO SUBSTITUIDO)"
                                   : " (REENVIO - ENDERECO ACRESCENTADO)")
-                 : " (REENVIO)"),
+                 : " (REENVIO)") +
+               (mot.motivo ? " [MOTIVO: " + (mot.motivo === "ALGUNS" ? "ALGUNS SEM DESCONTO — " + mot.pessoas.join(", ")
+                 : mot.motivo === "TODOS" ? "TODOS SEM DESCONTO" : "OUTRO") + "]" : ""),
       tipo: tipo,
       escola: escola,
       cnpj: "",
       email: opcoes.to,
       codigo: ""
     });
+
+    /* O robô aprende com o texto: o que ele propôs × o que foi. */
+    if (mot.motivo && typeof roboMemoriaRegistrar_ === "function") {
+      roboMemoriaRegistrar_({ tarefa: "reenvio-oficio-texto", origem: "OFICIOS", chave: numero, assunto: tipo + " · " + escola,
+        sugerido: String(registro.observacaoSugerida || "").substring(0, 2000), decidido: mot.observacao.substring(0, 2000),
+        quem: emailUsuario, tipoEmail: mot.motivo });
+    }
 
     return {
       erro: false,
@@ -1476,7 +1497,8 @@ function reenviarOficio(registro, tokenSessao) {
         /* Arquivo recusado não pode sumir numa mensagem de sucesso: a pessoa
            anexou pensando que ia, e o ofício saiu sem ele. */
         (avisosAnexo.length ? " ATENÇÃO, anexo(s) não incluído(s): " +
-                              avisosAnexo.join(" ") : "")
+                              avisosAnexo.join(" ") : "") +
+        (mot.motivo ? " Com a observação do motivo" + (mot.avisos.length ? " (" + mot.avisos.join("; ") + ")" : "") + "." : "")
     };
 
   } catch(e) {

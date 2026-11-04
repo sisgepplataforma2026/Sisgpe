@@ -3607,6 +3607,12 @@ window.mostrarAbaOficio = function(aba) {
       if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
       if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
       if(g("histReenvAviso"))    g("histReenvAviso").style.display="none";
+      /* Motivo (04/11/2026): começa em "Só reenviar" — igual a antes. */
+      Array.prototype.forEach.call(document.querySelectorAll("input[name='histReenvMotivo']"),function(x){x.checked=(x.value==="");});
+      if(g("histReenvPessoasBox")) g("histReenvPessoasBox").style.display="none";
+      if(g("histReenvObsBox"))     g("histReenvObsBox").style.display="none";
+      if(g("histReenvObs"))        g("histReenvObs").value="";
+      if(g("histReenvPessoas"))    g("histReenvPessoas").innerHTML="";
       var ov=g("histReenvOverlay"); if(ov) ov.classList.add("aberto");
 
       /* A previa MEDE: os enderecos vem das duas origens (o oficio e o
@@ -3692,6 +3698,67 @@ window.mostrarAbaOficio = function(aba) {
 
     _reenvioCtx: null,
 
+    /* ── MOTIVO DO REENVIO (04/11/2026) ── */
+    _motivoAtual: function(){
+      var m=document.querySelector("input[name='histReenvMotivo']:checked"); return m?m.value:"";
+    },
+    _pessoasMarcadas: function(){
+      return Array.prototype.filter.call(document.querySelectorAll(".hist-reenv-pessoa"),function(c){return c.checked;})
+        .map(function(c){return c.getAttribute("data-nome");});
+    },
+    _juntar: function(l){ return l.length<=1?(l[0]||""):l.slice(0,-1).join(", ")+" e "+l[l.length-1]; },
+    _obsProposta: function(){
+      var ctx=Historico._reenvioCtx, mo=(ctx&&ctx.motivoPrevia)||{}, mod=mo.modelos||{}, m=Historico._motivoAtual();
+      var t=mod[m]||"";
+      return t.replace("{PESSOAS}", Historico._juntar(Historico._pessoasMarcadas()) || "(marque quem)");
+    },
+    motivoMudou: function(){
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
+      var m=Historico._motivoAtual();
+      if(g("histReenvPessoasBox")) g("histReenvPessoasBox").style.display=(m==="ALGUNS")?"":"none";
+      if(g("histReenvObsBox"))     g("histReenvObsBox").style.display=m?"":"none";
+      /* O texto proposto acompanha a escolha até a pessoa editar. */
+      if(!ctx.obsEditada && g("histReenvObs")) g("histReenvObs").value=Historico._obsProposta();
+      /* E a lista de anexos diz quais fichas ficam de fora (as de quem foi desmarcado). */
+      var mo=ctx.motivoPrevia||{}, marc=Historico._pessoasMarcadas();
+      var fora=(m==="ALGUNS"&&!mo.fichasEmLote)?(mo.pessoas||[]).filter(function(p){return p.ficha&&marc.indexOf(p.nome)===-1;}).map(function(p){return p.ficha;}):[];
+      var nota=g("histReenvAnexosFora");
+      if(!nota&&g("histReenvAnexos")){ nota=document.createElement("div"); nota.id="histReenvAnexosFora"; nota.style.cssText="font-size:11.5px;color:#b45309;margin-top:6px;"; g("histReenvAnexos").parentNode.insertBefore(nota,g("histReenvAnexos").nextSibling); }
+      if(nota) nota.innerHTML=fora.length?"⊘ Não vão neste reenvio (desmarcados): "+fora.map(escapeHtml).join(", "):"";
+    },
+    obsEditada: function(){ if(Historico._reenvioCtx) Historico._reenvioCtx.obsEditada=true; },
+    pessoaMudou: function(){ Historico.motivoMudou(); },
+    pessoasTodas: function(v){
+      Array.prototype.forEach.call(document.querySelectorAll(".hist-reenv-pessoa"),function(c){c.checked=!!v;});
+      Historico.motivoMudou();
+    },
+    _motivoMontar: function(mo){
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var g=function(id){return document.getElementById(id);};
+      ctx.motivoPrevia=mo||null;
+      var tipo=String(ctx.tipo||"").toLowerCase();
+      var contrario=/desfilia|oposi/.test(tipo);
+      if(g("histReenvRotAlguns")) g("histReenvRotAlguns").textContent=contrario?"Alguns ainda estão sendo descontados":"Alguns funcionários não estão sendo descontados";
+      if(g("histReenvRotTodos"))  g("histReenvRotTodos").textContent=contrario?"Todos ainda estão sendo descontados":"Nenhum funcionário está sendo descontado";
+      var box=g("histReenvPessoas"); if(!box) return;
+      var pes=(mo&&mo.pessoas)||[];
+      var marcarSug=pes.some(function(p){return p.sugerido;});
+      box.innerHTML=pes.length?pes.map(function(p,i){
+        var marcado=marcarSug?p.sugerido:true;
+        return '<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 2px;cursor:pointer;">'
+          +'<input type="checkbox" class="hist-reenv-pessoa" data-nome="'+escapeHtml(p.nome)+'"'+(marcado?' checked':'')+' onchange="Historico.pessoaMudou()" style="margin-top:3px;">'
+          +'<span><strong>'+(i+1)+'. '+escapeHtml(p.nome)+'</strong>'
+          +(p.ficha?'<br><span style="color:#0f8a5f;font-size:11px;">📎 '+escapeHtml(p.ficha)+'</span>':'')
+          +(p.sugerido?'<br><span style="color:#d97706;font-size:11px;">⚠ '+escapeHtml(mo.sugeridosOrigem||"")+'</span>':'')
+          +'</span></label>';
+      }).join(""):'<span style="color:#94a3b8;">Os nomes deste ofício não estão no Registro — escreva-os na observação.</span>';
+      if(g("histReenvPessoasNota")) g("histReenvPessoasNota").textContent=(mo&&mo.fichasEmLote)
+        ?"Este ofício foi emitido em lote: as fichas estão num PDF só e vão todas."
+        :(marcarSug?"Marcados pela Conferência mensal — confira.":"Vão só as fichas de quem estiver marcado.");
+      Historico.motivoMudou();
+    },
+
     /* Desenha a lista medida. Quem quicou nasce DESMARCADO, com as falhas a
        vista: some da marcacao, nao da tela. Sumir seria decidir pela pessoa. */
     _reenvioMontar: function(r) {
@@ -3721,6 +3788,10 @@ window.mostrarAbaOficio = function(aba) {
             +hist+'</span></label>';
         }).join("");
       }
+
+      /* ── motivo e quem (04/11/2026) — só na primeira prévia, para não
+         desfazer o que a pessoa marcou quando a prévia é refeita ── */
+      if(Historico._reenvioCtx && !Historico._reenvioCtx.motivoPrevia) Historico._motivoMontar(r.motivo||{modelos:{},pessoas:[]});
 
       /* ── anexos ── */
       var cx=g("histReenvAnexos");
@@ -4313,6 +4384,10 @@ window.mostrarAbaOficio = function(aba) {
 
       var escolhidos=Historico._reenvioEscolhidos();
       if(!escolhidos.length){ toast("Marque ao menos um endereço.","err"); return; }
+      var motivo=Historico._motivoAtual(), obs=g("histReenvObs")?g("histReenvObs").value.trim():"";
+      var pessoasSel=Historico._pessoasMarcadas();
+      if(motivo==="ALGUNS" && !pessoasSel.length && document.querySelector(".hist-reenv-pessoa")){ toast("Marque ao menos um associado.","err"); return; }
+      if(motivo && !obs){ toast("Escreva a observação do reenvio.","err"); return; }
 
       /* A ficha faltando NAO bloqueia — bloquear tiraria da pessoa uma decisao
          que e dela. Mas exige um segundo clique consciente, com o custo dito
@@ -4341,7 +4416,9 @@ window.mostrarAbaOficio = function(aba) {
         .reenviarOficio({
           numero:ctx.numero, url:ctx.url, escola:ctx.escola, tipo:ctx.tipo,
           destinatarios: escolhidos,
-          anexosNovos: ctx.novos||[]
+          anexosNovos: ctx.novos||[],
+          motivo: motivo, observacao: motivo?obs:"", pessoas: motivo==="ALGUNS"?pessoasSel:[],
+          observacaoSugerida: motivo?Historico._obsProposta():""
         }, SISGEP_TOKEN_SESSAO);
     },
 

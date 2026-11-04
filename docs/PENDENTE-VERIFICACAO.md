@@ -6779,3 +6779,16 @@ Pedido do usuário: "Publicar já" (sem teste no navegador em homologação). Co
 |---|---|
 | Marcela emite 1 ofício como sempre (Documentos › Ofícios) | sai igual a ontem; texto cita a Cláusula 38ª/40ª (numeração do MTE) |
 | Abrir Comunicação › Caixa de E-mails | abre, sem tela travada |
+
+## 🔴 Reenvio de ofício com motivo e escolha de associados — HML 04/11/2026
+
+Desenho aprovado ("Aprovo"). Prévia: docs/previa-reenvio-motivo.png. Emulador: t235 (31, inclusive a tela) e os testes antigos de reenvio (t123, t124, t133, t134, t144, t146, t148, t162) continuam verdes. **Não testado no navegador nem com e-mail de verdade.**
+
+| Roteiro em HML (Documentos › Ofícios › Histórico › 📧 Reenviar) | Esperado |
+|---|---|
+| Abrir o reenvio | começa em "Só reenviar" — mandar assim é igual a antes |
+| "Alguns funcionários não estão sendo descontados" | aparece a lista de quem está no ofício, com a ficha de cada um; texto proposto com os nomes e a Cláusula 38ª (MTE) |
+| Desmarcar alguém | sai do texto; "Não vão neste reenvio" mostra a ficha dele |
+| Ofício de desfiliação/oposição | o texto diz "continua sendo feito" |
+| Ofício emitido em lote | aviso: as fichas estão num PDF só e vão todas |
+| Reenviar | o e-mail chega com a observação; só as fichas marcadas; o log do sistema registra o motivo e quem |
