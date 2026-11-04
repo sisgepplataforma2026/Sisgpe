@@ -105,12 +105,12 @@
       <label class="cn-op"><input type="radio" name="canhOrient" value="retrato"> Retrato (em pé)</label>
     </div>
     <div class="cn-linha" style="margin-bottom:12px">
-      <span style="font-size:13.5px;font-weight:600">Pessoas na 1ª folha:</span>
+      <span style="font-size:13.5px;font-weight:600">Pessoas por folha:</span>
       <span id="canhPorFolhaOps"></span>
       <span style="font-size:12px;color:#6b7385" id="canhPorFolhaNota"></span>
     </div>
     <div class="cn-linha">
-      <button class="cn-bt sec" id="canhBtPrevia">👁 Prévia (1ª e 2ª folha)</button>
+      <button class="cn-bt sec" id="canhBtPrevia">👁 Prévia (capa e 1ª folha)</button>
       <button class="cn-bt pri" id="canhBtGerar">🖨 Gerar todas as folhas</button>
       <span class="cn-msg" id="canhMsg"></span>
     </div>
@@ -277,7 +277,7 @@
     }
     var maior=Math.max.apply(null, FAIXAS.map(function(f){ return f.pessoas.length; }).concat([1]));
     var G=geometria(orient(), porFolha()), folhas=0;
-    g('canhPorFolhaNota').textContent='· nas demais folhas, '+G.nDem+' (o título só vai na 1ª) · canhoto de ~'+
+    g('canhPorFolhaNota').textContent='· cada faixa abre com a sua capa · canhoto de ~'+
       (G.largC/10).toFixed(1).replace('.',',')+' × '+(G.altC/10).toFixed(1).replace('.',',')+' cm';
     g('canhFaixas').innerHTML=FAIXAS.map(function(f){
       var fl=paginar(f.pessoas, G).length; folhas+=fl;
@@ -318,9 +318,11 @@
           listaW:78, colN:12, colEs:27, corteX:85.5, canhL:90, canhWmax:116, fNm:10.5, fEs:10, fN:12 }
       : { o:'paisagem', W:297, H:210, FIM:202, bnEsc:0.8, bnLeft:(297-210*0.8)/2, cabPrim:59, topoPrim:69, cabDem:14, topoDem:24,
           listaW:122, colN:15, colEs:50, corteX:129.5, canhL:134, canhWmax:158, fNm:13.5, fEs:13, fN:14 };
-    G.altLinha=(G.FIM-G.topoPrim-ALT_TH)/pf;
-    G.nPrim=pf;
-    G.nDem=Math.max(pf, Math.floor((G.FIM-G.topoDem-ALT_TH)/G.altLinha+1e-6));
+    /* CAPA POR FAIXA — 04/11/2026 ("A capa — LETRA DE A - C"): o título grande
+       vai na capa de cada faixa; TODAS as folhas da lista levam o cabeçalho
+       fino e o mesmo número de pessoas. */
+    G.altLinha=(G.FIM-G.topoDem-ALT_TH)/pf;
+    G.nPrim=pf; G.nDem=pf;
     G.altC=Math.min(G.altLinha-2.4, G.canhWmax/PROP);
     G.largC=G.altC*PROP;
     /* SEM VAZIO À DIREITA — 04/11/2026 (o usuário, com 5 por folha: o
@@ -383,7 +385,7 @@
       '%;font-size:'+(alt*c.k).toFixed(2)+'pt">⬇ DEPOSITE ESTE CANHOTO NA URNA</div>';
   }
   function folha(f, pessoas, idx, total, G){
-    var prim=idx===0, topoTab=prim?G.topoPrim:G.topoDem, cabTop=prim?G.cabPrim:G.cabDem;
+    var prim=false, topoTab=G.topoDem, cabTop=G.cabDem;   // o título grande está na capa da faixa
     var nLinhas=prim?G.nPrim:G.nDem, altC=G.altC, largC=G.largC;
     var linhas='', canhotos='', n=0;
     for(var i=0;i<nLinhas;i++){
@@ -422,21 +424,19 @@
         '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
     '</section>';
   }
-  function capa(faixas, G){
-    var tot=0, fl=0;
-    var linhas=faixas.map(function(f, i){
-      var n=paginar(f.pessoas, G).length, ini=fl+2; fl+=n; tot+=f.pessoas.length;
-      return '<tr><td class="cm">Mesa '+(i+1)+'</td><td class="cl">'+esc(f.rotulo)+'</td><td class="cp">'+f.pessoas.length+'</td><td class="cf">'+n+' (folhas '+ini+' a '+(ini+n-1)+')</td></tr>';
-    }).join('');
+  function capa(f, idx, total, nFolhas, G){
     return '<section class="folha capa">'+
       (G.o==='paisagem' ? '<div class="bn-fundo"></div>' : '')+
       '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
         '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
-        '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — '+faixas.length+' MESAS</div></div>'+
-      '<div class="capa-cx" style="top:'+(70*G.bnEsc+8).toFixed(1)+'mm"><h2>Faixas de letras — uma por mesa</h2>'+
-        '<table class="capa-t"><tr><th>Mesa</th><th>Letras</th><th>Participantes</th><th>Folhas</th></tr>'+linhas+
-        '<tr class="tot"><td colspan="2">Total</td><td>'+tot+'</td><td>'+fl+' folhas + esta capa</td></tr></table></div>'+
-      '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span><span>Capa</span></div>'+
+        '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'+
+      '<div class="capa-cx" style="top:'+(70*G.bnEsc+10).toFixed(1)+'mm">'+
+        '<div class="capa-mesa">MESA '+(idx+1)+' DE '+total+'</div>'+
+        '<div class="capa-letras">'+(f.de===f.ate ? 'LETRA '+esc(f.de) : 'LETRAS DE '+esc(f.de)+' – '+esc(f.ate))+'</div>'+
+        '<div class="capa-info"><b>'+f.pessoas.length+'</b> participantes · <b>'+nFolhas+'</b> folha'+(nFolhas>1?'s':'')+' de canhotos</div>'+
+        '<div class="capa-nota">Esta capa vai em cima do monte da mesa. Confira o nome e a escola, destaque o canhoto e entregue ao participante.</div>'+
+      '</div>'+
+      '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span><span>Capa da mesa '+(idx+1)+' · letras <b>'+esc(f.rotulo)+'</b></span></div>'+
     '</section>';
   }
   function cssFolha(G){
@@ -485,12 +485,12 @@
     '.cv-in.nome{font-weight:700;text-transform:uppercase}.cv-in.escola{font-weight:600}'+
     '.cv.faixa{font-weight:700}.cv.faixa b{font-weight:800}'+
     '.cv.urna{justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;color:#fff;letter-spacing:.02em;text-shadow:0 .2mm .6mm rgba(0,0,0,.6)}'+
-    '.capa-cx{position:absolute;left:'+(G.o==='paisagem'?40:14)+'mm;right:'+(G.o==='paisagem'?40:14)+'mm}'+
-    '.capa-cx h2{margin:0 0 3mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:15pt;color:#0b1446;text-align:center}'+
-    '.capa-t{position:static;width:100%;border-collapse:collapse}.capa-t th{font-size:11pt;height:9mm}'+
-    '.capa-t td{border:.45mm solid #1c3fae;height:'+(G.o==='paisagem'?11:13)+'mm;text-align:center;font-size:13pt;font-weight:700}'+
-    '.capa-t td.cl{font-family:"Baloo 2",Arial Black,sans-serif;font-size:22pt;font-weight:800;color:#0b1446;letter-spacing:.04em}'+
-    '.capa-t td.cm{color:#1f4fd0}.capa-t td.cf{font-weight:500;font-size:11pt}.capa-t tr.tot td{background:#eef3ff;font-size:12pt}'+
+    '.capa-cx{position:absolute;left:14mm;right:14mm;bottom:16mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#0b1446}'+
+    '.capa-mesa{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:20pt;color:#1f4fd0;letter-spacing:.08em}'+
+    '.capa-letras{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:'+(G.o==='paisagem'?64:56)+'pt;line-height:1;margin:4mm 0;'+
+      'padding:4mm 14mm;border:1.2mm solid #0b1446;border-radius:6mm;background:#ffd51c}'+
+    '.capa-info{font-size:18pt;margin-top:2mm}.capa-info b{font-size:22pt}'+
+    '.capa-nota{font:500 11pt Arial;color:#5b6488;margin-top:6mm;max-width:190mm}'+
     '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
     '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
   }
@@ -521,13 +521,13 @@
       var G=geometria(orient(), porFolha()), paginas=[];
       /* CAPA COM AS FAIXAS — 04/11/2026 (mockup ao usuário): a folha de
          abertura, com a faixa do título e as faixas escolhidas, uma por mesa. */
-      paginas.push(capa(FAIXAS, G));
       FAIXAS.forEach(function(f, fi){
         if(soPrevia && fi>0) return;
         var pags=paginar(f.pessoas, G);
+        paginas.push(capa(f, fi, FAIXAS.length, pags.length, G));
         for(var i=0;i<pags.length;i++){
-          /* A prévia mostra a 1ª e a 2ª folha da 1ª faixa: uma com o título e uma sem. */
-          if(soPrevia && i>=2) return;
+          /* A prévia mostra a capa e a 1ª folha da 1ª faixa. */
+          if(soPrevia && i>=1) return;
           paginas.push(folha(f, pags[i], i, pags.length, G));
         }
       });

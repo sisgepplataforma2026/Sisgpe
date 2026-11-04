@@ -183,14 +183,15 @@ if (!dom.jsdomDisponivel()) {
   await t.assentar(120);
   b.ok(t.chamadas.some(c => c.fn === "compassoCanhotos_arte"), "busca a arte só na hora de gerar");
   const doc = (janelas[0] || {}).html || "";
-  /* 04/11/2026: a 1ª folha é a CAPA com as faixas (uma por mesa). */
-  b.ok(/<section class="folha capa">/.test(doc) && /Faixas de letras — uma por mesa/.test(doc), "abre com a capa das faixas");
-  const folhas = doc.split('<section class="folha">').slice(1);
-  b.ok(folhas.length >= 10, "gera as folhas (paisagem, 3 na 1ª e 4 nas demais, o padrão desde 04/11/2026): " + folhas.length);
-  /* 04/11/2026: "o título do controle somente na primeira página". */
-  const comBanner = folhas.filter(f => /class="bn-wrap"/.test(f)).length;
-  const primeiras = folhas.filter(f => /folha 1 de \d+/.test(f)).length;
-  b.igual(comBanner, primeiras, "a faixa do título só na 1ª folha de cada faixa de letras (" + comBanner + " de " + folhas.length + ")");
+  /* 04/11/2026 ("A capa — LETRA DE A - C"): cada faixa abre com a sua capa. */
+  const capas = (doc.match(/<section class="folha capa">/g) || []).length;
+  const nFaixas = manual.split(" ").length;
+  b.igual(capas, nFaixas, "uma capa por faixa (" + capas + ")");
+  b.ok(/LETRAS DE A – F/.test(doc) && /MESA 1 DE 4/.test(doc), "a capa diz as letras e a mesa");
+  const folhas = doc.replace(/<section class="folha capa">[\s\S]*?<\/section>/g, "").split('<section class="folha">').slice(1);
+  b.ok(folhas.length >= 10, "gera as folhas (paisagem, 4 por folha, o padrão desde 04/11/2026): " + folhas.length);
+  /* O título grande só na capa; as folhas da lista com o cabeçalho fino. */
+  b.igual(folhas.filter(f => /class="bn-wrap"/.test(f)).length, 0, "nenhuma folha da lista repete o título grande");
   b.ok(/size:A4 landscape/.test(doc), "a folha sai deitada (A4 paisagem)");
   let alinhado = true, umaVez = true, faixaCerta = true, cabecalho = true;
   let semNumero = true, cortesOk = true;
@@ -223,7 +224,7 @@ if (!dom.jsdomDisponivel()) {
   t.clicar("#canhBtPrevia");
   await t.assentar(60);
   const previa = (janelas[1] || {}).html || "";
-  b.igual(previa.split('<section class="folha">').length - 1, 2, "a prévia mostra duas folhas: a 1ª (com o título) e a 2ª (sem)");
+  b.igual((previa.match(/<section class="folha/g) || []).length, 2, "a prévia mostra a capa e a 1ª folha da lista");
   b.ok(!/setTimeout\(function\(\)\{window\.print\(\);\},400\)/.test(previa), "e não abre a impressão sozinha");
 
   b.naoTestavel("aparência impressa (texto dentro das caixas da arte, cores)",
