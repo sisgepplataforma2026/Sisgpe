@@ -424,19 +424,27 @@
         '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
     '</section>';
   }
+  /* CAPA DA FAIXA, v2 — 04/11/2026 ("capa pode ficar melhor?"): fundo
+     escuro na folha inteira, mesa e letras grandes, o primeiro e o último
+     nome do monte e o quadro de controle da mesa, para preencher à mão. */
   function capa(f, idx, total, nFolhas, G){
+    var prim=f.pessoas[0]||{}, ult=f.pessoas[f.pessoas.length-1]||{};
     return '<section class="folha capa">'+
+      '<div class="capa-fundo"></div>'+
       (G.o==='paisagem' ? '<div class="bn-fundo"></div>' : '')+
       '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
         '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
         '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'+
-      '<div class="capa-cx" style="top:'+(70*G.bnEsc+10).toFixed(1)+'mm">'+
-        '<div class="capa-mesa">MESA '+(idx+1)+' DE '+total+'</div>'+
-        '<div class="capa-letras">'+(f.de===f.ate ? 'LETRA '+esc(f.de) : 'LETRAS DE '+esc(f.de)+' – '+esc(f.ate))+'</div>'+
-        '<div class="capa-info"><b>'+f.pessoas.length+'</b> participantes · <b>'+nFolhas+'</b> folha'+(nFolhas>1?'s':'')+' de canhotos</div>'+
-        '<div class="capa-nota">Esta capa vai em cima do monte da mesa. Confira o nome e a escola, destaque o canhoto e entregue ao participante.</div>'+
+      '<div class="capa-cx" style="top:'+(70*G.bnEsc+4).toFixed(1)+'mm">'+
+        '<div class="capa-lin">'+
+          '<div class="capa-mesa"><span>MESA</span><b>'+(idx+1)+'</b><i>de '+total+'</i></div>'+
+          '<div class="capa-letras"><span>'+(f.de===f.ate?'LETRA':'LETRAS')+'</span><b>'+(f.de===f.ate?esc(f.de):esc(f.de)+' – '+esc(f.ate))+'</b></div>'+
+        '</div>'+
+        '<div class="capa-de">de <b>'+esc(prim.nome||'')+'</b><br>até <b>'+esc(ult.nome||'')+'</b></div>'+
+        '<div class="capa-info"><b>'+f.pessoas.length+'</b> participantes &nbsp;·&nbsp; <b>'+nFolhas+'</b> folha'+(nFolhas>1?'s':'')+' de canhotos</div>'+
+        '<div class="capa-ctrl"><div>Responsável pela mesa: <span></span></div><div>Canhotos entregues: <span class="n"></span> de <b>'+f.pessoas.length+'</b></div></div>'+
       '</div>'+
-      '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span><span>Capa da mesa '+(idx+1)+' · letras <b>'+esc(f.rotulo)+'</b></span></div>'+
+      '<div class="rod capa-rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span><span>Capa da mesa '+(idx+1)+' · letras <b>'+esc(f.rotulo)+'</b></span></div>'+
     '</section>';
   }
   function cssFolha(G){
@@ -485,12 +493,18 @@
     '.cv-in.nome{font-weight:700;text-transform:uppercase}.cv-in.escola{font-weight:600}'+
     '.cv.faixa{font-weight:700}.cv.faixa b{font-weight:800}'+
     '.cv.urna{justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;color:#fff;letter-spacing:.02em;text-shadow:0 .2mm .6mm rgba(0,0,0,.6)}'+
-    '.capa-cx{position:absolute;left:14mm;right:14mm;bottom:16mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#0b1446}'+
-    '.capa-mesa{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:20pt;color:#1f4fd0;letter-spacing:.08em}'+
-    '.capa-letras{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:'+(G.o==='paisagem'?64:56)+'pt;line-height:1;margin:4mm 0;'+
-      'padding:4mm 14mm;border:1.2mm solid #0b1446;border-radius:6mm;background:#ffd51c}'+
-    '.capa-info{font-size:18pt;margin-top:2mm}.capa-info b{font-size:22pt}'+
-    '.capa-nota{font:500 11pt Arial;color:#5b6488;margin-top:6mm;max-width:190mm}'+
+    '.capa-fundo{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,#2a1d9e 0%,#14136e 45%,#0b0f45 100%)}'+
+    '.capa-cx{position:absolute;left:12mm;right:12mm;bottom:12mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff}'+
+    '.capa-lin{display:flex;gap:8mm;align-items:stretch}'+
+    '.capa-mesa{display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:52mm;border:1mm solid #ffd51c;border-radius:6mm;padding:2mm 6mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800}'+
+    '.capa-mesa span{font-size:16pt;letter-spacing:.12em;color:#ffd51c}.capa-mesa b{font-size:64pt;line-height:.95}.capa-mesa i{font-style:normal;font-size:13pt;color:#c9d3ff}'+
+    '.capa-letras{display:flex;flex-direction:column;justify-content:center;background:#ffd51c;color:#0b1446;border-radius:6mm;padding:2mm 14mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;box-shadow:0 1.5mm 4mm rgba(0,0,0,.35)}'+
+    '.capa-letras span{font-size:16pt;letter-spacing:.14em}.capa-letras b{font-size:'+(G.o==='paisagem'?78:64)+'pt;line-height:.95;white-space:nowrap}'+
+    '.capa-de{margin-top:6mm;font-size:15pt;line-height:1.5;color:#dfe5ff}.capa-de b{color:#fff;text-transform:uppercase}'+
+    '.capa-info{margin-top:3mm;font-size:16pt;color:#dfe5ff}.capa-info b{font-size:20pt;color:#ffd51c}'+
+    '.capa-ctrl{margin-top:7mm;display:flex;gap:10mm;background:#fff;color:#0b1446;border-radius:3mm;padding:4mm 7mm;font:700 12.5pt Arial}'+
+    '.capa-ctrl span{display:inline-block;width:70mm;border-bottom:.35mm solid #0b1446;height:5mm;vertical-align:-1mm}.capa-ctrl span.n{width:22mm}'+
+    '.capa-rod{color:#c9d3ff!important}'+
     '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
     '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
   }

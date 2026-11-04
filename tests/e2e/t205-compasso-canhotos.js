@@ -187,7 +187,7 @@ if (!dom.jsdomDisponivel()) {
   const capas = (doc.match(/<section class="folha capa">/g) || []).length;
   const nFaixas = manual.split(" ").length;
   b.igual(capas, nFaixas, "uma capa por faixa (" + capas + ")");
-  b.ok(/LETRAS DE A – F/.test(doc) && /MESA 1 DE 4/.test(doc), "a capa diz as letras e a mesa");
+  b.ok(/<span>LETRAS<\/span><b>A – F<\/b>/.test(doc) && /<span>MESA<\/span><b>1<\/b><i>de 4<\/i>/.test(doc) && /Canhotos entregues/.test(doc), "a capa diz as letras, a mesa e tem o controle de entrega");
   const folhas = doc.replace(/<section class="folha capa">[\s\S]*?<\/section>/g, "").split('<section class="folha">').slice(1);
   b.ok(folhas.length >= 10, "gera as folhas (paisagem, 4 por folha, o padrão desde 04/11/2026): " + folhas.length);
   /* O título grande só na capa; as folhas da lista com o cabeçalho fino. */
