@@ -429,13 +429,16 @@
      nome do monte e o quadro de controle da mesa, para preencher à mão. */
   function capa(f, idx, total, nFolhas, G){
     var prim=f.pessoas[0]||{}, ult=f.pessoas[f.pessoas.length-1]||{};
+    /* "A imagem do cabeçalho esticar na folha inteira" (04/11/2026): na capa
+       a arte ocupa a largura toda da folha, ampliada na proporção (sem
+       achatar o logo); o conteúdo desce para baixo dela. */
+    var escBn=G.W/210;
     return '<section class="folha capa">'+
       '<div class="capa-fundo"></div>'+
-      (G.o==='paisagem' ? '<div class="bn-fundo"></div>' : '')+
-      '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
+      '<div class="bn-wrap" style="left:0;transform:scale('+escBn.toFixed(4)+')"><div class="canh-banner bn"></div>'+
         '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
         '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'+
-      '<div class="capa-cx" style="top:'+(70*G.bnEsc+4).toFixed(1)+'mm">'+
+      '<div class="capa-cx" style="top:'+(70*escBn+(G.o==='paisagem'?1:4)).toFixed(1)+'mm">'+
         '<div class="capa-lin">'+
           '<div class="capa-mesa"><span>MESA</span><b>'+(idx+1)+'</b><i>de '+total+'</i></div>'+
           '<div class="capa-letras"><span>'+(f.de===f.ate?'LETRA':'LETRAS')+'</span><b>'+(f.de===f.ate?esc(f.de):esc(f.de)+' – '+esc(f.ate))+'</b></div>'+
