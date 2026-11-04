@@ -6820,3 +6820,8 @@ Modelo A aprovado ("A - aprovado"): docs/mock-recibo-festa-A-1-por-folha.png. Em
 
 Canhotos em paisagem + reenvio de ofício com motivo (commit 9e7242e). Pedido: "Sim, publica em produção também". **Não testado no ar.** Para voltar: versão 751.
 Primeiro teste: Marcela emite e reenvia 1 ofício como sempre ("Só reenviar"); gerar a prévia dos canhotos com a planilha real.
+
+## 🔴 PRODUÇÃO 04/11/2026 — versão 753 (anterior: 752)
+
+Recibos em branco da festa (commit 5f3f218). Pedido: "pode levar". **Não testado no ar.** Para voltar: versão 752.
+Teste: Eventos › Festa › Recibos em branco › 👁 Prévia e imprimir 1.
