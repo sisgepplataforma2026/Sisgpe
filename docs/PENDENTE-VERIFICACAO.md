@@ -6815,3 +6815,8 @@ Modelo A aprovado ("A - aprovado"): docs/mock-recibo-festa-A-1-por-folha.png. Em
 | Quantidade 30 → 🖨 Gerar | 30 folhas Nº 001 a 030; a lista mostra o lote; próximo 031 |
 | ↻ Reimprimir o lote | os MESMOS números 001 a 030 |
 | Imprimir 1 | timbrado, data à direita acima da assinatura, CPF com 11 caixinhas |
+
+## 🔴 PRODUÇÃO 04/11/2026 — versão 752 (anterior: 751)
+
+Canhotos em paisagem + reenvio de ofício com motivo (commit 9e7242e). Pedido: "Sim, publica em produção também". **Não testado no ar.** Para voltar: versão 751.
+Primeiro teste: Marcela emite e reenvia 1 ofício como sempre ("Só reenviar"); gerar a prévia dos canhotos com a planilha real.
