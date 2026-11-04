@@ -183,6 +183,8 @@ if (!dom.jsdomDisponivel()) {
   await t.assentar(120);
   b.ok(t.chamadas.some(c => c.fn === "compassoCanhotos_arte"), "busca a arte só na hora de gerar");
   const doc = (janelas[0] || {}).html || "";
+  /* 04/11/2026: a 1ª folha é a CAPA com as faixas (uma por mesa). */
+  b.ok(/<section class="folha capa">/.test(doc) && /Faixas de letras — uma por mesa/.test(doc), "abre com a capa das faixas");
   const folhas = doc.split('<section class="folha">').slice(1);
   b.ok(folhas.length >= 10, "gera as folhas (paisagem, 3 na 1ª e 4 nas demais, o padrão desde 04/11/2026): " + folhas.length);
   /* 04/11/2026: "o título do controle somente na primeira página". */
@@ -197,8 +199,8 @@ if (!dom.jsdomDisponivel()) {
     const rot = (f.match(/LETRAS <b>([^<]+)<\/b>/) || [])[1];
     if (!rot) cabecalho = false;
     const nomesTab = [...f.matchAll(/<td class="nm">([^<]*)<\/td>/g)].map(m => m[1]);
-    const nomesCan = [...f.matchAll(/class="cv fit nome"[^>]*>([^<]*)</g)].map(m => m[1]);
-    const faixasCan = [...f.matchAll(/class="cv faixa"[^>]*><span class="rot">Faixa alfabética:<\/span><b>([^<]*)<\/b>/g)].map(m => m[1]);
+    const nomesCan = [...f.matchAll(/class="cv-in fit nome"[^>]*>([^<]*)</g)].map(m => m[1]);
+    const faixasCan = [...f.matchAll(/class="cv faixa cx"[^>]*><span class="rot">Faixa alfabética:<\/span><b>([^<]*)<\/b>/g)].map(m => m[1]);
     const nCanhotos = (f.match(/class="canh-arte cv-c"/g) || []).length;
     if (faixasCan.length !== nCanhotos) faixaCerta = false;
     if (/class="cv[^"]*numero/.test(f)) semNumero = false;
