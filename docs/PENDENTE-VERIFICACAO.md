@@ -6803,3 +6803,15 @@ Mockup aprovado ("Aprovo, pode publicar"): docs/mock-canhotos-paisagem-1.png e -
 | 👁 Prévia | 1ª folha com o título de ponta a ponta; 2ª só com a faixa amarela fina |
 | Nomes e escolas longos | encolhem para caber na caixa, sem vazar |
 | Imprimir / Salvar PDF | sai deitado (A4 paisagem), cores certas, linhas de corte |
+
+## 🔴 Recibos em branco da festa — HML 04/11/2026
+
+Modelo A aprovado ("A - aprovado"): docs/mock-recibo-festa-A-1-por-folha.png. Emulador: t236 (26, inclusive a tela). **Não testado impresso.**
+
+| Roteiro em HML (Eventos › Festa › Recibos em branco) | Esperado |
+|---|---|
+| Abrir a aba | festa "Festa dos Educadores — No Compasso da Vida 2026", dia 19/12/2026, Vitória, "Próximo número: Nº 001" |
+| 👁 Prévia | 1 recibo, "Nº PRÉVIA", nada reservado |
+| Quantidade 30 → 🖨 Gerar | 30 folhas Nº 001 a 030; a lista mostra o lote; próximo 031 |
+| ↻ Reimprimir o lote | os MESMOS números 001 a 030 |
+| Imprimir 1 | timbrado, data à direita acima da assinatura, CPF com 11 caixinhas |

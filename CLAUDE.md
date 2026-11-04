@@ -356,6 +356,14 @@ inteiro), observação editável no e-mail com a cláusula pelo MTE. O PDF do
 ofício é o mesmo e o número também — nada é reemitido. OficiosReenvioMotivo.gs;
 o reenvio em si continua em reenviarOficio (EmailOficios.gs).
 
+## 🧾 RECIBOS EM BRANCO DA FESTA (04/11/2026)
+
+Eventos › Festa › Recibos em branco (CompassoRecibos.html + CompassoRecibosDados.gs).
+Modelo A aprovado, no timbrado do certificado de voucher. Impresso: número,
+festa, dia e data ("Data será impressa, numeração é necessário"); em branco:
+nome, CPF, valor, extenso, serviço. A numeração é reservada no servidor (sem
+repetir); reimprimir usa os mesmos números.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
