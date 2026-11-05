@@ -276,7 +276,9 @@ function encenar(respostas, codigos) {
   g.UrlFetchApp = {
     fetch: function (url, opts) {
       const i = chamadas.n++;
-      chamadas.prompts.push(JSON.parse(opts.payload).system);
+      /* 05/11/2026: o system virou blocos (o fixo com cache) — junta o texto. */
+      const sys = JSON.parse(opts.payload).system;
+      chamadas.prompts.push(Array.isArray(sys) ? sys.map(x => x.text).join("\n") : sys);
       const cod = (codigos && codigos[i]) || 200;
       return {
         getResponseCode: function () { return cod; },

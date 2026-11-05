@@ -6,6 +6,26 @@
 
 var CHAT_MODEL_ = "claude-haiku-4-5-20251001";
 var CHAT_MAX_TOKENS_ = 1500;
+/* PROMPT CACHING — 05/11/2026 ("como fazer o meu projeto gastar menos?" →
+ * "Sofia não gasta?" → "Clarooo"). Tudo o que vem ANTES desta marca no
+ * prompt de sistema é sempre igual (as regras, a CCT inteira, o Estatuto
+ * inteiro): vai num bloco com cache_control, e a IA cobra ~10% dele quando
+ * se repete em poucos minutos — a pergunta seguinte da conversa, a segunda
+ * leitura, outra pessoa logo depois. O que vem depois (memória escolhida
+ * pela pergunta, dados do sistema, data) muda a cada pergunta e vai sem
+ * cache. A marca nunca chega à IA: chatSistemaEmBlocos_ a retira. */
+var CHAT_MARCA_CACHE_ = "\n<<<SISGEP_FIM_DA_PARTE_FIXA>>>\n";
+
+/* O prompt de sistema em blocos: o fixo com cache, o resto sem. Sem a marca,
+ * um bloco só, sem cache — como era antes. */
+function chatSistemaEmBlocos_(prompt) {
+  var p = String(prompt || ""), i = p.indexOf(CHAT_MARCA_CACHE_);
+  if (i < 0) return [{ type: "text", text: p }];
+  var fixo = p.substring(0, i), resto = p.substring(i + CHAT_MARCA_CACHE_.length);
+  var blocos = [{ type: "text", text: fixo, cache_control: { type: "ephemeral" } }];
+  if (resto) blocos.push({ type: "text", text: resto });
+  return blocos;
+}
 
 /* ═══════════════════════════════════════════════════════
    TEXTO DA CCT 2026/2027 — CLÁUSULAS RELEVANTES
@@ -61,7 +81,7 @@ function chatSISGEP(payload, tokenSessao) {
     };
 
     var perguntar = function (prompt) {
-      requestBody.system = prompt;
+      requestBody.system = chatSistemaEmBlocos_(prompt);
       var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
         method: "post",
         contentType: "application/json",
@@ -1195,7 +1215,7 @@ var prompt =
     conteudoCCT +
     "\n" +
     conteudoEstatuto +
-    "\n" +
+    CHAT_MARCA_CACHE_ +
     memoriaRelevante +
 
     "━━━ DADOS REAIS DO SISTEMA — " + hoje + " ━━━\n\n";
