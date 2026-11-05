@@ -259,6 +259,17 @@ solicitação. Já estava documentado em `VoucherAdmin.gs`. O módulo novo
 contorna: grava a origem no HISTÓRICO e passa a observação para a própria
 emissão, que a preserva junto do carimbo.
 
+### 128. 🔴 ROBÔ DA MEMÓRIA GASTANDO MENOS IA (05/11/2026)
+
+`MemoriaEvolutiva.gs`: o robô que estuda os e-mails enviados agora **pula os
+e-mails que o próprio SISGEP gera** (ofício, reenvio de ofício, voucher, recibo,
+complementação, [HML]) e só chama a IA quando o e-mail tem **palavra-chave nova**
+(o critério "o dobro de palavras do resumo" deixava quase tudo passar). Teste:
+`t237-memoria-evolutiva-gasto.js` (11, mutação do código antigo reprova 7).
+**Falta no editor:** trocar o gatilho `memoriaEvolutivaGmail` de "a cada 6 horas"
+para "diário, 21h–22h" (lápis do gatilho → Tipo: Diário). **Falta medir:** em
+console.anthropic.com → Usage, comparar a semana antes e a depois.
+
 ### 127. 🟡 CANHOTOS DA URNA — Festa Compasso 2026 (01/10/2026)
 
 > **04/11/2026 — nova versão aprovada, publicada em HML e em PRODUÇÃO (versão 754; volta = 753). Não testado na folha:**
