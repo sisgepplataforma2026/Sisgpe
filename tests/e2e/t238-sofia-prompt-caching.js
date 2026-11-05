@@ -33,6 +33,16 @@ function encenar(respostas) {
   };
 }
 
+b.fluxo("SOFIA · cache DESLIGADO por padrão (05/11/2026)");
+b.passo("0. Sem a chave SOFIA_CACHE: o texto de sempre, sem cache");
+encenar(["ok"]);
+g.chatSISGEP({ mensagem: "quem pode participar da votação na assembleia?", dominio: "Geral", historico: [] }, TOKEN);
+const s0 = enviados[0].system;
+b.ok(Array.isArray(s0) && s0.length === 1 && !s0[0].cache_control, "um bloco só, sem cache_control");
+b.ok(/=== ESTATUTO —/.test(s0[0].text) && /DADOS REAIS DO SISTEMA/.test(s0[0].text) && !s0[0].text.includes("SISGEP_FIM_DA_PARTE_FIXA"), "o prompt inteiro, sem a marca");
+enviados.length = 0;
+g.PropertiesService.getScriptProperties().setProperty("SOFIA_CACHE", "SIM");
+
 b.fluxo("SOFIA · prompt caching");
 b.passo("1. Uma pergunta sobre o Estatuto");
 encenar(["Podem votar os associados em dia."]);
@@ -59,7 +69,7 @@ const s3 = enviados[2].system;
 b.ok(Array.isArray(s3) && s3[0].cache_control && !/=== ESTATUTO —/.test(s3[0].text), "sem o Estatuto, o bloco fixo só tem as regras");
 
 b.passo("4. A função de blocos");
-const sem = g.chatSistemaEmBlocos_("prompt sem marca");
+const sem = g.chatSistemaEmBlocos_("prompt sem marca");  // (com a chave ligada)
 b.ok(sem.length === 1 && !sem[0].cache_control && sem[0].text === "prompt sem marca", "sem a marca: um bloco só, sem cache (como antes)");
 const com = g.chatSistemaEmBlocos_("FIXO" + g.CHAT_MARCA_CACHE_ + "VARIAVEL");
 b.igual(com.map(x => x.text), ["FIXO", "VARIAVEL"], "com a marca: corta exatamente nela");

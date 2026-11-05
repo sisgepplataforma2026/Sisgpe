@@ -18,10 +18,19 @@ var CHAT_MARCA_CACHE_ = "\n<<<SISGEP_FIM_DA_PARTE_FIXA>>>\n";
 
 /* O prompt de sistema em blocos: o fixo com cache, o resto sem. Sem a marca,
  * um bloco só, sem cache — como era antes. */
+/* DESLIGADO POR PADRÃO (05/11/2026, auditoria de custo): gravar no cache
+ * custa 25% a mais e só compensa com perguntas em sequência. Fica desligado
+ * até a aba IA_Uso mostrar o padrão de uso; liga com a propriedade do script
+ * SOFIA_CACHE = SIM. Desligado, o texto enviado é o mesmo de antes. */
+function chatCacheLigado_() {
+  try { return String(PropertiesService.getScriptProperties().getProperty("SOFIA_CACHE") || "").toUpperCase() === "SIM"; }
+  catch (e) { return false; }
+}
 function chatSistemaEmBlocos_(prompt) {
   var p = String(prompt || ""), i = p.indexOf(CHAT_MARCA_CACHE_);
   if (i < 0) return [{ type: "text", text: p }];
   var fixo = p.substring(0, i), resto = p.substring(i + CHAT_MARCA_CACHE_.length);
+  if (!chatCacheLigado_()) return [{ type: "text", text: fixo + "\n" + resto }];
   var blocos = [{ type: "text", text: fixo, cache_control: { type: "ephemeral" } }];
   if (resto) blocos.push({ type: "text", text: resto });
   return blocos;
