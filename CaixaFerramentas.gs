@@ -151,7 +151,7 @@ function cxfLerComprovanteCore_(id, conv, quem) {
     "\"pessoas\":[{\"nome\":\"\",\"cpf\":\"\"}]} — pessoas só se o comprovante listar nomes.\n\n" +
     (typeof crcExemplosCorrecao_ === "function" ? crcExemplosCorrecao_() : "") +
     "E-MAIL:\n" + texto.substring(0, 6000);
-  var j = vpeChamarIA_(prompt, blocos);
+  var j = vpeChamarIA_(prompt, blocos, "ler-comprovante");
   if (!j || j.e_comprovante === false) {
     var nada = { comprovante: null, leitura: null };
     if (typeof crcGuardar_ === "function") nada.leitura = crcGuardar_(id, conv, quem, j ? "NAO_E_COMPROVANTE" : "FALHOU", null, j ? "" : "a IA não respondeu");
@@ -245,7 +245,7 @@ function caixaSugerirResposta(id, a2, a3) {
       (sabe.length ? "O QUE O SISTEMA SABE:\n" + sabe.join("\n") + "\n\n" : "") +
       "CONVERSA (a última é a que se responde):\n" + conversa +
       "\n\nResponda SOMENTE com JSON: {\"resposta\":\"texto da resposta, sem assinatura\",\"anexar\":\"o que anexar, ou vazio\"}";
-    var j = vpeChamarIA_(prompt);
+    var j = vpeChamarIA_(prompt, null, "sugerir-resposta");
     var corpo = String((j && j.resposta) || "").trim();
     if (!corpo) return { ok: false, mensagem: "A IA não devolveu texto. Escreva a resposta à mão." };
     var out = { ok: true, texto: corpo + "\n\n" + vpeAssinaturaTexto_(sessao), anexar: String((j && j.anexar) || "").trim().substring(0, 200) };

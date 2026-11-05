@@ -146,7 +146,7 @@ function cxcPerguntarIA_() {
     "Responda SOMENTE com JSON: {\"propostas\":[{\"rotulo\":\"nome curto do card, em português com acentos, ex.: Relação nominal\",\"icone\":\"um emoji\"," +
     "\"descricao\":\"o que entra neste card, para classificar os próximos\",\"ids\":[\"F:...\"]}]}\n\nE-MAILS:\n" + lista;
   try {
-    var r = vpeChamarIA_(prompt);
+    var r = vpeChamarIA_(prompt, null, "caixa-cards-propostos");
     return ((r && r.propostas) || []).filter(function (p) { return p && p.rotulo && Array.isArray(p.ids); }).map(function (p) {
       return { rotulo: cxcNomeLegivel_(String(p.rotulo)).substring(0, 40), icone: String(p.icone || "📁").substring(0, 4),
                descricao: String(p.descricao || "").substring(0, 300), ids: p.ids.map(String) };

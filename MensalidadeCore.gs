@@ -691,7 +691,7 @@ function processarRelatorioMensalidade(payload) {
       muteHttpExceptions: true
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var response = iaFetch_("mensalidade-relatorio", options);
     var respCode = response.getResponseCode();
     var respText = response.getContentText();
 

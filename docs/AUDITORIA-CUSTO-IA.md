@@ -1,3 +1,9 @@
+> **CORREÇÃO (05/11/2026, ao implementar):** a leitura das fichas do Drive
+> **já fica guardada** (`LEITURA_JSON` em `OficiosFichasDrive.gs`), e a tela
+> só oferece "Ler com o robô" para ficha ainda não lida. O item "Ler ficha do
+> Drive relê o PDF a cada clique" estava **errado** — eu li o código pela
+> metade. Não há o que fazer ali; a economia de fichas do relatório é zero.
+
 # Auditoria de custo de IA — SISGEP (05/11/2026)
 
 Pedido do usuário: o prompt "AUDITORIA E OTIMIZAÇÃO DE CUSTOS DE IA". Regra

@@ -73,7 +73,7 @@ function cxoDoEmail_(id, modo, forcar, tokenSessao) {
       "Não invente nem corrija o que está escrito; a ficha não tem CNPJ. Responda SOMENTE com JSON: " +
       "{\"pessoas\":[{\"nome\":\"\",\"cpf\":\"só dígitos\",\"escola_escrita\":\"nome da escola/empresa como está escrito\"," +
       "\"tem_assinatura\":true,\"duvidas\":\"o que estava ilegível ou incerto\"}]}\n\nE-MAIL:\n" + texto.substring(0, 7000);
-    var j = vpeChamarIA_(prompt, blocos);
+    var j = vpeChamarIA_(prompt, blocos, "ver-oficio-email");
     var lidas = (j && Array.isArray(j.pessoas)) ? j.pessoas : [];
 
     var lista = [];

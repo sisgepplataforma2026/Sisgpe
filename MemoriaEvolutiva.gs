@@ -173,7 +173,7 @@ function aprenderComEmail_(apiKey, dados) {
       muteHttpExceptions: true
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var response = iaFetch_("robo-memoria", options);
     if (response.getResponseCode() !== 200) {
       Logger.log("aprenderComEmail_ API erro: " + response.getResponseCode());
       return { ok: false };

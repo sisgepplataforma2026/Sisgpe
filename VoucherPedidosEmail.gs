@@ -884,14 +884,16 @@ function vpeNormalizarExtracao_(j) {
  * Sem sessão de propósito: roda no gatilho. Termina em "_" — não é
  * alcançável por google.script.run, então não vira proxy aberto da API paga.
  */
-function vpeChamarIA_(prompt, blocosAnexo) {
+/* modulo: o nome que vai para a aba IA_Uso (05/11/2026) — quem chama diz
+   o que é ("caixa-categorias", "ler-ficha"...). Sem ele, "voucher-pedidos". */
+function vpeChamarIA_(prompt, blocosAnexo, modulo) {
   var props = PropertiesService.getScriptProperties();
   var apiKey = props.getProperty("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY não configurada nas Propriedades do Script.");
   var modelo = props.getProperty("VOUCHER_PEDIDOS_MODELO") || "claude-haiku-4-5-20251001";
 
   var conteudo = (blocosAnexo || []).concat([{ type: "text", text: String(prompt) }]);
-  var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+  var resp = iaFetch_(modulo || "voucher-pedidos", {
     method: "post",
     contentType: "application/json",
     headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },

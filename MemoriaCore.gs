@@ -200,7 +200,7 @@ function extrairEstiloCobrancas() {
       muteHttpExceptions: true
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var response = iaFetch_("memoria-estilo-cobrancas", options);
     if (response.getResponseCode() !== 200) {
       return { ok: false, mensagem: "Erro na API Claude: " + response.getResponseCode() };
     }

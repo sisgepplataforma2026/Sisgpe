@@ -82,7 +82,7 @@ function chatSISGEP(payload, tokenSessao) {
 
     var perguntar = function (prompt) {
       requestBody.system = chatSistemaEmBlocos_(prompt);
-      var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+      var resp = iaFetch_("sofia", {
         method: "post",
         contentType: "application/json",
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },

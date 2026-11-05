@@ -202,7 +202,7 @@ function oficiosFichasLer(fileId, tokenSessao) {
       "sem inventar nem corrigir. A ficha não tem CNPJ. Responda SOMENTE com JSON: " +
       "{\"fichas\":[{\"pagina\":1,\"nome\":\"\",\"cpf\":\"só dígitos\",\"escola_escrita\":\"o nome da escola/empresa como está escrito\"," +
       "\"cargo\":\"\",\"data_admissao\":\"dd/mm/aaaa\",\"tem_assinatura\":true,\"duvidas\":\"o que estava ilegível ou incerto\"}]}";
-    var j = vpeChamarIA_(prompt, [bloco]);
+    var j = vpeChamarIA_(prompt, [bloco], "ler-ficha");
     var fichas = (j && Array.isArray(j.fichas)) ? j.fichas : [];
     if (!fichas.length) return { ok: false, mensagem: "A IA não achou nenhuma ficha neste arquivo. Abra e confira." };
     var lista = [];

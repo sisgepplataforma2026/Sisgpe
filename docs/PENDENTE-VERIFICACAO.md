@@ -160,6 +160,16 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 129. 🔴 MEDIÇÃO DE USO DA IA — aba IA_Uso (05/11/2026)
+
+`IAUso.gs`: toda chamada à Anthropic passa por `iaFetch_` e anota módulo,
+modelo, tokens (entrada, saída, cache gravado, cache lido), tempo, HTTP e custo
+estimado. Não guarda o texto (LGPD). Resumo por módulo: `iaUsoResumo` (só
+administrador; dá para rodar no editor). Teste `t239-ia-uso-medicao.js` (11).
+**Falta no ar:** usar a Sofia/Caixa uma vez e ver a linha aparecer na aba
+`IA_Uso`; em 2 semanas, ler o resumo e decidir o cache da Sofia (item da
+auditoria `docs/AUDITORIA-CUSTO-IA.md`). O cache da Sofia está SÓ na homologação.
+
 ### 128. 🟡 PEDIDOS DE VOUCHER POR E-MAIL — a IA lê, o sistema confere, você valida
 
 13/10/2026. Pedido do usuário: *"a solicitação de certificado é tudo por

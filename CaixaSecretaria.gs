@@ -298,7 +298,7 @@ function cxsClassificarFinanceiro_(linhas) {
           .map(function (k) { return k + " = " + CXS_TIPOS_DESC[k]; }).join("; ") +
         ".\n\n" + cxsExemplosEquipe_() +
         "Responda SOMENTE com JSON: {\"resultados\":[{\"i\":0,\"tipo\":\"...\",\"pedido\":\"o que a pessoa quer, em poucas palavras\"}]}\n\nE-MAILS:\n" + lista;
-      var r = vpeChamarIA_(prompt);
+      var r = vpeChamarIA_(prompt, null, "caixa-categorizar");
       var sh = cxsFinTiposAba_();
       (r && r.resultados || []).forEach(function (x) {
         var l = faltam[Number(x.i)];
