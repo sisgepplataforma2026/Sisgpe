@@ -152,11 +152,11 @@ de entrada, ~500 de saída), 40% curtas (~1 mil). Fichas — 4 páginas por PDF,
 
 | | Conservador | Intermediário | Otimista |
 |---|---|---|---|
-| Sofia hoje | ~US$ 0,50 | ~US$ 5 | ~US$ 17 |
-| Sofia com cache 5 min | ~US$ 0,55 (**+10%**) | ~US$ 3,7 (−25%) | ~US$ 9 (−45%) |
+| Sofia hoje | ~US$ 0,46 | ~US$ 4,65 | ~US$ 15,50 |
+| Sofia com cache 5 min | ~US$ 0,47 (**+2%, sem ganho**) | ~US$ 3,50 (−25%) | ~US$ 8,85 (−43%) |
 | Fichas hoje | ~US$ 0,35 | ~US$ 1,7 | ~US$ 5 |
 | Fichas guardando a leitura | ~US$ 0,18 | ~US$ 0,9 | ~US$ 2,5 |
-| **Economia líquida/mês** | **~US$ 0,10** | **~US$ 2** | **~US$ 10** |
+| **Economia líquida/mês** | **~US$ 0,15** | **~US$ 2** | **~US$ 9** |
 
 Custo de infraestrutura: zero (serviços do Apps Script). Custo de
 manutenção: duas funções pequenas, com teste.
@@ -190,7 +190,7 @@ robô da memória (que rodava sozinho, todo dia, sem ninguém pedir).
 |---|---|---|---|---|---|---|
 | **Medição de uso (todos)** | não medido | registrar `usage` e tempo | habilita todas as outras | neutro | muito baixo | **1** |
 | **Ler ficha do Drive** | relê o PDF a cada clique [CÓDIGO] | guardar a leitura (id+data) | ~50% do módulo [ESTIMADO] | **melhora** | baixo | **2** |
-| **Sofia** | ~21 mil tokens por pergunta de Estatuto [MEDIDO] | cache nativo **só se** houver perguntas em sequência | −45% a **+10%** [ESTIMADO] | neutro/melhora | médio (pode encarecer) | **3 — decidir com dado** |
+| **Sofia** | ~21 mil tokens por pergunta de Estatuto [MEDIDO] | cache nativo **só se** houver perguntas em sequência | −43% a **+2%** [ESTIMADO] | neutro/melhora | médio (pode encarecer) | **3 — decidir com dado** |
 | Robô da memória | já otimizado (v755) | — | já feita | — | — | feito |
 | Comprovante, Ver ofício, Sugerir resposta, Voucher | já guardam | — | — | — | — | — |
 | Categorizar Caixa | lote de 20, guarda | regra p/ remetente automático | pequena | neutro | baixo | 5 |
