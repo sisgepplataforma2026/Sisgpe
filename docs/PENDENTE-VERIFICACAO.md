@@ -261,6 +261,8 @@ emissão, que a preserva junto do carimbo.
 
 ### 128. 🔴 ROBÔ DA MEMÓRIA GASTANDO MENOS IA (05/11/2026)
 
+> **Em PRODUÇÃO na versão 755 (05/11/2026; volta = 754).** Gatilho trocado pelo usuário no editor para **diário, 21h–22h** (05/11/2026). Falta só medir a conta.
+
 `MemoriaEvolutiva.gs`: o robô que estuda os e-mails enviados agora **pula os
 e-mails que o próprio SISGEP gera** (ofício, reenvio de ofício, voucher, recibo,
 complementação, [HML]) e só chama a IA quando o e-mail tem **palavra-chave nova**
