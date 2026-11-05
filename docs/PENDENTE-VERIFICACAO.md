@@ -162,6 +162,8 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ### 129. 🔴 MEDIÇÃO DE USO DA IA — aba IA_Uso (05/11/2026)
 
+> **Em PRODUÇÃO na versão 756 (05/11/2026; volta = 755).** O cache da Sofia foi junto, mas DESLIGADO (liga com a propriedade `SOFIA_CACHE = SIM`).
+
 `IAUso.gs`: toda chamada à Anthropic passa por `iaFetch_` e anota módulo,
 modelo, tokens (entrada, saída, cache gravado, cache lido), tempo, HTTP e custo
 estimado. Não guarda o texto (LGPD). Resumo por módulo: `iaUsoResumo` (só
