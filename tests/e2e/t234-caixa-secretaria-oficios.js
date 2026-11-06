@@ -56,6 +56,8 @@ SIM.novaThread("Dúvida sobre filiação", "Bia <bia@exemplo.com>", "Como faço 
 SIM.novaThread("Comprovante de outubro", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue o comprovante de desconto. TIPO:FINANCEIRO", [SIM.pdf("comp.pdf")]);
 SIM.novaThread("Mensalidade e taxa negocial de outubro", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue a relação da mensalidade sindical e da taxa negocial de outubro. TIPO:FINANCEIRO", [SIM.pdf("relacao.pdf")]);
 SIM.novaThread("Mensalidade e contribuição assistencial", "RH Colégio Alfa <rh@colegioalfa.exemplo.com>", "Segue a mensalidade sindical e a contribuição assistencial. TIPO:FINANCEIRO", []);
+SIM.novaThread("ENC: Documentos para a sindicalização | Pessoa Exemplo", "RH Escola <rh@escola.exemplo.com>", "Colaborador preencheu a ficha. TIPO:OUTRO", [SIM.pdf("contracheque.pdf"), SIM.pdf("Ficha sindicato.pdf")]);
+SIM.novaThread("Documentos do funcionário", "RH Escola <rh@escola.exemplo.com>", "Seguem os documentos pedidos. TIPO:OUTRO", [SIM.pdf("contracheque.pdf")]);
 SIM.ciclo();
 const painel = () => g.caixaSecretariaPainel(T_SEC);
 const item = assunto => painel().itens.find(i => i.assunto === assunto);
@@ -65,6 +67,8 @@ b.passo("1. Cada e-mail no card certo");
 b.igual([item("Ficha de filiação — Maria Souza").tipo, item("Pedido de desfiliação").tipo, item("Carta de oposição").tipo],
   ["OFICIO_FILIACAO", "OFICIO_DESFILIACAO", "OFICIO_OPOSICAO"], "ficha → filiação; carta → desfiliação; oposição → oposição");
 b.igual(item("Dúvida sobre filiação").tipo, "FILIACAO", "dúvida sem ficha continua em Filiação");
+b.igual(item("ENC: Documentos para a sindicalização | Pessoa Exemplo").tipo, "OFICIO_FILIACAO", "o leitor disse Outros, mas fala em sindicalização e tem a ficha: card de ofício de filiação (06/11/2026)");
+b.igual(item("Documentos do funcionário").tipo, "OUTRO", "documentos sem ficha nem sindicalização continuam em Outros");
 b.igual(item("Comprovante de outubro").tipo, "FINANCEIRO", "comprovante continua em Contribuições");
 b.ok(item("Ficha de filiação — Maria Souza").grupo === "OFICIOS", "o item sabe que é de ofício (para o botão Ver ofício)");
 const p0 = painel();

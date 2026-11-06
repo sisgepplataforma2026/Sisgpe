@@ -71,6 +71,11 @@ function cxsOficioPorRegra_(p, base) {
   if (/desfilia|cancelar? (a |minha )?filiacao|cancelamento d[ae] (minha )?filiacao|desligamento do sindicato|nao (quero|desejo) mais (ser |estar |ficar )?(filiad|associad|sindicalizad)/.test(t)) return "OFICIO_DESFILIACAO";
   var temArquivo = anexos.some(function (a) { return /pdf|image/i.test(String(a.tipo || "")); });
   if (base === "FILIACAO" && temArquivo && /ficha|filiacao d[aoe]|sindicalizacao|quer(o|em)? (se )?filiar|nova filiacao/.test(t)) return "OFICIO_FILIACAO";
+  /* 06/11/2026: "Documentos para a sindicalização | RUAN JUNIOR", com a
+     "Ficha sindicato.pdf" anexa, caiu em Outros — o leitor disse OUTRO e a
+     regra só olhava FILIACAO. Em Outros, pede mais certeza: fala em
+     sindicalização/filiação E tem ficha (no texto ou no nome do anexo). */
+  if (base === "OUTRO" && temArquivo && /sindicaliza|filiacao|filiar/.test(t) && /ficha/.test(t)) return "OFICIO_FILIACAO";
   return "";
 }
 /* Taxa negocial/assistencial: o usuário (03/11/2026) — "geralmente pede junto
