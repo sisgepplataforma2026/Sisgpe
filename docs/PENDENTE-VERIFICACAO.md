@@ -171,8 +171,8 @@ Saúde do sindicato e os Destaques. Sem boleto e sem pagamento do China Park
 abertos no emulador. Foto: `docs/home-dashboard-executivo-fase1.png`.
 **Falta no ar (HML):** abrir a Home e conferir cada número com a tela do
 módulo (e-mails, ofícios, guias/relação nominal, notas, bolsas, China Park,
-festa, escolas); clicar em cada botão; ver se a festa aparece (no emulador
-ela fica de fora por não ter Firebase).
+escolas); clicar em cada botão. A festa saiu do painel (o SISGEP não controla
+a festa este ano — 06/11/2026).
 
 ### 129. 🔴 MEDIÇÃO DE USO DA IA — aba IA_Uso (05/11/2026)
 

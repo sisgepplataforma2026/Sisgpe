@@ -13,6 +13,8 @@
      é gerada no Condomob). O pagamento do China Park também não passa pelo
      sistema. Nada disso aparece aqui.
    - Sem sino ("não tem necessidade").
+   - Sem a festa: o controle do Compasso da Vida não é feito pelo SISGEP
+     este ano (06/11/2026).
    Desenho e fontes: docs/PRODUTO-DASHBOARD-EXECUTIVO.md.
 
    REGRAS DESTE ARQUIVO
@@ -86,15 +88,9 @@ function getPainelExecutivoSISGEP(tokenSessao) {
   F.notas = iex_fonte_("notas fiscais", function () { return iex_inteiro_(inicio_contarNotasFiscaisAguardando_()); }, falhas);
   F.escolas = iex_fonte_("cadastro de escolas", function () { return iex_inteiro_(inicio_contarEscolasCadastroIncompleto_(tokenSessao)); }, falhas);
 
-  F.festa = iex_fonte_("festa", function () {
-    var r = compasso_executivoResumo(tokenSessao);
-    if (!r || r.ok === false) throw new Error((r && r.mensagem) || "festa indisponível");
-    var c = r.contagem || r.inscricoes || {};
-    var ev = r.evento || {};
-    var d = ev.data ? new Date(ev.data) : null;
-    return { dias: Number(ev.dias != null ? ev.dias : r.dias), inscritos: iex_inteiro_(c.total != null ? c.total : r.total),
-             data: d && !isNaN(d) ? Utilities.formatDate(d, "America/Sao_Paulo", "dd/MM") : "" };
-  }, falhas);
+  /* Festa: FORA do painel (06/11/2026) — "por esse ano ainda não está sendo
+     realizada pelo SISGEP todo o controle da festa do Compasso da Vida". O
+     painel não mostra o que o sistema não controla. */
 
   F.comprovantes = iex_fonte_("comprovantes", function () {
     var mapa = crcMapa_(), n = 0;
@@ -105,7 +101,7 @@ function getPainelExecutivoSISGEP(tokenSessao) {
   var v = function (f, padrao) { return f && f.ok ? f.v : padrao; };
   var em = v(F.emails, null), of = v(F.oficios, null), cp = v(F.chinaPark, null), gu = v(F.guias, null);
   var conf = v(F.conferencia, null), fic = v(F.fichas, null), nf = v(F.notas, null), esc = v(F.escolas, null);
-  var fe = v(F.festa, null), comp = v(F.comprovantes, null), bol = em ? em.bolsas : null;
+  var comp = v(F.comprovantes, null), bol = em ? em.bolsas : null;
 
   /* ── PRECISA DE VOCÊ AGORA ─ só entra o que tem número > 0 e fonte viva. */
   var OF = { mod: "documentos", opts: { sub: "oficios", aba: "monitoramento" } };
@@ -152,7 +148,6 @@ function getPainelExecutivoSISGEP(tokenSessao) {
   a(nf != null, "🧾", "Notas fiscais", "à contabilidade", nf || 0, "#60a5fa", { mod: "financeiro", opts: { acao: "nf" } });
   a(bol != null, "🎓", "Certificados", "bolsas de estudo", bol || 0, "#a78bfa", { mod: "caixaSecretaria" });
   a(!!cp, "🏨", "China Park", cp ? cp.semana + (cp.semana === 1 ? " hospedagem na semana" : " hospedagens na semana") : "", cp ? cp.aguardando : 0, "#10b981", { mod: "beneficios", opts: { sub: "parqueChina" } });
-  a(!!fe, "📅", fe && fe.data ? "Festa " + fe.data : "Festa", fe ? fe.inscritos + " inscritos" : "", fe && isFinite(fe.dias) ? fe.dias + "d" : "—", "#ec4899", { mod: "eventosFesta" });
   a(esc != null, "🏫", "Escolas", "cadastros incompletos", esc || 0, "#3b82f6", { mod: "escolasPendencias" });
 
   /* ── CHEGOU AGORA ─ e-mails que esperam você + reservas novas (24 h). */

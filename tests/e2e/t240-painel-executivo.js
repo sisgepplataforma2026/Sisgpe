@@ -48,7 +48,6 @@ encenar("cob_listarPainel", () => ({ ok: true, total: 10, recebidas: 4, pendente
   linhas: [{ proximaAcao: "LEMBRETE_1" }, { proximaAcao: "SOLICITADA" }, { proximaAcao: null }] }));
 encenar("inicio_contarNotasFiscaisAguardando_", () => 3);
 encenar("inicio_contarEscolasCadastroIncompleto_", () => 6);
-encenar("compasso_executivoResumo", () => ({ evento: { dias: 44, data: "2026-12-19T12:00:00.000Z" }, inscricoes: { total: 412 } }));
 encenar("crcMapa_", () => ({ a: { CONFERIDO: "" }, b: { CONFERIDO: "CERTO" }, c: { STATUS: "FALHOU" } }));
 r = g.getPainelExecutivoSISGEP(T);
 const k = Object.fromEntries(r.kpis.map(x => [x.chave, x.n]));
@@ -59,7 +58,8 @@ b.ok(/E-MAILS:55/.test(porArea) && /BOLSAS:5/.test(porArea) && /CHINA PARK:2/.te
   && /CONFERÊNCIA:7/.test(porArea) && /FICHAS:2/.test(porArea) && /NOTAS:3/.test(porArea) && /COMPROVANTES:1/.test(porArea) && /ESCOLAS:6/.test(porArea),
   "cada área com a sua pendência", porArea);
 b.igual(r.resumo, { assuntos: r.tarefas.reduce((s, x) => s + x.n, 0), urgentes: 2 }, "o resumo é a soma da lista (não um número à parte)");
-b.ok(r.areas.length === 8 && r.areas.find(a => a.nome === "Festa 19/12" && a.n === "44d" && /412/.test(a.sub)), "8 áreas, com a festa", r.areas.map(a => a.nome).join(", "));
+b.ok(r.areas.length === 7 && !r.areas.some(a => /Festa/.test(a.nome)), "7 áreas — sem a festa (o SISGEP não controla a festa este ano)", r.areas.map(a => a.nome).join(", "));
+b.igual(r.indisponiveis, [], "nenhuma fonte indisponível (a festa não é mais lida)");
 b.ok(r.areas.find(a => a.nome === "China Park").sub === "1 hospedagem na semana", "China Park: hospedagem aprovada nos próximos 7 dias");
 b.ok(r.chegou.length === 2 && r.chegou.some(c => /Maria Exemplo/.test(c.de)) && r.chegou.some(c => /João Exemplo/.test(c.titulo)), "chegou agora: o e-mail e a reserva nova (só a de hoje)");
 

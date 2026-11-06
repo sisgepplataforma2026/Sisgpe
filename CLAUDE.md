@@ -364,6 +364,23 @@ festa, dia e data ("Data será impressa, numeração é necessário"); em branco
 nome, CPF, valor, extenso, serviço. A numeração é reservada no servidor (sem
 repetir); reimprimir usa os mesmos números.
 
+## 🏠 DASHBOARD EXECUTIVO (página inicial) — DECISÕES DE 06/11/2026
+
+A Home é o painel do sindicato inteiro (InicioExecutivo.gs + index.html;
+proposta em docs/PRODUTO-DASHBOARD-EXECUTIVO.md). Fatos que o usuário deixou
+claros e que valem para qualquer tela nova:
+- **Só 2 usuários, Wanderson e Marcela, os dois administradores.** Mudam só
+  a caixa de e-mail de cada um (regra de 31/10).
+- **O SISGEP NÃO gera boleto nem faz compensação.** Hoje ele só é o caminho
+  para a plataforma (Condomob) onde se geram as guias sindicais. Gerar e
+  compensar boleto é FUTURO — não mostrar "boleto vencendo" nem "pago".
+- **Pagamento do China Park não passa pelo SISGEP** (só relatório).
+- **A Festa Compasso da Vida não é controlada pelo SISGEP este ano**
+  (Firebase talvez no ano que vem). Fora do painel.
+- **Sem sino** ("não tem necessidade"). A lista "Precisa de você agora" faz
+  esse papel.
+- Número sem fonte não aparece; fonte que falha mostra "—", nunca 0.
+
 ## 🚨 VOUCHER POR E-MAIL — NADA SAI SOZINHO
 
 Definida pelo usuário em 29/10/2026: *"o e-mail não sai sozinho em momento
