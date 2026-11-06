@@ -34,13 +34,22 @@ function iex_fonte_(nome, fn, falhas) {
 
 function iex_inteiro_(n) { n = Number(n); return isFinite(n) && n > 0 ? Math.round(n) : 0; }
 
-/** O painel inteiro, numa chamada só (a Home abre com uma ida ao servidor). */
-function getPainelExecutivoSISGEP(tokenSessao) {
+/* POR PARTES — 06/11/2026. Na homologação a Home ficou em "Carregando…": numa
+   chamada só, as fontes rodavam uma depois da outra (a leitura da caixa de
+   e-mail entre elas) e o painel inteiro esperava a mais lenta. Agora a tela
+   pede os grupos AO MESMO TEMPO e desenha cada um quando ele chega. Sem
+   `grupo`, roda tudo (é o que o teste usa). */
+var IEX_GRUPOS = ["caixa", "oficios", "financeiro", "cadastros"];
+
+/** O painel (ou um grupo dele: "caixa" · "oficios" · "financeiro" · "cadastros"). */
+function getPainelExecutivoSISGEP(tokenSessao, grupo) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   var falhas = [];
   var F = {};
+  grupo = IEX_GRUPOS.indexOf(String(grupo || "")) > -1 ? String(grupo) : "";
+  var quer = function (gr) { return !grupo || grupo === gr; };
 
-  F.emails = iex_fonte_("e-mails", function () {
+  if (quer("caixa")) F.emails = iex_fonte_("e-mails", function () {
     var r = caixaResumoDoDia(tokenSessao);
     if (!r || !r.ok) throw new Error((r && r.mensagem) || "caixa indisponível");
     return { aTratar: iex_inteiro_(r.aTratar), novosHoje: iex_inteiro_(r.novosHoje), caixa: String(r.caixa || ""),
@@ -48,23 +57,35 @@ function getPainelExecutivoSISGEP(tokenSessao) {
              recentes: (r.precisa || []).slice(0, 3) };
   }, falhas);
 
-  F.oficios = iex_fonte_("ofícios", function () {
+  /* Bolsas: os pedidos de voucher chegam na secretaria@. Lidos direto da fila
+     de pedidos (não da caixa de quem está logado), porque o painel é do
+     sindicato inteiro — no Wanderson, pela caixa dele, não apareciam (HML,
+     06/11/2026). */
+  if (quer("caixa")) F.bolsas = iex_fonte_("certificados de bolsa", function () {
+    var r = voucherPedidosPainel("SECRETARIA", tokenSessao);
+    if (!r || !r.ok) throw new Error((r && r.mensagem) || "pedidos de voucher indisponíveis");
+    var c = r.contagens || {};
+    return { conferir: iex_inteiro_((c.PRONTO || 0) + (c.FALTA_DOC || 0) + (c.NAO_ENCONTRADO || 0) + (c.PRECISA_VOCE || 0) + (c.PRESENCIAL || 0)),
+             faltaDoc: iex_inteiro_(c.FALTA_DOC) };
+  }, falhas);
+
+  if (quer("oficios")) F.oficios = iex_fonte_("ofícios", function () {
     var r = getDashboardOficiosData({}, tokenSessao);
     if (!r || !r.resumo) throw new Error("monitoramento de ofícios indisponível");
     return { fila: iex_inteiro_(r.resumo.pendentes), erro: iex_inteiro_(r.resumo.erros), voltou: iex_inteiro_(r.resumo.falhas) };
   }, falhas);
 
-  F.conferencia = iex_fonte_("conferência mensal", function () {
+  if (quer("oficios")) F.conferencia = iex_fonte_("conferência mensal", function () {
     var r = oficiosConferenciaMensal(tokenSessao);
     if (!r || !r.ok) throw new Error((r && r.mensagem) || "conferência indisponível");
     return iex_inteiro_((r.problemas || []).length);
   }, falhas);
 
-  F.fichas = iex_fonte_("fichas do Drive", function () {
+  if (quer("oficios")) F.fichas = iex_fonte_("fichas do Drive", function () {
     return iex_inteiro_(ofdLinhas_().filter(function (o) { return ["NOVA", "LIDA"].indexOf(String(o.ESTADO)) > -1; }).length);
   }, falhas);
 
-  F.chinaPark = iex_fonte_("China Park", function () {
+  if (quer("cadastros")) F.chinaPark = iex_fonte_("China Park", function () {
     var lista = listarReservasParqueChina({}, tokenSessao) || [];
     var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     var em7 = new Date(hoje.getTime() + 7 * 864e5), ontem = Date.now() - 864e5;
@@ -78,21 +99,21 @@ function getPainelExecutivoSISGEP(tokenSessao) {
     return { aguardando: aguardando.length, semana: semana.length, novas: novas };
   }, falhas);
 
-  F.guias = iex_fonte_("guias sindicais", function () {
+  if (quer("financeiro")) F.guias = iex_fonte_("guias sindicais", function () {
     var r = cob_listarPainel(tokenSessao);
     if (!r || !r.ok) throw new Error("cobrança de relação nominal indisponível");
     var lembretes = (r.linhas || []).filter(function (l) { return ["SOLICITADA", "LEMBRETE_1", "LEMBRETE_2"].indexOf(l.proximaAcao) > -1; }).length;
     return { pendentes: iex_inteiro_(r.pendentes), recebidas: iex_inteiro_(r.recebidas), total: iex_inteiro_(r.total), lembretes: lembretes, competencia: String(r.competenciaLabel || "") };
   }, falhas);
 
-  F.notas = iex_fonte_("notas fiscais", function () { return iex_inteiro_(inicio_contarNotasFiscaisAguardando_()); }, falhas);
-  F.escolas = iex_fonte_("cadastro de escolas", function () { return iex_inteiro_(inicio_contarEscolasCadastroIncompleto_(tokenSessao)); }, falhas);
+  if (quer("financeiro")) F.notas = iex_fonte_("notas fiscais", function () { return iex_inteiro_(inicio_contarNotasFiscaisAguardando_()); }, falhas);
+  if (quer("cadastros")) F.escolas = iex_fonte_("cadastro de escolas", function () { return iex_inteiro_(inicio_contarEscolasCadastroIncompleto_(tokenSessao)); }, falhas);
 
   /* Festa: FORA do painel (06/11/2026) — "por esse ano ainda não está sendo
      realizada pelo SISGEP todo o controle da festa do Compasso da Vida". O
      painel não mostra o que o sistema não controla. */
 
-  F.comprovantes = iex_fonte_("comprovantes", function () {
+  if (quer("caixa")) F.comprovantes = iex_fonte_("comprovantes", function () {
     var mapa = crcMapa_(), n = 0;
     Object.keys(mapa).forEach(function (k) { var r = mapa[k]; if (!r.CONFERIDO && String(r.STATUS) !== "FALHOU") n++; });
     return n;
@@ -101,7 +122,7 @@ function getPainelExecutivoSISGEP(tokenSessao) {
   var v = function (f, padrao) { return f && f.ok ? f.v : padrao; };
   var em = v(F.emails, null), of = v(F.oficios, null), cp = v(F.chinaPark, null), gu = v(F.guias, null);
   var conf = v(F.conferencia, null), fic = v(F.fichas, null), nf = v(F.notas, null), esc = v(F.escolas, null);
-  var comp = v(F.comprovantes, null), bol = em ? em.bolsas : null;
+  var comp = v(F.comprovantes, null), bo = v(F.bolsas, null), bol = bo ? bo.conferir : null;
 
   /* ── PRECISA DE VOCÊ AGORA ─ só entra o que tem número > 0 e fonte viva. */
   var OF = { mod: "documentos", opts: { sub: "oficios", aba: "monitoramento" } };
@@ -112,8 +133,8 @@ function getPainelExecutivoSISGEP(tokenSessao) {
     t("ATENCAO", "OFÍCIOS", of.voltou, of.voltou + (of.voltou === 1 ? " e-mail de ofício voltou" : " e-mails de ofício voltaram"), "e-mail da escola com problema", "Ver", OF);
     t("INFO", "OFÍCIOS", of.fila, of.fila + (of.fila === 1 ? " ofício na fila para sair" : " ofícios na fila para sair"), "a fila envia sozinha", "Acompanhar", OF);
   }
-  if (em) t("ATENCAO", "E-MAILS", em.aTratar, em.aTratar + " e-mails a tratar na sua caixa", em.novosHoje ? em.novosHoje + " chegaram hoje" : "", "Abrir caixa", { mod: "caixaSecretaria" });
-  if (bol != null) t("ATENCAO", "BOLSAS", bol, bol + (bol === 1 ? " pedido de certificado para conferir" : " pedidos de certificado para conferir"), "pedidos de voucher que chegaram por e-mail", "Conferir", { mod: "caixaSecretaria" });
+  if (em) t("ATENCAO", "E-MAILS", em.aTratar, em.aTratar + " e-mails a tratar na sua caixa", "", "Abrir caixa", { mod: "caixaSecretaria" });
+  if (bol != null) t("ATENCAO", "BOLSAS", bol, bol + (bol === 1 ? " pedido de certificado para conferir" : " pedidos de certificado para conferir"), bo && bo.faltaDoc ? bo.faltaDoc + " com documento faltando" : "pedidos de voucher", "Conferir", { mod: "caixaSecretaria" });
   if (cp) t("ATENCAO", "CHINA PARK", cp.aguardando, cp.aguardando + (cp.aguardando === 1 ? " reserva aguardando aprovação" : " reservas aguardando aprovação"), "", "Aprovar", { mod: "beneficios", opts: { sub: "parqueChina" } });
   if (gu) {
     t("ATENCAO", "GUIAS", gu.lembretes, gu.lembretes + (gu.lembretes === 1 ? " lembrete de relação nominal para aprovar" : " lembretes de relação nominal para aprovar"), "sem a relação, a guia sindical não sai", "Revisar", { mod: "cobranca" });
@@ -130,14 +151,18 @@ function getPainelExecutivoSISGEP(tokenSessao) {
   /* ── INDICADORES ─ fonte morta vira null (a tela mostra "—"). */
   var urg = tarefas.filter(function (x) { return x.sev === "URGENTE"; }).reduce(function (s, x) { return s + x.n; }, 0);
   var kpis = [
-    { chave: "urgente", rotulo: "Urgente hoje", n: urg, sub: urg ? "precisa de você hoje" : "nada urgente", cor: "#f87171" },
-    { chave: "emails", rotulo: "E-mails a tratar", n: em ? em.aTratar : null, sub: em && em.novosHoje ? "+" + em.novosHoje + " chegaram hoje" : "na sua caixa", cor: "#f59e0b", acao: { mod: "caixaSecretaria" } },
-    { chave: "oficios", rotulo: "Ofícios pendentes", n: of ? of.fila + of.erro + of.voltou : null, sub: of ? of.fila + " fila · " + of.erro + " erro · " + of.voltou + " voltaram" : "", cor: "#eab308", acao: OF },
-    { chave: "guias", rotulo: "Guias sindicais", n: gu ? gu.pendentes : null, sub: gu ? "escolas sem relação nominal" : "", cor: "#22c55e", acao: { mod: "cobranca" } },
-    { chave: "notas", rotulo: "Notas fiscais", n: nf, sub: "aguardando envio", cor: "#60a5fa", acao: { mod: "financeiro", opts: { acao: "nf" } } },
-    { chave: "beneficios", rotulo: "Benefícios", n: (bol == null && !cp) ? null : (bol || 0) + (cp ? cp.aguardando : 0),
+    { grupo: "oficios", chave: "urgente", rotulo: "Urgente hoje", n: urg, sub: urg ? "precisa de você hoje" : "nada urgente", cor: "#f87171" },
+    { grupo: "caixa", chave: "emails", rotulo: "E-mails a tratar", n: em ? em.aTratar : null, sub: "na sua caixa", cor: "#f59e0b", acao: { mod: "caixaSecretaria" } },
+    { grupo: "oficios", chave: "oficios", rotulo: "Ofícios pendentes", n: of ? of.fila + of.erro + of.voltou : null, sub: of ? of.fila + " fila · " + of.erro + " erro · " + of.voltou + " voltaram" : "", cor: "#eab308", acao: OF },
+    { grupo: "financeiro", chave: "guias", rotulo: "Guias sindicais", n: gu ? gu.pendentes : null, sub: gu ? "escolas sem relação nominal" : "", cor: "#22c55e", acao: { mod: "cobranca" } },
+    { grupo: "financeiro", chave: "notas", rotulo: "Notas fiscais", n: nf, sub: "aguardando envio", cor: "#60a5fa", acao: { mod: "financeiro", opts: { acao: "nf" } } },
+    { grupo: "", chave: "beneficios", rotulo: "Benefícios", n: (bol == null && !cp) ? null : (bol || 0) + (cp ? cp.aguardando : 0),
       sub: (bol != null ? bol + " bolsas" : "") + (bol != null && cp ? " · " : "") + (cp ? cp.aguardando + " China Park" : ""), cor: "#a78bfa", acao: { mod: "beneficios" } }
   ];
+
+  /* Por grupo: só os indicadores daquele grupo. "Benefícios" junta bolsas
+     (caixa) e China Park (cadastros): por partes, a tela soma os dois. */
+  if (grupo) kpis = kpis.filter(function (k) { return k.grupo === grupo; });
 
   /* ── O SINDICATO POR ÁREA ─ área sem fonte viva não aparece. */
   var areas = [];
@@ -160,6 +185,7 @@ function getPainelExecutivoSISGEP(tokenSessao) {
     ok: true,
     nome: String(sessao.nome || sessao.usuario || "").split(/\s+/)[0],
     atualizadoEm: Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy HH:mm"),
+    grupo: grupo || "todos",
     resumo: { assuntos: total, urgentes: urg },
     kpis: kpis, tarefas: tarefas, areas: areas, chegou: chegou.slice(0, 4),
     indisponiveis: falhas

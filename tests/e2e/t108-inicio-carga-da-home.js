@@ -126,7 +126,11 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   b.passo("2. o painel do Início tem um dono só");
   const indices = [];
   fns.forEach((f, i) => { if (f === "getPainelExecutivoSISGEP") indices.push(i); });
-  b.igual(indices.length, 1, "getPainelExecutivoSISGEP é pedido UMA vez por carga");
+  /* 06/11/2026: por partes — 4 pedidos ao mesmo tempo, UM por grupo (na HML a
+     chamada única levou ~2 min). O que se guarda é que nenhum grupo é pedido
+     duas vezes. */
+  const grupos = sonda.chamadas.filter(c => c.fn === "getPainelExecutivoSISGEP").map(c => String((c.args || [])[1]));
+  b.igual(grupos.slice().sort(), ["cadastros", "caixa", "financeiro", "oficios"], "o painel é pedido por partes: uma vez cada grupo", grupos.join(","));
   b.igual(fns.filter(f => f === "getResumoInicioSISGEP").length, 0, "o resumo antigo não é mais pedido (não há onde desenhá-lo)");
 
   b.fluxo("MÓDULO 01 · INÍCIO — fonte que falha não vira zero");

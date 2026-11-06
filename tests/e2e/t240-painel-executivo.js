@@ -38,6 +38,7 @@ const encenar = (nome, fn) => { orig[nome] = g[nome]; g[nome] = fn; };
 encenar("caixaResumoDoDia", () => ({ ok: true, aTratar: 55, novosHoje: 12, caixa: "financeiro@", voucher: { aConferir: 5 },
   precisa: [{ assunto: "Pedido de voucher", nome: "Maria Exemplo", ha: "há 10 min", icone: "🎓" }] }));
 encenar("getDashboardOficiosData", () => ({ resumo: { pendentes: 3, erros: 2, falhas: 15 } }));
+encenar("voucherPedidosPainel", (caixa) => ({ ok: true, contagens: caixa === "SECRETARIA" ? { PRONTO: 2, FALTA_DOC: 3, EMITIDO: 9 } : {} }));
 encenar("oficiosConferenciaMensal", () => ({ ok: true, problemas: [{}, {}, {}, {}, {}, {}, {}] }));
 encenar("ofdLinhas_", () => [{ ESTADO: "NOVA" }, { ESTADO: "LIDA" }, { ESTADO: "PREPARADA" }]);
 const hoje = new Date(); const em3 = new Date(hoje.getTime() + 3 * 864e5).toISOString().slice(0, 10);
@@ -62,6 +63,13 @@ b.ok(r.areas.length === 7 && !r.areas.some(a => /Festa/.test(a.nome)), "7 áreas
 b.igual(r.indisponiveis, [], "nenhuma fonte indisponível (a festa não é mais lida)");
 b.ok(r.areas.find(a => a.nome === "China Park").sub === "1 hospedagem na semana", "China Park: hospedagem aprovada nos próximos 7 dias");
 b.ok(r.chegou.length === 2 && r.chegou.some(c => /Maria Exemplo/.test(c.de)) && r.chegou.some(c => /João Exemplo/.test(c.titulo)), "chegou agora: o e-mail e a reserva nova (só a de hoje)");
+
+b.passo("2b. Por partes (a tela pede 4 grupos ao mesmo tempo)");
+const parte = gr => g.getPainelExecutivoSISGEP(T, gr);
+b.igual(["caixa", "oficios", "financeiro", "cadastros"].map(gr => parte(gr).kpis.map(k => k.chave).join("+")), ["emails", "urgente+oficios", "guias+notas", ""], "cada grupo traz só os seus indicadores");
+const juntas = ["caixa", "oficios", "financeiro", "cadastros"].reduce((n, gr) => n + parte(gr).tarefas.length, 0);
+b.igual(juntas, r.tarefas.length, "somando as 4 partes, a lista é a mesma do painel inteiro (" + juntas + " linhas)");
+b.ok(parte("oficios").areas.every(a => a.nome === "Ofícios") && parte("caixa").chegou.length === 1, "áreas e 'chegou agora' também vêm só do grupo");
 
 b.passo("3. Toda ação abre um módulo que existe");
 const acoes = [].concat(r.tarefas, r.kpis, r.areas, r.chegou).map(x => x.acao).filter(Boolean);

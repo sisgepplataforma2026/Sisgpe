@@ -2655,7 +2655,7 @@ function spXDesenhar(r){
     ? "Hoje há <b>"+res.assuntos+" pendências</b> esperando você"+(res.urgentes?" — <b class='u'>"+res.urgentes+" urgente"+(res.urgentes>1?"s":"")+"</b>":"")+". Separei tudo abaixo, por prioridade."
     : "Nada esperando você agora — tudo em dia.";
   if(el("spXKpis")) el("spXKpis").innerHTML=(r.kpis||[]).map(function(k){
-    return "<button type='button' class='spXK' style='--c:"+spXEsc(k.cor)+"' onclick='spPainelAcao("+spXAcao(k.acao)+")'><span>"+spXEsc(k.rotulo)+"</span><b>"+(k.n==null?"—":spXEsc(k.n))+"</b><small>"+spXEsc(k.n==null?"não consegui ler agora":k.sub)+"</small></button>";
+    return "<button type='button' class='spXK' style='--c:"+spXEsc(k.cor)+"' onclick='spPainelAcao("+spXAcao(k.acao)+")'><span>"+spXEsc(k.rotulo)+"</span><b>"+(k.n===undefined?"…":k.n==null?"—":spXEsc(k.n))+"</b><small>"+spXEsc(k.n===undefined?"carregando…":k.n==null?"não consegui ler agora":k.sub)+"</small></button>";
   }).join("");
   var COR={URGENTE:"#f87171",ATENCAO:"#fbbf24",INFO:"#60a5fa"};
   if(el("spXTarefas")) el("spXTarefas").innerHTML=(r.tarefas||[]).length?(r.tarefas||[]).map(function(t){
@@ -2671,12 +2671,53 @@ function spXDesenhar(r){
     return "<div class='spXC' onclick='spPainelAcao("+spXAcao(c.acao)+")'><span>"+spXEsc(c.icone)+"</span><p>"+spXEsc(c.titulo)+"<small>"+spXEsc([c.de,c.ha].filter(Boolean).join(" · "))+"</small></p></div>";
   }).join(""):"<div class='spXVazio'>Nada novo nas últimas horas.</div>";
 }
+/* POR PARTES (06/11/2026): na homologação o painel levou ~2 min numa chamada
+   só. Agora são 4 pedidos ao mesmo tempo; cada um desenha o que trouxe
+   assim que chega, e o mais lento não segura os outros. */
+var SPX_GRUPOS=["caixa","oficios","financeiro","cadastros"];
+var SPX_NOMES={caixa:"e-mails, bolsas e comprovantes",oficios:"ofícios",financeiro:"guias e notas",cadastros:"China Park e escolas"};
+var SPX_KPIS=[["urgente","Urgente hoje","#f87171","oficios"],["emails","E-mails a tratar","#f59e0b","caixa"],["oficios","Ofícios pendentes","#eab308","oficios"],["guias","Guias sindicais","#22c55e","financeiro"],["notas","Notas fiscais","#60a5fa","financeiro"],["beneficios","Benefícios","#a78bfa",""]];
+var SPX_AREAS=["Ofícios","E-mails","Guias sindicais","Notas fiscais","Certificados","China Park","Escolas"];
+function spXJuntar(st){
+  var ok=SPX_GRUPOS.filter(function(g){return st.r[g];});
+  var tudo=function(c){return ok.reduce(function(a,g){return a.concat(st.r[g][c]||[]);},[]);};
+  var ordem={URGENTE:0,ATENCAO:1,INFO:2};
+  var tarefas=tudo("tarefas").sort(function(a,b){return ordem[a.sev]-ordem[b.sev];});
+  var areas=tudo("areas").sort(function(a,b){return SPX_AREAS.indexOf(a.nome)-SPX_AREAS.indexOf(b.nome);});
+  var por={};tudo("kpis").forEach(function(k){por[k.chave]=k;});
+  var cert=areas.filter(function(a){return a.nome==="Certificados";})[0], cp=areas.filter(function(a){return a.nome==="China Park";})[0];
+  var benefPronto=st.feito.caixa&&st.feito.cadastros;
+  if(benefPronto&&(cert||cp)) por.beneficios={chave:"beneficios",n:(cert?Number(cert.n)||0:0)+(cp?Number(cp.n)||0:0),
+    sub:[cert?cert.n+" bolsas":"",cp?cp.n+" China Park":""].filter(Boolean).join(" · "),acao:{mod:"beneficios"}};
+  var kpis=SPX_KPIS.map(function(d){
+    var k=por[d[0]], pronto=d[3]?st.feito[d[3]]:benefPronto;
+    return {chave:d[0],rotulo:d[1],cor:d[2],n:k?k.n:(pronto?null:undefined),sub:k?k.sub:"",acao:k?k.acao:null};
+  });
+  var urg=tarefas.filter(function(t){return t.sev==="URGENTE";}).reduce(function(s,t){return s+t.n;},0);
+  return {resumo:{assuntos:tarefas.reduce(function(s,t){return s+t.n;},0),urgentes:urg},kpis:kpis,tarefas:tarefas,areas:areas,
+    chegou:tudo("chegou").slice(0,4),indisponiveis:tudo("indisponiveis").concat(st.erros),
+    atualizadoEm:ok.length?st.r[ok[ok.length-1]].atualizadoEm:"",
+    faltam:SPX_GRUPOS.filter(function(g){return !st.feito[g];})};
+}
 function carregarPainelExecutivo(){
   if(!(window.google&&google.script&&google.script.run))return false;
-  google.script.run
-    .withSuccessHandler(function(r){ if(r&&r.ok) spXDesenhar(r); else { var e=document.getElementById("spXTarefas"); if(e) e.innerHTML="<div class='spXVazio'>⚠ Não consegui montar o painel agora"+(r&&r.mensagem?": "+spXEsc(r.mensagem):"")+".</div>"; } })
-    .withFailureHandler(function(e){ console.error("[Início] painel executivo falhou:",e); var x=document.getElementById("spXTarefas"); if(x) x.innerHTML="<div class='spXVazio'>⚠ Não consegui montar o painel agora: "+spXEsc(e&&e.message||e)+".</div>"; })
-    .getPainelExecutivoSISGEP(SISGEP_TOKEN_SESSAO);
+  var st={r:{},feito:{},erros:[]};
+  var desenhar=function(){
+    var m=spXJuntar(st); spXDesenhar(m);
+    if(m.faltam.length){
+      var el=function(id){return document.getElementById(id);};
+      if(el("spXAtualizado")) el("spXAtualizado").textContent="carregando: "+m.faltam.map(function(g){return SPX_NOMES[g];}).join(", ")+"…";
+      if(!m.tarefas.length&&el("spXTarefas")) el("spXTarefas").innerHTML="<div class='spXVazio'>Carregando…</div>";
+      if(!m.areas.length&&el("spXAreas")) el("spXAreas").innerHTML="<div class='spXVazio'>Carregando…</div>";
+      if(!m.tarefas.length&&el("spResumoDia")) el("spResumoDia").textContent="Estou juntando o que precisa de você hoje…";
+    }
+  };
+  SPX_GRUPOS.forEach(function(g){
+    google.script.run
+      .withSuccessHandler(function(r){ st.feito[g]=true; if(r&&r.ok) st.r[g]=r; else st.erros.push(SPX_NOMES[g]); desenhar(); })
+      .withFailureHandler(function(e){ console.error("[Início] painel ("+g+") falhou:",e); st.feito[g]=true; st.erros.push(SPX_NOMES[g]); desenhar(); })
+      .getPainelExecutivoSISGEP(SISGEP_TOKEN_SESSAO,g);
+  });
   return true;
 }
 function carregarResumoInicio(){
