@@ -160,6 +160,20 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 130. 🔴 DASHBOARD EXECUTIVO — FASE 1 NA PÁGINA INICIAL (06/11/2026)
+
+A Home virou o painel do sindicato inteiro: `InicioExecutivo.gs`
+(`getPainelExecutivoSISGEP`, uma chamada só) + `index.html` (topo menor, 6
+indicadores, "Precisa de você agora", "O sindicato por área", "Chegou agora").
+Saíram o sino (o "8" era fixo), o "?", o "WC", a mãozinha, as Ações rápidas, a
+Saúde do sindicato e os Destaques. Sem boleto e sem pagamento do China Park
+(decisão de 06/11). Testes: t240 (17), t108 refeito (10), todos os destinos
+abertos no emulador. Foto: `docs/home-dashboard-executivo-fase1.png`.
+**Falta no ar (HML):** abrir a Home e conferir cada número com a tela do
+módulo (e-mails, ofícios, guias/relação nominal, notas, bolsas, China Park,
+festa, escolas); clicar em cada botão; ver se a festa aparece (no emulador
+ela fica de fora por não ter Firebase).
+
 ### 129. 🔴 MEDIÇÃO DE USO DA IA — aba IA_Uso (05/11/2026)
 
 > **Em PRODUÇÃO na versão 756 (05/11/2026; volta = 755).** O cache da Sofia foi junto, mas DESLIGADO (liga com a propriedade `SOFIA_CACHE = SIM`).

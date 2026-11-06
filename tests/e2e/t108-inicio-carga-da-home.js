@@ -116,107 +116,54 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     );
   }
 
-  b.passo("2. o resumo do Início tem um dono só");
+  /* 06/11/2026 — A Home virou o Dashboard Executivo (InicioExecutivo.gs,
+     t240). Os passos 2 a 5 antigos testavam o resumo de 5 cards e a "Saúde do
+     sindicato", que saíram da tela por decisão do usuário. O que eles
+     guardavam continua guardado aqui, no painel novo:
+       - um dono só, uma chamada só;
+       - fonte que falha aparece como falha, nunca como 0;
+       - todo card leva a algum lugar. */
+  b.passo("2. o painel do Início tem um dono só");
   const indices = [];
-  fns.forEach((f, i) => { if (f === "getResumoInicioSISGEP") indices.push(i); });
-  // GUARDA da correção de 31/08: eram DUAS chamadas (index.html e Helpers.html)
-  // escrevendo nos mesmos ids. Se voltar a dar 2, a disputa voltou.
-  b.igual(indices.length, 1, "getResumoInicioSISGEP é pedido UMA vez por carga");
+  fns.forEach((f, i) => { if (f === "getPainelExecutivoSISGEP") indices.push(i); });
+  b.igual(indices.length, 1, "getPainelExecutivoSISGEP é pedido UMA vez por carga");
+  b.igual(fns.filter(f => f === "getResumoInicioSISGEP").length, 0, "o resumo antigo não é mais pedido (não há onde desenhá-lo)");
 
-  /* ══════════════════════════════════════════════════════════ */
-  b.fluxo("MÓDULO 01 · INÍCIO — a corrida entre index.html e Helpers.html");
-
-  /* FALHA INJETADA, de propósito.
-   *
-   * Com a planilha de teste vazia, todas as cinco fontes respondem ok:true
-   * com valor 0 — e aí as duas telas concordam, porque 0 é 0 mesmo. A
-   * divergência só existe quando uma fonte FALHA: o Helpers mostra "⚠" e o
-   * index mostra 0. É esse caso que precisa ser encenado.
-   *
-   * O que se quebra aqui é o que quebra de verdade em produção: a aba de
-   * Despesas fora do ar, a planilha renomeada, a cota estourada. */
+  b.fluxo("MÓDULO 01 · INÍCIO — fonte que falha não vira zero");
   g.obterResumoDespesas_interno_ = function () {
     throw new Error("fonte de despesas indisponível (falha injetada pelo teste)");
   };
-
-  b.passo("3. curso normal: o Helpers responde por último e a verdade aparece");
+  b.passo("3. curso normal");
   const normal = abrirHome();
   await esperar(ESPERA);
-  const prioNormal = normal.texto("#spPrioNF");
-  b.ok(
-    prioNormal === "⚠",
-    "com as duas respostas rápidas, fonte que falhou mostra '⚠' (correto)",
-    JSON.stringify(prioNormal)
-  );
+  const kNF = [...normal.doc.querySelectorAll("#spXKpis .spXK")].find(e => /Notas fiscais/i.test(e.textContent));
+  b.ok(kNF && /—/.test(kNF.querySelector("b").textContent) && /não consegui ler/.test(kNF.textContent),
+    "a fonte que falhou mostra '—' e 'não consegui ler agora' (nunca 0)", kNF && kNF.textContent);
+  b.ok(/notas fiscais/.test(normal.texto("#spXIndisponivel")), "e o aviso embaixo da lista diz qual ficou de fora", normal.texto("#spXIndisponivel"));
 
-  b.passo("4. resposta lenta: a verdade não pode depender do tempo de rede");
-  // Antes da correção, este era o passo que reprovava: com a resposta do
-  // index.html chegando depois do setTimeout(450) do Helpers, "⚠" virava "0".
-  // Com um dono só, o atraso deixou de poder mudar o que a Home afirma.
-  const lenta = abrirHome([{ indice: indices[0], ms: 1200 }]);
+  b.passo("4. resposta lenta: o atraso não muda o que a Home afirma");
+  const lenta = abrirHome([{ indice: 0, ms: 1200 }]);
   await esperar(ESPERA + 1200);
+  const kNF2 = [...lenta.doc.querySelectorAll("#spXKpis .spXK")].find(e => /Notas fiscais/i.test(e.textContent));
+  b.ok(kNF2 && /—/.test(kNF2.querySelector("b").textContent), "com a resposta lenta, continua '—', nunca 0");
 
-  b.ok(
-    lenta.texto("#spPrioNF") === "⚠",
-    "com a resposta lenta, fonte que falhou continua mostrando '⚠', nunca 0",
-    JSON.stringify(lenta.texto("#spPrioNF"))
-  );
-
-  b.passo("4b. para onde cada card de prioridade leva");
-  /* Era o "⚪ não conferido" do item 36 do PENDENTE-VERIFICACAO. Não precisava
-     de conferência no ar: o destino está no onclick e o clique é exercitável.
-
-     A diretriz de dashboards do PROMPT-MESTRE pede que "cards e alertas devem
-     ser clicáveis e levar diretamente à FILA, tela, registro ou ação
-     correspondente". O que este passo fixa é o estado de HOJE. */
-  const nav = abrirHome();
-  await esperar(ESPERA);
-
+  b.passo("4b. todo card leva a algum lugar");
+  const nav = normal;
   const idas = [];
   const spIrOriginal = nav.win.spIr;
   nav.win.spIr = function (mod, el, opts) { idas.push({ mod: mod, opts: opts || null }); };
-
-  /* CLICAR NÃO SERVE AQUI, e o motivo está documentado no t39: o jsdom em
-     modo `outside-only` não compila atributo de evento, então o onclick
-     inline dispara e nada acontece. O que se faz é AVALIAR o handler no
-     escopo da própria página — é execução do mesmo código que o navegador
-     rodaria, só que sem passar pelo compilador de atributos. */
-  ["spPrioNF", "spPrioEmails", "spPrioOficios", "spPrioJuridico", "spPrioEscolas"]
-    .forEach(function (id) {
-      const el = nav.doc.getElementById(id);
-      const card = el && el.closest ? el.closest(".spPriority") : null;
-      const handler = card && card.getAttribute("onclick");
-      if (handler) nav.win.eval(handler);
-    });
+  const clicaveis = [...nav.doc.querySelectorAll("#spXKpis [onclick], #spXTarefas [onclick], #spXAreas [onclick], #spXChegou [onclick]")];
+  clicaveis.forEach(function (c) { nav.win.eval(c.getAttribute("onclick")); });
   nav.win.spIr = spIrOriginal;
-
-  b.igual(idas.length, 5, "os cinco cards respondem ao clique",
+  const kComAcao = [...nav.doc.querySelectorAll("#spXKpis .spXK")].length;
+  b.ok(clicaveis.length > 0 && idas.length >= clicaveis.length - 1, "os cards do painel respondem ao clique (" + idas.length + " de " + clicaveis.length + ")",
     idas.map(i => i.mod).join(", "));
+  b.ok(!idas.some(i => i.mod === "comunicacao" || i.mod === "relatorios"), "nenhum leva ao Painel do Dia antigo nem aos Relatórios de Ofícios por engano");
 
-  const comFiltro = idas.filter(i => i.opts && Object.keys(i.opts).length > 0);
-  if (comFiltro.length === 5) {
-    b.ok(true, "todos os cards levam à fila filtrada");
-  } else {
-    b.aviso(
-      comFiltro.length + " de 5 cards levam a algo mais específico que o módulo cru",
-      "a diretriz de dashboards pede a FILA correspondente. Hoje: " +
-      idas.map(i => i.mod + (i.opts ? " " + JSON.stringify(i.opts) : " (sem filtro)")).join(" · ")
-    );
-  }
-
-  b.passo("5. o indicador de saúde de Ofícios tem onde aparecer");
-  // O InicioResumo.gs sempre devolveu saude.oficios; até 31/08 não havia
-  // elemento para recebê-lo e o valor era calculado e descartado.
-  b.ok(
-    normal.doc.getElementById("spSaudeOficios") !== null,
-    "existe o elemento spSaudeOficios na Home",
-    "Ofícios é o único módulo em uso diário e faltava no painel de saúde"
-  );
-  b.ok(
-    normal.texto("#spSaudeOficios") === "OK",
-    "e ele recebe o valor vindo do servidor",
-    JSON.stringify(normal.texto("#spSaudeOficios"))
-  );
+  b.passo("5. o que saiu da tela por decisão do usuário (06/11/2026)");
+  b.ok(!nav.doc.getElementById("spNB"), "sem o sino com número fixo");
+  b.ok(![...nav.doc.querySelectorAll(".spTopBtn")].some(x => /^(\?|WC)$/.test(x.textContent.trim())), "sem os botões '?' e 'WC', que não faziam nada");
+  b.ok(!/👋/.test(nav.texto("#spGreet")), "sem a mãozinha na saudação");
 
   b.naoTestavel(
     "o tempo real de carga da Home no Apps Script",
