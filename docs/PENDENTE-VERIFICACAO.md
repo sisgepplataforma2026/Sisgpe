@@ -160,6 +160,15 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 131. 🔴 ASSINATURA NO FORMATO DA KINGHOST, COM O LOGO (06/11/2026, produção)
+
+Novo e-mail (as duas caixas) e respostas da Caixa: "Atenciosamente,", nome,
+cargo em itálico, telefone, e-mail em link e o logo (LOGO_VOUCHER). O texto da
+tela vira a assinatura formatada no envio, sem repetir; assinada à mão, fica
+como foi escrita. Testado no emulador (t243). **Não testado:** o logo
+aparecendo no e-mail recebido (Gmail/KingHost/celular). Roteiro: mandar um
+Novo e-mail para si mesmo pela secretaria@ e pela financeiro@ e conferir.
+
 ### 130. 🔴 DASHBOARD EXECUTIVO — FASE 1 NA PÁGINA INICIAL (06/11/2026)
 
 A Home virou o painel do sindicato inteiro: `InicioExecutivo.gs`
