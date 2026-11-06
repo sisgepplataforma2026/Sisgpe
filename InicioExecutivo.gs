@@ -51,7 +51,9 @@ function getPainelExecutivoSISGEP(tokenSessao, grupo, forcar) {
   var t0 = Date.now();
   var sessaoC = exigirSessaoDocumentos_(tokenSessao, false);
   var gC = IEX_GRUPOS.indexOf(String(grupo || "")) > -1 ? String(grupo) : "";
-  var chave = "iex_" + String(sessaoC.email || sessaoC.usuario || "").replace(/[^\w]/g, "").slice(0, 60) + "_" + (gC || "todos");
+  /* A guarda é por LOGIN (usuário), não por e-mail: dois logins com o mesmo
+     e-mail no cadastro não podem ver o painel um do outro (06/11/2026). */
+  var chave = "iex_" + String(sessaoC.usuario || sessaoC.email || "").replace(/[^\w]/g, "").slice(0, 60) + "_" + (gC || "todos");
   var cache = null;
   try { cache = CacheService.getScriptCache(); if (!forcar) { var c0 = cache.get(chave); if (c0) { var r0 = JSON.parse(c0); r0.doCache = true; return r0; } } } catch (e0) {}
   var r = iex_montar_(tokenSessao, gC);

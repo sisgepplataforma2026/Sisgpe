@@ -298,6 +298,11 @@
               <span class="spDropdownIcon"></span>
               <span>Meu Perfil</span>
             </button>
+            <div class="spDropdownDivider"></div>
+            <button class="spDropdownItem" id="spMenuSair" onclick="spToggleUserMenu(); spSairDoSistema();">
+              <span class="spDropdownIcon">🚪</span>
+              <span>Sair do sistema</span>
+            </button>
           </div>
         </div>
       </div>
@@ -920,7 +925,9 @@ button,input{font-family:inherit;}
 
 /* Main */
 #spMain{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-#spTopbar{height:60px;min-height:60px;background:rgba(5,10,20,.75);border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;padding:0 28px;backdrop-filter:blur(14px);}
+/* 06/11/2026: o menu do perfil abria POR BAIXO dos cards (o blur do topo
+   cria uma camada própria sem z-index) — "quando clico ... não acontece nada". */
+#spTopbar{position:relative;z-index:60;height:60px;min-height:60px;background:rgba(5,10,20,.75);border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;padding:0 28px;backdrop-filter:blur(14px);}
 #spTit{font-size:18px;font-weight:800;color:#fff;line-height:1.05;}
 #spSub{font-size:11px;color:rgba(148,163,184,.7);margin-top:3px;}
 .spTopRight{display:flex;align-items:center;gap:12px;}
@@ -2621,8 +2628,8 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
 
   spRadioInit_();
 
-  var bl=document.getElementById("spLogout");
-  if(bl)bl.addEventListener("click",function(){
+  /* Sair: o botão da tela de Configurações e, desde 06/11/2026, o menu do perfil. */
+  window.spSairDoSistema=function(){
     if(!confirm("Deseja sair do sistema?"))return;
     try { sessionStorage.removeItem(SISGEP_STORAGE_TOKEN); sessionStorage.removeItem(SISGEP_STORAGE_URL); } catch(e){}
     if(window.google&&google.script&&google.script.run){
@@ -2632,7 +2639,9 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
         .withFailureHandler(function(){ esconderCarregando(idCarregandoLogout); window.location.reload(); })
         .encerrarSessaoUsuario(SISGEP_TOKEN_SESSAO);
     }else window.location.reload();
-  });
+  };
+  var bl=document.getElementById("spLogout");
+  if(bl)bl.addEventListener("click",function(){ window.spSairDoSistema(); });
 });
 
 /* Resumo real da tela Início.
