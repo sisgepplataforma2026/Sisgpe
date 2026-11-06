@@ -203,7 +203,11 @@ function cxsLinhaPonte_(id) {
 var CXS_PREFIXO_FIN = "F:";
 /* 60 dias (31/10/2026: "pode categorizar ambas as caixas de entrada"). */
 var CXS_FIN_BUSCA = "in:inbox newer_than:60d -category:promotions -category:social -category:forums";
-var CXS_FIN_MAX = 60;
+/* 06/11/2026: eram 60 — com 67 na caixa de entrada, as mais antigas não
+   apareciam ("está com diferença da qt de e-mails, pq?"). Agora até 200,
+   lidas em páginas de 100, com as mensagens buscadas de uma vez por página. */
+var CXS_FIN_MAX = 200;
+var CXS_FIN_PAGINA = 100;
 var CXS_NOSSOS = ["financeiro@sindeducacao.com", "secretaria@sindeducacao.com"];
 var CXS_AUTOMATICO = /^(no-?reply|nao-?responda|naoresponda|mailer|bounce|news|newsletter|marketing|notifica)/i;
 
@@ -363,23 +367,52 @@ function cxsLinhaFinanceiro_(id) {
 
 /* As conversas da caixa de entrada da financeiro@ (30 dias). Cache curto:
    abrir e voltar para a lista não relê o Gmail. */
+/* As conversas da busca, em páginas (o Gmail devolve no máximo 500 por
+   chamada; 100 por vez mantém cada leitura rápida). Sem repetir conversa. */
+function cxsBuscarFin_(gm, busca, max) {
+  var todas = [], vistos = {};
+  for (var ini = 0; ini < max; ini += CXS_FIN_PAGINA) {
+    var lote = gm.search(busca, ini, Math.min(CXS_FIN_PAGINA, max - ini)) || [];
+    var novos = 0;
+    lote.forEach(function (t) { var id = String(t.getId()); if (!vistos[id]) { vistos[id] = 1; todas.push(t); novos++; } });
+    if (lote.length < CXS_FIN_PAGINA || !novos) break;
+  }
+  return todas;
+}
+/* A conta de quanto entrou e por que o resto não aparece — para o número
+   da Caixa bater com o do Gmail à vista (06/11/2026). */
+var cxsFinContagem_ = null;
 function cxsLinhasFinanceiro_() {
-  var cache = null, chave = "cxs_fin_lista_v1";
-  try { cache = CacheService.getScriptCache(); var c = cache.get(chave); if (c) return JSON.parse(c); } catch (e) {}
+  var cache = null, chave = "cxs_fin_lista_v1";   // o mesmo nome: quem limpa a lista continua limpando
+  try {
+    cache = CacheService.getScriptCache(); var c = cache.get(chave);
+    var o = c ? JSON.parse(c) : null;
+    /* guardada pela versão de antes (só a lista): lê de novo */
+    if (o && !Array.isArray(o) && o.linhas) { cxsFinContagem_ = o.contagem || null; return o.linhas; }
+  } catch (e) {}
   var gm = cxsGmailFinanceiro_();
-  var threads = gm.search(CXS_FIN_BUSCA, 0, CXS_FIN_MAX) || [];
+  var threads = cxsBuscarFin_(gm, CXS_FIN_BUSCA, CXS_FIN_MAX);
   /* Quem tem anexo: UMA busca a mais, em vez de abrir os anexos de cada
      mensagem (era o que deixava a Caixa lenta — usuário, 30/10/2026). */
   var comAnexo = {};
-  try { (gm.search(CXS_FIN_BUSCA + " has:attachment", 0, CXS_FIN_MAX) || []).forEach(function (t) { comAnexo[String(t.getId())] = true; }); } catch (eA) {}
+  try { cxsBuscarFin_(gm, CXS_FIN_BUSCA + " has:attachment", CXS_FIN_MAX).forEach(function (t) { comAnexo[String(t.getId())] = true; }); } catch (eA) {}
+  /* As mensagens de uma página inteira numa chamada só, quando o Gmail deixa. */
+  var msgsDe = {};
+  if (typeof gm.getMessagesForThreads === "function") {
+    for (var i = 0; i < threads.length; i += CXS_FIN_PAGINA) {
+      var parte = threads.slice(i, i + CXS_FIN_PAGINA);
+      try { (gm.getMessagesForThreads(parte) || []).forEach(function (ms, k) { msgsDe[String(parte[k].getId())] = ms; }); } catch (eM) {}
+    }
+  }
+  var cont = { lidas: threads.length, limite: CXS_FIN_MAX, noLimite: threads.length >= CXS_FIN_MAX,
+               automaticas: 0, propaganda: 0, antigas: null };
   var linhas = [];
   threads.forEach(function (th) {
-    var l = cxsLinhaDeThreadFin_(th, false);
+    var l = cxsLinhaDeThreadFin_(th, false, msgsDe[String(th.getId())]);
     if (!l) return;
     var m = vpeJson_(l.MENSAGENS_JSON, []);
     var primeira = m[0] || {}, ultima = m[m.length - 1] || {};
-    if (CXS_CONFIRMACAO_LEITURA.test(String(primeira.assunto || ""))) return;
-    if (CXS_AUTOMATICO.test(cxsEmail_(ultima.de))) return;
+    if (CXS_CONFIRMACAO_LEITURA.test(String(primeira.assunto || "")) || CXS_AUTOMATICO.test(cxsEmail_(ultima.de))) { cont.automaticas++; return; }
     l.__qtdAnexos = comAnexo[String(th.getId())] ? 1 : 0;
     l.MENSAGENS_JSON = JSON.stringify(m.map(function (x) { x.corpo = String(x.corpo || "").substring(0, 300); return x; }));
     linhas.push(l);
@@ -390,9 +423,18 @@ function cxsLinhasFinanceiro_() {
   linhas = linhas.filter(function (l) {
     var g = guardados[l.THREAD_ID];
     if (!l.__aprendido && g) { l.TIPO = String(g.TIPO); l.PEDIDO = String(g.PEDIDO || ""); }
-    return CXS_FORA_DA_ENTRADA.indexOf(l.TIPO) === -1;
+    var fica = CXS_FORA_DA_ENTRADA.indexOf(l.TIPO) === -1;
+    if (!fica) cont.propaganda++;
+    return fica;
   });
-  try { cache.put(chave, JSON.stringify(linhas), 300); } catch (e) {}
+  /* Conversas da caixa de entrada com mais de 60 dias: não entram (é a regra
+     de 31/10), mas o número aparece para a conta fechar com o Gmail. */
+  try {
+    var antigas = gm.search(CXS_FIN_BUSCA.replace("newer_than:60d", "older_than:60d"), 0, 500) || [];
+    cont.antigas = antigas.length;
+  } catch (eO) {}
+  cxsFinContagem_ = cont;
+  try { cache.put(chave, JSON.stringify({ linhas: linhas, contagem: cont }), 300); } catch (e) {}
   return linhas;
 }
 function cxsEmail_(s) {
@@ -592,7 +634,7 @@ function caixaFinanceiroItens(tokenSessao) {
       r.fonte = "EMAIL";
       return r;
     });
-    return { ok: true, itens: itens };
+    return { ok: true, itens: itens, contagem: cxsFinContagem_ };
   } catch (e) {
     return { ok: false, mensagem: "Caixa do Financeiro: " + e.message };
   }
