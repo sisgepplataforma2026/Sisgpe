@@ -6872,3 +6872,14 @@ Primeiro teste: Marcela emite e reenvia 1 ofício como sempre ("Só reenviar"); 
 
 Recibos em branco da festa (commit 5f3f218). Pedido: "pode levar". **Não testado no ar.** Para voltar: versão 752.
 Teste: Eventos › Festa › Recibos em branco › 👁 Prévia e imprimir 1.
+
+## 🔴 PRODUÇÃO 06/11/2026 — versão 757 (anterior: 756)
+
+Home nova (painel executivo, Sofia em duas colunas, sem sino/?/WC, guarda de 3 min e "↻ Atualizar") + Caixa da financeiro@ lendo até 200 conversas, com a conta que fecha com o Gmail (commit 16aa8af). Pedido: "Publica em produção também" → "Publicar tudo". **Não testado no ar.** Para voltar: versão 756.
+
+| Teste | Esperado |
+|---|---|
+| Abrir a Home | cada número confere com a tela do módulo (Ofícios, E-mails, Guias, Notas, Certificados, China Park, Escolas); fonte que falha mostra "—" |
+| Clicar em cada linha de "Precisa de você agora" | abre o módulo/aba certa |
+| Certificados | o número bate com o card Voucher da Caixa da Secretaria (no HML marcou 138) |
+| Caixa de E-mails (financeiro@) | abre em tempo bom; a linha "financeiro@: N conversa(s)…" soma e fecha com o Gmail |
