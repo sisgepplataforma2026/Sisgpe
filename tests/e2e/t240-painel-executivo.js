@@ -27,7 +27,7 @@ const MODS = (() => {
 
 b.fluxo("PAINEL EXECUTIVO · servidor");
 b.passo("1. Sistema vazio");
-let r = g.getPainelExecutivoSISGEP(T);
+let r = g.getPainelExecutivoSISGEP(T, undefined, true);
 b.ok(r.ok && r.tarefas.length === 0, "sem pendência, a lista 'Precisa de você agora' fica vazia", JSON.stringify(r.tarefas));
 b.ok(r.resumo.assuntos === 0 && r.resumo.urgentes === 0, "resumo zerado de verdade");
 b.ok(!JSON.stringify(r).match(/boleto|vencend|pagamento a confirmar/i), "nada de boleto nem pagamento do China Park");
@@ -50,7 +50,7 @@ encenar("cob_listarPainel", () => ({ ok: true, total: 10, recebidas: 4, pendente
 encenar("inicio_contarNotasFiscaisAguardando_", () => 3);
 encenar("inicio_contarEscolasCadastroIncompleto_", () => 6);
 encenar("crcMapa_", () => ({ a: { CONFERIDO: "" }, b: { CONFERIDO: "CERTO" }, c: { STATUS: "FALHOU" } }));
-r = g.getPainelExecutivoSISGEP(T);
+r = g.getPainelExecutivoSISGEP(T, undefined, true);
 const k = Object.fromEntries(r.kpis.map(x => [x.chave, x.n]));
 b.igual(k, { urgente: 2, emails: 55, oficios: 20, guias: 6, notas: 3, beneficios: 7 }, "os 6 indicadores com os números das fontes");
 b.igual(r.tarefas[0].sev + "|" + r.tarefas[0].area + "|" + r.tarefas[0].n, "URGENTE|OFÍCIOS|2", "o urgente vem primeiro: ofícios com erro");
@@ -65,7 +65,7 @@ b.ok(r.areas.find(a => a.nome === "China Park").sub === "1 hospedagem na semana"
 b.ok(r.chegou.length === 2 && r.chegou.some(c => /Maria Exemplo/.test(c.de)) && r.chegou.some(c => /João Exemplo/.test(c.titulo)), "chegou agora: o e-mail e a reserva nova (só a de hoje)");
 
 b.passo("2b. Por partes (a tela pede 4 grupos ao mesmo tempo)");
-const parte = gr => g.getPainelExecutivoSISGEP(T, gr);
+const parte = gr => g.getPainelExecutivoSISGEP(T, gr, true);
 b.igual(["caixa", "oficios", "financeiro", "cadastros"].map(gr => parte(gr).kpis.map(k => k.chave).join("+")), ["emails", "urgente+oficios", "guias+notas", ""], "cada grupo traz só os seus indicadores");
 const juntas = ["caixa", "oficios", "financeiro", "cadastros"].reduce((n, gr) => n + parte(gr).tarefas.length, 0);
 b.igual(juntas, r.tarefas.length, "somando as 4 partes, a lista é a mesma do painel inteiro (" + juntas + " linhas)");
@@ -79,13 +79,21 @@ b.ok(!acoes.some(a => a.mod === "comunicacao"), "e-mail abre a Caixa de E-mails,
 
 b.passo("4. Fonte que falha some — não vira zero");
 encenar("getDashboardOficiosData", () => { throw new Error("planilha fora do ar"); });
-r = g.getPainelExecutivoSISGEP(T);
+r = g.getPainelExecutivoSISGEP(T, undefined, true);
 b.ok(r.indisponiveis.includes("ofícios"), "ofícios listado como indisponível");
 b.ok(r.kpis.find(x => x.chave === "oficios").n === null, "o indicador de ofícios fica sem número (a tela mostra '—')");
 b.ok(!r.tarefas.some(x => x.area === "OFÍCIOS") && !r.areas.some(a => a.nome === "Ofícios"), "e nenhuma linha de ofício aparece com zero");
 b.ok(r.kpis.find(x => x.chave === "emails").n === 55, "as outras fontes continuam");
 
 Object.keys(orig).forEach(n => { g[n] = orig[n]; });
+b.passo("4b. A guarda de 3 minutos");
+const c1 = g.getPainelExecutivoSISGEP(T, "financeiro", true);
+encenar("inicio_contarNotasFiscaisAguardando_", () => 99);
+const c2 = g.getPainelExecutivoSISGEP(T, "financeiro");
+b.ok(c2.doCache && c2.kpis.find(k => k.chave === "notas").n === c1.kpis.find(k => k.chave === "notas").n, "aberta de novo em seguida, vem da guarda (rápido), sem ler as fontes");
+const c3 = g.getPainelExecutivoSISGEP(T, "financeiro", true);
+b.ok(!c3.doCache && c3.kpis.find(k => k.chave === "notas").n === 99, "'Atualizar' lê tudo de novo na hora");
+
 b.passo("5. Sessão inválida");
 let barrou = false; try { g.getPainelExecutivoSISGEP("token-falso"); } catch (e) { barrou = true; }
 b.ok(barrou, "sem sessão, não devolve nada");

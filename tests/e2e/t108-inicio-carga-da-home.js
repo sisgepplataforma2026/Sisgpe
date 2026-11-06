@@ -137,6 +137,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   g.obterResumoDespesas_interno_ = function () {
     throw new Error("fonte de despesas indisponível (falha injetada pelo teste)");
   };
+  /* Sem a guarda de 3 minutos aqui: a carga do passo 1 guardou as partes
+     com a fonte ainda boa, e o que se testa agora é a fonte quebrada. */
+  g.CacheService.getScriptCache = () => ({ get: () => null, put() {}, remove() {}, getAll: () => ({}), putAll() {}, removeAll() {} });
   b.passo("3. curso normal");
   const normal = abrirHome();
   await esperar(ESPERA);

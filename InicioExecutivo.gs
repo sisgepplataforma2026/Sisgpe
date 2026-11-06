@@ -41,8 +41,26 @@ function iex_inteiro_(n) { n = Number(n); return isFinite(n) && n > 0 ? Math.rou
    `grupo`, roda tudo (é o que o teste usa). */
 var IEX_GRUPOS = ["caixa", "oficios", "financeiro", "cadastros"];
 
+/* GUARDA DE 3 MINUTOS (06/11/2026): na HML cada parte levou minutos. O
+   resultado de cada grupo fica 3 min no CacheService, por pessoa; a tela diz
+   o horário da leitura e tem "Atualizar" (forcar=true) para ler de novo. */
+var IEX_CACHE_SEG = 180;
+
 /** O painel (ou um grupo dele: "caixa" · "oficios" · "financeiro" · "cadastros"). */
-function getPainelExecutivoSISGEP(tokenSessao, grupo) {
+function getPainelExecutivoSISGEP(tokenSessao, grupo, forcar) {
+  var t0 = Date.now();
+  var sessaoC = exigirSessaoDocumentos_(tokenSessao, false);
+  var gC = IEX_GRUPOS.indexOf(String(grupo || "")) > -1 ? String(grupo) : "";
+  var chave = "iex_" + String(sessaoC.email || sessaoC.usuario || "").replace(/[^\w]/g, "").slice(0, 60) + "_" + (gC || "todos");
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); if (!forcar) { var c0 = cache.get(chave); if (c0) { var r0 = JSON.parse(c0); r0.doCache = true; return r0; } } } catch (e0) {}
+  var r = iex_montar_(tokenSessao, gC);
+  r.ms = Date.now() - t0;
+  try { if (cache) cache.put(chave, JSON.stringify(r), IEX_CACHE_SEG); } catch (e1) {}
+  return r;
+}
+
+function iex_montar_(tokenSessao, grupo) {
   var sessao = exigirSessaoDocumentos_(tokenSessao, false);
   var falhas = [];
   var F = {};

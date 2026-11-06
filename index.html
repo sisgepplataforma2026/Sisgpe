@@ -253,8 +253,8 @@
   <main id="spMain">
     <header id="spTopbar">
       <div>
-        <div id="spTit">SOFIA</div>
-        <div id="spSub">Sistema Operacional Financeiro com Inteligência Artificial</div>
+        <div id="spTit">Início</div>
+        <div id="spSub">Painel do sindicato — o que precisa de você hoje</div>
       </div>
       <div class="spTopRight">
         <div class="spClock">
@@ -351,7 +351,7 @@
                nunca vira zero. Desenho: docs/PRODUTO-DASHBOARD-EXECUTIVO.md. -->
           <section class="spXKpis" id="spXKpis"></section>
           <section class="spXCard spXTarefasCard">
-            <div class="spXHead"><b>⚡ Precisa de você agora</b><small id="spXAtualizado">carregando…</small></div>
+            <div class="spXHead"><b>⚡ Precisa de você agora</b><span><small id="spXAtualizado">carregando…</small> <button type="button" class="spXBtn" id="spXAtualizar" onclick="carregarPainelExecutivo(true)" title="Ler tudo de novo agora">↻ Atualizar</button></span></div>
             <div id="spXTarefas"><div class="spXVazio">Carregando…</div></div>
             <div class="spXAviso" id="spXIndisponivel" style="display:none;"></div>
           </section>
@@ -1162,7 +1162,23 @@ button,input{font-family:inherit;}
    fica mais larga que a moldura e encosta à direita. */
 .spSofiaImg{right:0!important;bottom:auto!important;top:0!important;height:100%!important;width:170%!important;object-fit:cover!important;object-position:100% 4%!important}
 .spResumoDia{margin-top:10px;font-size:15px;color:#d5dbf7;line-height:1.5;max-width:520px}.spResumoDia b{color:#fff}.spResumoDia .u{color:#f87171}
-.spChips{flex-wrap:nowrap!important;overflow:hidden}
+/* 06/11/2026 — o usuário: a caixa de pedidos "está cortando a metade do
+   corpo da Sofia". Topo em duas colunas: à esquerda texto, caixa e atalhos
+   (no fluxo, não mais por cima); à direita a Sofia, sem nada na frente. */
+.spHero{min-height:0!important;padding:28px 36px 26px!important}
+.spHeroText,.spAskBox,.spChips{max-width:calc(60% - 20px)!important}
+.spAskBox{position:relative!important;left:auto!important;bottom:auto!important;width:auto!important;min-height:0!important;margin-top:18px;padding:16px 18px!important}
+.spAskBox label{font-size:16px!important;margin-bottom:10px!important}
+.spChips{position:relative!important;left:auto!important;bottom:auto!important;width:auto!important;margin-top:12px;flex-wrap:wrap!important;gap:8px!important}
+.spChips button{white-space:nowrap;height:30px!important;padding:0 14px!important}
+.spSofiaWrap{width:42%!important}
+.spSofiaWrap:after{display:none!important}
+.spSofiaWrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28%);mask-image:linear-gradient(90deg,transparent 0,#000 28%)}
+/* a arte traz embaixo uma caixa de texto desenhada: a foto fica mais alta
+   que a moldura e essa faixa de baixo sai de vista */
+.spSofiaImg{height:118%!important}
+.spHeroLines{bottom:20px!important;height:120px!important}
+@media(max-width:980px){.spHeroText,.spAskBox,.spChips{max-width:100%!important}.spSofiaWrap{width:60%!important;opacity:.3}}
 .spXKpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 24px 16px}
 .spXK{position:relative;overflow:hidden;text-align:left;background:#0c1530;border:1px solid #1b2550;border-radius:16px;padding:13px 14px;cursor:pointer;color:#e7ebff;font-family:inherit}
 .spXK:hover{border-color:#3b4a9a}.spXK:after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
@@ -1406,7 +1422,7 @@ function tick(){
 setInterval(tick,1000);tick();
 
 var MODS={
-  inicio:["mInicio","SOFIA","Sistema Operacional Financeiro com Inteligência Artificial"],
+  inicio:["mInicio","Início","Painel do sindicato — o que precisa de você hoje"],
   sofia:["mSofia","Conversar com a SOFIA","Assistente Inteligente"],
   documentos:["mDocumentos","Documentos","Ofícios e Recibos"],
   beneficios:["mBeneficios","Gestão de Benefícios","Solicitações, reservas, aprovações e pagamentos"],
@@ -2699,9 +2715,9 @@ function spXJuntar(st){
     atualizadoEm:ok.length?st.r[ok[ok.length-1]].atualizadoEm:"",
     faltam:SPX_GRUPOS.filter(function(g){return !st.feito[g];})};
 }
-function carregarPainelExecutivo(){
+function carregarPainelExecutivo(forcar){
   if(!(window.google&&google.script&&google.script.run))return false;
-  var st={r:{},feito:{},erros:[]};
+  var st={r:{},feito:{},erros:[],ms:{},t0:Date.now()};
   var desenhar=function(){
     var m=spXJuntar(st); spXDesenhar(m);
     if(m.faltam.length){
@@ -2714,10 +2730,12 @@ function carregarPainelExecutivo(){
   };
   SPX_GRUPOS.forEach(function(g){
     google.script.run
-      .withSuccessHandler(function(r){ st.feito[g]=true; if(r&&r.ok) st.r[g]=r; else st.erros.push(SPX_NOMES[g]); desenhar(); })
+      .withSuccessHandler(function(r){ st.feito[g]=true; st.ms[g]=Date.now()-st.t0; console.log("[Início] parte "+g+": "+Math.round(st.ms[g]/1000)+" s"+(r&&r.doCache?" (guardada)":"")+(r&&r.ms?" · servidor "+Math.round(r.ms/1000)+" s":"")); if(r&&r.ok) st.r[g]=r; else st.erros.push(SPX_NOMES[g]); desenhar(); })
       .withFailureHandler(function(e){ console.error("[Início] painel ("+g+") falhou:",e); st.feito[g]=true; st.erros.push(SPX_NOMES[g]); desenhar(); })
-      .getPainelExecutivoSISGEP(SISGEP_TOKEN_SESSAO,g);
+      .getPainelExecutivoSISGEP(SISGEP_TOKEN_SESSAO,g,!!forcar);
   });
+  /* A estrutura aparece na hora, com "…", antes de qualquer parte chegar. */
+  desenhar();
   return true;
 }
 function carregarResumoInicio(){
