@@ -125,3 +125,33 @@ e deixa cada um como `.eml` na pasta do Drive "SISGEP — Pendentes KingHost
 põe cada `.eml` no Gmail dela (serviço avançado Gmail, `Messages.import`) na
 etiqueta da pasta, e a passada das pastas leva à ponte. Depende do segredo
 `KINGHOST_SECRETARIA_SENHA` no GitHub; sem ele, o robô não faz nada.
+
+## Caixa na hora — as pastas da secretaria@ no SISGEP (06/11/2026)
+
+O usuário: a Marcela "vai trabalhar dentro do SISGEP junto ao e-mail", com
+as pastas (Itens enviados, Lixeira, as pastas criadas). O robô continua
+lendo só a Entrada e a CERTIFICADO 2027-1; as outras pastas só aparecem.
+
+O SISGEP não alcança este Gmail. O leitor passa a atendê-lo na hora, como
+**App da Web executado como a conta da Secretaria**. Uma vez, **logado na
+conta `sindeducacaosecretaria@gmail.com`**, no projeto **Leitor da Secretaria**:
+
+1. **Implantar** (botão azul, no alto) → **Nova implantação**.
+2. Na engrenagem de "Selecionar tipo", escolha **App da Web**.
+3. **Executar como: Eu (sindeducacaosecretaria@gmail.com)**.
+   **Quem pode acessar: Qualquer pessoa**. → **Implantar** → autorize se pedir.
+4. No editor, escolha a função **`caixaApiConfigurar`** → **Executar**.
+   Ela gera um segredo e grava o endereço e o segredo na ponte (aba **API**),
+   que só as duas contas abrem. O SISGEP acha sozinho — nada para copiar.
+
+As travas: sem o segredo, o leitor não responde; e se o App da Web for
+publicado por OUTRA conta, ele recusa (em vez de abrir a caixa errada).
+
+**Quando o código do leitor mudar** (eu aviso): na conta da Secretaria,
+**Implantar → Gerenciar implantações → ✏️ → Versão: Nova versão → Implantar**.
+O endereço continua o mesmo. (Publicar por outra conta trocaria quem o App
+da Web executa — por isso este passo é sempre da conta da Secretaria.)
+
+Combinado com o usuário (06/11/2026, "De acordo"): mandar para a lixeira no
+SISGEP leva para a lixeira DESTE Gmail — a cópia na KingHost continua lá —;
+e a Marcela deixa de usar o webmail da KingHost.

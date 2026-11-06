@@ -192,6 +192,7 @@ function cxsIdsDaEntrada_() {
 }
 function cxsLinhaPonte_(id) {
   if (cxsEhFinanceiro_(id)) return cxsLinhaFinanceiro_(id);
+  if (cxgEhSecretariaGmail_(id)) return cxgLinha_(id);   // pasta da secretaria@ (06/11/2026)
   var sh = vpePonte_().getSheetByName("Caixa");
   return sh ? vpeLinhaPor_(sh, "THREAD_ID", id) : null;
 }
@@ -333,7 +334,10 @@ function cxsMensagemFin_(m) {
 }
 
 /* Uma conversa do Gmail com a cara de uma linha da ponte. */
-function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas) {
+/* caixa (06/11/2026): "SECRETARIA" para as conversas da secretaria@ que vêm
+   pelo leitor na hora (CaixaSecretariaGmail.gs, ids "S:"). Sem ela, financeiro@. */
+function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas, caixa) {
+  var sec = caixa === "SECRETARIA";
   var msgs = msgsProntas || th.getMessages() || [];
   if (!msgs.length) return null;
   /* Na lista bastam as últimas mensagens; a conversa inteira só ao abrir. */
@@ -353,7 +357,7 @@ function cxsLinhaDeThreadFin_(th, comAnexos, msgsProntas) {
      (a memória do robô — RoboMemoria.gs). */
   var aprendido = roboMemoriaUltimaDecisao_("categoria-email", cxsEmail_(base.replyTo || base.de));
   aprendido = aprendido ? cxsTipo_(aprendido) : "";
-  return { THREAD_ID: CXS_PREFIXO_FIN + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: "FINANCEIRO",
+  return { THREAD_ID: (sec ? CXG_PREFIXO : CXS_PREFIXO_FIN) + th.getId(), ULTIMA_MENSAGEM_ID: lista[lista.length - 1].id, CAIXA: sec ? "SECRETARIA" : "FINANCEIRO",
            TIPO: aprendido && CXS_TIPOS[aprendido] ? aprendido : cxsTipoPorRegra_(base.assunto, base.corpo), PEDIDO: "",
            __aprendido: !!(aprendido && CXS_TIPOS[aprendido]),
            MENSAGENS_JSON: JSON.stringify(lista), ANEXOS_JSON: JSON.stringify(anexos),
@@ -700,7 +704,7 @@ function cxsAnexoInterno_(p, indice) {
   try {
     var a = p ? vpeJson_(p.ANEXOS_JSON, [])[Number(indice)] : null;
     if (a && a.gmail) {
-      var msg = cxsGmailFinanceiro_().getMessageById(String(a.msgId));
+      var msg = (cxgEhSecretariaGmail_(p.THREAD_ID) ? cxgGmail_() : cxsGmailFinanceiro_()).getMessageById(String(a.msgId));
       var bg = msg ? (msg.getAttachments({ includeInlineImages: false, includeAttachments: true }) || [])[Number(a.pos)] : null;
       if (!bg) return { ok: false, mensagem: "O anexo não está mais na caixa." };
       var tg = bg.getContentType() || a.tipo || "application/octet-stream";
@@ -745,27 +749,30 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       ? cxfGuardarAnexos_(meta, quem) : [];
     var nomesAnexos = idsAnexos.map(function (fid) { try { return DriveApp.getFileById(fid).getName(); } catch (e) { return fid; } });
     var notaAnexos = nomesAnexos.length ? " · com " + nomesAnexos.length + " anexo(s): " + nomesAnexos.join(", ") : "";
-    if (cxsEhFinanceiro_(id)) {
+    if (cxsEhFinanceiro_(id) || cxgEhSecretariaGmail_(id)) {
       /* A financeiro@ é a própria conta do SISGEP: responde direto, na
          conversa, para quem escreveu por último (de fora). Só com o clique;
-         em homologação, só para a equipe. */
+         em homologação, só para a equipe. 06/11/2026: a secretaria@ aberta
+         por uma pasta ("S:") responde igual, pelo leitor, na hora. */
+      var secG = cxgEhSecretariaGmail_(id), gmR = secG ? cxgGmail_() : cxsGmailFinanceiro_();
       var entr = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
       var alvo = entr[entr.length - 1];
       if (!alvo) return { ok: false, mensagem: "Não há mensagem de fora nesta conversa para responder." };
       var paraF = cxsEmail_(alvo.replyTo || alvo.de);
       vpeChecarDestinoAmbiente_(paraF);
-      var mOrig = cxsGmailFinanceiro_().getMessageById(String(alvo.id));
-      if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa do Financeiro." };
-      var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("FINANCEIRO", sessao));
-      var opF = { htmlBody: html, replyTo: "financeiro@sindeducacao.com" };
+      var mOrig = gmR.getMessageById(String(alvo.id));
+      if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa." };
+      var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_(secG ? "SECRETARIA" : "FINANCEIRO", sessao));
+      var opF = { htmlBody: html, replyTo: secG ? "secretaria@sindeducacao.com" : "financeiro@sindeducacao.com" };
       if (idsAnexos.length) opF.attachments = idsAnexos.map(function (fid) { return DriveApp.getFileById(fid).getBlob(); });
       if (cc.length) opF.cc = cc.join(",");
       if (cco.length) opF.bcc = cco.join(",");
       mOrig.reply("", opF);
       cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
-      cxsAuditar_("RESPONDER", id, "Resposta (financeiro@) para " + paraF + notaCopia + notaAnexos, sessao);
+      var pela = secG ? "secretaria@" : "financeiro@";
+      cxsAuditar_("RESPONDER", id, "Resposta (" + pela + ") para " + paraF + notaCopia + notaAnexos, sessao);
       try { CacheService.getScriptCache().remove("cxs_fin_lista_v1"); } catch (eC) {}
-      return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela financeiro@" + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)." : ".") };
+      return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela " + pela + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)." : ".") };
     }
     var para = vpeResponderThread_({ REMETENTE_EMAIL: cxsEmail_(ultima.replyTo || ultima.de), CAIXA: "SECRETARIA",
       THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), idsAnexos, quem,
@@ -853,6 +860,7 @@ function cxsVirarVoucher_(id, p, sessao) {
   if (!sessaoPodeModulo_(sessao, "beneficios")) {
     return { ok: false, mensagem: "Mudar para Voucher pede o módulo Benefícios. O tipo ficou anotado." };
   }
+  if (cxgEhSecretariaGmail_(id)) return { ok: false, mensagem: "Para virar voucher, abra este e-mail pela Caixa de entrada (é lá que o leitor da Secretaria cuida dos vouchers)." };
   if (cxsEhFinanceiro_(id)) {
     var msgs = vpeJson_(p.MENSAGENS_JSON, []);
     var entr = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });

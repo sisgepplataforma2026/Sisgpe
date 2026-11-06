@@ -294,6 +294,15 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
 - **RESPONDEU, SAI DO CARD (03/11/2026):** "a tratar" e os cards contam só
   o que espera a equipe (NOVO). Respondido vai para "Respondidos" e volta
   sozinho como "mensagem nova" se a pessoa escrever de novo.
+- **ATUALIZADO EM 06/11/2026 — A SECRETARIA@ TAMBÉM TEM AS PASTAS NA TELA.**
+  *"Ler é uma coisa e aparecer é outra"*; *"ela vai trabalhar dentro do SISGEP
+  junto ao e-mail"*; "De acordo". O robô continua LENDO só Entrada +
+  CERTIFICADO 2027-1; as outras pastas (Enviados, Lixeira, as criadas)
+  APARECEM e carregam no clique. Caminho: o Leitor da Secretaria publicado
+  como App da Web (executa como a Secretaria, segredo na aba API da ponte) +
+  CaixaSecretariaGmail.gs (ids "S:"). Combinado: lixeira no SISGEP = lixeira
+  do Gmail da Secretaria (a cópia na KingHost fica); a Marcela deixa o webmail
+  da KingHost. Novo e-mail e rascunhos da secretaria@: próxima etapa.
 - **Itens enviados da financeiro@:** o robô lê só quando precisa (ex.: ao
   abrir uma conversa), nunca varrendo à toa (03/11/2026).
 - Categorizar: o que é voucher vai para voucher; "Ver" num voucher abre a

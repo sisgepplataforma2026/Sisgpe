@@ -296,9 +296,10 @@ function caixaEncaminhar(id, para, nota, tokenSessao) {
     vpeChecarDestinoAmbiente_(para);
     var quem = sessao.email || sessao.usuario || "";
     var html = vpeTextoParaHtml_(String(nota || "")) + vpeAssinaturaHtml_(String(conv.p.CAIXA || "SECRETARIA"), sessao);
-    if (cxsEhFinanceiro_(id)) {
-      var m = cxsGmailFinanceiro_().getMessageById(String(conv.ultimo.id));
-      if (!m) return { ok: false, mensagem: "A mensagem não está mais na caixa do Financeiro." };
+    if (cxsEhFinanceiro_(id) || cxgEhSecretariaGmail_(id)) {
+      /* 06/11/2026: a secretaria@ aberta por uma pasta ("S:") encaminha na hora, pelo leitor. */
+      var m = (cxgEhSecretariaGmail_(id) ? cxgGmail_() : cxsGmailFinanceiro_()).getMessageById(String(conv.ultimo.id));
+      if (!m) return { ok: false, mensagem: "A mensagem não está mais na caixa." };
       m.forward(para, { htmlBody: html });
     } else {
       var shS = vpePonteAba_("Saida");
@@ -311,7 +312,7 @@ function caixaEncaminhar(id, para, nota, tokenSessao) {
     cxsAuditar_("ENCAMINHAR", id, "Encaminhado para " + para, sessao);
     roboMemoriaRegistrar_({ tarefa: "encaminhar-email", origem: String(conv.p.CAIXA || ""), chave: id,
       remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto, sugerido: "", decidido: para, quem: quem });
-    return { ok: true, mensagem: cxsEhFinanceiro_(id) ? "Encaminhado para " + para + "." :
+    return { ok: true, mensagem: (cxsEhFinanceiro_(id) || cxgEhSecretariaGmail_(id)) ? "Encaminhado para " + para + "." :
       "Encaminhamento para " + para + " na fila da Secretaria — sai em até 15 minutos." };
   } catch (err) {
     return { ok: false, mensagem: err.message };
