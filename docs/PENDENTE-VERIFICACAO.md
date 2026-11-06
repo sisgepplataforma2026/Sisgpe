@@ -6888,3 +6888,14 @@ Home nova (painel executivo, Sofia em duas colunas, sem sino/?/WC, guarda de 3 m
 
 Menu do perfil por cima dos cards, com "🚪 Sair do sistema"; painel da Home guardado por login (commit ca8f4e7). Pedido: "Publica em produção também". HML publicada depois (o projeto de HML tinha batido 200 versões; o usuário apagou as antigas). **Não testado no ar.** Para voltar: versão 757.
 Teste: clicar no nome lá no alto → menu aparece por cima → Sair → confirmar → volta ao login. Entrar com a Marcela → "Boa tarde, Marcela" e a caixa secretaria@.
+
+## 🔴 PRODUÇÃO 06/11/2026 — versão 759 (anterior: 758)
+
+Ações no e-mail aberto (desenho docs/mock-acoes-no-email.png) + secretaria@ com pastas, Novo e-mail e Rascunhos (commit 344a9b3). Pedido: "Publica em produção também". **Não testado no ar.** Para voltar: versão 758.
+
+| Teste | Esperado |
+|---|---|
+| E-mail de sindicalização (ficha anexa) → ✓ Emitir e enviar à escola | pede "Conferi"; mostra o que vai e para quem; ofício nº X na fila; aparece em Ofícios › Monitoramento; só a ficha foi anexada |
+| NF de prestador (financeiro@, card Notas fiscais) → 📤 Anexar e enviar à contabilidade | despesa certa achada pelo e-mail do prestador; despesa vira "enviada à contabilidade"; o e-mail da contabilidade chega com o link |
+| Voucher pronto → ✓ Conferir, emitir e enviar / Conferir e só emitir | o mesmo de antes, com a ordem nova |
+| secretaria@ (DEPENDE do passo único na conta da Secretaria: App da Web + caixaApiConfigurar) | pastas na lateral (Enviados, Rascunhos, Lixeira, criadas); Novo e-mail sai como secretaria@ com a assinatura |
