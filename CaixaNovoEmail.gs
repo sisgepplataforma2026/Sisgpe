@@ -107,3 +107,73 @@ function caixaFinanceiroNovoEmail(dados, tokenSessao) {
     return { ok: false, mensagem: err.message };
   }
 }
+
+/* ================================================================
+   NOVO E-MAIL E RASCUNHOS DA SECRETARIA@ (06/11/2026)
+   O usuário: "novo e-mail tem que ter para ambos". Mesma tela e mesmas
+   regras da financeiro@ (destinos validados, trava de homologação, nada sai
+   sem o clique, memória do robô); quem envia é o Leitor da Secretaria, na
+   hora (CaixaSecretariaGmail.gs), saindo como secretaria@.
+   ================================================================ */
+function cxnRascunhosSec_() {
+  return (cxgApi_("rascunhos", {}) || []).map(function (d) {
+    var quando = new Date(d.data);
+    var corpo = vpeSemCitacao_(String(d.texto || ""));
+    return { id: CXN_PREFIXO_RASCUNHO + d.id, fonte: "RASCUNHO", caixa: "SECRETARIA", pasta: "DRAFTS",
+      nome: "Para: " + (cxsNome_(d.para) || cxsEmail_(d.para) || "(sem destinatário)"), de: cxsEmail_(d.para),
+      assunto: String(d.assunto || "(sem assunto)"), trecho: corpo.replace(/\s+/g, " ").substring(0, 160),
+      tipo: "OUTRO", tipoRotulo: "📝 Rascunho", icone: "📝", estado: "NOVO", anexos: (d.anexos || []).length,
+      recebidoTs: quando.getTime(), recebidoEm: Utilities.formatDate(quando, "America/Sao_Paulo", "dd/MM HH:mm"), __d: d };
+  });
+}
+function caixaSecretariaRascunho(id, tokenSessao) {
+  try {
+    cxpExigirSecretaria_(tokenSessao);
+    id = String(id || "");
+    var r = cxnRascunhosSec_().filter(function (x) { return x.id === id; })[0];
+    if (!r) return { ok: false, mensagem: "O rascunho não está mais na caixa da Secretaria." };
+    return { ok: true, rascunho: { id: id, para: r.__d.para, cc: r.__d.cc, assunto: r.__d.assunto, texto: r.__d.texto, anexos: r.__d.anexos || [] } };
+  } catch (err) {
+    return { ok: false, mensagem: err.message };
+  }
+}
+function caixaSecretariaNovoEmail(dados, tokenSessao) {
+  try {
+    var sessao = cxpExigirSecretaria_(tokenSessao);
+    dados = dados || {};
+    var para = cxnEmails_(dados.para), cc = cxnEmails_(dados.cc), cco = cxnEmails_(dados.cco);
+    var assunto = String(dados.assunto || "").trim(), texto = String(dados.texto || "").trim();
+    var soGuardar = dados.soGuardar === true;
+    cxnValidar_(para, "Para", !soGuardar);
+    cxnValidar_(cc, "Cc", false);
+    cxnValidar_(cco, "Cco", false);
+    if (!soGuardar) {
+      if (!assunto) return { ok: false, mensagem: "Escreva o assunto antes de enviar." };
+      if (texto.length < 5) return { ok: false, mensagem: "Escreva o texto antes de enviar." };
+      para.concat(cc).concat(cco).forEach(vpeChecarDestinoAmbiente_);
+    }
+    var quem = sessao.email || sessao.usuario || "";
+    var ids = cxfGuardarAnexos_({ anexos: dados.anexos || [], anexosSisgep: dados.anexosSisgep || [] }, quem);
+    var anexos = ids.map(function (fid) { var bl = DriveApp.getFileById(fid).getBlob();
+      return { nome: bl.getName(), tipo: bl.getContentType(), b64: Utilities.base64Encode(bl.getBytes()) }; });
+    var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) || !texto ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao));
+    var rid = String(dados.rascunhoId || "");
+    if (rid && rid.indexOf(CXN_PREFIXO_RASCUNHO) !== 0) return { ok: false, mensagem: "Rascunho inválido." };
+    var destino = para.join(", ");
+    var r = cxgApi_("novoEmail", { para: destino, cc: cc.join(","), cco: cco.join(","), assunto: assunto, texto: texto, html: html,
+      anexos: anexos, rascunhoId: rid ? rid.substring(CXN_PREFIXO_RASCUNHO.length) : "", soGuardar: soGuardar });
+    try { CacheService.getScriptCache().remove("cxp_pastas_sec_v1"); } catch (e) {}
+    if (soGuardar) {
+      cxsAuditar_("RASCUNHO", CXN_PREFIXO_RASCUNHO + r.rascunhoId, "Rascunho (secretaria@): " + assunto + (destino ? " · para " + destino : ""), sessao);
+      return { ok: true, rascunhoId: CXN_PREFIXO_RASCUNHO + r.rascunhoId, mensagem: "Rascunho guardado na caixa da Secretaria." };
+    }
+    var nomes = (r && r.anexos) || [];
+    cxsAuditar_("NOVO_EMAIL", "secretaria@", "Enviado para " + destino + (cc.length ? " (cc " + cc.join(", ") + ")" : "") + (cco.length ? " (cco " + cco.join(", ") + ")" : "") + ": " + assunto +
+      (nomes.length ? " · com " + nomes.length + " anexo(s): " + nomes.join(", ") : ""), sessao);
+    roboMemoriaRegistrar_({ tarefa: "novo-email", origem: "SECRETARIA", chave: destino, remetente: para[0], assunto: assunto,
+      trecho: texto, sugerido: "", decidido: texto.substring(0, 2000), quem: quem });
+    return { ok: true, mensagem: "E-mail enviado para " + destino + " pela secretaria@" + (nomes.length ? ", com " + nomes.length + " anexo(s)." : ".") };
+  } catch (err) {
+    return { ok: false, mensagem: err.message };
+  }
+}

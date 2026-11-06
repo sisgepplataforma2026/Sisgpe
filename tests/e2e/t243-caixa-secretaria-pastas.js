@@ -101,7 +101,7 @@ b.fluxo("SECRETARIA@ · PASTAS · o servidor");
 b.passo("3. As pastas");
 p = g.caixaSecretariaPastas(T_M);
 b.ok(p.ok && p.ligada, "ligada", p.mensagem);
-b.igual(p.pastas.map(x => x.chave), ["INBOX", "STARRED", "SENT", "ALL", "SPAM", "TRASH"], "Entrada, Estrela, Enviados, Todos, Spam, Lixeira");
+b.igual(p.pastas.map(x => x.chave), ["INBOX", "STARRED", "SENT", "DRAFTS", "ALL", "SPAM", "TRASH"], "Entrada, Estrela, Enviados, Rascunhos, Todos, Spam, Lixeira");
 b.igual(p.marcadores.map(x => x.rotulo), ["CERTIFICADO 2027-1", "Convênios"], "as pastas criadas — sem as etiquetas do robô (SISGEP/…)");
 b.ok(p.marcadores.find(m => m.rotulo === "CERTIFICADO 2027-1").robo && !p.pastas.find(x => x.chave === "SENT").robo, "🤖 só na Entrada e na CERTIFICADO 2027-1 (o robô não lê as outras)");
 b.ok(g.caixaSecretariaPastas(T_W).ok === false, "o Wanderson (financeiro@) não abre as pastas da secretaria@");
@@ -149,6 +149,35 @@ b.ok(!g.caixaSecretariaCriarPasta("SISGEP/Teste", T_M).ok, "nome das etiquetas d
 b.ok(g.caixaSecretariaAcao(["S:E1"], "ESTRELA", {}, T_W).ok === false, "o Wanderson não age na caixa da Secretaria");
 g.UrlFetchApp.fetch = f2;
 
+b.passo("6b. Novo e-mail e rascunho pela secretaria@ — e-mail normal, com a assinatura");
+const DRAFTS = [];
+L.GmailApp.getDrafts = () => DRAFTS.map(d => d.obj);
+L.GmailApp.getDraft = id => (DRAFTS.find(d => d.id === id) || {}).obj || null;
+L.GmailApp.createDraft = (para, assunto, texto, op) => {
+  const d = { id: "D" + (DRAFTS.length + 1), para, assunto, texto, op };
+  d.obj = { getId: () => d.id, getMessage: () => ({ getTo: () => d.para, getCc: () => (d.op && d.op.cc) || "", getSubject: () => d.assunto,
+    getPlainBody: () => d.texto, getDate: () => new Date(), getAttachments: () => [] }),
+    update: (p2, a2, t2, o2) => { Object.assign(d, { para: p2, assunto: a2, texto: t2, op: o2 }); return d.obj; },
+    send: () => { enviados.push(Object.assign({ via: "rascunho", to: d.para, subject: d.assunto }, d.op)); } };
+  DRAFTS.push(d); return d.obj;
+};
+L.GmailApp.sendEmail = (to, subject, texto, op) => enviados.push(Object.assign({ via: "novo", to, subject, texto }, op));
+let nv = g.caixaSecretariaNovoEmail({ para: "", assunto: "Convite", texto: "Rascunho do convite", soGuardar: true }, T_M);
+b.ok(nv.ok && /^R:D1$/.test(nv.rascunhoId), "guarda o rascunho na caixa da Secretaria", nv.mensagem);
+const rp = g.caixaSecretariaPasta("DRAFTS", 0, T_M);
+b.ok(rp.ok && rp.itens.length === 1 && rp.itens[0].fonte === "RASCUNHO" && rp.itens[0].caixa === "SECRETARIA", "aparece na pasta Rascunhos");
+b.ok(g.caixaSecretariaRascunho("R:D1", T_M).rascunho.texto === "Rascunho do convite", "abre o rascunho para continuar");
+nv = g.caixaSecretariaNovoEmail({ para: "equipe@sindeducacao.com", cc: "outra@sindeducacao.com", assunto: "Reunião de sexta",
+  texto: "Bom dia! A reunião é às 14h.", anexos: [{ nome: "pauta.pdf", tipo: "application/pdf", base64: Buffer.from("PDF").toString("base64") }] }, T_M);
+const nE = enviados.filter(e => e.via === "novo").pop();
+b.ok(nv.ok && /pela secretaria@/.test(nv.mensagem), "envia", nv.mensagem);
+b.ok(nE && nE.to === "equipe@sindeducacao.com" && nE.cc === "outra@sindeducacao.com" && nE.from === "secretaria@sindeducacao.com" && nE.replyTo === "secretaria@sindeducacao.com",
+  "sai como secretaria@, com Cc", JSON.stringify(nE && [nE.to, nE.cc, nE.from]));
+b.ok(nE && /A reunião é às 14h/.test(nE.htmlBody) && /Secretaria/.test(nE.htmlBody) && /SindEducação-ES/.test(nE.htmlBody) && /secretaria@sindeducacao\.com/.test(nE.htmlBody), "com a assinatura de quem está logado", (nE && nE.htmlBody || "").slice(-200));
+b.ok(nE && (nE.attachments || []).length === 1 && nE.attachments[0].getName() === "pauta.pdf", "com o anexo");
+b.ok(!g.caixaSecretariaNovoEmail({ para: "x@y.com", assunto: "a", texto: "texto qualquer" }, T_W).ok, "o Wanderson não escreve pela secretaria@");
+b.ok(!g.caixaSecretariaNovoEmail({ para: "nao-email", assunto: "a", texto: "texto qualquer" }, T_M).ok, "e-mail inválido é barrado antes de sair");
+
 b.passo("7. Travas do leitor");
 const seg = L.PropertiesService.getScriptProperties().getProperty("CAIXA_API_SEGREDO");
 let out = JSON.parse(L.doPost({ postData: { contents: JSON.stringify({ segredo: "errado", op: "marcadores" }) } }).getContent());
@@ -169,7 +198,11 @@ const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"]
   b.ok(doc.getElementById("cxsPastas").style.display !== "none", "a lateral de pastas aparece para ela");
   const txt = t.texto("#cxsPastas");
   b.ok(/Itens enviados/.test(txt) && /Lixeira/.test(txt) && /CERTIFICADO 2027-1/.test(txt) && /Convênios/.test(txt) && !/SISGEP\//.test(txt), "Enviados, Lixeira, as pastas dela; sem as etiquetas do robô", txt.slice(0, 200));
-  b.ok(!/Cards: criar/.test(txt) && doc.getElementById("cxsBtnNovo").style.display === "none", "sem os cards da financeiro@ e sem o Novo e-mail (fica para a próxima etapa)");
+  b.ok(!/Cards: criar/.test(txt), "sem os cards da financeiro@ (são de lá)");
+  b.ok(doc.getElementById("cxsBtnNovo").style.display !== "none", "tem o ✏ Novo e-mail (\"tem que ter para ambos\")");
+  t.clicar("#cxsBtnNovo"); await t.assentar(100);
+  b.ok(/secretaria@sindeducacao\.com/.test(t.texto("#cxsNSub")), "a janela diz que sai pela secretaria@", t.texto("#cxsNSub"));
+  doc.getElementById("cxsNovo").classList.remove("aberto");
   t.clicar("[data-cxs='abrirPasta'][data-arg='TRASH']"); await t.assentar(200);
   const lista = t.texto("#cxsLista");
   b.ok(/Resposta enviada pela Marcelha/.test(lista), "clicou na Lixeira: aparece o que foi para lá", lista.slice(0, 160));

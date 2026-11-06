@@ -215,6 +215,7 @@ var CXP_PASTAS_SEC = [
   { chave: "INBOX", rotulo: "Caixa de entrada", icone: "📥", robo: true },
   { chave: "STARRED", rotulo: "Com estrela", icone: "⭐", busca: "is:starred" },
   { chave: "SENT", rotulo: "Itens enviados", icone: "📤", busca: "in:sent" },
+  { chave: "DRAFTS", rotulo: "Rascunhos", icone: "📝" },
   { chave: "ALL", rotulo: "Todos os e-mails", icone: "📚", busca: "-in:spam -in:trash" },
   { chave: "SPAM", rotulo: "Spam", icone: "🚫", busca: "in:spam" },
   { chave: "TRASH", rotulo: "Lixeira", icone: "🗑", busca: "in:trash" }
@@ -243,6 +244,8 @@ function caixaSecretariaPastas(tokenSessao) {
       var n = null;
       if (p.chave === "STARRED" || p.chave === "SPAM" || p.chave === "TRASH") {
         try { n = cxgApi_("contar", { q: p.busca, max: CXP_CONTAR_ATE }); } catch (e) { n = null; }
+      } else if (p.chave === "DRAFTS") {
+        try { n = (cxgApi_("rascunhos", {}) || []).length; } catch (e) { n = null; }
       }
       return { chave: p.chave, rotulo: p.rotulo, icone: p.icone, robo: !!p.robo, total: n, mais: n === CXP_CONTAR_ATE };
     });
@@ -263,6 +266,10 @@ function caixaSecretariaPasta(chave, inicio, tokenSessao) {
     cxpExigirSecretaria_(tokenSessao);
     inicio = Math.max(0, Number(inicio) || 0);
     chave = String(chave || "");
+    if (chave === "DRAFTS") {
+      var rs = cxnRascunhosSec_().map(function (x) { delete x.__d; return x; });
+      return { ok: true, pasta: "DRAFTS", itens: rs.slice(inicio, inicio + CXP_POR_PAGINA), inicio: inicio, mais: rs.length > inicio + CXP_POR_PAGINA };
+    }
     var gm = cxgGmail_(), threads;
     if (chave.indexOf(CXP_LABEL) === 0) {
       var lab = gm.getUserLabelByName(chave.substring(CXP_LABEL.length));
