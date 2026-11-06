@@ -1176,7 +1176,11 @@ button,input{font-family:inherit;}
 .spSofiaWrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28%);mask-image:linear-gradient(90deg,transparent 0,#000 28%)}
 /* a arte traz embaixo uma caixa de texto desenhada: a foto fica mais alta
    que a moldura e essa faixa de baixo sai de vista */
-.spSofiaImg{height:118%!important}
+.spSofiaImg{height:118%!important;right:0!important;width:148%!important}
+/* "se você puxar um pouquinho para o lado, consegue ter a imagem dela
+   nítida" (06/11/2026): a foto vai um pouco para a direita e o esfumado
+   da esquerda fica mais curto, para não apagar o ombro e o cabelo. */
+.spSofiaWrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,transparent 6%,#000 13%)!important;mask-image:linear-gradient(90deg,transparent 0,transparent 6%,#000 13%)!important}
 .spHeroLines{bottom:20px!important;height:120px!important}
 @media(max-width:980px){.spHeroText,.spAskBox,.spChips{max-width:100%!important}.spSofiaWrap{width:60%!important;opacity:.3}}
 .spXKpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 24px 16px}
