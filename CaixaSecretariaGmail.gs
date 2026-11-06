@@ -41,6 +41,9 @@ function cxgConfig_() {
   var v = sh.getRange(2, 1, 1, 2).getValues()[0];
   var cfg = { url: String(v[0] || ""), segredo: String(v[1] || "") };
   if (!cfg.url || !cfg.segredo) throw new Error("A aba API da ponte está incompleta — rode caixaApiConfigurar no leitor.");
+  /* 06/11/2026, no ar: rodado pelo editor, o Google devolveu o endereço de TESTE
+     (/dev), que só abre para quem é editor logado — o SISGEP não entra. Só /exec. */
+  if (!/\/exec(\?|$)/.test(cfg.url)) throw new Error("O endereço do leitor na ponte não é o da implantação (/exec) — é \"" + cfg.url.replace(/^.*\//, "…/") + "\". Publique o leitor como App da Web e rode caixaApiConfigurar de novo.");
   try { cache.put("cxg_cfg_v1", JSON.stringify(cfg), 600); } catch (e) {}
   return cfg;
 }

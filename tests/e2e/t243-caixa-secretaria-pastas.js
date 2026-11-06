@@ -178,6 +178,15 @@ b.ok(nE && (nE.attachments || []).length === 1 && nE.attachments[0].getName() ==
 b.ok(!g.caixaSecretariaNovoEmail({ para: "x@y.com", assunto: "a", texto: "texto qualquer" }, T_W).ok, "o Wanderson não escreve pela secretaria@");
 b.ok(!g.caixaSecretariaNovoEmail({ para: "nao-email", assunto: "a", texto: "texto qualquer" }, T_M).ok, "e-mail inválido é barrado antes de sair");
 
+b.passo("6c. Endereço de teste (/dev) não serve");
+const shApi = api;
+const urlBoa = shApi.getRange(2, 1).getValue();
+shApi.getRange(2, 1).setValue("https://script.google.com/macros/s/LEITOR/dev");
+g.CacheService.getScriptCache().remove("cxg_cfg_v1");
+const rDev = g.caixaSecretariaPasta("SENT", 0, T_M);
+b.ok(!rDev.ok && /implantação \(\/exec\)/.test(rDev.mensagem), "com /dev na ponte: avisa claro, não tenta", rDev.mensagem);
+shApi.getRange(2, 1).setValue(urlBoa); g.CacheService.getScriptCache().remove("cxg_cfg_v1");
+
 b.passo("7. Travas do leitor");
 const seg = L.PropertiesService.getScriptProperties().getProperty("CAIXA_API_SEGREDO");
 let out = JSON.parse(L.doPost({ postData: { contents: JSON.stringify({ segredo: "errado", op: "marcadores" }) } }).getContent());
