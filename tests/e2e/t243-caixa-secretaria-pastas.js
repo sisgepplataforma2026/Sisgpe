@@ -211,6 +211,9 @@ const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"]
   b.ok(doc.getElementById("cxsBtnNovo").style.display !== "none", "tem o ✏ Novo e-mail (\"tem que ter para ambos\")");
   t.clicar("#cxsBtnNovo"); await t.assentar(100);
   b.ok(/secretaria@sindeducacao\.com/.test(t.texto("#cxsNSub")), "a janela diz que sai pela secretaria@", t.texto("#cxsNSub"));
+  await t.assentar(100);
+  const txtN = t.doc.getElementById("cxsNTexto").value;
+  b.ok(/Atenciosamente,/.test(txtN) && /Marcelha/.test(txtN), "o texto já abre com a assinatura de quem está logado (à vista, editável)", txtN.slice(0, 120));
   doc.getElementById("cxsNovo").classList.remove("aberto");
   t.clicar("[data-cxs='abrirPasta'][data-arg='TRASH']"); await t.assentar(200);
   const lista = t.texto("#cxsLista");

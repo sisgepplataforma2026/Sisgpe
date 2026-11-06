@@ -177,3 +177,14 @@ function caixaSecretariaNovoEmail(dados, tokenSessao) {
     return { ok: false, mensagem: err.message };
   }
 }
+
+/** A assinatura de quem está logado, para o Novo e-mail já abrir com ela à
+    vista e editável (06/11/2026: "faltou assinatura" — ela só entrava no envio). */
+function caixaMinhaAssinatura(tokenSessao) {
+  try {
+    var sessao = cxsExigir_(tokenSessao);
+    return { ok: true, texto: vpeAssinaturaTexto_(sessao) };
+  } catch (err) {
+    return { ok: false, mensagem: err.message };
+  }
+}
