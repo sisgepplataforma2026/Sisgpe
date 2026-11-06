@@ -88,9 +88,9 @@ const botao = rot => Array.from(doc.querySelectorAll("#vpeMAcoes button")).find(
   b.passo("3. No pedido pronto: 'Conferir e emitir' e 'Conferir e enviar agora'");
   win.VPE.abrir(idDe("ana@exemplo.com"));
   await t.assentar(80);
-  b.ok(botao("Conferir e emitir") && botao("Conferir e enviar agora"), "os dois botões");
+  b.ok(botao("Conferir e só emitir") && botao("✓ Conferir, emitir e enviar"), "os dois botões");
   const out0 = amb.outbox.length, fila0 = g.vpeLinhas_(SIM.aba("Saida")).length;
-  t.clicar(botao("Conferir e emitir"));
+  t.clicar(botao("Conferir e só emitir"));
   await t.assentar(150);
   b.ok(t.chamadas.some(c => c.fn === "voucherPedidosConferirEmitir"), "chamou o 'conferir e emitir'");
   b.igual(g.vpeLinhas_(SIM.aba("Saida")).length, fila0, "nada foi para a fila de envio");
@@ -98,7 +98,7 @@ const botao = rot => Array.from(doc.querySelectorAll("#vpeMAcoes button")).find(
   b.ok(!nomesNaLista().some(n => /ANA/.test(n)), "a Ana sai da Entrada");
   b.igual(el("vpeAbaBadgeEmi").textContent, "1", "e a aba 2 mostra 1");
   win.VPE.abrir(idDe("edu@exemplo.com")); await t.assentar(80);
-  t.clicar(botao("Conferir e emitir")); await t.assentar(150);
+  t.clicar(botao("Conferir e só emitir")); await t.assentar(150);
 
   b.fluxo("VOUCHER UNIFICADO · 2 · emitidos, aguardando envio");
   b.passo("4. A aba 2 lista os emitidos, com filtro");

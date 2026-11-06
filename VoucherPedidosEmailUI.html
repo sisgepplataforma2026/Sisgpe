@@ -824,18 +824,23 @@ var VPE = (function () {
       b.push("<div style='flex-basis:100%;font-size:12.5px;color:#64748b;margin-bottom:6px;'>📄 Voucher emitido — está em " +
         "<b>2 · Emitidos, aguardando envio</b>. Envie por lá, com a data do envio.</div>");
     } else if (st !== "CONCLUIDO") {
-      add("Descartar", "btn-outline", "descartar");
-      add("Salvar e reconferir", "btn-outline", "salvar");
+      /* 06/11/2026 (desenho docs/mock-acoes-no-email.png, "Faça"): o que
+         resolve vem PRIMEIRO, com o nome do que faz. Pronto: emitir e enviar
+         / só emitir. Faltando documento: "Pedir o que falta" é o principal;
+         emitir mesmo assim continua possível. O que cada botão faz não mudou. */
       if (st === "NAO_ENCONTRADO") {
         add("Confirmar que é associado", "btn-outline", "confirmarAssociado");
         add("Encaminhar à sede", "btn-red", "responder", "SEDE");
+      } else if (st === "PRONTO") {
+        add("✓ Conferir, emitir e enviar", "btn-teal", "validar");
+        add("Conferir e só emitir", "btn-navy", "validarEmitir");
       } else {
-        if (st !== "PRONTO") add("Enviar pedido de complemento", "btn-outline", "responder", "COMPLEMENTO");
-        /* Emitir agora e enviar depois (29/10/2026) — e, para quando quiser,
-           conferir e enviar na hora. */
-        add(st === "PRONTO" ? "Conferir e enviar agora" : "Conferir e enviar mesmo assim", "btn-outline", "validar");
-        add(st === "PRONTO" ? "Conferir e emitir" : "Conferir e emitir mesmo assim", st === "PRONTO" ? "btn-teal" : "btn-navy", "validarEmitir");
+        add("✉ Pedir o que falta", "btn-teal", "responder", "COMPLEMENTO");
+        add("Conferir, emitir e enviar mesmo assim", "btn-outline", "validar");
+        add("Conferir e só emitir mesmo assim", "btn-outline", "validarEmitir");
       }
+      add("Salvar e reconferir", "btn-outline", "salvar");
+      add("Descartar", "btn-outline", "descartar");
     }
     b.push("<button type='button' class='btn btn-outline' data-vpe='fechar'>Fechar</button>");
     /* Um botão só confere e envia (usuário, 29/10/2026): o aviso diz o que
@@ -843,8 +848,8 @@ var VPE = (function () {
     var nota = (st !== "CONCLUIDO" && st !== "NAO_ENCONTRADO" && st !== "EMITIDO")
       ? "<div id='vpeMNotaEnvio' style='flex-basis:100%;font-size:12px;color:#64748b;margin-bottom:6px;'>" +
         "Ao clicar em <b>Conferir</b>, você confirma que conferiu os documentos e a filiação, e fica registrado que foi você. " +
-        "<b>Conferir e emitir</b> gera o voucher e deixa em \"Emitidos, aguardando envio\". " +
-        "<b>Conferir e enviar agora</b> já manda, datado de hoje, para <b>" +
+        "<b>Conferir e só emitir</b> gera o voucher e deixa em \"Emitidos, aguardando envio\". " +
+        "<b>Conferir, emitir e enviar</b> já manda, datado de hoje, para <b>" +
         esc(estado.atual && estado.atual.item ? estado.atual.item.remetente : "") + "</b>.</div>" : "";
     el("vpeMAcoes").innerHTML = nota + b.join("");
   }

@@ -149,7 +149,7 @@ win.certAbrirSolicitacao = s => { solAberta = s; };
   b.passo("6. Conferir e emitir; a Caixa se atualiza e mostra a faixa de envio");
   const nPainel = () => t.chamadas.filter(c => c.fn === "caixaSecretariaPainel").length;
   const n0 = nPainel();
-  const botao = Array.from(doc.querySelectorAll("#vpeMAcoes button")).find(x => /Conferir e emitir/.test(x.textContent));
+  const botao = Array.from(doc.querySelectorAll("#vpeMAcoes button")).find(x => /Conferir e só emitir/.test(x.textContent));
   t.clicar(botao);
   await t.assentar(200);
   b.igual(ped("ana@exemplo.com").ESTADO, "EMITIDO", "emitido (e nada enviado)");
