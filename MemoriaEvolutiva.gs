@@ -2,7 +2,7 @@
 // ARQUIVO: MemoriaEvolutiva.gs
 // Memória Evolutiva — SindEducação-ES
 // Aprende automaticamente com e-mails enviados pelo Gmail
-// Trigger: a cada 6h via configurarTriggerMemoriaEvolutiva()
+// Trigger: 1 vez por dia (22h) via configurarTriggerMemoriaEvolutiva() — era a cada 6h até 05/11/2026
 // v1.1 — fix typo novasPalavras + filtros e-mail automático
 // ================================================================
 
@@ -17,11 +17,13 @@ function configurarTriggerMemoriaEvolutiva() {
       ScriptApp.deleteTrigger(t);
     }
   });
+  /* 05/11/2026: 1 vez por dia (era a cada 6 h) — gastar menos IA. */
   ScriptApp.newTrigger("memoriaEvolutivaGmail")
     .timeBased()
-    .everyHours(6)
+    .everyDays(1)
+    .atHour(22)
     .create();
-  Logger.log("Trigger memoriaEvolutivaGmail configurado: a cada 6 horas.");
+  Logger.log("Trigger memoriaEvolutivaGmail configurado: 1 vez por dia, às 22h.");
   return { ok: true, mensagem: "Trigger configurado com sucesso." };
 }
 
@@ -66,7 +68,7 @@ function memoriaEvolutivaGmail() {
           return;
         }
 
-        if (ehEmailAutomatico_(assunto, corpo)) {
+        if (ehEmailAutomatico_(assunto, corpo) || ehEmailGeradoPeloSisgep_(assunto, corpo)) {
           thread.addLabel(labelIgnorado);
           ignorados++;
           return;
@@ -171,7 +173,7 @@ function aprenderComEmail_(apiKey, dados) {
       muteHttpExceptions: true
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var response = iaFetch_("robo-memoria", options);
     if (response.getResponseCode() !== 200) {
       Logger.log("aprenderComEmail_ API erro: " + response.getResponseCode());
       return { ok: false };
@@ -258,7 +260,35 @@ function verificarNovidade_(corpo, resumoAnterior) {
     if (corpNorm.indexOf(p) >= 0 && resumoNorm.indexOf(p) < 0) novasPalavras++; // ✅ FIX
   });
 
-  return novasPalavras >= 2 || palavrasCorpo > palavrasResumo * 2;
+  /* 05/11/2026 (gastar menos IA): o "ou o e-mail tem o dobro de palavras
+     do resumo" deixava passar quase tudo — o resumo guardado é curto, e
+     quase todo e-mail é maior que o dobro dele. Cada e-mail enviado virava
+     uma chamada de IA sem nada novo para aprender. Fica só o critério das
+     palavras-chave novas. */
+  return novasPalavras >= 2;
+}
+
+/* E-MAILS QUE O PRÓPRIO SISGEP GERA — 05/11/2026 ("como fazer o meu projeto
+   gastar menos?"). Ofício, voucher, recibo, complementação: saem de modelo,
+   sempre com o mesmo texto. O robô não aprende nada com eles e cada um
+   custava uma chamada de IA. O que a pessoa escreve à mão continua sendo
+   estudado. */
+function ehEmailGeradoPeloSisgep_(assunto, corpo) {
+  var a = String(assunto || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  var c = String(corpo   || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").substring(0, 1500);
+  if (/encaminhamos, em anexo, o oficio|reenviamos o oficio/.test(c)) return true;
+  var modelos = [
+    /^\[hml\]/, /^\[sindeducacao-es\]/,
+    /certificado de bolsa de estudo/, /voucher de bolsa/, /oficio e voucher de bolsa/,
+    /complementacao de documentos/, /protocolo de solicitacao de bolsa/, /solicitacoes de bolsa de estudo/,
+    /nova solicitacao de bolsa/, /bolsa aprovada/, /atendimento presencial necessario/,
+    /recibo para assinatura/, /seu recibo esta disponivel/, /^recibo - processo/,
+    /recebemos seu documento/, /pagamento confirmado/, /envie seu documento fiscal/,
+    /prestacao de contas/, /documento recebido/, /nf recebida/, /^comprovante n/,
+    /recuperacao de senha/
+  ];
+  for (var i = 0; i < modelos.length; i++) if (modelos[i].test(a)) return true;
+  return false;
 }
 
 function ehEmailAutomatico_(assunto, corpo) {

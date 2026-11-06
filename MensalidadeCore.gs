@@ -379,7 +379,7 @@ function enviarCobracasMensalidade(cpfs) {
         "  Nº do Ofício:   " + numeroOficio + "\n" +
         "  Instituição:    " + escola + "\n" +
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-        "Conforme previsto na Cláusula 56ª da Convenção Coletiva de Trabalho (CCT) vigente, " +
+        "Conforme previsto na Cláusula 38ª da Convenção Coletiva de Trabalho (CCT) vigente, " +
         "e com base na autorização de filiação apresentada pelo(a) associado(a), solicitamos " +
         "a realização do desconto mensal de 2% sobre o salário-base a título de Mensalidade Sindical, " +
         "com repasse ao SindEducação-ES.\n\n" +
@@ -691,7 +691,7 @@ function processarRelatorioMensalidade(payload) {
       muteHttpExceptions: true
     };
 
-    var response = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var response = iaFetch_("mensalidade-relatorio", options);
     var respCode = response.getResponseCode();
     var respText = response.getContentText();
 

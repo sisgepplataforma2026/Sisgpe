@@ -33,6 +33,10 @@
 // ================================================================
 
 var ABA_COMPROVANTES       = "COMPROVANTES";
+/* PADRÃO DE PRODUÇÃO — não leia esta constante para gravar arquivo.
+   A pasta em uso sai de getRecursoId_("COMPROVANTES") (AmbienteRecursos.gs),
+   que troca por ambiente. O valor abaixo é a origem da coluna `producao`
+   daquela tabela e fica aqui como registro histórico. */
 var PASTA_COMPROVANTES_ID = "1IsHNsqHJCiMkjZiqmY3rOor_g7IoUgcv";
 var EMAIL_CONTABILIDADE_TO = "operacional02@impactocondominios.com";
 var EMAIL_CONTABILIDADE_CC = "operacional03.impactocond@gmail.com";
@@ -123,7 +127,10 @@ var nomeAnexo = sanitizarNomeArquivoComprovante_(
 );
 blob.setName(nomeAnexo);
 var salvo = pastaMes.createFile(blob);
-salvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // ✅
+// 🔒 Segurança/LGPD: anexos de comprovantes não podem ser publicados por link.
+// O arquivo permanece restrito; acesso externo deve ocorrer por fluxo autenticado
+// ou por anexo de e-mail, nunca por permissão pública no Drive.
+arquivoAplicarPolitica_(salvo, "Comprovantes.gs");
 
       ids.push(salvo.getId());
       nomes.push(salvo.getName());
@@ -220,7 +227,11 @@ function criarAbasModuloComprovantes() {
 /* ================= PASTA DO MÊS ================= */
 
 function obterOuCriarPastaMesComprovantes_() {
-  var pastaRaiz = DriveApp.getFolderById(PASTA_COMPROVANTES_ID);
+  /* NÃO leia PASTA_COMPROVANTES_ID direto aqui: aquela constante é só o
+     PADRÃO DE PRODUÇÃO. Quem decide a pasta é getRecursoId_, que troca por
+     ambiente e trava a gravação se a homologação estiver apontando para a
+     pasta de produção. Ver AmbienteRecursos.gs. */
+  var pastaRaiz = DriveApp.getFolderById(getRecursoId_("COMPROVANTES"));
   var hoje = new Date();
   var tz = Session.getScriptTimeZone();
 
@@ -553,8 +564,8 @@ function gerarPdfComprovanteWeb(dados) {
 
     var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
-    // ✅ Libera acesso público ao PDF
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // 🔒 Mantém o PDF privado no Drive
+    arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
 
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -842,8 +853,8 @@ function gerarComprovanteWeb(dados) {
 
 var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
 
-// ✅ Libera acesso para qualquer pessoa com o link
-pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+// 🔒 Mantém o PDF privado no Drive
+arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
 
 var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
@@ -1079,7 +1090,7 @@ function excluirComprovante(rowIndex) {
       return { ok: false, mensagem: "Linha não encontrada." };
     }
 
-    sh.deleteRow(rowIndex);
+    lixeiraMover_(sh, rowIndex, { origem: "excluirComprovante" });
 
     return { ok: true, mensagem: "Comprovante removido." };
 
@@ -1231,7 +1242,9 @@ function testarModuloComprovantes() {
       ok: true,
       mensagem: "✅ Módulo Comprovantes respondendo!",
       planilhaId: PLANILHA_ID,
-      pastaComprovantes: PASTA_COMPROVANTES_ID,
+      /* semTrava: isto é diagnóstico, tem de conseguir RELATAR a pasta errada
+         em vez de estourar ao ser perguntado sobre ela. */
+      pastaComprovantes: getRecursoId_("COMPROVANTES", { semTrava: true }),
       dataTeste: new Date().toISOString(),
       timezone: Session.getScriptTimeZone()
     };
@@ -1544,7 +1557,7 @@ function gerarPdfLoteComprovantes(dados) {
     );
 
     var pdfFile = converterHtmlParaPdfComprovante_(htmlDoc, nomeBase, pastaMes);
-    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(pdfFile, "Comprovantes.gs");
     var pdfUrl = "https://drive.google.com/file/d/" + pdfFile.getId() + "/view";
 
     // ── Salva arquivos individuais dos itens e registra na aba COMPROVANTES_ITENS ──
@@ -1575,7 +1588,7 @@ function gerarPdfLoteComprovantes(dados) {
           );
           blobItem.setName(nomeItemArq);
           var arqSalvo = pastaMes.createFile(blobItem);
-          arqSalvo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          arquivoAplicarPolitica_(arqSalvo, "Comprovantes.gs");
           arquivoId   = arqSalvo.getId();
           arquivoNome = arqSalvo.getName();
           mimeType    = arqSalvo.getMimeType();

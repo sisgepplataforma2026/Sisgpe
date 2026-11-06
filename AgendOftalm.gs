@@ -1388,7 +1388,7 @@ function excluirAgendamentoOftalmo(id, tokenSessao) {
           dadosExcluidos
         );
 
-        aba.deleteRow(i + 1);
+        lixeiraMover_(aba, i + 1, { origem: "excluirAgendamentoOftalmo" });
 
         return {
           ok: true,

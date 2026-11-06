@@ -89,12 +89,12 @@
       </div>
 
       <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
-        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos, Certidões</small></div>
+        <span class="spNI">📄</span><div><strong>Documentos</strong><small>Ofícios, Recibos e Declarações</small></div>
       </button>
       <div id="docSubMenuSidebar" class="docSubMenuSidebar" data-subs="documentos,relatorios" style="display:none;">
         <button type="button" class="docSubMenuBtn docSubMenuBtn-ativo" data-sub-mod="documentos:oficios" data-doc-sub="oficios" onclick="spIr('documentos',null,{sub:'oficios'})">📄 Ofícios</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:recibos" data-doc-sub="recibos" onclick="spIr('documentos',null,{sub:'recibos'})">🧾 Recibos</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:certidoes" data-doc-sub="certidoes" onclick="spIr('documentos',null,{sub:'certidoes'})">📜 Certidões</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:declaracoes" data-doc-sub="declaracoes" onclick="spIr('documentos',null,{sub:'declaracoes'})">📜 Declarações</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="documentos:historico" data-doc-sub="historico" onclick="spIr('documentos',null,{sub:'historico'})">📚 Histórico</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="relatorios" onclick="spIr('relatorios',null)">📊 Relatórios de Ofícios</button>
       </div>
@@ -112,33 +112,60 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="cobranca" onclick="spIr('cobranca',null)">📋 Cobrança de Relação Nominal</button>
       </div>
 
-      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('comunicacao',this)">
-        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Painel do dia e caixa de e-mails</small></div>
+      <!-- 03/11/2026: o Painel do Dia saiu ("está conflitando com o dashboard
+           executivo da página inicial ... só deixar a comunicação e e-mails").
+           Comunicação abre direto a Caixa de E-mails. PainelDoDiaUI e
+           CockpitInteligente continuam no projeto, desligados (REGRA 1). -->
+      <button class="spN" data-mod="comunicacao" data-acordeao="comunicacaoSubMenuSidebar" onclick="spAcordeao(this);spIr('caixaSecretaria',this)">
+        <span class="spNI">✉️</span><div><strong>Comunicação</strong><small>Caixa de e-mails</small></div>
       </button>
       <!-- Cockpit e Central IA de E-mails sao a mesma caixa Gmail, com o
            Cockpit reaproveitando as acoes da Central IA. Dois botoes de
            primeiro nivel para praticamente a mesma coisa confundia a
            navegacao: viraram as duas visoes de um modulo so. -->
-      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA" style="display:none;">
-        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacao" onclick="spIr('comunicacao',null)">📊 Painel do Dia</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="centralEmailIA" onclick="spIr('centralEmailIA',null)">📬 Caixa de E-mails</button>
+      <div id="comunicacaoSubMenuSidebar" class="docSubMenuSidebar" data-subs="comunicacao,centralEmailIA,caixaSecretaria" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="caixaSecretaria" onclick="spIr('caixaSecretaria',null)">📬 Caixa de E-mails</button>
       </div>
 
-      <button class="spN" data-mod="eventos" onclick="spIr('eventos',this)">
+      <!-- Eventos era o unico modulo grande sem subcamada no menu: clicar nele
+           abria a tela e pronto, sem mostrar o que existe dentro. Os
+           submodulos sao os do PROMPT-MESTRE §4 (Modulo → Submodulo → Tela),
+           aprovados pelo usuario em 24/08/2026. -->
+      <button class="spN" data-mod="eventos" data-acordeao="eventosSubMenuSidebar" onclick="spAcordeao(this);spIr('eventos',this)">
         <span class="spNI">📅</span><div><strong>Eventos</strong><small>Atividades e programações</small></div>
       </button>
+      <!-- OS CINCO SUBMÓDULOS DE EVENTOS — 26/08/2026.
+           A arquitetura fechada com o usuário em docs/EVENTOS-ARQUITETURA.md,
+           que o menu ainda não refletia. O que mudou de nome tem motivo:
+
+             Programação → Eventos    a agenda é MODO DE VER a lista de
+                                      eventos, não área própria;
+             Bingo Online → Sorteios  bingo é UM sorteio, não o submódulo. O
+                                      dia que houver rifa ou sorteio de brinde,
+                                      entra aqui sem menu novo;
+             Credenciamento           era tela escondida dentro da Festa, e é
+                                      submódulo: tem fila e estado próprios
+                                      (aguardando, presentes, ausentes). -->
+      <div id="eventosSubMenuSidebar" class="docSubMenuSidebar" data-subs="eventos,eventosLista,eventosFesta,eventosCredenciamento,eventosSorteios" style="display:none;">
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventos"               onclick="spIr('eventos',null)">📊 Painel</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosLista"          onclick="spIr('eventosLista',null)">📅 Eventos</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosFesta"          onclick="spIr('eventosFesta',null)">🎉 Festa Compasso 2026</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosCredenciamento" onclick="spIr('eventosCredenciamento',null)">🎫 Credenciamento</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="eventosSorteios"       onclick="spIr('eventosSorteios',null)">🎲 Sorteios</button>
+      </div>
 
       <div class="spSec">Administração</div>
 
       <button class="spN" data-mod="financeiro" data-acordeao="financeiroSubMenuSidebar" onclick="spAcordeao(this);spIr('financeiro',this)">
         <span class="spNI">💵</span><div><strong>Financeiro</strong><small>Receitas, despesas e patrimônio</small></div>
       </button>
-      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
+      <div id="financeiroSubMenuSidebar" class="docSubMenuSidebar" data-subs="financeiro,painelFin,receitas,mensalidades,taxas,comunicacaoTN,cadastroPrestadores,patrimonio,auditoriaFin" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="painelFin" onclick="spIr('painelFin',null)">📊 Painel Executivo</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="financeiro" onclick="spIr('financeiro',null)">💸 Despesas e Pagamentos</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="receitas" onclick="spIr('receitas',null)">💰 Receitas</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="mensalidades" onclick="spIr('mensalidades',null)">🧾 Mensalidade Sindical</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="taxas" onclick="spIr('taxas',null)">📑 Taxa Negocial e Assistencial</button>
+        <button type="button" class="docSubMenuBtn" data-sub-mod="comunicacaoTN" onclick="spIr('comunicacaoTN',null)">📣 Comunicação da Taxa Negocial</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="cadastroPrestadores" onclick="spIr('cadastroPrestadores',null)">🧑‍🔧 Prestadores</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="patrimonio" onclick="spIr('patrimonio',null)">🏛️ Patrimônio</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="auditoriaFin" onclick="spIr('auditoriaFin',null)">🔍 Auditoria de Valores</button>
@@ -226,17 +253,17 @@
   <main id="spMain">
     <header id="spTopbar">
       <div>
-        <div id="spTit">SOFIA</div>
-        <div id="spSub">Sistema Operacional Financeiro com Inteligência Artificial</div>
+        <div id="spTit">Início</div>
+        <div id="spSub">Painel do sindicato — o que precisa de você hoje</div>
       </div>
       <div class="spTopRight">
         <div class="spClock">
           <div id="spH">15:30</div>
           <span id="spD">26 de junho de 2026</span>
         </div>
-        <button class="spTopBtn" title="Notificações">🔔<span id="spNB">8</span></button>
-        <button class="spTopBtn" title="Ajuda">?</button>
-        <button class="spTopBtn" title="WC">WC</button>
+        <!-- 06/11/2026: saíram o sino (o "8" era fixo, não havia notificação
+             nenhuma — o usuário: "não tem necessidade"), o "?" e o "WC", que não
+             tinham função. O que espera ação está no painel da Home. -->
 
         <!-- PERFIL DO USUÁRIO COM DROPDOWN -->
         <div class="spUserProfile">
@@ -271,6 +298,11 @@
               <span class="spDropdownIcon"></span>
               <span>Meu Perfil</span>
             </button>
+            <div class="spDropdownDivider"></div>
+            <button class="spDropdownItem" id="spMenuSair" onclick="spToggleUserMenu(); spSairDoSistema();">
+              <span class="spDropdownIcon">🚪</span>
+              <span>Sair do sistema</span>
+            </button>
           </div>
         </div>
       </div>
@@ -288,13 +320,11 @@
             <div class="spHeroGlow"></div>
 
             <div class="spHeroText">
-              <h1 id="spGreet">Bom dia, <span>Wanderson!</span> 👋</h1>
-              <p>Eu sou a <b>SOFIA</b>, sua assistente inteligente.<br>Analisei toda a movimentação do sindicato e preparei um resumo do seu dia.</p>
-
-              <div class="spSpeech">
-                <p>Estou aqui para simplificar seu trabalho e cuidar de todas as tarefas para você.</p>
-                <strong>É só me dizer o que precisa, que eu faço o resto. Vamos juntos? 🚀</strong>
-              </div>
+              <h1 id="spGreet"><span id="spGreetSaud">Olá</span><span id="spGreetNome"></span>!</h1>
+              <p>Eu sou a <b>SOFIA</b>, sua assistente inteligente.</p>
+              <!-- A frase do dia sai do painel (getPainelExecutivoSISGEP). Até ele
+                   responder, fica o texto neutro — nunca um número inventado. -->
+              <p id="spResumoDia" class="spResumoDia">Estou juntando o que precisa de você hoje…</p>
             </div>
 
             <div class="spSofiaWrap">
@@ -321,73 +351,39 @@
             </div>
           </section>
 
-          <section class="spQuickPanel">
-            <div class="spPanelTitle"><span>⚡</span> Ações rápidas</div>
-            <div class="spQuickGrid">
-              <button class="spAc" onclick="spIr('documentos',null,{sub:'oficios'})" style="--ac:#7c3aed;">
-                <div class="spAcIco">📄</div><strong>Emitir Ofício</strong><small>Filiação, Desfiliação, Cobrança, Solicitação e muito mais</small><em>→</em>
-              </button>
-              <button class="spAc" onclick="spIr('financeiro')" style="--ac:#10b981;">
-                <div class="spAcIco">🧾</div><strong>Processar NF</strong><small>Enviar nota fiscal para a contabilidade com um clique</small><em>→</em>
-              </button>
-              <button class="spAc" onclick="spIr('documentos',null,{sub:'recibos'})" style="--ac:#f97316;">
-                <div class="spAcIco">📋</div><strong>Gerar Recibo</strong><small>Recibos de mensalidade, contribuições e taxas</small><em>→</em>
-              </button>
-              <button class="spAc" onclick="spIr('comunicacao')" style="--ac:#3b82f6;">
-                <div class="spAcIco">✉️</div><strong>Responder E-mails</strong><small>Ver e-mails pendentes e sugerir respostas inteligentes</small><em>→</em>
-              </button>
-              <button class="spAc" onclick="spIr('escolas')" style="--ac:#ec4899;">
-                <div class="spAcIco"></div><strong>Consultar Escola</strong><small>Verificar cadastro, pendências e histórico da escola</small><em>→</em>
-              </button>
-              <button class="spAc" onclick="spIr('sofia')" style="--ac:#06b6d4;">
-                <div class="spAcIco">🧠</div><strong>Conversar com SOFIA</strong><small>Pergunte qualquer coisa e eu vou te ajudar</small><em>→</em>
-              </button>
-            </div>
-          </section>
-
-          <section class="spBottomGrid">
-            <div class="spActivity">
-              <div class="spPanelTitle">Atividades recentes da SOFIA</div>
-              <div id="spAtividadesSofia"><div class="spAt"><p>Carregando…</p></div></div>
-            </div>
-
-            <div class="spHighlight">
-              <div class="spPanelTitle">⭐ Destaques do dia</div>
-              <div class="spBrain">🧠</div>
-              <h3>SOFIA em ação</h3>
-              <p>Trabalhando 24h para deixar tudo organizado para você.</p>
-              <button onclick="spIr('sofia')">Ver todas as atividades</button>
-            </div>
+          <!-- DASHBOARD EXECUTIVO — fase 1 (06/11/2026). Tudo aqui vem de
+               getPainelExecutivoSISGEP (InicioExecutivo.gs): fonte que falha some,
+               nunca vira zero. Desenho: docs/PRODUTO-DASHBOARD-EXECUTIVO.md. -->
+          <section class="spXKpis" id="spXKpis"></section>
+          <section class="spXCard spXTarefasCard">
+            <div class="spXHead"><b>⚡ Precisa de você agora</b><span><small id="spXAtualizado">carregando…</small> <button type="button" class="spXBtn" id="spXAtualizar" onclick="carregarPainelExecutivo(true)" title="Ler tudo de novo agora">↻ Atualizar</button></span></div>
+            <div id="spXTarefas"><div class="spXVazio">Carregando…</div></div>
+            <div class="spXAviso" id="spXIndisponivel" style="display:none;"></div>
           </section>
         </div>
 
         <aside class="spRightRail">
           <div class="spRailCard">
-            <div class="spRailHead"><strong>🎯 Suas prioridades de hoje</strong><a onclick="spIr('relatorios')">Ver todas</a><span id="spPrioridadesTotal">—</span></div>
-            <button class="spPriority" onclick="spIr('financeiro')"><i style="background:#ef4444;">📄</i><p>Notas fiscais aguardando envio</p><b id="spPrioNF" style="color:#ef4444;">—</b></button>
-            <button class="spPriority" onclick="spIr('comunicacao')"><i style="background:#f59e0b;">✉️</i><p>E-mails urgentes para sua resposta</p><b id="spPrioEmails" style="color:#f59e0b;">—</b></button>
-            <button class="spPriority" onclick="spIr('documentos',null,{sub:'oficios'})"><i style="background:#eab308;">📋</i><p>Ofícios pendentes de envio</p><b id="spPrioOficios" style="color:#eab308;">—</b></button>
-            <button class="spPriority" onclick="spIr('juridico')"><i style="background:#8b5cf6;">⚖️</i><p>Processos jurídicos com prazo em 15 dias</p><b id="spPrioJuridico" style="color:#8b5cf6;">—</b></button>
-            <button class="spPriority" onclick="spIr('escolas')"><i style="background:#3b82f6;">🏫</i><p>Escolas com cadastro incompleto</p><b id="spPrioEscolas" style="color:#3b82f6;">—</b></button>
+            <div class="spRailHead"><strong>🏛️ O sindicato por área</strong></div>
+            <div class="spXAreas" id="spXAreas"><div class="spXVazio">Carregando…</div></div>
           </div>
-
           <div class="spRailCard">
-            <div class="spRailHead"><strong>❤️ Saúde do sindicato</strong><a onclick="spIr('relatorios')">Ver detalhes</a></div>
-            <div class="spHealth"><span> Financeiro</span><b id="spSaudeFinanceiro" class="blue">—</b></div>
-            <div class="spHealth"><span>🏛️ Administrativo</span><b id="spSaudeAdministrativo" class="blue">—</b></div>
-            <div class="spHealth"><span>⚖️ Jurídico</span><b id="spSaudeJuridico" class="blue">—</b></div>
-            <div class="spHealth"><span>🏛️ Patrimônio</span><b class="blue" title="Ainda sem indicador conectado neste painel">—</b></div>
-            <div class="spHealth"><span>✉️ Comunicação</span><b id="spSaudeComunicacao" class="blue">—</b></div>
+            <div class="spRailHead"><strong>📥 Chegou agora</strong></div>
+            <div id="spXChegou"><div class="spXVazio">Carregando…</div></div>
           </div>
         </aside>
       </div>
 
       <!-- ──── MÓDULOS EXISTENTES ──── -->
       <div id="mComunicacao" class="spM" style="display:none;height:100%;">
+        <?!= include('PainelDoDiaUI'); ?>
         <?!= include('CockpitInteligente'); ?>
       </div>
       <div id="mCentralEmailIA" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('CentralemailIA'); ?>
+      </div>
+      <div id="mCaixaSecretaria" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('CaixaSecretariaUI'); ?>
       </div>
       <div id="mDocumentos" class="spM" style="display:none;background:#f0f4f8;">
 
@@ -407,10 +403,10 @@
                   <strong>Recibos</strong>
                   <small>Processos, recibos individuais, em lote e diversos</small>
                 </button>
-                <button type="button" class="docLandingCard" onclick="docMostrarSub('certidoes')">
+                <button type="button" class="docLandingCard" onclick="docMostrarSub('declaracoes')">
                   <div class="docLandingIco">📜</div>
-                  <strong>Certidões</strong>
-                  <small>Módulo em preparação</small>
+                  <strong>Declarações</strong>
+                  <small>Declaração de diretor à disposição da entidade (art. 543 da CLT)</small>
                 </button>
               </div>
             </div>
@@ -418,6 +414,8 @@
 
           <div id="docSubOficios" class="docSubPanel" style="display:none;">
             <?!= include('OficiosFormulario'); ?>
+            <?!= include('OficiosConferencia'); ?>
+            <?!= include('OficiosFichasDriveUI'); ?>
             <?!= include('DashboardOficiosDashboardOficiosUI'); ?>
           </div>
 
@@ -435,13 +433,29 @@
             <?!= include('Scripts_ReciboDiversos'); ?>
             <?!= include('Scripts_HistoricoRecibos'); ?>
           </div>
-<div id="docSubCertidoes" class="docSubPanel" style="display:none;">
-            <div style="text-align:center;padding:70px 20px;">
-              <div style="font-size:40px;margin-bottom:10px;">📜</div>
-              <h2 style="font-size:18px;font-weight:800;color:#0f172a;margin:0 0 6px;">Certidões</h2>
-              <p style="font-size:13px;color:#64748b;max-width:360px;margin:0 auto;">Módulo de certidões em preparação. Assim que o include estiver pronto, é só me passar o nome do arquivo que eu conecto aqui.</p>
-            </div>
+          <div id="docSubDeclaracoes" class="docSubPanel" style="display:none;">
+            <?!= include('DeclaracoesAdmin'); ?>
           </div>
+<!--
+  CERTIDÕES — REMOVIDO A PEDIDO DO USUÁRIO em 19/08/2026.
+
+  Saíram daqui quatro coisas que anunciavam um submódulo inexistente: o
+  botão do submenu, o card da landing de Documentos, o painel vazio e a
+  palavra no subtítulo do módulo. Também saiu a chave `certidoes` do mapa
+  DOC_SUB_PAINEIS e o termo do roteamento por texto da SOFIA.
+
+  POR QUE FICA ESTE COMENTÁRIO. Não havia, e nunca houve, arquivo de
+  Certidões — nem .gs nem .html, em commit nenhum; nem rota pública, nem
+  trigger. O que foi removido era só o LUGAR reservado, presente desde o
+  primeiro backup do repositório. Quem procurar Certidões e não achar
+  encontra aqui a explicação, em vez de reabrir a mesma investigação.
+
+  NÃO CONFUNDIR com as outras duas ocorrências da palavra no projeto, que
+  são outra coisa e continuam onde estão: o texto do estatuto em
+  EstatutoCore.gs (certidão de quitação eleitoral) e os tipos de documento
+  anexáveis ao voucher em Scripts_Certificado.html (certidão de casamento
+  e de nascimento).
+-->
 
 <div id="docSubHistorico" class="docSubPanel" style="display:none;padding:24px;">
             <div class="of-modulo-header">
@@ -541,6 +555,7 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
         </div>
 
         <div id="benefSubVouchers" class="docSubPanel" style="display:none;">
+            <?!= include('VoucherPedidosEmailUI'); ?>
             <?!= include('Scripts_Certificado'); ?>
         </div>
 
@@ -592,6 +607,9 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
       </div>
       <div id="mTaxas" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('TaxasAdmin'); ?>
+      </div>
+      <div id="mComunicacaoTN" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
+        <?!= include('ComunicacaoTNAdmin'); ?>
       </div>
       <div id="mPainelFin" class="spM" style="display:none;height:100%;overflow:auto;background:#f0f4f8;">
         <?!= include('FinanceiroPainel'); ?>
@@ -907,7 +925,9 @@ button,input{font-family:inherit;}
 
 /* Main */
 #spMain{flex:1;min-width:0;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-#spTopbar{height:60px;min-height:60px;background:rgba(5,10,20,.75);border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;padding:0 28px;backdrop-filter:blur(14px);}
+/* 06/11/2026: o menu do perfil abria POR BAIXO dos cards (o blur do topo
+   cria uma camada própria sem z-index) — "quando clico ... não acontece nada". */
+#spTopbar{position:relative;z-index:60;height:60px;min-height:60px;background:rgba(5,10,20,.75);border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;padding:0 28px;backdrop-filter:blur(14px);}
 #spTit{font-size:18px;font-weight:800;color:#fff;line-height:1.05;}
 #spSub{font-size:11px;color:rgba(148,163,184,.7);margin-top:3px;}
 .spTopRight{display:flex;align-items:center;gap:12px;}
@@ -1140,6 +1160,57 @@ button,input{font-family:inherit;}
 .spChips button:hover{background:rgba(139,92,246,.25);color:#fff;}
 
 /* Right rail */
+/* DASHBOARD EXECUTIVO — fase 1 (06/11/2026): topo mais baixo (a Sofia
+   aparece, mas a informação vem primeiro), indicadores e lista de ação. */
+.spHero{min-height:370px!important;padding:28px 36px 170px!important}
+#spGreet{font-size:42px!important;line-height:1.1}
+/* A foto da Sofia é a arte inteira (balão, logo e caixa de texto à esquerda,
+   ela à direita). Com o topo mais baixo, mostrar só a parte dela: a imagem
+   fica mais larga que a moldura e encosta à direita. */
+.spSofiaImg{right:0!important;bottom:auto!important;top:0!important;height:100%!important;width:170%!important;object-fit:cover!important;object-position:100% 4%!important}
+.spResumoDia{margin-top:10px;font-size:15px;color:#d5dbf7;line-height:1.5;max-width:520px}.spResumoDia b{color:#fff}.spResumoDia .u{color:#f87171}
+/* 06/11/2026 — o usuário: a caixa de pedidos "está cortando a metade do
+   corpo da Sofia". Topo em duas colunas: à esquerda texto, caixa e atalhos
+   (no fluxo, não mais por cima); à direita a Sofia, sem nada na frente. */
+.spHero{min-height:0!important;padding:28px 36px 26px!important}
+.spHeroText,.spAskBox,.spChips{max-width:calc(60% - 20px)!important}
+.spAskBox{position:relative!important;left:auto!important;bottom:auto!important;width:auto!important;min-height:0!important;margin-top:18px;padding:16px 18px!important}
+.spAskBox label{font-size:16px!important;margin-bottom:10px!important}
+.spChips{position:relative!important;left:auto!important;bottom:auto!important;width:auto!important;margin-top:12px;flex-wrap:wrap!important;gap:8px!important}
+.spChips button{white-space:nowrap;height:30px!important;padding:0 14px!important}
+.spSofiaWrap{width:42%!important}
+.spSofiaWrap:after{display:none!important}
+.spSofiaWrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28%);mask-image:linear-gradient(90deg,transparent 0,#000 28%)}
+/* a arte traz embaixo uma caixa de texto desenhada: a foto fica mais alta
+   que a moldura e essa faixa de baixo sai de vista */
+.spSofiaImg{height:118%!important;right:0!important;width:148%!important}
+/* "se você puxar um pouquinho para o lado, consegue ter a imagem dela
+   nítida" (06/11/2026): a foto vai um pouco para a direita e o esfumado
+   da esquerda fica mais curto, para não apagar o ombro e o cabelo. */
+.spSofiaWrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,transparent 6%,#000 13%)!important;mask-image:linear-gradient(90deg,transparent 0,transparent 6%,#000 13%)!important}
+.spHeroLines{bottom:20px!important;height:120px!important}
+@media(max-width:980px){.spHeroText,.spAskBox,.spChips{max-width:100%!important}.spSofiaWrap{width:60%!important;opacity:.3}}
+.spXKpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 24px 16px}
+.spXK{position:relative;overflow:hidden;text-align:left;background:#0c1530;border:1px solid #1b2550;border-radius:16px;padding:13px 14px;cursor:pointer;color:#e7ebff;font-family:inherit}
+.spXK:hover{border-color:#3b4a9a}.spXK:after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.spXK span{display:block;font-size:10.5px;color:#8590c4;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.spXK b{display:block;font-size:28px;font-weight:800;margin-top:4px}.spXK small{display:block;font-size:11px;color:#aab3dc;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spXCard{margin:0 24px 16px;background:#0c1530;border:1px solid #1b2550;border-radius:18px;padding:16px 18px;color:#e7ebff}
+.spXHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.spXHead b{font-size:16px}.spXHead small{font-size:11.5px;color:#8590c4}
+.spXT{display:flex;align-items:center;gap:12px;padding:10px 4px;border-top:1px solid #1b2550}
+.spXDot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;box-shadow:0 0 0 4px rgba(255,255,255,.04)}
+.spXTag{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--c);background:rgba(255,255,255,.05);border-radius:6px;padding:3px 6px;width:96px;text-align:center;flex:none}
+.spXT p{flex:1;margin:0;font-size:13.5px}.spXT p small{display:block;color:#8590c4;font-size:11px;margin-top:2px}
+.spXBtn{font:800 12px inherit;font-family:inherit;color:#fff;background:#1d2660;border:1px solid #333f8c;border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.spXBtn.p{background:linear-gradient(135deg,#6366f1,#7c3aed);border:0}
+.spXVazio{padding:14px 4px;color:#8590c4;font-size:13px}.spXAviso{margin-top:8px;font-size:11.5px;color:#fbbf24}
+.spXAreas{display:grid;grid-template-columns:1fr;gap:7px}
+.spXA{display:flex;align-items:center;gap:9px;text-align:left;background:#0a1229;border:1px solid #1b2550;border-radius:12px;padding:9px 10px;cursor:pointer;color:#e7ebff;font-family:inherit}
+.spXA:hover{border-color:#3b4a9a}.spXA i{font-style:normal;font-size:17px}.spXA div{flex:1;min-width:0}
+.spXA b{display:block;font-size:12.5px}.spXA small{display:block;font-size:10.5px;color:#8590c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.spXA em{font-style:normal;font-size:18px;font-weight:800;color:var(--c)}
+.spXC{display:flex;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer}.spXC:first-child{border-top:0}
+.spXC p{flex:1;margin:0;font-size:12.5px;color:#e7ebff}.spXC p small{display:block;color:#8590c4;font-size:10.5px}
+@media(min-width:1700px){.spXKpis{grid-template-columns:repeat(6,minmax(0,1fr))}}
 .spRightRail{width:340px;min-width:340px;height:100%;overflow:auto;padding:20px 16px 20px 0;background:#07101f;display:flex;flex-direction:column;gap:16px;}
 .spRailCard{background:rgba(15,23,42,.65);border:1px solid rgba(148,163,184,.12);border-radius:16px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.22);}
 .spRailHead{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
@@ -1188,9 +1259,11 @@ button,input{font-family:inherit;}
 .spPHActions{display:flex!important;gap:10px;justify-content:center;flex-wrap:wrap;margin:20px 0 0!important;font-size:0!important;}
 .spPHActions button{height:38px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:12px;font-weight:800;padding:0 14px;cursor:pointer;}
 .spPHActions button:first-child{background:linear-gradient(135deg,#0ea5e9,#2563eb);border-color:rgba(14,165,233,.45);}
-#mComunicacao #cockpitInteligente{display:flex!important;margin:0!important;height:100%!important;}
+/* 03/11/2026: o Painel do Dia é o resumo da Caixa (PainelDoDiaUI); o Cockpit antigo fica no arquivo, desligado. */
+#mComunicacao #cockpitInteligente{display:none!important;}
+#mComunicacao{overflow:auto!important;}
 
-/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos / Certidões) */
+/* Documentos — submenu lateral interno de subcamadas (Ofícios / Recibos) */
 /* Documentos — accordion de subcamadas dentro do menu lateral principal */
 .docSubMenuSidebar{display:flex;flex-direction:column;gap:2px;padding:2px 12px 8px 32px;}
 .docSubMenuBtn{display:flex;align-items:center;gap:8px;width:100%;height:34px;padding:0 12px;border-radius:8px;border:none;background:transparent;color:rgba(255,255,255,.62);font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;font-family:'Plus Jakarta Sans',sans-serif;transition:.17s;}
@@ -1360,9 +1433,9 @@ function tick(){
 setInterval(tick,1000);tick();
 
 var MODS={
-  inicio:["mInicio","SOFIA","Sistema Operacional Financeiro com Inteligência Artificial"],
+  inicio:["mInicio","Início","Painel do sindicato — o que precisa de você hoje"],
   sofia:["mSofia","Conversar com a SOFIA","Assistente Inteligente"],
-  documentos:["mDocumentos","Documentos","Ofícios, Recibos, Certidões"],
+  documentos:["mDocumentos","Documentos","Ofícios e Recibos"],
   beneficios:["mBeneficios","Gestão de Benefícios","Solicitações, reservas, aprovações e pagamentos"],
   aprovacoesPortal:["mAprovacoesPortal","Aprovações do Portal","Atualizações cadastrais enviadas pelo Portal do Associado"],
   fichas:["mFichasSindicais","Fichas Sindicais","Validação e Aprovação de Filiações"],
@@ -1370,9 +1443,10 @@ var MODS={
   financeiro:["mFinanceiro","Financeiro","Despesas, Lotes, Pagamentos"],
   cadastroPrestadores:["mCadastroPrestadores","Prestadores","Fornecedores e Prestadores de Serviço"],
   receitas:["mReceitas","Receitas","Contas a receber — mensalidades, eventos, contribuições e outras entradas"],
-  mensalidades:["mMensalidades","Mensalidade Sindical","Desconto em folha dos associados — CCT cláusula 56"],
+  mensalidades:["mMensalidades","Mensalidade Sindical","Desconto em folha dos associados — CCT cláusula 38"],
   auditoriaFin:["mAuditoriaFin","Auditoria de Valores","Toda alteração de valor em despesa ou recibo — quem, quanto e por quê"],
   taxas:["mTaxas","Taxa Negocial e Assistencial","Recebimento das contribuições da CCT — cláusulas 57 e 58"],
+  comunicacaoTN:["mComunicacaoTN","Comunicação da Taxa Negocial","Ofício informativo às escolas — escalonado e respeitando a cota de e-mail"],
   painelFin:["mPainelFin","Painel Executivo","Central Financeira — quanto entrou, quanto saiu e o que está pendente"],
   escolas:["mEscolas","Escolas","Cadastros e Relacionamentos"],
   rh:["mRH","RH","Colaboradores, Documentos e Vencimentos"],
@@ -1391,8 +1465,16 @@ var MODS={
   auditoriaRetencao:["mAuditoriaRetencao","Retenção e Descarte","Prazo de guarda dos dados pessoais e o expurgo automático — LGPD"],
   patrimonio:["mPatrimonio","Patrimônio","Bens e Inventário"],
   comunicacao:["mComunicacao","Painel do Dia","Central de Comunicação — resumo, prioridades e ações rápidas de e-mail"],
-  centralEmailIA:["mCentralEmailIA","Caixa de E-mails","Central de Comunicação — categorização inteligente, contexto SISGEP e respostas automáticas"],
+  centralEmailIA:["mCentralEmailIA","Central antiga do Financeiro","Ferramentas que ainda não foram para a Caixa de E-mails — cobrança ligada à escola, comprovante de desconto, rascunho pela IA"],
+  caixaSecretaria:["mCaixaSecretaria","Caixa de E-mails","Comunicação — secretaria@ e financeiro@ num lugar só, por tipo, com os vouchers"],
   eventos:["mEventos","Eventos","Atividades e Programações"],
+  /* Os submódulos de Eventos moram no MESMO container (mEventos): o que muda
+     é qual submódulo a tela abre. Registrar container próprio para cada um
+     seria três cópias da mesma tela para manter em sincronia. */
+  eventosLista:["mEventos","Eventos","Planejados, inscrições abertas, realizados"],
+  eventosFesta:["mEventos","Festa Compasso da Vida 2026","Dados do evento e inscrições"],
+  eventosCredenciamento:["mEventos","Credenciamento","Entrada do evento — QR e check-in"],
+  eventosSorteios:["mEventos","Sorteios","Bingo, cartelas e telão"],
   /* "relatorios" abre o MESMO div de Documentos (mDocumentos) porque o
      painel é o blocoRelatorios, incluído lá dentro. O nome antigo prometia
      "Indicadores e Análises" — indicadores do sindicato inteiro — e
@@ -1434,14 +1516,14 @@ function focoSeguro(selector){
 }
 
 /* ══════════════════════════════════════
-   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos / Certidões)
+   DOCUMENTOS · SUBCAMADAS (Ofícios / Recibos)
    Painel interno dentro do módulo Documentos, independente do spIr principal.
 ══════════════════════════════════════ */
 var DOC_SUB_PAINEIS={
   inicio:"docSubInicio",
   oficios:"docSubOficios",
   recibos:"docSubRecibos",
-  certidoes:"docSubCertidoes",
+  declaracoes:"docSubDeclaracoes",
   historico:"docSubHistorico"
 };
 var BENEF_SUB_PAINEIS = {
@@ -1613,6 +1695,12 @@ window.docMostrarSub=function(sub){
       callFn("initRecibosPanel") || callFn("carregarProcessosRecibo") || callFn("initRecibos");
     },80);
   }
+
+  /* Declarações carrega sob demanda — a lista de diretores e o signatário só
+     são buscados quando alguém abre a tela, não na carga da SPA. */
+  if(sub==="declaracoes"){
+    setTimeout(function(){ callFn("declInit"); },80);
+  }
 };
 function initFichasSindicais(opts){
   setTimeout(function(){
@@ -1657,13 +1745,11 @@ function initDocumentos(opts){
 
 function initComunicacao(opts){
   opts=opts||{};
-  callFn("ckInit");
-
-  setTimeout(function(){
-    if(opts.acao==="emails"){
-      callFn("carregarEmailsIA") || callFn("carregarEmails") || callFn("atualizarCockpitInteligente");
-    }
-  },180);
+  /* 03/11/2026: Painel do Dia = resumo lido da Caixa (PainelDoDia.gs).
+     "Ir para os e-mails" abre a própria Caixa de E-mails. */
+  /* 03/11/2026: o Painel do Dia saiu do menu — todo atalho para
+     "comunicacao" (página inicial, SOFIA) cai na Caixa de E-mails. */
+  return spIr("caixaSecretaria",null);
 }
 
 function initEscolas(opts){
@@ -1715,6 +1801,12 @@ function initFinanceiro(opts){
   opts=opts||{};
   callFn("initFinanceiro") || callFn("carregarFinanceiro") || callFn("initDespesas") || callFn("initDespesasAdmin");
 
+  /* A Conciliação mora dentro de #mFinanceiro e, até 31/08/2026, só era
+     inicializada pelo DOMContentLoaded dela — isto é, em toda carga da página,
+     mesmo com o Financeiro fechado. Era o único caso do lote sem ponto de
+     entrada sob demanda; esta linha é esse ponto. */
+  setTimeout(function(){ callFn("finConciliacaoInit"); },150);
+
   setTimeout(function(){
     if(opts.acao==="nf" || opts.acao==="recibo" || opts.acao==="despesas"){
       callFn("mudarTab",[opts.acao==="despesas" ? "lista" : opts.acao]);
@@ -1762,12 +1854,19 @@ if(mod==="beneficios"){
       setTimeout(function(){ if(typeof window.benefAdminCarregar==="function") window.benefAdminCarregar(); },80);
     }
 
+    /* Os painéis de reserva simples (Guriri Beach e Assefaz) vivem em
+       BeneficioReservaSimplesUI.html e, até 31/08/2026, só eram inicializados
+       pelo DOMContentLoaded deles — quatro chamadas em toda carga da página,
+       com Benefícios fechado. Esta é a ligação sob demanda. */
+    setTimeout(function(){ callFn("initBeneficioReservaSimples"); },100);
+
     if(subBeneficio === "parqueChina"){
       callFn("initBeneficios") || callFn("carregarBeneficios");
     }
 
     if(subBeneficio === "vouchers"){
-      setTimeout(function(){ callFn("carregarLista"); },100);
+      setTimeout(function(){ callFn("cert_carregarLista"); },100);
+      setTimeout(function(){ if(window.VPE && typeof window.VPE.carregar === "function") window.VPE.carregar(); },150);
     }
 
     if(subBeneficio === "agendaOftalmo"){
@@ -2016,10 +2115,24 @@ if(mod==="beneficios"){
     return;
   }
 
-  if(mod==="eventos"){
-    return callFn("initEventos") ||
-           callFn("carregarEventos") ||
-           initModuloAssistido(mod,opts);
+  /* Eventos e seus submódulos: mesma tela, submódulo diferente.
+     O comentário aqui dizia "sem mapa paralelo para alguém esquecer de
+     atualizar" — e o que estava logo abaixo ERA um mapa paralelo, com uma
+     entrada esquecida: `eventos` (o botão Painel) não tinha correspondente, o
+     nome saía vazio, o `if` não entrava e clicar em Painel não fazia nada.
+     Descoberto pelo usuário em 25/08/2026.
+     Agora o nome é DERIVADO do próprio módulo, que é o que o comentário
+     prometia: eventosProgramacao → programacao, eventosFesta → festa,
+     eventosBingo → bingo, e `eventos` sozinho → painel, que é a raiz. */
+  if(mod==="eventos"||mod.indexOf("eventos")===0){
+    var restoEv=mod.slice("eventos".length);
+    var subEv=restoEv ? restoEv.charAt(0).toLowerCase()+restoEv.slice(1) : "painel";
+    var r=callFn("initEventos")||callFn("carregarEventos")||initModuloAssistido(mod,opts);
+    if(typeof window.evSub==="function"){
+      /* Depois do init: a barra de submódulos só existe com a tela montada. */
+      setTimeout(function(){ try{ window.evSub(subEv); }catch(e){} },120);
+    }
+    return r;
   }
 
   if(mod==="relatorios") return initRelatorios(opts);
@@ -2064,6 +2177,13 @@ if(mod==="visitas"){
   if(mod==="taxas"){
     setTimeout(function(){ callFn("initTaxas"); },120);
     return;
+  }
+  if(mod==="comunicacaoTN"){
+    setTimeout(function(){ callFn("initComunicacaoTN"); },120);
+    return;
+  }
+  if(mod==="caixaSecretaria"){
+    return callFn("cxsIniciar");
   }
   if(mod==="centralEmailIA"){
     var eiaInnerBox=document.getElementById("centralEmailIA");
@@ -2222,7 +2342,11 @@ window.spCmd=function(t){
 
   var tl=txt.toLowerCase();
 
-  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad|certidão|certidao/)) return spIr("documentos",null,{aba:"novo"});
+  /* "certidão" saiu daqui em 19/08/2026, junto com o submódulo: mandava
+     quem digitasse a palavra para a tela de NOVO OFÍCIO, que não é o que
+     a pessoa pediu. Sem correspondência, a frase segue para as regras
+     abaixo em vez de abrir a tela errada com ar de acerto. */
+  if(tl.match(/ofício|oficio|filia|desfilia|taxa|associad/)) return spIr("documentos",null,{aba:"novo"});
   if(tl.match(/e-?mail|responder|comunic|inbox/)) return spIr("comunicacao",null,{acao:"emails"});
   if(tl.match(/escola|cadastro|cnpj/)) return spIr("escolas",null,{focoBusca:true});
   if(tl.match(/voucher|beneficio|benefÃ­cio|parque|china|oftalmo|oftalmologia|carteirinha|guriri|assefaz/)) return spIr("beneficios");
@@ -2447,6 +2571,19 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
       if(dropdownNm)dropdownNm.textContent=nome;
       if(pf)pf.textContent=s.perfil||"Administrador";
       if(dropdownPf)dropdownPf.textContent=s.perfil||"Administrador";
+      /* A SAUDAÇÃO É DE QUEM ENTROU — 21/10/2026. Estava escrita fixa
+         "Bom dia, Wanderson!" no HTML, e a Marcelha entrava pela conta da
+         Secretaria e era recebida pelo nome do Financeiro. O primeiro nome
+         vem da sessão (coluna NOME da aba de usuários). */
+      var primeiro=String(s.nome||s.usuario||"").trim().split(/\s+/)[0]||"";
+      primeiro=primeiro?primeiro.charAt(0).toUpperCase()+primeiro.slice(1).toLowerCase():"";
+      window.SISGEP_USUARIO_PRIMEIRO_NOME=primeiro;
+      var hh=new Date().getHours();
+      var gS=document.getElementById("spGreetSaud"), gN=document.getElementById("spGreetNome");
+      if(gS)gS.textContent=hh<12?"Bom dia":hh<18?"Boa tarde":"Boa noite";
+      if(gN)gN.textContent=primeiro?", "+primeiro:"";
+      var chatN=document.getElementById("chatSaudacaoNome");
+      if(chatN)chatN.textContent=primeiro?", "+primeiro:"";
     }).getSessaoUsuario(SISGEP_TOKEN_SESSAO);
 
     spAplicarAcessoModulos_();
@@ -2491,8 +2628,8 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
 
   spRadioInit_();
 
-  var bl=document.getElementById("spLogout");
-  if(bl)bl.addEventListener("click",function(){
+  /* Sair: o botão da tela de Configurações e, desde 06/11/2026, o menu do perfil. */
+  window.spSairDoSistema=function(){
     if(!confirm("Deseja sair do sistema?"))return;
     try { sessionStorage.removeItem(SISGEP_STORAGE_TOKEN); sessionStorage.removeItem(SISGEP_STORAGE_URL); } catch(e){}
     if(window.google&&google.script&&google.script.run){
@@ -2502,14 +2639,136 @@ var ini=String(nome).trim().split(/\s+/).map(function(p){return p.charAt(0).toUp
         .withFailureHandler(function(){ esconderCarregando(idCarregandoLogout); window.location.reload(); })
         .encerrarSessaoUsuario(SISGEP_TOKEN_SESSAO);
     }else window.location.reload();
-  });
+  };
+  var bl=document.getElementById("spLogout");
+  if(bl)bl.addEventListener("click",function(){ window.spSairDoSistema(); });
 });
 
-/* Resumo real da tela Início — substitui os números/status que antes
-   eram fixos no HTML. Best-effort no servidor (InicioResumo.gs): se
-   algum módulo falhar, o card dele mostra 0/— em vez de travar a tela. */
+/* Resumo real da tela Início.
+
+   CORREÇÃO 31/08/2026 (auditoria do Módulo 01) — a disputa foi encerrada.
+
+   Este arquivo e o Helpers.html chamavam AMBOS getResumoInicioSISGEP e escreviam
+   nos MESMOS 11 ids do DOM, com leituras que discordavam: aqui se lia
+   `prioridades` (campo de compatibilidade, onde fonte que falhou vira 0), lá se
+   lia `statusFontes` (a verdade, onde fonte que falhou vira ⚠). O Helpers tentava
+   chegar por último com setTimeout(450) — palpite sobre a rede, não garantia.
+
+   O t108 provou por execução: com a resposta daqui chegando depois, a Home
+   exibia "0" para um módulo que NÃO tinha sido lido. Era descartar de propósito
+   a distinção que o InicioResumo.gs foi escrito para preservar.
+
+   Agora há um dono só do resumo — o Helpers.html — e uma chamada só ao servidor.
+   Esta função delega.
+
+   O caminho de reserva abaixo NÃO é duplicação: include() falha em SILÊNCIO
+   (Code.gs:313). Se o Helpers não vier junto, sem esta reserva a Home ficaria
+   com os números estáticos do HTML e ninguém saberia. */
+/* DASHBOARD EXECUTIVO — fase 1 (06/11/2026). Uma ida ao servidor
+   (getPainelExecutivoSISGEP) desenha a Home inteira. Cada número tem uma ação;
+   fonte que falhou não aparece (o servidor já tirou) e é avisada embaixo da
+   lista — nunca vira zero. */
+window.__spXAcoes=[];
+function spXEsc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]);});}
+function spXAcao(acao){var i=window.__spXAcoes.length;window.__spXAcoes.push(acao||null);return i;}
+window.spPainelAcao=function(i){
+  var a=window.__spXAcoes[i];if(!a||!a.mod)return;
+  spIr(a.mod,null,a.opts||{});
+  if(a.aba)setTimeout(function(){var b=document.querySelector(a.aba);if(b&&typeof b.click==="function")b.click();},450);
+};
+function spXDesenhar(r){
+  window.__spXAcoes=[];
+  var el=function(id){return document.getElementById(id);};
+  var res=r.resumo||{assuntos:0,urgentes:0};
+  if(el("spResumoDia")) el("spResumoDia").innerHTML = res.assuntos
+    ? "Hoje há <b>"+res.assuntos+" pendências</b> esperando você"+(res.urgentes?" — <b class='u'>"+res.urgentes+" urgente"+(res.urgentes>1?"s":"")+"</b>":"")+". Separei tudo abaixo, por prioridade."
+    : "Nada esperando você agora — tudo em dia.";
+  if(el("spXKpis")) el("spXKpis").innerHTML=(r.kpis||[]).map(function(k){
+    return "<button type='button' class='spXK' style='--c:"+spXEsc(k.cor)+"' onclick='spPainelAcao("+spXAcao(k.acao)+")'><span>"+spXEsc(k.rotulo)+"</span><b>"+(k.n===undefined?"…":k.n==null?"—":spXEsc(k.n))+"</b><small>"+spXEsc(k.n===undefined?"carregando…":k.n==null?"não consegui ler agora":k.sub)+"</small></button>";
+  }).join("");
+  var COR={URGENTE:"#f87171",ATENCAO:"#fbbf24",INFO:"#60a5fa"};
+  if(el("spXTarefas")) el("spXTarefas").innerHTML=(r.tarefas||[]).length?(r.tarefas||[]).map(function(t){
+    return "<div class='spXT' style='--c:"+(COR[t.sev]||"#8590c4")+"'><span class='spXDot'></span><span class='spXTag'>"+spXEsc(t.area)+"</span><p>"+spXEsc(t.texto)+(t.detalhe?"<small>"+spXEsc(t.detalhe)+"</small>":"")+"</p><button type='button' class='spXBtn"+(t.sev==="URGENTE"?" p":"")+"' onclick='spPainelAcao("+spXAcao(t.acao)+")'>"+spXEsc(t.botao||"Abrir")+"</button></div>";
+  }).join(""):"<div class='spXVazio'>✔ Nada esperando você agora.</div>";
+  if(el("spXAtualizado")) el("spXAtualizado").textContent=r.atualizadoEm?"atualizado "+r.atualizadoEm+" · urgente primeiro":"";
+  var ind=r.indisponiveis||[];
+  if(el("spXIndisponivel")){el("spXIndisponivel").style.display=ind.length?"":"none";el("spXIndisponivel").textContent=ind.length?"⚠ Não consegui ler agora: "+ind.join(", ")+". Esses números ficaram de fora — não estão zerados.":"";}
+  if(el("spXAreas")) el("spXAreas").innerHTML=(r.areas||[]).map(function(a){
+    return "<button type='button' class='spXA' style='--c:"+spXEsc(a.cor)+"' onclick='spPainelAcao("+spXAcao(a.acao)+")'><i>"+spXEsc(a.icone)+"</i><div><b>"+spXEsc(a.nome)+"</b><small>"+spXEsc(a.sub)+"</small></div><em>"+spXEsc(a.n)+"</em></button>";
+  }).join("")||"<div class='spXVazio'>Nenhuma área respondeu agora.</div>";
+  if(el("spXChegou")) el("spXChegou").innerHTML=(r.chegou||[]).length?(r.chegou||[]).map(function(c){
+    return "<div class='spXC' onclick='spPainelAcao("+spXAcao(c.acao)+")'><span>"+spXEsc(c.icone)+"</span><p>"+spXEsc(c.titulo)+"<small>"+spXEsc([c.de,c.ha].filter(Boolean).join(" · "))+"</small></p></div>";
+  }).join(""):"<div class='spXVazio'>Nada novo nas últimas horas.</div>";
+}
+/* POR PARTES (06/11/2026): na homologação o painel levou ~2 min numa chamada
+   só. Agora são 4 pedidos ao mesmo tempo; cada um desenha o que trouxe
+   assim que chega, e o mais lento não segura os outros. */
+var SPX_GRUPOS=["caixa","oficios","financeiro","cadastros"];
+var SPX_NOMES={caixa:"e-mails, bolsas e comprovantes",oficios:"ofícios",financeiro:"guias e notas",cadastros:"China Park e escolas"};
+var SPX_KPIS=[["urgente","Urgente hoje","#f87171","oficios"],["emails","E-mails a tratar","#f59e0b","caixa"],["oficios","Ofícios pendentes","#eab308","oficios"],["guias","Guias sindicais","#22c55e","financeiro"],["notas","Notas fiscais","#60a5fa","financeiro"],["beneficios","Benefícios","#a78bfa",""]];
+var SPX_AREAS=["Ofícios","E-mails","Guias sindicais","Notas fiscais","Certificados","China Park","Escolas"];
+function spXJuntar(st){
+  var ok=SPX_GRUPOS.filter(function(g){return st.r[g];});
+  var tudo=function(c){return ok.reduce(function(a,g){return a.concat(st.r[g][c]||[]);},[]);};
+  var ordem={URGENTE:0,ATENCAO:1,INFO:2};
+  var tarefas=tudo("tarefas").sort(function(a,b){return ordem[a.sev]-ordem[b.sev];});
+  var areas=tudo("areas").sort(function(a,b){return SPX_AREAS.indexOf(a.nome)-SPX_AREAS.indexOf(b.nome);});
+  var por={};tudo("kpis").forEach(function(k){por[k.chave]=k;});
+  var cert=areas.filter(function(a){return a.nome==="Certificados";})[0], cp=areas.filter(function(a){return a.nome==="China Park";})[0];
+  var benefPronto=st.feito.caixa&&st.feito.cadastros;
+  if(benefPronto&&(cert||cp)) por.beneficios={chave:"beneficios",n:(cert?Number(cert.n)||0:0)+(cp?Number(cp.n)||0:0),
+    sub:[cert?cert.n+" bolsas":"",cp?cp.n+" China Park":""].filter(Boolean).join(" · "),acao:{mod:"beneficios"}};
+  var kpis=SPX_KPIS.map(function(d){
+    var k=por[d[0]], pronto=d[3]?st.feito[d[3]]:benefPronto;
+    return {chave:d[0],rotulo:d[1],cor:d[2],n:k?k.n:(pronto?null:undefined),sub:k?k.sub:"",acao:k?k.acao:null};
+  });
+  var urg=tarefas.filter(function(t){return t.sev==="URGENTE";}).reduce(function(s,t){return s+t.n;},0);
+  return {resumo:{assuntos:tarefas.reduce(function(s,t){return s+t.n;},0),urgentes:urg},kpis:kpis,tarefas:tarefas,areas:areas,
+    chegou:tudo("chegou").slice(0,4),indisponiveis:tudo("indisponiveis").concat(st.erros),
+    atualizadoEm:ok.length?st.r[ok[ok.length-1]].atualizadoEm:"",
+    faltam:SPX_GRUPOS.filter(function(g){return !st.feito[g];})};
+}
+function carregarPainelExecutivo(forcar){
+  if(!(window.google&&google.script&&google.script.run))return false;
+  var st={r:{},feito:{},erros:[],ms:{},t0:Date.now()};
+  var desenhar=function(){
+    var m=spXJuntar(st); spXDesenhar(m);
+    if(m.faltam.length){
+      var el=function(id){return document.getElementById(id);};
+      if(el("spXAtualizado")) el("spXAtualizado").textContent="carregando: "+m.faltam.map(function(g){return SPX_NOMES[g];}).join(", ")+"…";
+      if(!m.tarefas.length&&el("spXTarefas")) el("spXTarefas").innerHTML="<div class='spXVazio'>Carregando…</div>";
+      if(!m.areas.length&&el("spXAreas")) el("spXAreas").innerHTML="<div class='spXVazio'>Carregando…</div>";
+      if(!m.tarefas.length&&el("spResumoDia")) el("spResumoDia").textContent="Estou juntando o que precisa de você hoje…";
+    }
+  };
+  SPX_GRUPOS.forEach(function(g){
+    google.script.run
+      .withSuccessHandler(function(r){ st.feito[g]=true; st.ms[g]=Date.now()-st.t0; console.log("[Início] parte "+g+": "+Math.round(st.ms[g]/1000)+" s"+(r&&r.doCache?" (guardada)":"")+(r&&r.ms?" · servidor "+Math.round(r.ms/1000)+" s":"")); if(r&&r.ok) st.r[g]=r; else st.erros.push(SPX_NOMES[g]); desenhar(); })
+      .withFailureHandler(function(e){ console.error("[Início] painel ("+g+") falhou:",e); st.feito[g]=true; st.erros.push(SPX_NOMES[g]); desenhar(); })
+      .getPainelExecutivoSISGEP(SISGEP_TOKEN_SESSAO,g,!!forcar);
+  });
+  /* A estrutura aparece na hora, com "…", antes de qualquer parte chegar. */
+  desenhar();
+  return true;
+}
 function carregarResumoInicio(){
   if(!(window.google&&google.script&&google.script.run))return;
+
+  /* 06/11/2026: a Home virou o Dashboard Executivo — um painel só, uma
+     chamada só. O resumo antigo (InicioResumo/Helpers) fica no projeto (REGRA
+     1), mas não desenha mais nada: os elementos dele saíram da tela. */
+  if(document.getElementById("spXTarefas")){ carregarPainelExecutivo(); return; }
+
+  if(typeof inicioAtualizarResumoSeguro_==="function"){
+    inicioAtualizarResumoSeguro_();
+    return;
+  }
+
+  /* RESERVA — só roda se o include do Helpers tiver falhado. Semântica antiga
+     (fonte indisponível aparece como 0), preservada de propósito: é melhor a
+     Home mostrar número velho do que não mostrar nada. O aviso no console é o
+     rastro para descobrir que o include caiu. */
+  console.warn("[Início] Helpers.html não carregou — usando o resumo de reserva.");
   google.script.run
     .withSuccessHandler(function(r){
       if(!r||!r.ok)return;
@@ -2533,6 +2792,7 @@ function carregarResumoInicio(){
       setSaude("spSaudeAdministrativo",s.administrativo);
       setSaude("spSaudeJuridico",s.juridico);
       setSaude("spSaudeComunicacao",s.comunicacao);
+      setSaude("spSaudeOficios",s.oficios);
 
       var box=document.getElementById("spAtividadesSofia");
       if(box){

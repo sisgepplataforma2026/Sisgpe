@@ -1,0 +1,328 @@
+<!-- ROBÔ DAS FICHAS DO DRIVE — aba de Documentos › Ofícios (03/11/2026).
+     Desenho aprovado: docs/mock-robo-fichas-oficio.png. Backend:
+     OficiosFichasDrive.gs. Arquivo próprio, como o OficiosConferencia: o
+     módulo de Ofícios é a operação viva — esta tela só PREENCHE o Novo
+     Ofício (pelas funções que ele já expõe); a emissão e o envio continuam
+     lá, sem mudança. -->
+<style>
+#blocoFichasDrive { font-family: 'Plus Jakarta Sans', sans-serif; }
+#blocoFichasDrive * { box-sizing: border-box; }
+#blocoFichasDrive .ofd-cards { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+#blocoFichasDrive .ofd-card { flex: 1 1 0; min-width: 150px; background: var(--surface, #fff); border: 1px solid var(--g200); border-radius: 12px; padding: 10px 12px; box-shadow: var(--sh-xs); }
+#blocoFichasDrive .ofd-card .n { font-size: 22px; font-weight: 800; color: var(--navy); }
+#blocoFichasDrive .ofd-card .l { font-size: 12px; font-weight: 700; color: var(--g600); }
+#blocoFichasDrive .ofd-card.al { border-color: #fcd34d; background: var(--amber-lt, #fffbeb); }
+#blocoFichasDrive .ofd-box { background: var(--surface, #fff); border: 1px solid var(--g200); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; box-shadow: var(--sh-xs); }
+#blocoFichasDrive h4 { margin: 0 0 8px; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--g600); }
+#blocoFichasDrive .ofd-linha { display: grid; grid-template-columns: 1.2fr .6fr 1.8fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--g100); font-size: 13.5px; }
+#blocoFichasDrive .ofd-linha:first-of-type { border-top: 0; }
+@media (max-width: 900px) { #blocoFichasDrive .ofd-linha { grid-template-columns: 1fr; } }
+#blocoFichasDrive small { color: var(--g500); font-size: 12px; }
+#blocoFichasDrive .ofd-p { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 800; margin: 2px 3px 2px 0; }
+#blocoFichasDrive .ofd-ok { background: var(--green-lt, #dcfce7); color: #166534; }
+#blocoFichasDrive .ofd-am { background: var(--amber-lt, #fef3c7); color: #92400e; }
+#blocoFichasDrive .ofd-tp { background: var(--blue-lt, #dbeafe); color: #1e40af; }
+#blocoFichasDrive .ofd-prep { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; margin-top: 10px; }
+@media (max-width: 900px) { #blocoFichasDrive .ofd-prep { grid-template-columns: 1fr; } }
+#blocoFichasDrive .ofd-pess { border: 1px solid var(--g200); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+#blocoFichasDrive .ofd-pess.al { border-color: #fcd34d; background: #fffdf5; }
+#blocoFichasDrive .ofd-pess input, #blocoFichasDrive .ofd-pess select { border: 1px solid var(--g200); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; width: 100%; margin-top: 3px; }
+#blocoFichasDrive .ofd-grade { display: grid; grid-template-columns: 1.4fr 1fr; gap: 6px; }
+#blocoFichasDrive .ofd-orig { font-size: 11px; color: var(--g500); }
+#blocoFichasDrive iframe { width: 100%; height: 480px; border: 1px solid var(--g200); border-radius: 10px; background: var(--g50); }
+#blocoFichasDrive .ofd-vazio { color: var(--g500); font-size: 13px; padding: 8px 0; }
+#blocoFichasDrive .ofd-conf { background: var(--amber-lt, #fffbeb); border: 1px solid #fcd34d; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-top: 8px; }
+</style>
+
+<div id="blocoFichasDrive" style="display:none;">
+  <div class="ofd-cards" id="ofdCards"></div>
+  <div class="ofd-box">
+    <h4>🤖 Fichas novas no Drive, ainda sem ofício</h4>
+    <div id="ofdAvisos"></div>
+    <div id="ofdLista"><div class="ofd-vazio">⏳ Olhando as pastas do Drive…</div></div>
+  </div>
+  <div class="ofd-box" id="ofdPrepBox" style="display:none;"></div>
+  <div class="ofd-box">
+    <h4>✔ Preparadas (abertas no Novo ofício)</h4>
+    <div id="ofdPreparadas"><div class="ofd-vazio">—</div></div>
+  </div>
+</div>
+
+<div id="blocoConferenciaMensal" style="display:none;">
+  <div class="ofd-box">
+    <h4>📋 Conferência mensal — ofício enviado, mas a pessoa não está como devia na lista da escola</h4>
+    <div class="ofd-orig" style="margin-bottom:8px;">Filiação: a pessoa tem que aparecer na lista de mensalidade. Desfiliação: não pode mais aparecer. Oposição: não pode aparecer na lista da taxa negocial.
+      Só vale a lista de um mês depois do ofício. As listas chegam pela Caixa da financeiro@ (o robô lê o comprovante/relação quando o e-mail é aberto).</div>
+    <div id="cfmLista"><div class="ofd-vazio">⏳ Conferindo…</div></div>
+  </div>
+  <div class="ofd-box" id="cfmEmailBox" style="display:none;"></div>
+  <div class="ofd-box"><h4>⏳ Sem lista da escola ainda (ofício há mais de 35 dias)</h4><div id="cfmSemLista"><div class="ofd-vazio">—</div></div></div>
+</div>
+
+<script>
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function tk() { return (typeof SISGEP_TOKEN_SESSAO !== "undefined" && SISGEP_TOKEN_SESSAO) || window.SISGEP_TOKEN_SESSAO || ""; }
+  function aviso(m, t) { if (typeof toast === "function") toast(m, t || "info", 5000); }
+  function rodar(fn, args, ok) {
+    google.script.run.withSuccessHandler(function (r) { ok(r || {}); })
+      .withFailureHandler(function (e) { ok({ ok: false, mensagem: (e && e.message) || String(e) }); })[fn].apply(null, args.concat([tk()]));
+  }
+  function cpfMask(c) { c = String(c || "").replace(/\D/g, ""); return c.length === 11 ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : c; }
+  var est = { itens: [], escolas: null, atual: null, conf: false };
+
+  /* ── a aba ── */
+  var BLOCOS = ["blocoOficioNovo", "blocoOficioHistorico", "blocoTaxaAssistencial", "blocoMonitoramento", "blocoConferencia", "blocoEscolas", "centralEmailIA", "sisgepDashboardExecutivo"];
+  var ABAS = ["abaOficioNovo", "abaOficioHistorico", "abaTaxaAssistencial", "abaMonitoramento", "abaConferencia"];
+  function mostrar(qual) {
+    BLOCOS.forEach(function (id) { if (el(id)) el(id).style.display = "none"; });
+    ABAS.forEach(function (id) { if (el(id)) el(id).classList.remove("active"); });
+    esconder();
+    if (qual === "conf") {
+      el("blocoConferenciaMensal").style.display = "block";
+      if (el("abaConferenciaMensal")) el("abaConferenciaMensal").classList.add("active");
+      return carregarConf();
+    }
+    el("blocoFichasDrive").style.display = "block";
+    if (el("abaFichasDrive")) el("abaFichasDrive").classList.add("active");
+    carregar();
+  }
+  function esconder() {
+    ["blocoFichasDrive", "blocoConferenciaMensal"].forEach(function (id) { if (el(id)) el(id).style.display = "none"; });
+    ["abaFichasDrive", "abaConferenciaMensal"].forEach(function (id) { if (el(id)) el(id).classList.remove("active"); });
+  }
+  document.addEventListener("click", function (ev) {
+    var t = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+    if (!t) return;
+    if (t.id === "abaFichasDrive") return mostrar();
+    if (t.id === "abaConferenciaMensal") return mostrar("conf");
+    if (ABAS.indexOf(t.id) > -1) esconder();
+    var a = t.getAttribute("data-ofd");
+    if (!a) return;
+    var arg = t.getAttribute("data-arg") || "";
+    if (a === "ler") ler(arg);
+    else if (a === "preparar") abrirPreparo(arg);
+    else if (a === "ignorar") ignorar(arg);
+    else if (a === "abrirNovo") abrirNovo(false);
+    else if (a === "abrirNovoSim") abrirNovo(true);
+    else if (a === "fecharPrep") { el("ofdPrepBox").style.display = "none"; est.atual = null; }
+    else if (a === "carregar") carregar();
+    else if (a === "cfmEmail") cfmEmail(arg);
+    else if (a === "cfmTratado") cfmTratado(arg);
+    else if (a === "cfmAbrirNovo") cfmAbrirNovo();
+    else if (a === "cfmCopiar") cfmCopiar();
+  });
+
+  /* ── a lista ── */
+  function carregar() {
+    rodar("oficiosFichasListar", [], function (r) {
+      if (!r.ok) { el("ofdLista").innerHTML = "<div class='ofd-vazio'>🔒 " + esc(r.mensagem) + "</div>"; return; }
+      est.itens = r.itens || [];
+      el("ofdAvisos").innerHTML = (r.avisos || []).map(function (a) { return "<div class='ofd-conf'>⚠ " + esc(a) + "</div>"; }).join("");
+      desenhar();
+      el("ofdPreparadas").innerHTML = (r.preparadas || []).length ? r.preparadas.map(function (p) {
+        return "<div class='ofd-linha' style='grid-template-columns:1.2fr .6fr 1.8fr'><div><b>" + esc(p.nome) + "</b><br><small>" + esc(p.pasta) + "</small></div>" +
+          "<div><span class='ofd-p ofd-tp'>" + esc(p.tipo) + "</span></div><div><small>preparado por " + esc(p.preparadoPor) + "</small></div></div>";
+      }).join("") : "<div class='ofd-vazio'>Nenhuma ainda.</div>";
+    });
+  }
+  function desenhar() {
+    var it = est.itens, cont = { "Filiação": 0, "Desfiliação": 0, "Oposição à Taxa Negocial": 0 }, alerta = 0;
+    it.forEach(function (i) {
+      cont[i.tipo] = (cont[i.tipo] || 0) + 1;
+      if (i.leitura && i.leitura.pessoas.some(function (p) { return !p.ok; })) alerta++;
+    });
+    el("ofdCards").innerHTML = [["Filiação", "📥 Fichas de filiação novas"], ["Desfiliação", "📤 Desfiliação"], ["Oposição à Taxa Negocial", "✋ Oposição à taxa negocial"]]
+      .map(function (c) { return "<div class='ofd-card'><div class='n'>" + (cont[c[0]] || 0) + "</div><div class='l'>" + c[1] + "</div></div>"; }).join("") +
+      "<div class='ofd-card al'><div class='n'>" + alerta + "</div><div class='l'>⚠ precisam de você (letra / escola)</div></div>";
+    el("ofdLista").innerHTML = it.length ? it.map(function (i) {
+      var pess = i.leitura ? i.leitura.pessoas : null;
+      var meio = !pess ? "<small>ainda não lida</small>" : (function () {
+        var escolas = pess.map(function (p) { return p.escola ? p.escola.nome : ""; }).filter(function (x, k, a) { return x && a.indexOf(x) === k; });
+        return (escolas.length ? "<b>" + esc(escolas.join(" · ")) + "</b> — " : "") + pess.length + " pessoa(s)<br>" + pess.map(function (p) {
+          return "<span class='ofd-p " + (p.ok ? "ofd-ok'>✔ " : "ofd-am'>⚠ ") + esc(p.nome || p.nomeLido || "(sem nome)") + (p.ok ? "" : " — " + esc(p.alertas[0])) + "</span>";
+        }).join("");
+      })();
+      return "<div class='ofd-linha'><div><b>" + esc(i.nome) + "</b><br><small>📁 " + esc(i.pasta) + " · " + esc(i.criadoEm) + "</small></div>" +
+        "<div><span class='ofd-p ofd-tp'>" + esc(i.tipo) + "</span><br><small>pela pasta</small></div><div>" + meio + "</div>" +
+        "<div style='display:flex;gap:6px;flex-wrap:wrap;'>" + (pess ? "<button type='button' class='btn btn-navy' data-ofd='preparar' data-arg='" + esc(i.id) + "'>Preparar ofício</button>"
+          : "<button type='button' class='btn btn-navy' data-ofd='ler' data-arg='" + esc(i.id) + "'>🤖 Ler com o robô</button>") +
+        "<button type='button' class='btn btn-outline' data-ofd='ignorar' data-arg='" + esc(i.id) + "' title='Não é ficha / já foi feita'>Tirar</button></div></div>";
+    }).join("") : "<div class='ofd-vazio'>Nenhuma ficha nova nas pastas do Drive. Quando vocês salvarem uma, ela aparece aqui.</div>";
+  }
+  function ler(id) {
+    var b = document.querySelector("[data-ofd='ler'][data-arg='" + id + "']");
+    if (b) { b.disabled = true; b.textContent = "⏳ Lendo…"; }
+    rodar("oficiosFichasLer", [id], function (r) {
+      if (!r.ok) { aviso(r.mensagem, "err"); if (b) { b.disabled = false; b.textContent = "🤖 Ler com o robô"; } return; }
+      est.itens = est.itens.map(function (i) { return i.id === id ? r.item : i; });
+      desenhar();
+      abrirPreparo(id);
+    });
+  }
+  function ignorar(id) {
+    rodar("oficiosFichasIgnorar", [id, "tirada da lista pela tela"], function (r) { aviso(r.mensagem, r.ok ? "ok" : "err"); carregar(); });
+  }
+
+  /* ── preparar (conferir e corrigir) ── */
+  function escolasLista(depois) {
+    if (est.escolas) return depois();
+    rodar("listarEscolas", [], function (lista) {
+      est.escolas = (Array.isArray(lista) ? lista : (lista.itens || [])).map(function (e) {
+        return { nome: String(e.nome || e.Fantasia || e.escola || ""), cnpj: String(e.cnpj || e.CNPJ || "").replace(/\D/g, "") };
+      }).filter(function (e) { return e.nome && e.cnpj; });
+      depois();
+    });
+  }
+  function abrirPreparo(id) {
+    var i = est.itens.filter(function (x) { return x.id === id; })[0];
+    if (!i || !i.leitura) return;
+    est.atual = i; est.conf = false;
+    escolasLista(function () {
+      var dl = "<datalist id='ofdEscolasDL'>" + est.escolas.map(function (e) { return "<option value='" + esc(e.nome + " — " + e.cnpj) + "'>"; }).join("") + "</datalist>";
+      var pess = i.leitura.pessoas.map(function (p, k) {
+        var escTxt = p.escola ? p.escola.nome + " — " + String(p.escola.cnpj).replace(/\D/g, "") : "";
+        return "<div class='ofd-pess" + (p.ok ? "" : " al") + "' data-k='" + k + "'>" +
+          "<div style='font-size:12px;font-weight:800;color:var(--g600)'>Página " + (p.pagina || k + 1) + (p.ok ? " · ✔" : " · ⚠ " + esc(p.alertas.join(" · "))) + "</div>" +
+          "<div class='ofd-grade'><div>Nome<input data-campo='nome' value='" + esc(p.nome || p.nomeLido) + "'><div class='ofd-orig'>" + esc(p.nomeOrigem) + "</div></div>" +
+          "<div>CPF<input data-campo='cpf' value='" + esc(cpfMask(p.cpf)) + "'><div class='ofd-orig'>" + (p.cpfOk ? "✔ dígito confere" : "⚠ confira na ficha") + "</div></div></div>" +
+          "<div>Escola<input data-campo='escola' list='ofdEscolasDL' value='" + esc(escTxt) + "' placeholder='escreva para buscar no cadastro'>" +
+          "<div class='ofd-orig'>" + esc(p.escolaOrigem) + (p.candidatos && p.candidatos.length && !p.escola ? " — parecidas: " + p.candidatos.map(function (c) { return esc(c.nome); }).join(", ") : "") + "</div></div>" +
+          "<label style='font-size:12px;'><input type='checkbox' data-campo='inclui' checked style='width:auto;'> incluir neste ofício</label></div>";
+      }).join("");
+      el("ofdPrepBox").innerHTML = dl + "<h4>Preparar ofício — " + esc(i.nome) + "</h4><div class='ofd-prep'><div>" +
+        "<div style='font-size:13px;margin-bottom:8px;'>Tipo: <b>" + esc(i.tipo) + "</b> <span class='ofd-orig'>— pela pasta do Drive</span> · Anexo: 📎 " + esc(i.nome) + "</div>" + pess +
+        "<div id='ofdConfirma'></div><div style='display:flex;gap:6px;justify-content:flex-end;margin-top:8px;'>" +
+        "<button type='button' class='btn btn-outline' data-ofd='fecharPrep'>Fechar</button>" +
+        "<button type='button' class='btn btn-navy' data-ofd='abrirNovo'>📄 Abrir no Novo ofício (preenchido)</button></div>" +
+        "<div class='ofd-orig' style='margin-top:6px;'>Tudo o que você corrigir fica guardado — é assim que o robô aprende a letra e o jeito de escrever cada escola.</div></div>" +
+        "<div><iframe src='https://drive.google.com/file/d/" + encodeURIComponent(i.id) + "/preview' title='A ficha'></iframe></div></div>";
+      el("ofdPrepBox").style.display = "";
+      el("ofdPrepBox").scrollIntoView && el("ofdPrepBox").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  function conferido() {
+    var pessoas = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#ofdPrepBox .ofd-pess"), function (box) {
+      if (!box.querySelector("[data-campo='inclui']").checked) return;
+      var k = Number(box.getAttribute("data-k"));
+      var escTxt = box.querySelector("[data-campo='escola']").value;
+      var cnpj = (escTxt.match(/(\d{14})\s*$/) || [])[1] || "";
+      if (!cnpj) { var e = (est.escolas || []).filter(function (x) { return x.nome.toLowerCase() === escTxt.trim().toLowerCase(); })[0]; cnpj = e ? e.cnpj : ""; }
+      pessoas.push({ pagina: est.atual.leitura.pessoas[k].pagina, nome: box.querySelector("[data-campo='nome']").value,
+                     cpf: box.querySelector("[data-campo='cpf']").value, escolaCnpj: cnpj });
+    });
+    return { pessoas: pessoas };
+  }
+  function formularioComDados() {
+    var temNome = Array.prototype.some.call(document.querySelectorAll("#listaTrabalhadores .input-nome-trabalhador"), function (i) { return i.value.trim(); });
+    var esc = el("escolaBusca");
+    return temNome || !!(esc && esc.value.trim());
+  }
+  function abrirNovo(confirmado) {
+    if (!est.atual) return;
+    if (!confirmado && formularioComDados()) {
+      el("ofdConfirma").innerHTML = "<div class='ofd-conf'>O <b>Novo ofício</b> já tem um ofício começado. Preencher com estas fichas limpa o que está lá." +
+        "<div style='margin-top:6px;display:flex;gap:6px;'><button type='button' class='btn btn-navy' data-ofd='abrirNovoSim'>Sim, substituir</button>" +
+        "<button type='button' class='btn btn-outline' data-ofd='fecharPrep'>Cancelar</button></div></div>";
+      return;
+    }
+    rodar("oficiosFichasPreparar", [est.atual.id, conferido()], function (r) {
+      if (!r.ok) return aviso(r.mensagem, "err");
+      preencherNovoOficio(r.oficio);
+      est.atual = null; el("ofdPrepBox").style.display = "none";
+    });
+  }
+
+  /* ── preencher o Novo Ofício pelas funções que ele mesmo expõe ── */
+  function preencherNovoOficio(o) {
+    if (el("abaOficioNovo")) el("abaOficioNovo").click();
+    esconder();
+    if (window.Oficio && typeof window.Oficio.resetarFormulario === "function") { try { window.Oficio.resetarFormulario(); } catch (e) {} }
+    var tipo = el("tipo");
+    if (tipo) { tipo.value = o.tipo; tipo.dispatchEvent(new Event("change", { bubbles: true })); }
+    if (typeof window.oficioSetModo === "function") { try { window.oficioSetModo("individual"); } catch (e) {} }
+    var opt = el("escola") ? Array.prototype.filter.call(el("escola").options, function (op) { return String(op.dataset.cnpj || "").replace(/\D/g, "") === String(o.escola.cnpj).replace(/\D/g, ""); })[0] : null;
+    var raw = opt ? { id: opt.dataset.id, nome: opt.textContent, razao: opt.dataset.razao, cnpj: opt.dataset.cnpj, emailPrincipal: opt.dataset.email,
+                      cidade: opt.dataset.cidade, uf: opt.dataset.uf, endereco: opt.dataset.endereco, status: opt.dataset.status,
+                      oficios: opt.dataset.oficios, confirmados: opt.dataset.confirmados, ultimo: opt.dataset.ultimo }
+                  : { nome: o.escola.nome, razao: o.escola.razao, cnpj: o.escola.cnpj, emailPrincipal: o.escola.email };
+    if (typeof window.selecionarEscolaOficioSmart === "function") window.selecionarEscolaOficioSmart(raw);
+    var lista = el("listaTrabalhadores");
+    if (lista) Array.prototype.forEach.call(lista.querySelectorAll(".trabalhador-card"), function (c) {
+      var n = c.querySelector(".input-nome-trabalhador"); if (n && !n.value.trim()) c.remove();
+    });
+    var add = window.Oficio && (window.Oficio.adicionarTrabalhador || window.Oficio.addTrabalhador);
+    o.pessoas.forEach(function (p, k) {
+      var card = add ? add() : null;
+      if (!card) return;
+      var n = card.querySelector(".input-nome-trabalhador"), c = card.querySelector(".input-cpf-trabalhador");
+      if (n) { n.value = p.nome; n.dispatchEvent(new Event("input", { bubbles: true })); }
+      if (c) { c.value = cpfMask(p.cpf); c.dispatchEvent(new Event("input", { bubbles: true })); }
+      if (k === 0 && o.ficha) {
+        /* O PDF das fichas vai uma vez só (como quando se anexa do Drive à mão). */
+        card._fichasDrive = [o.ficha];
+        var cont = card.querySelector(".ficha-contador"); if (cont) cont.textContent = "1 ficha (☁️ Nuvem) — " + o.pessoas.length + " pessoa(s)";
+        var prev = card.querySelector(".ficha-preview-individual");
+        if (prev) prev.innerHTML = "<div style='padding:7px 11px;background:var(--green-lt);border-radius:9px;border:1.5px solid #6ee7b7;font-size:12px;font-weight:700;color:var(--green-dk);'>📄 " +
+          esc(o.ficha.nome) + " <span style='font-size:10px;color:var(--g500);'>☁️ Nuvem · " + esc(o.origem || "pelo robô das fichas") + "</span></div>";
+      }
+    });
+    if (window.Oficio && typeof window.Oficio.atualizarResumoTrabalhadores === "function") { try { window.Oficio.atualizarResumoTrabalhadores(); } catch (e) {} }
+    aviso("Novo ofício preenchido com " + o.pessoas.length + " pessoa(s). Confira e emita como sempre.", "ok");
+  }
+
+  /* A Caixa da secretaria@ ("Ver ofício", 03/11/2026) preenche o Novo
+     Ofício pelo mesmo caminho das fichas do Drive. */
+  window.ofdPreencherNovoOficio = preencherNovoOficio;
+  window.ofdFormularioComDados = formularioComDados;
+
+  /* ── CONFERÊNCIA MENSAL (etapa 2, 03/11/2026) ── */
+  var cfm = { email: null, chave: "" };
+  function carregarConf() {
+    rodar("oficiosConferenciaMensal", [], function (r) {
+      if (!r.ok) { el("cfmLista").innerHTML = "<div class='ofd-vazio'>🔒 " + esc(r.mensagem) + "</div>"; return; }
+      el("cfmLista").innerHTML = r.problemas.length ? r.problemas.map(function (p) {
+        return "<div class='ofd-linha'><div><b>" + esc(p.escola) + "</b><br><small>" + esc(p.tipo) + " nº " + esc(p.numero) + " · enviado " + esc(p.data) + "</small></div>" +
+          "<div><span class='ofd-p ofd-am'>" + esc(p.situacao) + " (" + p.problema.length + ")</span><br><small>lista de " + esc(p.referencia) + "</small></div>" +
+          "<div>" + p.problema.map(function (x) { return "<span class='ofd-p ofd-am'>" + esc(x.nome) + "</span>"; }).join("") +
+            (p.ok.length ? "<br>" + p.ok.map(function (x) { return "<span class='ofd-p ofd-ok'>✔ " + esc(x.nome) + "</span>"; }).join("") : "") + "</div>" +
+          "<div style='display:flex;gap:6px;flex-wrap:wrap;'><button type='button' class='btn btn-teal' data-ofd='cfmEmail' data-arg='" + esc(p.chave) + "'>✉ Propor e-mail</button>" +
+          "<button type='button' class='btn btn-outline' data-ofd='cfmTratado' data-arg='" + esc(p.chave) + "'>✔ Já tratei</button></div></div>";
+      }).join("") : "<div class='ofd-vazio'>✅ Nenhuma pendência: " + r.conferidos + " ofício(s) conferido(s) com a lista da escola" + (r.listas ? "" : " (ainda não há listas guardadas — elas entram quando a Caixa lê o comprovante/relação)") + ".</div>";
+      el("cfmSemLista").innerHTML = r.semLista.length ? r.semLista.map(function (x) {
+        return "<div class='ofd-linha' style='grid-template-columns:1.2fr .8fr 1fr'><div><b>" + esc(x.escola) + "</b></div><div><small>" + esc(x.tipo) + " nº " + esc(x.numero) + "</small></div><div><small>enviado " + esc(x.data) + "</small></div></div>";
+      }).join("") : "<div class='ofd-vazio'>—</div>";
+    });
+  }
+  function cfmEmail(chave) {
+    rodar("oficiosConferenciaEmail", [chave], function (r) {
+      if (!r.ok) return aviso(r.mensagem, "err");
+      cfm.email = r.email; cfm.chave = chave;
+      el("cfmEmailBox").innerHTML = "<h4>✉ E-mail proposto para " + esc(r.email.escola) + "</h4>" +
+        "<div class='ofd-orig'>Para: <b>" + esc(r.email.para || "(sem e-mail no cadastro — preencha)") + "</b> · Assunto: <b>" + esc(r.email.assunto) + "</b></div>" +
+        "<textarea id='cfmTexto' style='width:100%;min-height:200px;margin-top:6px;border:1px solid var(--g200);border-radius:10px;padding:10px;font:inherit;font-size:13px;'>" + esc(r.email.texto) + "</textarea>" +
+        "<div style='display:flex;gap:6px;justify-content:flex-end;margin-top:8px;'><button type='button' class='btn btn-outline' data-ofd='cfmCopiar'>📋 Copiar texto</button>" +
+        "<button type='button' class='btn btn-navy' data-ofd='cfmAbrirNovo'>✉ Abrir no Novo e-mail (financeiro@)</button></div>" +
+        "<div class='ofd-orig' style='margin-top:6px;'>Nada sai sozinho: você confere e envia. Depois, marque ✔ Já tratei.</div>";
+      el("cfmEmailBox").style.display = "";
+    });
+  }
+  function cfmCopiar() {
+    var t = el("cfmTexto"); if (!t) return;
+    try { navigator.clipboard.writeText(t.value); aviso("Texto copiado.", "ok"); } catch (e) { t.select(); aviso("Selecionado — Ctrl+C para copiar.", "info"); }
+  }
+  function cfmAbrirNovo() {
+    if (!cfm.email) return;
+    window.__cxsNovoInicial = { para: cfm.email.para, assunto: cfm.email.assunto, texto: el("cfmTexto") ? el("cfmTexto").value : cfm.email.texto };
+    if (typeof window.spIr === "function") window.spIr("caixaSecretaria", null);
+  }
+  function cfmTratado(chave) {
+    rodar("oficiosConferenciaTratado", [chave, "marcado na tela"], function (r) { aviso(r.mensagem, r.ok ? "ok" : "err"); el("cfmEmailBox").style.display = "none"; carregarConf(); });
+  }
+
+  window.ofdPreencherNovoOficio = preencherNovoOficio;   // para teste
+  window.ofdMostrar = mostrar;
+})();
+</script>

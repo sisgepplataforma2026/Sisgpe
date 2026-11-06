@@ -23,6 +23,14 @@
     <button class="fsa-kpi fsa-kpi-ativo" data-fsa-filtro="ASSINADA" onclick="fsaFiltrar('ASSINADA',this)">
       <span>Aguardando aprovação</span><strong id="fsaKpiAssinadas">—</strong>
     </button>
+    <!-- SEM OFICIO: estado que sempre existiu e ninguem enxergava. A matricula
+         foi emitida (e nao se desfaz) e a escola nunca foi comunicada. Fica
+         escondido quando nao ha nenhum — chip de excecao que mostra zero vira
+         ruido permanente. Item 54.1. -->
+    <button class="fsa-kpi fsa-kpi-alerta" id="fsaKpiSemOficioBtn" style="display:none"
+            data-fsa-filtro="__SEM_OFICIO__" onclick="fsaFiltrar('MATRICULADA',this)">
+      <span>⚠ Sem ofício</span><strong id="fsaKpiSemOficio">—</strong>
+    </button>
     <button class="fsa-kpi" data-fsa-filtro="AGUARDANDO_ASSINATURA" onclick="fsaFiltrar('AGUARDANDO_ASSINATURA',this)">
       <span>Aguardando assinatura</span><strong id="fsaKpiAguardando">—</strong>
     </button>
@@ -59,11 +67,16 @@
 
     <div class="fsa-modal-topo">
       <div>
-        <div class="fsa-modal-titulo">Aprovar e encaminhar</div>
+        <div class="fsa-modal-titulo" id="fsaModalTitulo">Aprovar e encaminhar</div>
         <div class="fsa-modal-sub" id="fsaModalTrabalhador">—</div>
       </div>
       <button class="fsa-modal-fechar" onclick="fsaFecharModal()" aria-label="Fechar">✕</button>
     </div>
+
+    <!-- Aviso do modo emitir/reemitir. Escondido no modo aprovar. Item 54.1. -->
+    <div id="fsaAvisoOficio" style="display:none;margin:0 22px 4px;padding:11px 14px;
+         background:#fffbeb;border:1px solid var(--amber,#d97706);border-radius:10px;
+         font-size:12.5px;color:#92400e;line-height:1.55;"></div>
 
     <div class="fsa-passos">
       <span class="fsa-passo fsa-passo-ativo" id="fsaPasso1">1 · Escola destinatária</span>
@@ -327,6 +340,20 @@
 .fsa-kpi{border:1.5px solid var(--g200,#e2e8f0);background:#fff;border-radius:13px;padding:14px;text-align:left;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:.15s;}
 .fsa-kpi:hover{border-color:var(--gold,#C9A84C);box-shadow:0 6px 16px rgba(0,20,60,.08);}
 .fsa-kpi.fsa-kpi-ativo{border-color:var(--navy2,#002f6c);background:#f5f8ff;}
+/* Estado de excecao (item 54.1): ambar, o mesmo tom de alerta do resto do
+   sistema. Nao usa o dourado — dourado e identidade institucional, nao
+   status (Design System, CLAUDE.md). */
+.fsa-kpi.fsa-kpi-alerta{border-color:var(--amber,#d97706);background:#fffbeb;}
+.fsa-kpi.fsa-kpi-alerta span{color:#92400e;}
+.fsa-kpi.fsa-kpi-alerta strong{color:var(--amber,#d97706);}
+.fsa-kpi.fsa-kpi-alerta.fsa-kpi-ativo{border-color:var(--amber,#d97706);background:#fef3c7;}
+/* Linha de situacao do oficio dentro do card da ficha. */
+.fsa-of{display:block;font-size:11.5px;margin-top:5px;font-weight:600;}
+.fsa-of-ok{color:#0f8a5f;}
+.fsa-of-falta{color:var(--amber,#d97706);}
+.fsa-btn-emitir{background:var(--amber,#d97706);color:#fff;}
+.fsa-btn-reenviar{background:var(--blue,#1565C0);color:#fff;}
+.fsa-btn-reemitir{background:#fff;color:var(--g700,#334155);border:1.5px solid var(--g300,#cbd5e1);}
 .fsa-kpi span{display:block;color:var(--g500,#64748b);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.04em;}
 .fsa-kpi strong{display:block;color:var(--navy2,#002f6c);font-size:24px;margin-top:5px;}
 .fsa-barra{display:flex;gap:10px;margin-top:14px;}
@@ -438,9 +465,15 @@
 var FSA_DADOS = null;
 var FSA_FILTRO_STATUS = 'ASSINADA';
 var FSA_SOMENTE_MES = false;
+var FSA_SOMENTE_SEM_OFICIO = false;
 var FSA_FICHA_ATUAL = null;
 var FSA_ESCOLA_ESCOLHIDA = null;
 var FSA_ESCOLAS_BUSCA = [];
+/* Situacao do oficio por ficha: { ID_FICHA: {numero,escola,emails,url,tipo}|null }
+   Vem do Controle, nao da ficha — ver sindOf_situacaoOficioDasFichas. Item 54.1. */
+var FSA_OFICIOS = {};
+var FSA_OFICIOS_LIDO = false;   /* false enquanto nao se sabe: nao e o mesmo que "sem oficio" */
+var FSA_MODO_OFICIO = 'aprovar'; /* aprovar | emitir | reemitir */
 
 function fsaEsc(v){
   return String(v==null?'':v).replace(/[&<>"']/g,function(c){
@@ -470,10 +503,48 @@ window.carregarFichasPendentes=function(){
     FSA_DADOS=r;
     fsaAtualizarKPIs(r.kpis||{});
     fsaRender();
+    fsaCarregarSituacaoOficios();
   }).withFailureHandler(function(erro){
     lista.innerHTML='<p style="color:#dc2626;font-size:12px;">Erro de comunicação: '+fsaEsc(erro)+'</p>';
   }).listarFichasSindicalizacao({}, SISGEP_TOKEN_SESSAO);
 };
+
+/* Chamada DEPOIS da lista aparecer, nao antes: a tela nao pode ficar em
+   branco esperando um cruzamento que e informacao secundaria. Item 54.1. */
+function fsaCarregarSituacaoOficios(){
+  var ids=((FSA_DADOS&&FSA_DADOS.fichas)||[])
+    .filter(function(f){ return f.STATUS==='MATRICULADA'; })
+    .map(function(f){ return f.ID_FICHA; })
+    .filter(Boolean);
+
+  if(!ids.length){ FSA_OFICIOS={}; FSA_OFICIOS_LIDO=true; fsaRender(); return; }
+
+  google.script.run.withSuccessHandler(function(r){
+    if(!r || r.ok!==true){
+      /* NAO marca como lido: se o cruzamento falhou, dizer "sem oficio" para
+         todo mundo faria a secretaria emitir oficio duplicado em serie,
+         queimando numeracao oficial. Sem resposta, a tela nao afirma nada. */
+      FSA_OFICIOS_LIDO=false;
+      if(typeof toast==='function' && r && r.mensagem){
+        toast('Não foi possível conferir quais fichas já têm ofício: '+r.mensagem,'erro',7000);
+      }
+      return;
+    }
+    FSA_OFICIOS=r.situacao||{};
+    FSA_OFICIOS_LIDO=true;
+    fsaAtualizarKPIs((FSA_DADOS&&FSA_DADOS.kpis)||{});
+    fsaRender();
+  }).withFailureHandler(function(){
+    FSA_OFICIOS_LIDO=false;
+  }).sindOf_situacaoOficioDasFichas(ids, SISGEP_TOKEN_SESSAO);
+}
+
+/** Devolve o oficio da ficha, ou null. `undefined` = ainda nao se sabe. */
+function fsaOficioDa(f){
+  if(!FSA_OFICIOS_LIDO) return undefined;
+  if(!f || f.STATUS!=='MATRICULADA') return null;
+  return FSA_OFICIOS[f.ID_FICHA] || null;
+}
 
 function fsaAtualizarKPIs(k){
   var mapa={
@@ -485,11 +556,32 @@ function fsaAtualizarKPIs(k){
     var el=document.getElementById(id);
     if(el) el.textContent=(mapa[id]===undefined?0:mapa[id]);
   });
+
+  /* O chip SEM OFICIO so aparece quando ha o que mostrar. Chip de excecao
+     cravado em zero vira parte do cenario e para de ser lido. Item 54.1. */
+  var btn=document.getElementById('fsaKpiSemOficioBtn');
+  var alvo=document.getElementById('fsaKpiSemOficio');
+  if(!btn||!alvo) return;
+
+  if(!FSA_OFICIOS_LIDO){ btn.style.display='none'; return; }
+
+  var semOficio=((FSA_DADOS&&FSA_DADOS.fichas)||[]).filter(function(f){
+    return f.STATUS==='MATRICULADA' && !FSA_OFICIOS[f.ID_FICHA];
+  }).length;
+
+  alvo.textContent=semOficio;
+  btn.style.display = semOficio>0 ? '' : 'none';
 }
 
 function fsaFiltrar(status, btn){
   FSA_FILTRO_STATUS=status;
-  FSA_SOMENTE_MES = !!(btn && btn.getAttribute('data-fsa-filtro')==='__MES__');
+  var marcador = btn ? btn.getAttribute('data-fsa-filtro') : '';
+  FSA_SOMENTE_MES = (marcador==='__MES__');
+  /* O chip "Sem oficio" filtra MATRICULADA e ainda corta pelas que nao tem
+     oficio. E um recorte de MATRICULADA, nao um STATUS novo — nao existe
+     status "SEM_OFICIO" na planilha, e inventar um aqui faria a tela mentir
+     sobre o que esta gravado. Item 54.1. */
+  FSA_SOMENTE_SEM_OFICIO = (marcador==='__SEM_OFICIO__');
   document.querySelectorAll('.fsa-kpi').forEach(function(b){
     b.classList.toggle('fsa-kpi-ativo', b===btn);
   });
@@ -514,6 +606,7 @@ function fsaRender(){
   var fichas=(FSA_DADOS.fichas||[]).filter(function(f){
     if(FSA_FILTRO_STATUS && f.STATUS!==FSA_FILTRO_STATUS) return false;
     if(FSA_SOMENTE_MES && !fsaEhDoMesAtual(f.DATA_APROVACAO)) return false;
+    if(FSA_SOMENTE_SEM_OFICIO && fsaOficioDa(f)) return false;
     if(busca){
       var alvo=[f.NOME_COMPLETO,f.CPF,f.MATRICULA,f.ESCOLA].join(' ').toUpperCase();
       if(alvo.indexOf(busca)<0) return false;
@@ -550,6 +643,28 @@ function fsaRender(){
       acoes+='<button class="fsa-btn fsa-btn-aprovar" onclick="fsaAbrirModal(\''+fsaEsc(f.ID_FICHA)+'\')">✓ Aprovar e encaminhar</button>';
       acoes+='<button class="fsa-btn fsa-btn-rejeitar" onclick="fsaRejeitar(\''+fsaEsc(f.ID_FICHA)+'\')">✕ Rejeitar</button>';
     }
+    /* ACOES DE OFICIO NA FICHA MATRICULADA — item 54.1, 01/09/2026.
+
+       Tres acoes diferentes, e a diferenca entre elas nao e cosmetica:
+
+         Emitir   — nao existe oficio. Primeira emissao, numero novo. Chamar
+                    isto de "reemitir" mentiria sobre o que aconteceu.
+         Reenviar — existe, MESMA escola, nao chegou. MESMO numero: e o mesmo
+                    documento que nao foi entregue, nao um novo.
+         Reemitir — existe, mas era a escola errada. Numero novo, porque mudou
+                    o destinatario e portanto mudou o documento. Os dois ficam
+                    validos (decisao do usuario). */
+    var of = fsaOficioDa(f);
+    if(f.STATUS==='MATRICULADA' && of===null){
+      acoes+='<button class="fsa-btn fsa-btn-emitir" onclick="fsaAbrirModal(\''+fsaEsc(f.ID_FICHA)+'\',\'emitir\')">📤 Emitir ofício</button>';
+    } else if(f.STATUS==='MATRICULADA' && of){
+      acoes+='<button class="fsa-btn fsa-btn-reenviar" onclick="fsaReenviarOficio(\''+fsaEsc(f.ID_FICHA)+'\')">📧 Reenviar</button>';
+      acoes+='<button class="fsa-btn fsa-btn-reemitir" onclick="fsaAbrirModal(\''+fsaEsc(f.ID_FICHA)+'\',\'reemitir\')">↻ Reemitir p/ outra escola</button>';
+      if(of.url){
+        acoes+='<button class="fsa-btn fsa-btn-pdf" onclick="window.open(\''+fsaEsc(of.url)+'\',\'_blank\')">📄 Ver ofício</button>';
+      }
+    }
+
     if(f.LINK_PDF){
       acoes+='<button class="fsa-btn fsa-btn-pdf" onclick="window.open(\''+fsaEsc(f.LINK_PDF)+'\',\'_blank\')">📄 Ver ficha PDF</button>';
     }
@@ -558,6 +673,24 @@ function fsaRender(){
     if(f.STATUS==='MATRICULADA' && f.DATA_APROVACAO) dataInfo=' · Aprovada em '+fsaEsc(f.DATA_APROVACAO);
     else if(f.DATA_HORA_ASSINATURA) dataInfo=' · Assinada em '+fsaEsc(f.DATA_HORA_ASSINATURA);
     else if(f.DATA_CRIACAO) dataInfo=' · Iniciada em '+fsaEsc(f.DATA_CRIACAO);
+
+    /* A linha que diz, sem a pessoa clicar em nada, se a escola foi
+       comunicada. `undefined` = ainda carregando: nao afirma nem uma coisa
+       nem outra, porque afirmar "sem oficio" cedo demais faria emitir
+       duplicado. */
+    var linhaOficio='';
+    if(f.STATUS==='MATRICULADA'){
+      if(of===undefined){
+        linhaOficio='<small class="fsa-of" style="color:#94a3b8;">conferindo ofício…</small>';
+      } else if(of){
+        linhaOficio='<small class="fsa-of fsa-of-ok">✓ Ofício '+fsaEsc(of.numero)+
+          (of.data?' · '+fsaEsc(String(of.data).split(' ')[0]):'')+
+          (of.escola?' · '+fsaEsc(of.escola):'')+
+          (of.reemissao?' · reemitido':'')+'</small>';
+      } else {
+        linhaOficio='<small class="fsa-of fsa-of-falta">⚠ A matrícula foi emitida, mas a escola NÃO foi comunicada — nenhum ofício encontrado.</small>';
+      }
+    }
 
     var card=document.createElement('div');
     card.className='fsa-card';
@@ -569,6 +702,7 @@ function fsaRender(){
           (f.DIRETOR_BASE?' · Diretor: '+fsaEsc(f.DIRETOR_BASE):'')+'</small>'+
         '<div class="fsa-campo"><b>Escola:</b> '+fsaEsc(f.ESCOLA||'—')+' · <b>Cargo:</b> '+fsaEsc(f.CARGO||'—')+'</div>'+
         '<div class="fsa-campo"><b>Contato:</b> '+fsaEsc(f.CELULAR||'—')+' · '+fsaEsc(f.EMAIL||'—')+'</div>'+
+        linhaOficio+
       '</div>'+
       '<div class="fsa-acoes">'+acoes+'</div>';
     lista.appendChild(card);
@@ -577,11 +711,16 @@ function fsaRender(){
 
 /* ===================== MODAL ===================== */
 
-function fsaAbrirModal(idFicha){
+/* O `modo` foi acrescentado em 01/09/2026 (item 54.1). O modal e o MESMO nas
+   tres situacoes — busca de escola, previa, confirmar — e so o cabecalho, o
+   aviso e o botao final mudam. Modal novo para o mesmo fluxo seria duas telas
+   para manter em vez de uma. */
+function fsaAbrirModal(idFicha, modo){
   var f=null;
   (FSA_DADOS.fichas||[]).forEach(function(x){ if(x.ID_FICHA===idFicha) f=x; });
   if(!f) return;
 
+  FSA_MODO_OFICIO = modo || 'aprovar';
   FSA_FICHA_ATUAL=f;
   FSA_ESCOLA_ESCOLHIDA=null;
   FSA_ESCOLAS_BUSCA=[];
@@ -595,6 +734,7 @@ function fsaAbrirModal(idFicha){
   document.getElementById('fsaSugestao').style.display='none';
   document.getElementById('fsaBtnPreview').disabled=true;
   fsaMsgModal('');
+  fsaAplicarModoOficio();
   fsaIrEtapa(1);
   document.getElementById('fsaModal').classList.add('fsa-aberto');
 
@@ -664,7 +804,7 @@ function fsaBuscarEscolas(){
     }).join('');
   }).withFailureHandler(function(err){
     box.innerHTML='<div style="padding:12px;font-size:12px;color:#dc2626;">Erro: '+fsaEsc(err)+'</div>';
-  }).buscarEscolasParaOficio(termo, FSA_FICHA_ATUAL.ESCOLA);
+  }).buscarEscolasParaOficio(termo, FSA_FICHA_ATUAL.ESCOLA, SISGEP_TOKEN_SESSAO);
 }
 
 function fsaEscolherEscola(indice){
@@ -790,31 +930,141 @@ function fsaVoltarEtapa1(){ fsaMsgModal(''); fsaIrEtapa(1); }
 
 /* ---------- Confirmação ---------- */
 
+/* Troca cabecalho, aviso e botao final conforme o modo. Nada de tela nova:
+   as tres situacoes usam o mesmo caminho de escolher escola e ver a previa. */
+function fsaAplicarModoOficio(){
+  var of = FSA_FICHA_ATUAL ? fsaOficioDa(FSA_FICHA_ATUAL) : null;
+  var titulo=document.getElementById('fsaModalTitulo');
+  var aviso=document.getElementById('fsaAvisoOficio');
+  var btn=document.getElementById('fsaBtnConfirmar');
+
+  if(FSA_MODO_OFICIO==='emitir'){
+    if(titulo) titulo.textContent='Emitir ofício';
+    if(btn) btn.textContent='📤 Emitir ofício e enviar';
+    if(aviso){
+      aviso.style.display='';
+      aviso.innerHTML='A matrícula <b>'+fsaEsc((FSA_FICHA_ATUAL&&FSA_FICHA_ATUAL.MATRICULA)||'')+
+        '</b> já foi emitida. Esta é a <b>primeira</b> emissão do ofício desta ficha — '+
+        'a escola ainda não foi comunicada.';
+    }
+  } else if(FSA_MODO_OFICIO==='reemitir'){
+    if(titulo) titulo.textContent='Reemitir para outra escola';
+    if(btn) btn.textContent='↻ Reemitir e enviar';
+    if(aviso){
+      aviso.style.display='';
+      aviso.innerHTML='Isto gera um <b>número novo</b> de ofício. '+
+        (of&&of.numero
+          ? 'O ofício <b>'+fsaEsc(of.numero)+'</b> continua válido no registro — reemitir não o cancela. '
+          : '')+
+        'Se a escola está certa e o ofício só não chegou, use <b>Reenviar</b>: '+
+        'mantém o mesmo número.';
+    }
+  } else {
+    if(titulo) titulo.textContent='Aprovar e encaminhar';
+    if(btn) btn.textContent='✓ Aprovar, gerar ofício e enviar';
+    if(aviso){ aviso.style.display='none'; aviso.innerHTML=''; }
+  }
+}
+
 function fsaConfirmarEncaminhar(){
   if(!FSA_FICHA_ATUAL || !FSA_ESCOLA_ESCOLHIDA) return;
-  if(!confirm('Confirmar? Será emitida a matrícula, o associado será cadastrado, '+
-              'o ofício de filiação gerado na numeração oficial e enviado à escola.')) return;
+
+  /* Cada modo tem a sua pergunta e o seu backend. A ficha ja MATRICULADA nao
+     passa pelo aprovarEEncaminharFicha — ele recusa quem nao esta ASSINADA, e
+     recusaria com uma mensagem sobre status que nao explicaria nada a quem so
+     queria emitir o oficio que faltou. Item 54.1. */
+  var ehAprovar = (FSA_MODO_OFICIO==='aprovar');
+  var rotulo = ehAprovar ? '✓ Aprovar, gerar ofício e enviar'
+             : (FSA_MODO_OFICIO==='emitir' ? '📤 Emitir ofício e enviar' : '↻ Reemitir e enviar');
+
+  var pergunta;
+  if(ehAprovar){
+    pergunta='Confirmar? Será emitida a matrícula, o associado será cadastrado, '+
+             'o ofício de filiação gerado na numeração oficial e enviado à escola.';
+  } else if(FSA_MODO_OFICIO==='emitir'){
+    pergunta='Emitir o ofício desta ficha e enviar à escola? '+
+             'A matrícula já existe; isto comunica a escola.';
+  } else {
+    var of = fsaOficioDa(FSA_FICHA_ATUAL);
+    pergunta='Reemitir para outra escola? Isto GERA UM NÚMERO NOVO'+
+             (of&&of.numero ? ', e o ofício '+of.numero+' continua válido no registro' : '')+
+             '.\n\nSe a escola está certa e o ofício só não chegou, cancele e use Reenviar.';
+  }
+  if(!confirm(pergunta)) return;
 
   var btn=document.getElementById('fsaBtnConfirmar');
   btn.disabled=true;
   btn.textContent='Processando…';
   fsaMsgModal('');
 
-  google.script.run.withSuccessHandler(function(r){
+  function aoTerminar(r){
     btn.disabled=false;
-    btn.textContent='✓ Aprovar, gerar ofício e enviar';
+    btn.textContent=rotulo;
     if(!r || !r.sucesso){
       fsaMsgModal((r&&r.mensagem)||'Não foi possível concluir.','erro');
       return;
     }
     fsaMostrarSucesso(r);
     carregarFichasPendentes();
-  }).withFailureHandler(function(err){
+  }
+  function aoFalhar(err){
     btn.disabled=false;
-    btn.textContent='✓ Aprovar, gerar ofício e enviar';
+    btn.textContent=rotulo;
     fsaMsgModal('Erro: '+err,'erro');
-}).aprovarEEncaminharFicha(
+  }
+
+  var chamada = google.script.run.withSuccessHandler(aoTerminar).withFailureHandler(aoFalhar);
+
+  if(ehAprovar){
+    chamada.aprovarEEncaminharFicha(
       FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
+  } else {
+    /* Emitir e reemitir usam o MESMO backend: a diferenca entre eles esta em
+       ja existir ou nao um oficio antes, nao no que a funcao faz. */
+    chamada.reemitirOficioFicha(
+      FSA_FICHA_ATUAL.ID_FICHA, fsaEscolaComEmail(), fsaUsuarioAtual_(), SISGEP_TOKEN_SESSAO);
+  }
+}
+
+/* REENVIAR — mesmo oficio, MESMO numero. Nao passa por aqui nenhuma escolha de
+   escola: se a escola muda, o documento muda, e ai e reemitir. Item 54.1. */
+function fsaReenviarOficio(idFicha){
+  var f=null;
+  (FSA_DADOS.fichas||[]).forEach(function(x){ if(x.ID_FICHA===idFicha) f=x; });
+  if(!f) return;
+  var of = fsaOficioDa(f);
+  if(!of || !of.numero){
+    if(typeof toast==='function') toast('Esta ficha não tem ofício para reenviar.','erro');
+    return;
+  }
+
+  var extra = prompt(
+    'Reenviar o ofício '+of.numero+' para '+(of.escola||'a escola')+'.\n\n'+
+    'Vai para: '+(of.emails||'(sem e-mail no registro)')+'\n\n'+
+    'Para mandar também a outro endereço, digite-o abaixo. Deixe vazio para '+
+    'usar só o do cadastro.', '');
+  if(extra===null) return;   /* cancelou */
+
+  if(typeof toast==='function') toast('Reenviando ofício '+of.numero+'…','info');
+
+  google.script.run.withSuccessHandler(function(r){
+    if(r && r.ok===false){
+      if(typeof toast==='function') toast(r.mensagem||'Não foi possível reenviar.','erro',7000);
+      return;
+    }
+    if(typeof toast==='function'){
+      toast('Ofício '+of.numero+' reenviado — mesmo número.','sucesso',6000);
+    }
+    carregarFichasPendentes();
+  }).withFailureHandler(function(err){
+    if(typeof toast==='function') toast('Erro ao reenviar: '+err,'erro',8000);
+  }).reenviarOficio({
+    numero: of.numero,
+    escola: of.escola,
+    tipo:   of.tipo,
+    url:    of.url,
+    emailsExtras: String(extra||'').trim()
+  }, SISGEP_TOKEN_SESSAO);
 }
 
 function fsaAprovarSemOficio(){

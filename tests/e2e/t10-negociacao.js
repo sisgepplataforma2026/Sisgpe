@@ -169,4 +169,3 @@ b.bloqueia(() => g.negcolPainel(""), "negcolPainel nega token vazio");
 b.naoTestavel("Aparência da tela e comportamento dos filtros", "exige navegador");
 
 b.resumo();
-process.exit(0);

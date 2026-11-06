@@ -28,8 +28,15 @@ const b = require("./base");
 const { g } = b.subir({});
 b.seedUsuarios(g);
 
+/* Admin: enxerga todas as fontes. Este teste mede seleção de DOCUMENTO
+   (CCT/Estatuto), não permissão — quem mede permissão é o t112. */
+const SESSAO_ADMIN = g.getSessaoUsuario(b.logar(g, "wanderson"));
+
 function prompt(msg, dominio) {
-  return g.montarSystemPrompt_(g.coletarContextoSISGEP_(msg, dominio), msg);
+  /* A sessão passou a ser exigida em 31/08: o contexto filtra fonte a fonte
+     pelo módulo, e sessão ausente fecha tudo. Admin enxerga todas as fontes,
+     que é o que este teste precisa para medir seleção de DOCUMENTO. */
+  return g.montarSystemPrompt_(g.coletarContextoSISGEP_(msg, dominio, SESSAO_ADMIN), msg);
 }
 const temCCT = p => p.indexOf("=== CCT —") > -1;
 const temEst = p => p.indexOf("=== ESTATUTO —") > -1;
@@ -269,7 +276,9 @@ function encenar(respostas, codigos) {
   g.UrlFetchApp = {
     fetch: function (url, opts) {
       const i = chamadas.n++;
-      chamadas.prompts.push(JSON.parse(opts.payload).system);
+      /* 05/11/2026: o system virou blocos (o fixo com cache) — junta o texto. */
+      const sys = JSON.parse(opts.payload).system;
+      chamadas.prompts.push(Array.isArray(sys) ? sys.map(x => x.text).join("\n") : sys);
       const cod = (codigos && codigos[i]) || 200;
       return {
         getResponseCode: function () { return cod; },
@@ -362,4 +371,3 @@ b.naoTestavel("A resposta que a IA de fato dá",
   "o emulador não chama a Anthropic; o que se prova aqui é o que chega até ela");
 
 b.resumo();
-process.exit(0);

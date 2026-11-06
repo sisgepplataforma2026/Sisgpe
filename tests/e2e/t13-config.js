@@ -95,4 +95,3 @@ b.bloqueia(() => g.getConfigPainel("token-inventado"), "nega token inválido");
 b.naoTestavel("Aparência dos cards e o banner de homologação", "exige navegador");
 
 b.resumo();
-process.exit(0);

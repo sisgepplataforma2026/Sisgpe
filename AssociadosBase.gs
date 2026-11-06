@@ -237,8 +237,8 @@ function assocDetalhe(cpf, tokenSessao) {
 
   // Consulta a dado pessoal completo é ação auditável (§15).
   try {
-    if (typeof registrarLogSistema === "function") {
-      registrarLogSistema({
+    if (typeof registrarLogSistema_ === "function") {
+      registrarLogSistema_({
         modulo: "Base de Associados", acao: "CONSULTA_FICHA",
         usuario: sessao.email || sessao.usuario || "—",
         detalhe: "CPF " + assoc_mascararCpf_(d)
@@ -324,8 +324,8 @@ function assocCorrigirContato(cpf, dados, tokenSessao) {
     aba.getRange(a.linha, col("ULTIMA_ATUALIZACAO")).setValue(new Date());
 
     try {
-      if (typeof registrarLogSistema === "function") {
-        registrarLogSistema({
+      if (typeof registrarLogSistema_ === "function") {
+        registrarLogSistema_({
           modulo: "Base de Associados", acao: "CORRECAO_CONTATO",
           usuario: sessao.email || sessao.usuario || "—",
           detalhe: "CPF " + assoc_mascararCpf_(d) + " — " + mudou.join("; ")

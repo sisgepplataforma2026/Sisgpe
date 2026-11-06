@@ -1,0 +1,572 @@
+<!-- CANHOTOS DA URNA — Compasso da Vida 2026 (01/10/2026)
+
+     FRAGMENTO, NÃO PÁGINA: é incluído na tela de Eventos, submódulo Sorteios.
+     Por isso o script vive inteiro numa função que se executa sozinha e só
+     publica nomes com o prefixo canh — no Apps Script, todos os blocos de
+     script dos arquivos incluídos viram UM escopo global, e uma colisão de
+     nome derruba o JavaScript da página inteira. CSS escopado sob
+     #compassoCanhotos pelo mesmo motivo.
+
+     O QUE ELA FAZ, E SÓ ISSO (o usuário: "Somente isso, nada além disso"):
+     lê a planilha de respostas do formulário, divide por faixa de letras e
+     monta a folha que vai para a gráfica — relação à esquerda, canhoto na
+     MESMA linha à direita, linha de corte grossa no meio. Não toca ingresso,
+     check-in nem inscrição. A leitura do QR na entrada é de outra plataforma.
+
+     A folha segue o modelo que o usuário aprovou: a arte (banner e canhoto)
+     foi recortada da própria imagem dele, em CompassoCanhotosArte, e o
+     sistema só escreve por cima — nome, escola, número e faixa. -->
+<div id="compassoCanhotos">
+<style>
+  #compassoCanhotos{padding:4px 0 40px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
+  #compassoCanhotos .cn-etapa{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+  #compassoCanhotos .cn-etapa.off{opacity:.45;pointer-events:none}
+  #compassoCanhotos .cn-etapa>h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy,#001f4d);font-weight:800}
+  #compassoCanhotos .cn-nota{font-size:13px;color:#4b5565;line-height:1.55;margin:0 0 12px}
+  #compassoCanhotos .cn-solta{border:2px dashed #c8d3e4;border-radius:14px;padding:24px 18px;text-align:center;background:#fbfcfe;cursor:pointer;transition:.15s}
+  #compassoCanhotos .cn-solta:hover,#compassoCanhotos .cn-solta.sobre{border-color:var(--blue,#1565C0);background:#f2f7ff}
+  #compassoCanhotos .cn-solta b{display:block;color:var(--navy,#001f4d);margin-top:6px}
+  #compassoCanhotos .cn-solta span{font-size:12px;color:#6b7385}
+  #compassoCanhotos .cn-kpis{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+  #compassoCanhotos .cn-kpi{flex:1 1 120px;border:1.5px solid #d8e0ea;border-radius:12px;padding:10px 13px}
+  #compassoCanhotos .cn-kpi .n{font-size:22px;font-weight:800;color:var(--navy,#001f4d);line-height:1.1}
+  #compassoCanhotos .cn-kpi .r{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7385;font-weight:700}
+  #compassoCanhotos .cn-kpi.al .n{color:#d97706}
+  #compassoCanhotos .cn-col{font-size:12.5px;color:#334155;margin:4px 0}
+  #compassoCanhotos .cn-col code{background:#eef3f9;padding:1px 6px;border-radius:6px;font-size:12px}
+  #compassoCanhotos .cn-aviso{border:1px solid #fed7aa;background:#fff7ed;color:#7c4a03;border-radius:10px;padding:9px 12px;margin:6px 0;font-size:13px}
+  #compassoCanhotos .cn-aviso summary{cursor:pointer;font-weight:700}
+  #compassoCanhotos .cn-aviso ul{margin:6px 0 0 18px;padding:0}
+  #compassoCanhotos .cn-linha{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #compassoCanhotos label.cn-op{display:flex;gap:6px;align-items:center;font-size:13.5px;font-weight:600;cursor:pointer}
+  #compassoCanhotos input[type=number],#compassoCanhotos input[type=text]{padding:8px 10px;border:1.5px solid #d8e0ea;border-radius:9px;font:inherit;font-size:14px}
+  #compassoCanhotos input[type=number]{width:70px}
+  #compassoCanhotos input[type=text]{flex:1;min-width:240px}
+  #compassoCanhotos .cn-faixas{margin-top:12px;display:grid;gap:6px}
+  #compassoCanhotos .cn-fx{display:grid;grid-template-columns:70px 1fr 150px;gap:10px;align-items:center;font-size:13px}
+  #compassoCanhotos .cn-fx b{font-size:15px;color:var(--navy,#001f4d)}
+  #compassoCanhotos .cn-barra{height:12px;border-radius:6px;background:#eef3f9;overflow:hidden}
+  #compassoCanhotos .cn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--navy,#001f4d),var(--blue,#1565C0));border-radius:6px}
+  #compassoCanhotos .cn-erro{color:#dc2626;font-weight:700;font-size:13px;margin-top:8px}
+  #compassoCanhotos .cn-bt{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  #compassoCanhotos .cn-bt.pri{background:var(--navy,#001f4d);color:#fff}
+  #compassoCanhotos .cn-bt.sec{background:#fff;color:var(--navy,#001f4d);border:1.5px solid #d8e0ea}
+  #compassoCanhotos .cn-bt:disabled{opacity:.45;cursor:default}
+  #compassoCanhotos .cn-msg{font-size:13px;font-weight:700;color:#0f8a5f}
+</style>
+
+  <div class="cn-etapa">
+    <h3>① Planilha de inscritos</h3>
+    <p class="cn-nota">A planilha de respostas do formulário de inscrição, exportada (.xlsx, .xls, .csv ou .ods).
+      O SISGEP lê, confere e monta os canhotos. Nada é gravado: o arquivo é lido e descartado.</p>
+    <div class="cn-solta" id="canhSolta">
+      <div style="font-size:28px">📄</div>
+      <b id="canhSoltaTit">Clique ou solte aqui a planilha</b>
+      <span id="canhSoltaSub">O número do canhoto é a ordem de inscrição</span>
+    </div>
+    <input type="file" id="canhArq" accept=".xlsx,.xls,.csv,.ods" hidden>
+    <div id="canhLido" hidden>
+      <div class="cn-kpis">
+        <div class="cn-kpi"><div class="n" id="canhTotal">0</div><div class="r">Vão para a urna</div></div>
+        <div class="cn-kpi al"><div class="n" id="canhAvisosN">0</div><div class="r">Avisos</div></div>
+        <div class="cn-kpi"><div class="n" id="canhFolhasN">0</div><div class="r">Folhas</div></div>
+      </div>
+      <div class="cn-col">Nome lido da coluna <code id="canhColNome"></code></div>
+      <div class="cn-col">Escola lida da coluna <code id="canhColEscola"></code></div>
+      <div class="cn-col" id="canhColOrdemLinha">Número pela ordem de <code id="canhColOrdem"></code></div>
+      <div id="canhAvisos"></div>
+    </div>
+  </div>
+
+  <div class="cn-etapa off" id="canhEtapaFaixas">
+    <h3>② Faixas de letras (uma por mesa)</h3>
+    <div class="cn-linha">
+      <label class="cn-op"><input type="radio" name="canhModo" value="auto" checked> Automático, dividir em</label>
+      <input type="number" id="canhMesas" min="1" max="12" value="5"> <span style="font-size:13.5px;font-weight:600">mesas</span>
+    </div>
+    <div class="cn-linha" style="margin-top:8px">
+      <label class="cn-op"><input type="radio" name="canhModo" value="manual"> Eu escolho as faixas:</label>
+      <input type="text" id="canhManual" placeholder="Ex.: A-B, C-F, G-L, M-R, S-Z">
+    </div>
+    <div class="cn-faixas" id="canhFaixas"></div>
+    <div class="cn-erro" id="canhFaixaErro" hidden></div>
+  </div>
+
+  <div class="cn-etapa off" id="canhEtapaGerar">
+    <h3>③ Gerar a folha para a gráfica</h3>
+    <!-- PAISAGEM — 04/11/2026 ("canhoto ... preciso adaptar para paisagem";
+         "o título do controle somente na primeira página"; "assim conseguimos
+         aumentar a fonte do nome e da escola"). A faixa do título vai só na
+         1ª folha de cada faixa de letras; as demais têm um cabeçalho fino e
+         cabem mais pessoas. Retrato continua disponível. -->
+    <div class="cn-linha" style="margin-bottom:8px">
+      <span style="font-size:13.5px;font-weight:600">Folha:</span>
+      <label class="cn-op"><input type="radio" name="canhOrient" value="paisagem" checked> Paisagem (deitada)</label>
+      <label class="cn-op"><input type="radio" name="canhOrient" value="retrato"> Retrato (em pé)</label>
+    </div>
+    <div class="cn-linha" style="margin-bottom:12px">
+      <span style="font-size:13.5px;font-weight:600">Pessoas por folha:</span>
+      <span id="canhPorFolhaOps"></span>
+      <span style="font-size:12px;color:#6b7385" id="canhPorFolhaNota"></span>
+    </div>
+    <div class="cn-linha">
+      <button class="cn-bt sec" id="canhBtPrevia">👁 Prévia (capa e 1ª folha)</button>
+      <button class="cn-bt pri" id="canhBtGerar">🖨 Gerar todas as folhas</button>
+      <span class="cn-msg" id="canhMsg"></span>
+    </div>
+    <p class="cn-nota" style="margin:12px 0 0">Abre numa janela nova, já pronta para imprimir. Para mandar à gráfica,
+      escolha <b>Salvar como PDF</b> no destino da impressão.</p>
+  </div>
+
+<script>
+(function(){
+  var LISTA = [], FAIXAS = [], ARTE = '';
+  var LETRAS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function msg(t, erro){
+    if (typeof window.toast==='function') { window.toast(t, erro?'erro':'ok'); return; }
+    var m=g('canhMsg'); m.textContent=t; m.style.color=erro?'#dc2626':'#0f8a5f';
+  }
+
+  /* ── ① planilha ─────────────────────────────────────────────────────── */
+  var solta=g('canhSolta');
+  ['dragenter','dragover'].forEach(function(ev){ solta.addEventListener(ev,function(e){ e.preventDefault(); solta.classList.add('sobre'); }); });
+  ['dragleave','drop'].forEach(function(ev){ solta.addEventListener(ev,function(e){ e.preventDefault(); solta.classList.remove('sobre'); }); });
+  solta.addEventListener('drop',function(e){ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]) ler(e.dataTransfer.files[0]); });
+  /* Eventos ligados aqui, não em atributo onclick: o fragmento fica sem
+     depender de nome global para os botões funcionarem. */
+  solta.addEventListener('click',function(){ g('canhArq').click(); });
+  g('canhArq').addEventListener('change',function(){ if(this.files[0]) ler(this.files[0]); });
+
+  function ler(arq){
+    g('canhSoltaTit').textContent='Lendo "'+arq.name+'"…';
+    var r=new FileReader();
+    r.onload=function(){
+      google.script.run
+        .withSuccessHandler(function(res){ lido(res, arq.name); })
+        .withFailureHandler(function(e){ falhou((e&&e.message)||String(e)); })
+        .compassoCanhotos_ler({ base64:r.result, nome:arq.name }, '', token());
+    };
+    r.onerror=function(){ falhou('Não consegui abrir o arquivo.'); };
+    r.readAsDataURL(arq);
+  }
+  function falhou(t){
+    g('canhSoltaTit').textContent='Clique ou solte aqui a planilha';
+    msg(t, true);
+  }
+  function lido(res, nomeArq){
+    g('canhArq').value='';
+    if(!res||!res.ok){ falhou((res&&res.erro)||'Não foi possível ler a planilha.'); return; }
+    LISTA=res.participantes||[];
+    g('canhSoltaTit').textContent='📄 '+nomeArq+(res.aba?' — aba "'+res.aba+'"':'');
+    g('canhSoltaSub').textContent='Clique para trocar a planilha';
+    g('canhLido').hidden=false;
+    g('canhTotal').textContent=LISTA.length;
+    g('canhColNome').textContent=res.colunas.nome||'—';
+    g('canhColEscola').textContent=res.colunas.escola||'(não encontrada)';
+    g('canhColOrdem').textContent=res.colunas.ordem||'linha da planilha';
+    var av=res.avisos||[];
+    g('canhAvisosN').textContent=av.length;
+    g('canhAvisos').innerHTML=av.map(function(a){
+      var itens=(a.itens||[]).map(function(i){ return '<li>linha '+i.linha+' — '+esc(i.nome)+'</li>'; }).join('');
+      return itens ? '<details class="cn-aviso"><summary>⚠ '+esc(a.texto)+'</summary><ul>'+itens+'</ul></details>'
+                   : '<div class="cn-aviso">⚠ '+esc(a.texto)+'</div>';
+    }).join('');
+    g('canhEtapaFaixas').classList.remove('off');
+    g('canhEtapaGerar').classList.remove('off');
+    calcular();
+  }
+
+  /* ── ② faixas ───────────────────────────────────────────────────────── */
+  function letraDe(nome){
+    var s=String(nome||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase();
+    var m=s.match(/[A-Z]/); return m?m[0]:'Z';
+  }
+  function rotulo(a,b){ return a===b ? a : a+'–'+b; }
+
+  /* Divide o alfabeto em N blocos CONTÍNUOS com quantidades parecidas. Cada
+     corte cai na letra onde a soma acumulada passa de k/N do total — na letra
+     antes ou na depois, a que ficar mais perto. Em português sobra nome em
+     A, J, L, M e quase não há H, O, U: dividir de 4 em 4 letras daria mesa
+     com 90 pessoas ao lado de mesa com 20. */
+  function canhDividirAuto(lista, n){
+    var cont={}; LETRAS.split('').forEach(function(l){ cont[l]=0; });
+    lista.forEach(function(p){ cont[letraDe(p.nome)]++; });
+    var acum=[], soma=0;
+    for(var i=0;i<26;i++){ soma+=cont[LETRAS[i]]; acum.push(soma); }
+    n=Math.max(1,Math.min(n|0||1,26));
+    var inicios=[0];
+    for(var k=1;k<n;k++){
+      var alvo=soma*k/n, j=0;
+      while(j<25 && acum[j]<alvo) j++;
+      if(j>0 && Math.abs(acum[j-1]-alvo) < Math.abs(acum[j]-alvo)) j--;
+      var ini=j+1;
+      if(ini>inicios[inicios.length-1] && ini<26) inicios.push(ini);
+    }
+    var faixas=[];
+    for(var f=0;f<inicios.length;f++){
+      var a=inicios[f], b=(f+1<inicios.length?inicios[f+1]:26)-1;
+      faixas.push({ de:LETRAS[a], ate:LETRAS[b] });
+    }
+    return faixas;
+  }
+  /* "A-B, C-F, G-L" → faixas. Devolve também quem ficou sem faixa: no modo
+     manual, letra esquecida é gente sem canhoto. */
+  function canhFaixasManual(texto){
+    var faixas=[], erros=[];
+    String(texto||'').toUpperCase().split(/[,;]+/).forEach(function(p){
+      p=p.trim(); if(!p) return;
+      var m=p.match(/^([A-Z])\s*(?:[-–—A]\s*([A-Z]))?$/);
+      if(!m){ erros.push('"'+p+'" não é uma faixa (use A-B)'); return; }
+      var de=m[1], ate=m[2]||m[1];
+      if(ate<de){ erros.push('"'+p+'" está ao contrário'); return; }
+      faixas.push({ de:de, ate:ate });
+    });
+    faixas.sort(function(x,y){ return x.de<y.de?-1:1; });
+    for(var i=1;i<faixas.length;i++)
+      if(faixas[i].de<=faixas[i-1].ate) erros.push('As faixas '+rotulo(faixas[i-1].de,faixas[i-1].ate)+' e '+rotulo(faixas[i].de,faixas[i].ate)+' se sobrepõem');
+    return { faixas:faixas, erros:erros };
+  }
+  function canhDistribuir(lista, faixas){
+    var out=faixas.map(function(f){ return { de:f.de, ate:f.ate, rotulo:rotulo(f.de,f.ate), pessoas:[] }; });
+    var fora=[];
+    lista.forEach(function(p){
+      var l=letraDe(p.nome), achou=null;
+      for(var i=0;i<out.length;i++) if(l>=out[i].de && l<=out[i].ate){ achou=out[i]; break; }
+      if(achou) achou.pessoas.push(p); else fora.push(p);
+    });
+    out.forEach(function(f){ f.pessoas.sort(function(a,b){ return a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}); }); });
+    return { faixas:out, fora:fora };
+  }
+  window.canhDividirAuto=canhDividirAuto;
+  window.canhFaixasManual=canhFaixasManual;
+  window.canhDistribuir=canhDistribuir;
+
+  function orient(){ var r=document.querySelector('input[name=canhOrient]:checked'); return r?r.value:'paisagem'; }
+  var OPCOES_PF={ paisagem:[3,4,5], retrato:[6,8,10] };
+  function desenharOpcoesPF(){
+    var o=orient(), atual=document.querySelector('input[name=canhPorFolha]:checked');
+    var v=atual?+atual.value:0, ops=OPCOES_PF[o];
+    if(ops.indexOf(v)===-1) v=ops[0];
+    g('canhPorFolhaOps').innerHTML=ops.map(function(n){
+      return '<label class="cn-op" style="display:inline-flex;margin-right:10px"><input type="radio" name="canhPorFolha" value="'+n+'"'+(n===v?' checked':'')+'> '+n+'</label>';
+    }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('#compassoCanhotos input[name=canhPorFolha]'),function(el){ el.addEventListener('change',calcular); });
+  }
+  function porFolha(){ var r=document.querySelector('input[name=canhPorFolha]:checked'); return r?+r.value:OPCOES_PF[orient()][0]; }
+  function modo(){ var r=document.querySelector('input[name=canhModo]:checked'); return r?r.value:'auto'; }
+
+  function calcular(){
+    var erro=g('canhFaixaErro'); erro.hidden=true;
+    var faixas;
+    if(modo()==='manual'){
+      var m=canhFaixasManual(g('canhManual').value);
+      if(m.erros.length){ erro.textContent=m.erros.join(' · '); erro.hidden=false; }
+      faixas=m.faixas;
+    } else faixas=canhDividirAuto(LISTA, +g('canhMesas').value||5);
+    var d=canhDistribuir(LISTA, faixas);
+    FAIXAS=d.faixas.filter(function(f){ return f.pessoas.length; });
+    if(d.fora.length){
+      erro.textContent=(erro.hidden?'':erro.textContent+' · ')+d.fora.length+' pessoa(s) ficaram sem faixa (letras '+
+        d.fora.map(function(p){ return letraDe(p.nome); }).filter(function(v,i,a){ return a.indexOf(v)===i; }).join(', ')+') e NÃO teriam canhoto.';
+      erro.hidden=false;
+    }
+    var maior=Math.max.apply(null, FAIXAS.map(function(f){ return f.pessoas.length; }).concat([1]));
+    var G=geometria(orient(), porFolha()), folhas=0;
+    g('canhPorFolhaNota').textContent='· cada faixa abre com a sua capa · canhoto de ~'+
+      (G.largC/10).toFixed(1).replace('.',',')+' × '+(G.altC/10).toFixed(1).replace('.',',')+' cm';
+    g('canhFaixas').innerHTML=FAIXAS.map(function(f){
+      var fl=paginar(f.pessoas, G).length; folhas+=fl;
+      return '<div class="cn-fx"><b>'+esc(f.rotulo)+'</b><div class="cn-barra"><i style="width:'+
+        Math.round(f.pessoas.length/maior*100)+'%"></i></div><span>'+f.pessoas.length+' pessoas · '+fl+' folha'+(fl>1?'s':'')+'</span></div>';
+    }).join('');
+    g('canhFolhasN').textContent=folhas;
+    var bloqueia=!FAIXAS.length || d.fora.length>0;
+    g('canhBtGerar').disabled=bloqueia; g('canhBtPrevia').disabled=bloqueia;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#compassoCanhotos input[name=canhModo]'),
+    function(el){ el.addEventListener('change',calcular); });
+  Array.prototype.forEach.call(document.querySelectorAll('#compassoCanhotos input[name=canhOrient]'),
+    function(el){ el.addEventListener('change',function(){ desenharOpcoesPF(); calcular(); }); });
+  desenharOpcoesPF();
+  g('canhMesas').addEventListener('input',function(){ document.querySelector('input[name=canhModo][value=auto]').checked=true; calcular(); });
+  g('canhManual').addEventListener('input',function(){ document.querySelector('input[name=canhModo][value=manual]').checked=true; calcular(); });
+
+  /* ── ③ a folha ──────────────────────────────────────────────────────── */
+  /* Medidas em mm sobre A4. O banner é a arte do modelo (1055×352 → 210×70).
+     As caixas do canhoto estão em % da arte, medidas no modelo: é o que deixa
+     o texto cair dentro da caixa branca em qualquer tamanho de canhoto. */
+  /* A arte tinha 496×107; sem a coluna do slogan e do selo (01/10/2026), 432×107.
+     As % dos campos foram recalculadas sobre a largura nova. */
+  /* CANHOTO MAIOR — 01/10/2026 ("aumenta o tamanho do canhoto"). A
+     relação da portaria encolheu de 96 para 78 mm e o padrão passou a 6
+     pessoas por folha: a altura da linha é o que limita o canhoto, e com 6
+     ele chega a ~11,6 × 2,9 cm (era ~9 × 2,2 com 8). */
+  /* PAISAGEM E "TÍTULO SÓ NA 1ª FOLHA" — 04/11/2026. As medidas saíram de
+     constantes fixas para uma geometria por orientação. A altura da linha é
+     a da 1ª folha (onde está a faixa do título) — é ela que dá o tamanho do
+     canhoto escolhido em "Pessoas na 1ª folha"; as folhas seguintes, só com
+     um cabeçalho fino, usam a MESMA altura e cabem mais pessoas. */
+  var ALT_TH=10, PROP=432/107;
+  function geometria(o, pf){
+    var G = o==='retrato'
+      ? { o:'retrato', W:210, H:297, FIM:289, bnEsc:1, bnLeft:0, cabPrim:73, topoPrim:83, cabDem:14, topoDem:24,
+          listaW:70, colN:12, corteX:77.5, canhL:82, fNm:10.5, fEs:9, fN:12 }
+      : { o:'paisagem', W:297, H:210, FIM:202, bnEsc:0.8, bnLeft:(297-210*0.8)/2, cabPrim:59, topoPrim:69, cabDem:14, topoDem:24,
+          listaW:92, colN:14, corteX:99.5, canhL:104, fNm:13, fEs:11, fN:14 };
+    /* CAPA POR FAIXA — 04/11/2026 ("A capa — LETRA DE A - C"): o título grande
+       vai na capa de cada faixa; TODAS as folhas da lista levam o cabeçalho
+       fino e o mesmo número de pessoas. */
+    G.altLinha=(G.FIM-G.topoDem-ALT_TH)/pf;
+    G.nPrim=pf; G.nDem=pf;
+    /* LISTA EM UMA COLUNA SÓ — 04/11/2026 ("ao invés de duas colunas?"):
+       nome e, embaixo, a escola. A lista ficou estreita e o canhoto ocupa
+       TODA a largura que sobrou até a margem direita. A arte não estica: ela
+       fica na proporção, à esquerda (.cv-art), sobre a mesma arte esticada,
+       cujo lado direito é só o fundo azul — ele se estende atrás das caixas. */
+    G.canhWmax=G.W-3-G.canhL;
+    G.altC=G.altLinha-2.4;
+    G.artW=Math.min(G.altC*PROP, G.canhWmax);
+    G.largC=G.canhWmax;
+    return G;
+  }
+  /* 1ª folha com nPrim pessoas, as seguintes com nDem. */
+  function paginar(pessoas, G){
+    var pags=[], i=0, prim=true;
+    while(i<pessoas.length){ var n=prim?G.nPrim:G.nDem; pags.push(pessoas.slice(i,i+n)); i+=n; prim=false; }
+    return pags.length?pags:[[]];
+  }
+  /* AS CAIXAS DO CANHOTO, em % da arte — 04/11/2026. A arte nova tem o lado
+     direito vazio (só o fundo azul): três caixas maiores, Nome, Escola e
+     Faixa, e o "Deposite este canhoto na urna" foi para baixo da faixa
+     "CANHOTO OFICIAL DE SORTEIO", no lugar do texto que repetia.
+     k = tamanho da letra pela altura do canhoto; o ajustar() encolhe quando
+     não cabe. */
+  var CAMPOS={
+    /* 04/11/2026 ("tira a faixa alfabética do canhoto"): só nome e escola,
+       que ganharam a altura toda. As letras continuam no cabeçalho da folha
+       e na capa da faixa. */
+    nome:  {l:40.0, t:5.0,  w:58.6, h:46.0, k:.80},
+    escola:{l:40.0, t:56.0, w:58.6, h:39.0, k:.62},
+    urna:  {l:1.0,  t:80.5, w:37.0, h:16.0, k:.22}
+  };
+  /* LINHA DE CORTE ENTRE AS PESSOAS — 01/10/2026. A primeira versão só
+     tinha a vertical: o usuário, com a folha na mão, "falta a linha
+     pontilhada entre as pessoas para recortar". Uma acima do primeiro
+     canhoto, uma entre cada dois e uma abaixo do último. */
+  function cortes(n, G, topoTab){
+    var h='';
+    for(var j=0;j<=n;j++){
+      var y=topoTab+ALT_TH+j*G.altLinha;
+      h+='<div class="ch" style="top:'+(y-.4).toFixed(2)+'mm"></div>'+
+         '<span class="tes-h" style="top:'+(y-2.6).toFixed(2)+'mm">✂</span>';
+    }
+    return h;
+  }
+  /* As % de CAMPOS são da ARTE (artW). Com o canhoto mais largo que a arte,
+     as caixas começam no mesmo ponto da arte e esticam até a direita. */
+  var CAMPOS_BASE=JSON.parse(JSON.stringify(CAMPOS));
+  function camposPara(G){
+    var f=G.artW/G.largC;
+    Object.keys(CAMPOS_BASE).forEach(function(k){
+      var b=CAMPOS_BASE[k], c=CAMPOS[k];
+      c.l=+(b.l*f).toFixed(2);
+      c.w=k==='urna' ? +(b.w*f).toFixed(2) : +(98.6-b.l*f).toFixed(2);
+    });
+  }
+  function caixa(nome, rot, texto, alt){
+    var c=CAMPOS[nome];
+    return '<div class="cv cx '+nome+'-cx" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
+      '%;font-size:'+(alt*c.k*.72).toFixed(2)+'pt"><span class="rot">'+rot+'</span><span class="cv-in fit '+nome+'" style="font-size:'+
+      (alt*c.k).toFixed(2)+'pt">'+esc(texto)+'</span></div>';
+  }
+  function campoUrna(alt){
+    var c=CAMPOS.urna;
+    return '<div class="cv urna" style="left:'+c.l+'%;top:'+c.t+'%;width:'+c.w+'%;height:'+c.h+
+      '%;font-size:'+(alt*c.k).toFixed(2)+'pt">⬇ DEPOSITE ESTE CANHOTO NA URNA</div>';
+  }
+  function folha(f, pessoas, idx, total, G){
+    var prim=false, topoTab=G.topoDem, cabTop=G.cabDem;   // o título grande está na capa da faixa
+    var nLinhas=prim?G.nPrim:G.nDem, altC=G.altC, largC=G.largC; camposPara(G);
+    var linhas='', canhotos='', n=0;
+    for(var i=0;i<nLinhas;i++){
+      var p=pessoas[i];
+      var tr='<tr style="height:'+G.altLinha.toFixed(2)+'mm"';
+      if(!p){ linhas+=tr+' class="vz"><td></td><td></td></tr>'; continue; }
+      linhas+=tr+'><td class="n">'+esc(p.numero)+'</td><td class="nm">'+esc(p.nome)+'<span class="es">'+esc(p.escola)+'</span></td></tr>';
+      var topo=topoTab+ALT_TH+i*G.altLinha; n++;
+      canhotos+='<span class="tes" style="top:'+(topo+G.altLinha/2-2.6).toFixed(2)+'mm">✂</span>'+
+        '<div class="canh-arte cv-c" style="top:'+(topo+(G.altLinha-altC)/2).toFixed(2)+'mm;height:'+altC.toFixed(2)+'mm;width:'+largC.toFixed(2)+'mm">'+
+          (G.artW<largC-.5 ? '<div class="canh-arte cv-art"></div>' : '')+
+          caixa('nome','Nome:',p.nome,altC)+caixa('escola','Escola:',p.escola,altC)+
+          campoUrna(altC)+
+        '</div>';
+    }
+    /* A faixa do título (banner) só na 1ª folha da faixa de letras; nas
+       seguintes, um cabeçalho fino que ainda diz as letras e a folha. */
+    var topoPag = prim
+      ? (G.o==='paisagem' ? '<div class="bn-fundo"></div>' : '')+
+        '<div class="bn-wrap"><div class="canh-banner bn"></div>'+
+          '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
+          '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'
+      : '<div class="cont"><span>CONTROLE E CANHOTOS DO SORTEIO · SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></span>'+
+          '<span>folha '+(idx+1)+' de '+total+'</span></div>';
+    return '<section class="folha">'+topoPag+
+      '<div class="cab esq" style="top:'+cabTop+'mm"><b>LISTA DE CONTROLE</b> '+(G.o==='retrato'?'(fica na portaria)':'(permanece na portaria)')+'</div>'+
+      '<div class="cab dir" style="top:'+cabTop+'mm"><b>CANHOTOS</b> (destacar e entregar ao participante)</div>'+
+      '<table style="top:'+topoTab+'mm"><colgroup><col style="width:'+G.colN+'mm"><col></colgroup>'+
+        '<tr style="height:'+ALT_TH+'mm"><th>Nº</th><th>Participante e escola</th></tr>'+
+        linhas+
+      '</table>'+
+      /* A faixa amarela do lado dos canhotos, na altura do cabeçalho da
+         tabela (04/11/2026: o espaço vazio acima do 1º canhoto). */
+      '<div class="th-dir" style="top:'+topoTab+'mm;height:'+ALT_TH+'mm">'+(G.largC>130?'✂ Destaque pela linha pontilhada e entregue ao participante':'✂ Destaque pela linha pontilhada')+'</div>'+
+      '<div class="corte" style="top:'+(cabTop-1)+'mm"></div>'+cortes(n, G, topoTab)+canhotos+
+      '<div class="rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span>'+
+        '<span>Letras <b>'+esc(f.rotulo)+'</b> · folha '+(idx+1)+' de '+total+'</span></div>'+
+    '</section>';
+  }
+  /* CAPA DA FAIXA, v2 — 04/11/2026 ("capa pode ficar melhor?"): fundo
+     escuro na folha inteira, mesa e letras grandes, o primeiro e o último
+     nome do monte e o quadro de controle da mesa, para preencher à mão. */
+  function capa(f, idx, total, nFolhas, G){
+    var prim=f.pessoas[0]||{}, ult=f.pessoas[f.pessoas.length-1]||{};
+    /* "A imagem do cabeçalho esticar na folha inteira" (04/11/2026): na capa
+       a arte ocupa a largura toda da folha, ampliada na proporção (sem
+       achatar o logo); o conteúdo desce para baixo dela. */
+    var escBn=G.W/210;
+    return '<section class="folha capa">'+
+      '<div class="capa-fundo"></div>'+
+      '<div class="bn-wrap" style="left:0;transform:scale('+escBn.toFixed(4)+')"><div class="canh-banner bn"></div>'+
+        '<div class="bn-tit">CONTROLE E CANHOTOS DO SORTEIO</div>'+
+        '<div class="bn-sub">SEPARAÇÃO ALFABÉTICA — LETRAS <b>'+esc(f.rotulo)+'</b></div></div>'+
+      '<div class="capa-cx" style="top:'+(70*escBn+(G.o==='paisagem'?1:4)).toFixed(1)+'mm">'+
+        '<div class="capa-lin">'+
+          '<div class="capa-mesa"><span>MESA</span><b>'+(idx+1)+'</b><i>de '+total+'</i></div>'+
+          '<div class="capa-letras"><span>'+(f.de===f.ate?'LETRA':'LETRAS')+'</span><b>'+(f.de===f.ate?esc(f.de):esc(f.de)+' – '+esc(f.ate))+'</b></div>'+
+        '</div>'+
+        '<div class="capa-de">de <b>'+esc(prim.nome||'')+'</b><br>até <b>'+esc(ult.nome||'')+'</b></div>'+
+        '<div class="capa-info"><b>'+f.pessoas.length+'</b> participantes &nbsp;·&nbsp; <b>'+nFolhas+'</b> folha'+(nFolhas>1?'s':'')+' de canhotos</div>'+
+        '<div class="capa-ctrl"><div>Responsável pela mesa: <span></span></div><div>Canhotos entregues: <span class="n"></span> de <b>'+f.pessoas.length+'</b></div></div>'+
+      '</div>'+
+      '<div class="rod capa-rod"><span>No Compasso da Vida 2026 · SindEducação-ES · Festa dos Educadores · 19/12/2026</span><span>Capa da mesa '+(idx+1)+' · letras <b>'+esc(f.rotulo)+'</b></span></div>'+
+    '</section>';
+  }
+  function cssFolha(G){
+    return '@page{size:A4 '+(G.o==='paisagem'?'landscape':'portrait')+';margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    'body{margin:0;background:#dfe3ec;font-family:"Barlow Condensed",Arial Narrow,Arial,sans-serif;color:#0b1446}'+
+    '.barra{position:sticky;top:0;z-index:5;background:#0b1446;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;font:600 14px Arial}'+
+    '.barra button{background:#ffd51c;color:#0b1446;border:0;border-radius:8px;padding:8px 14px;font:800 14px Arial;cursor:pointer}'+
+    '.folha{width:'+G.W+'mm;height:'+G.H+'mm;margin:10mm auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.2)}'+
+    '.bn-wrap{position:absolute;left:'+G.bnLeft.toFixed(2)+'mm;top:0;width:210mm;height:70mm;transform:scale('+G.bnEsc+');transform-origin:top left}'+
+    '.bn{position:absolute;left:0;top:0;width:210mm;height:70mm;background-size:100% 100%}'+
+    /* "O cabeçalho na folha inteira" (04/11/2026): na paisagem a arte fica
+       nítida no centro e os lados são o próprio fundo dela, ampliado e
+       desfocado — de ponta a ponta, sem esticar o logo nem as letras. */
+    '.bn-fundo{position:absolute;left:0;top:0;width:'+G.W+'mm;height:'+(70*G.bnEsc).toFixed(2)+'mm;background-image:none!important;'+
+      'background:linear-gradient(90deg,#0b1a78 0%,#1b2a9e 22%,#2a1a8c 50%,#3b1384 78%,#2a0d6b 100%)!important}'+
+    (G.o==='paisagem' ? '.bn-wrap{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);'+
+      'mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%)}' : '')+
+    '.bn-tit{position:absolute;left:32.8mm;top:39.9mm;width:144.4mm;height:8.4mm;display:flex;align-items:center;justify-content:center;'+
+      'font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:19pt;color:#0b1446;letter-spacing:-.01em;line-height:1}'+
+    '.bn-sub{position:absolute;left:47.8mm;top:51.1mm;width:114.4mm;height:5.2mm;display:flex;align-items:center;justify-content:center;gap:1.6mm;'+
+      'font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:11.5pt;color:#fff;line-height:1}'+
+    '.bn-sub b{font-size:13.5pt}'+
+    '.cont{position:absolute;left:4mm;right:4mm;top:4mm;height:8mm;border-radius:2mm;background:#ffd51c;color:#0b1446;display:flex;'+
+      'justify-content:space-between;align-items:center;padding:0 3mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10.5pt}'+
+    '.cab{position:absolute;height:8mm;border-radius:2mm;background:linear-gradient(180deg,#14307f,#0b1446);color:#fff;'+
+      'display:flex;align-items:center;padding:0 3mm;font-size:9.5pt;font-weight:500;white-space:nowrap;overflow:hidden}'+
+    '.cab b{font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:13pt;margin-right:1.6mm}'+
+    '.cab.esq{left:4mm;width:'+G.listaW+'mm}.cab.dir{left:'+G.canhL+'mm;right:3mm}'+
+    'table{position:absolute;left:4mm;width:'+G.listaW+'mm;border-collapse:collapse;table-layout:fixed}'+
+    'th{background:#ffd51c;border:.45mm solid #1c3fae;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10pt}'+
+    'td{border:.45mm solid #1c3fae;padding:0 1.8mm;vertical-align:middle;overflow:hidden}'+
+    'td.n{text-align:center;font-weight:700;font-size:'+G.fN+'pt;padding:0}'+
+    'td.nm{font-weight:700;font-size:'+G.fNm+'pt;line-height:1.12;text-transform:uppercase}'+
+    'td.nm .es{display:block;margin-top:1.2mm;font-weight:600;font-size:'+G.fEs+'pt;line-height:1.15;text-transform:none;color:#1f3a8a}'+
+    '.th-dir{position:absolute;left:'+G.canhL+'mm;right:3mm;background:#ffd51c;border:.45mm solid #1c3fae;display:flex;align-items:center;'+
+      'justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;font-size:10pt;color:#0b1446;white-space:nowrap;overflow:hidden}'+
+    'tr.vz td{background:repeating-linear-gradient(135deg,#fff 0 2mm,#f2f4fa 2mm 4mm)}'+
+    '.corte{position:absolute;left:'+G.corteX+'mm;bottom:'+(G.H-G.FIM-1)+'mm;border-left:1mm dashed #0b1446}'+
+    '.ch{position:absolute;left:'+G.corteX+'mm;right:3mm;border-top:.8mm dashed #0b1446}'+
+    '.tes-h{position:absolute;right:2mm;width:6mm;text-align:center;font-size:12pt;line-height:5.2mm;background:#fff;color:#0b1446;transform:rotate(180deg)}'+
+    '.tes{position:absolute;left:'+(G.corteX-2.9).toFixed(1)+'mm;width:6.8mm;text-align:center;font-size:15pt;line-height:5.2mm;background:#fff;color:#0b1446}'+
+    '.cv-c{position:absolute;left:'+G.canhL+'mm;background-size:100% 100%;border-radius:1mm;overflow:hidden}'+
+    '.cv-art{position:absolute;left:0;top:0;bottom:0;width:'+G.artW.toFixed(2)+'mm;background-size:100% 100%}'+
+    '.cv{position:absolute;display:flex;align-items:center;white-space:nowrap;overflow:hidden;line-height:1;color:#0b1446}'+
+    '.cv.cx{background:#fff;border-radius:1mm;gap:1.2mm;padding:0 1.2mm;box-shadow:0 0 0 .25mm #c9d6ff inset}.cv.cx .rot{font-weight:600;color:#1f4fd0;flex:none}'+
+    '.cv-in{display:flex;align-items:center;flex:1;min-width:0;height:100%;white-space:nowrap;overflow:hidden}'+
+    '.cv-in.nome{font-weight:700;text-transform:uppercase}.cv-in.escola{font-weight:600}'+
+    '.cv.faixa{font-weight:700}.cv.faixa b{font-weight:800}'+
+    '.cv.urna{justify-content:center;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;color:#fff;letter-spacing:.02em;text-shadow:0 .2mm .6mm rgba(0,0,0,.6)}'+
+    '.capa-fundo{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,#2a1d9e 0%,#14136e 45%,#0b0f45 100%)}'+
+    '.capa-cx{position:absolute;left:12mm;right:12mm;bottom:12mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff}'+
+    '.capa-lin{display:flex;gap:8mm;align-items:stretch}'+
+    '.capa-mesa{display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:52mm;border:1mm solid #ffd51c;border-radius:6mm;padding:2mm 6mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800}'+
+    '.capa-mesa span{font-size:16pt;letter-spacing:.12em;color:#ffd51c}.capa-mesa b{font-size:64pt;line-height:.95}.capa-mesa i{font-style:normal;font-size:13pt;color:#c9d3ff}'+
+    '.capa-letras{display:flex;flex-direction:column;justify-content:center;background:#ffd51c;color:#0b1446;border-radius:6mm;padding:2mm 14mm;font-family:"Baloo 2",Arial Black,sans-serif;font-weight:800;box-shadow:0 1.5mm 4mm rgba(0,0,0,.35)}'+
+    '.capa-letras span{font-size:16pt;letter-spacing:.14em}.capa-letras b{font-size:'+(G.o==='paisagem'?78:64)+'pt;line-height:.95;white-space:nowrap}'+
+    '.capa-de{margin-top:6mm;font-size:15pt;line-height:1.5;color:#dfe5ff}.capa-de b{color:#fff;text-transform:uppercase}'+
+    '.capa-info{margin-top:3mm;font-size:16pt;color:#dfe5ff}.capa-info b{font-size:20pt;color:#ffd51c}'+
+    '.capa-ctrl{margin-top:7mm;display:flex;gap:10mm;background:#fff;color:#0b1446;border-radius:3mm;padding:4mm 7mm;font:700 12.5pt Arial}'+
+    '.capa-ctrl span{display:inline-block;width:70mm;border-bottom:.35mm solid #0b1446;height:5mm;vertical-align:-1mm}.capa-ctrl span.n{width:22mm}'+
+    '.capa-rod{color:#c9d3ff!important}'+
+    '.rod{position:absolute;left:4mm;right:4mm;bottom:2.4mm;display:flex;justify-content:space-between;font:500 8pt Arial;color:#5b6488}'+
+    '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
+  }
+
+  /* Encolhe a fonte até caber; se nem no mínimo couber, corta com reticências
+     — nome comprido não pode vazar para a caixa do lado. */
+  var JS_AJUSTE=
+    'function ajustar(){var els=document.querySelectorAll(".fit");for(var i=0;i<els.length;i++){var e=els[i],'+
+    'pt=parseFloat(e.style.fontSize),min=pt*.55;while(e.scrollWidth>e.clientWidth+.5&&pt>min){pt-=.2;e.style.fontSize=pt+"pt";}'+
+    'if(e.scrollWidth>e.clientWidth+.5){e.style.display="block";e.style.textOverflow="ellipsis";e.style.lineHeight=e.clientHeight+"px";}}}';
+
+  function documento(paginas, imprimir, G){
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Canhotos do sorteio — Compasso da Vida 2026</title>'+
+      ARTE+'<style>'+cssFolha(G)+'</style></head><body>'+
+      '<div class="barra"><span>'+paginas.length+' folha(s) · confira antes de mandar para a gráfica</span>'+
+      '<button onclick="window.print()">Imprimir / Salvar PDF</button></div>'+
+      paginas.join('')+
+      '<scr'+'ipt>'+JS_AJUSTE+'(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){ajustar();'+
+      (imprimir?'setTimeout(function(){window.print();},400);':'')+'});<\/scr'+'ipt></body></html>';
+  }
+
+  function canhGerar(soPrevia){
+    if(!FAIXAS.length){ msg('Carregue a planilha primeiro.', true); return; }
+    var w=window.open('','_blank');
+    if(!w){ msg('O navegador bloqueou a janela nova. Permita pop-ups para o SISGEP.', true); return; }
+    w.document.write('<p style="font:16px Arial;padding:30px">Montando as folhas…</p>');
+    var montar=function(){
+      var G=geometria(orient(), porFolha()), paginas=[];
+      /* CAPA COM AS FAIXAS — 04/11/2026 (mockup ao usuário): a folha de
+         abertura, com a faixa do título e as faixas escolhidas, uma por mesa. */
+      FAIXAS.forEach(function(f, fi){
+        if(soPrevia && fi>0) return;
+        var pags=paginar(f.pessoas, G);
+        paginas.push(capa(f, fi, FAIXAS.length, pags.length, G));
+        for(var i=0;i<pags.length;i++){
+          /* A prévia mostra a capa e a 1ª folha da 1ª faixa. */
+          if(soPrevia && i>=1) return;
+          paginas.push(folha(f, pags[i], i, pags.length, G));
+        }
+      });
+      w.document.open(); w.document.write(documento(paginas, !soPrevia, G)); w.document.close();
+      msg(soPrevia ? 'Prévia aberta.' : paginas.length+' folha(s) prontas para imprimir.');
+    };
+    if(ARTE){ montar(); return; }
+    google.script.run
+      .withSuccessHandler(function(css){ ARTE=css||''; montar(); })
+      .withFailureHandler(function(e){ w.close(); msg('Não consegui carregar a arte: '+((e&&e.message)||e), true); })
+      .compassoCanhotos_arte(token());
+  }
+  window.canhGerar=canhGerar;
+  g('canhBtPrevia').addEventListener('click',function(){ canhGerar(true); });
+  g('canhBtGerar').addEventListener('click',function(){ canhGerar(false); });
+})();
+</script>
+</div>
