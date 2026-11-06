@@ -6883,3 +6883,8 @@ Home nova (painel executivo, Sofia em duas colunas, sem sino/?/WC, guarda de 3 m
 | Clicar em cada linha de "Precisa de você agora" | abre o módulo/aba certa |
 | Certificados | o número bate com o card Voucher da Caixa da Secretaria (no HML marcou 138) |
 | Caixa de E-mails (financeiro@) | abre em tempo bom; a linha "financeiro@: N conversa(s)…" soma e fecha com o Gmail |
+
+## 🔴 PRODUÇÃO 06/11/2026 — versão 758 (anterior: 757)
+
+Menu do perfil por cima dos cards, com "🚪 Sair do sistema"; painel da Home guardado por login (commit ca8f4e7). Pedido: "Publica em produção também". HML publicada depois (o projeto de HML tinha batido 200 versões; o usuário apagou as antigas). **Não testado no ar.** Para voltar: versão 757.
+Teste: clicar no nome lá no alto → menu aparece por cima → Sair → confirmar → volta ao login. Entrar com a Marcela → "Boa tarde, Marcela" e a caixa secretaria@.
