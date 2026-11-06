@@ -363,8 +363,12 @@ enviar à escola" chama gerarOficioWeb (mesmo número, PDF, fila e registro;
 duplicata pergunta antes), com o "Conferi a escola e as pessoas" obrigatório
 e só os anexos marcados (o robô pré-marca a ficha; contracheque/identidade
 não vão). caixaOficioEmitir em CaixaOficioEmail.gs. Desenho:
-docs/mock-acoes-no-email.png. Próximos: nota fiscal do prestador → despesa
-→ contabilidade; voucher com os botões da conferência no e-mail.
+docs/mock-acoes-no-email.png. NOTA FISCAL (06/11/2026, "2 - b": o prestador
+manda a nota; "vamos enviar por e-mail à contabilidade"): o e-mail do card
+Notas fiscais acha a despesa em aberto pelo e-mail do prestador (sem certeza,
+a pessoa escolhe) e "Anexar e enviar à contabilidade" usa o caminho do
+módulo de Despesas (uploadDocumentoManual + enviarLoteDespesasParaContabilidade,
+o e-mail com o link de confirmação). CaixaNotaFiscal.gs. Próximo: voucher.
 
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 
