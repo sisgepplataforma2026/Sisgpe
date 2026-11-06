@@ -1435,9 +1435,9 @@ function vpeDadosAssinatura_(sessao) {
 }
 
 function vpeAssinaturaTexto_(sessao) {
-  var d = vpeDadosAssinatura_(sessao);
-  return ["Atenciosamente,", d.nome, (d.cargo ? d.cargo + " – " : "") + "SINDEDUCAÇÃO-ES", d.telefone, d.email]
-    .filter(function (x) { return String(x || "").trim(); }).join("\n");
+  /* 06/11/2026: o mesmo formato da assinatura da KingHost (vpeAssinaturaTextoKH_);
+     no envio, vira a formatada, com o logo (vpeSepararAssinatura_). */
+  return vpeAssinaturaTextoKH_(sessao);
 }
 
 /** O texto-modelo guarda a assinatura-base; na tela, vale a de quem abriu. */
@@ -1473,17 +1473,34 @@ function vpeAssinaturaTextoKH_(sessao) {
     .filter(function (x) { return String(x || "").trim(); }).join("\n");
 }
 
-/** Texto com a assinatura que a tela pôs: tira o texto e põe a de verdade
-    (com o logo). Assinatura escrita à mão: fica como está, sem repetir. */
-function vpeCorpoComAssinatura_(texto, caixa, sessao) {
+/** Separa do texto a assinatura que a tela pôs (a de hoje, a do modelo antigo
+    do voucher ou a de antes de 06/11), para no envio sair a formatada, com o
+    logo. Assinada à mão (outra "Atenciosamente"): fica como foi escrita.
+    Devolve { corpoHtml, assinaturaHtml } — assinaturaHtml "" quando não se põe. */
+function vpeSepararAssinatura_(texto, caixa, sessao) {
   texto = String(texto || "");
-  if (!texto.trim()) return vpeTextoParaHtml_(texto);
-  var norm = function (x) { return String(x || "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").trim(); };
-  var t = norm(texto), a = norm(vpeAssinaturaTextoKH_(sessao));
-  var pos = t.lastIndexOf(a);
-  if (pos > -1 && !norm(t.substring(pos + a.length))) return vpeTextoParaHtml_(t.substring(0, pos).replace(/\s+$/, "")) + vpeAssinaturaHtml_(caixa, sessao);
-  if (/Atenciosamente|Tel\/WhatsApp:|E-mail: \S+@sindeducacao/i.test(texto)) return vpeTextoParaHtml_(texto);
-  return vpeTextoParaHtml_(texto) + vpeAssinaturaHtml_(caixa, sessao);
+  var norm = function (x) { return String(x || "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); };
+  var t = norm(texto);
+  var d = sessao ? vpeDadosAssinatura_(sessao) : {};
+  var antiga = ["Atenciosamente,", d.nome, (d.cargo ? d.cargo + " – " : "") + "SINDEDUCAÇÃO-ES", d.telefone, d.email]
+    .filter(function (x) { return String(x || "").trim(); }).join("\n");
+  var formas = [sessao ? vpeAssinaturaTextoKH_(sessao) : "", sessao ? antiga : "",
+    (typeof VPE_ASSINATURA !== "undefined") ? VPE_ASSINATURA : ""].filter(String).map(norm);
+  for (var i = 0; i < formas.length; i++) {
+    var pos = t.lastIndexOf(formas[i]);
+    if (pos > -1 && !norm(t.substring(pos + formas[i].length))) {
+      return { corpoHtml: vpeTextoParaHtml_(t.substring(0, pos).replace(/\s+$/, "")), assinaturaHtml: vpeAssinaturaHtml_(caixa, sessao) };
+    }
+  }
+  if (/Atenciosamente|Tel\/WhatsApp:|E-mail: \S+@sindeducacao/i.test(texto)) return { corpoHtml: vpeTextoParaHtml_(texto), assinaturaHtml: "" };
+  return { corpoHtml: t ? vpeTextoParaHtml_(texto) : "", assinaturaHtml: vpeAssinaturaHtml_(caixa, sessao) };
+}
+
+/** O corpo inteiro (texto + assinatura formatada). Texto vazio: vazio. */
+function vpeCorpoComAssinatura_(texto, caixa, sessao) {
+  if (!String(texto || "").trim()) return vpeTextoParaHtml_(texto);
+  var s = vpeSepararAssinatura_(texto, caixa, sessao);
+  return s.corpoHtml + s.assinaturaHtml;
 }
 
 function vpeTextoParaHtml_(texto) {
@@ -1911,8 +1928,8 @@ function voucherPedidosResponder(id, tipo, texto, a4, a5) {
     if (texto.length < 20) return { ok: false, mensagem: "Escreva a resposta antes de enviar." };
 
     var quem = sessao.email || sessao.usuario || "";
-    var para = vpeResponderThread_(reg, vpeTextoParaHtml_(texto), [], quem,
-      /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_(reg.CAIXA, sessao));
+    var sepA = vpeSepararAssinatura_(texto, reg.CAIXA, sessao);
+    var para = vpeResponderThread_(reg, sepA.corpoHtml, [], quem, sepA.assinaturaHtml);
     vpeRegistrarCorrecao_(reg, tipo, meta, texto, quem);
     reg.ACAO = tipo === "SEDE" ? "ENCAMINHADO_SEDE" : "COMPLEMENTO_PEDIDO";
     reg.ESTADO = tipo === "SEDE" ? VPE_ESTADOS.CONCLUIDO : VPE_ESTADOS.AGUARDANDO;

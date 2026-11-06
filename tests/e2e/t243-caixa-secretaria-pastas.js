@@ -127,6 +127,21 @@ b.ok(er && er.replyTo === "secretaria@sindeducacao.com" && er.from === "secretar
   "sai como secretaria@, na mesma conversa (reply), com o texto", JSON.stringify(er && [er.from, er.replyTo]));
 const enc = g.caixaEncaminhar("S:E1", "colega@sindeducacao.com", "Para você ver.", T_M);
 b.ok(enc.ok && enviados.some(e => e.via === "forward" && e.to === "colega@sindeducacao.com"), "encaminha na hora", enc.mensagem);
+/* 06/11/2026: "novo e-mail, responder e encaminhar devem ter a assinatura" */
+const temAssin = h => /Atenciosamente,/.test(h) && /<em>Administrativo \/ Secretaria<\/em>/.test(h) && /lh3\.googleusercontent\.com/.test(h) && (h.match(/Atenciosamente/g) || []).length === 1;
+b.ok(temAssin(er.htmlBody), "a resposta sai com a assinatura formatada e o logo", er.htmlBody.slice(-300));
+const sug = g.caixaSecretariaDetalhe("S:E1", T_M).sugestao;
+b.ok(/Atenciosamente,\n\nMarcelha Aline\nAdministrativo \/ Secretaria/.test(sug), "a resposta já abre com a assinatura, no formato novo", sug);
+g.caixaSecretariaResponder("S:E1", sug.replace("\n\n\n\n", "\nSegue o combinado.\n\n"), T_M);
+const er2 = enviados.filter(e => e.via === "reply").pop();
+b.ok(temAssin(er2.htmlBody) && /Segue o combinado/.test(er2.htmlBody), "com a assinatura que veio na tela: sai uma só, a formatada, com o logo", er2.htmlBody.slice(-300));
+const ef = enviados.filter(e => e.via === "forward").pop();
+b.ok(temAssin(ef.htmlBody) && /Para você ver/.test(ef.htmlBody), "o encaminhar sai com a assinatura e o logo", ef.htmlBody.slice(-300));
+g.caixaEncaminhar("S:E1", "colega@sindeducacao.com", "Veja abaixo.\n\n" + g.caixaMinhaAssinatura(T_M).texto, T_M);
+const ef2 = enviados.filter(e => e.via === "forward").pop();
+b.ok(temAssin(ef2.htmlBody), "encaminhar com a assinatura da tela: não repete", ef2.htmlBody.slice(-300));
+g.caixaEncaminhar("S:E1", "colega@sindeducacao.com", "", T_M);
+b.ok(temAssin(enviados.filter(e => e.via === "forward").pop().htmlBody), "encaminhar sem nota: vai só a assinatura");
 
 b.passo("6. Ações em lote, numa chamada só ao leitor");
 let chamadas = 0;
@@ -228,6 +243,13 @@ const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"]
   const lista = t.texto("#cxsLista");
   b.ok(/Resposta enviada pela Marcelha/.test(lista), "clicou na Lixeira: aparece o que foi para lá", lista.slice(0, 160));
   b.ok(t.chamadas.some(c => c.fn === "caixaSecretariaPasta" && c.args[0] === "TRASH"), "a tela pediu a pasta da secretaria@ (não a da financeiro@)");
+  const abrirS = doc.querySelector("[data-cxs='abrir'][data-arg^='S:']");
+  if (abrirS) {
+    t.clicar("[data-cxs='abrir'][data-arg='" + abrirS.getAttribute("data-arg") + "']"); await t.assentar(300);
+    b.ok(/Atenciosamente,\n\nMarcelha Aline/.test(doc.getElementById("cxsMResposta").value), "Responder: o texto já abre com a assinatura", doc.getElementById("cxsMResposta").value.slice(-120));
+    t.clicar("[data-cxs='encaminharAbrir']"); await t.assentar(100);
+    b.ok(/Atenciosamente,\n\nMarcelha Aline\nAdministrativo \/ Secretaria/.test(doc.getElementById("cxsMEncNota").value), "Encaminhar: a nota já abre com a assinatura", doc.getElementById("cxsMEncNota").value);
+  } else b.ok(false, "achou um e-mail S: na lista para abrir", lista.slice(0, 200));
   b.naoTestavel("o App da Web publicado de verdade", "em HML: publicar o leitor como App da Web pela conta da Secretaria e rodar caixaApiConfigurar");
   b.resumo();
   process.exit(process.exitCode || 0);

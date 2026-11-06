@@ -762,7 +762,7 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       vpeChecarDestinoAmbiente_(paraF);
       var mOrig = gmR.getMessageById(String(alvo.id));
       if (!mOrig) return { ok: false, mensagem: "A mensagem não está mais na caixa." };
-      var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_(secG ? "SECRETARIA" : "FINANCEIRO", sessao));
+      var html = vpeCorpoComAssinatura_(texto, secG ? "SECRETARIA" : "FINANCEIRO", sessao);
       var opF = { htmlBody: html, replyTo: secG ? "secretaria@sindeducacao.com" : "financeiro@sindeducacao.com" };
       if (idsAnexos.length) opF.attachments = idsAnexos.map(function (fid) { return DriveApp.getFileById(fid).getBlob(); });
       if (cc.length) opF.cc = cc.join(",");
@@ -774,9 +774,10 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       try { CacheService.getScriptCache().remove("cxs_fin_lista_v1"); } catch (eC) {}
       return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela " + pela + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)." : ".") };
     }
+    var sepA = vpeSepararAssinatura_(texto, "SECRETARIA", sessao);
     var para = vpeResponderThread_({ REMETENTE_EMAIL: cxsEmail_(ultima.replyTo || ultima.de), CAIXA: "SECRETARIA",
-      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, vpeTextoParaHtml_(texto), idsAnexos, quem,
-      /Atenciosamente/i.test(texto) ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao), { cc: cc, cco: cco });
+      THREAD_ID: String(p.THREAD_ID), ULTIMA_MENSAGEM_ID: String(p.ULTIMA_MENSAGEM_ID) }, sepA.corpoHtml, idsAnexos, quem,
+      sepA.assinaturaHtml, { cc: cc, cco: cco });
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
     cxsAuditar_("RESPONDER", id, "Resposta para " + para + notaCopia + notaAnexos, sessao);
     return { ok: true, mensagem: "Resposta para " + para + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)," : "") +

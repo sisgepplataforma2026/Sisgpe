@@ -295,7 +295,9 @@ function caixaEncaminhar(id, para, nota, tokenSessao) {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(para)) return { ok: false, mensagem: "Informe um e-mail válido para encaminhar." };
     vpeChecarDestinoAmbiente_(para);
     var quem = sessao.email || sessao.usuario || "";
-    var html = vpeTextoParaHtml_(String(nota || "")) + vpeAssinaturaHtml_(String(conv.p.CAIXA || "SECRETARIA"), sessao);
+    /* 06/11/2026: encaminhar também sai com a assinatura (a da tela vira a formatada, com o logo). */
+    var sepA = vpeSepararAssinatura_(String(nota || ""), cxsEhFinanceiro_(id) ? "FINANCEIRO" : "SECRETARIA", sessao);
+    var html = sepA.corpoHtml + sepA.assinaturaHtml;
     if (cxsEhFinanceiro_(id) || cxgEhSecretariaGmail_(id)) {
       /* 06/11/2026: a secretaria@ aberta por uma pasta ("S:") encaminha na hora, pelo leitor. */
       var m = (cxgEhSecretariaGmail_(id) ? cxgGmail_() : cxsGmailFinanceiro_()).getMessageById(String(conv.ultimo.id));
