@@ -19,6 +19,12 @@ Frase-guia: *"o SISGEP já fez a parte chata; você só decide."*
 
 ## 2. Quem usa e o que cada um precisa ver
 
+> **DECIDIDO (06/11/2026):** são **só 2 usuários — Wanderson e Marcela — e
+> os dois são administradores.** Os dois veem o sindicato inteiro. A única
+> diferença é a CAIXA DE E-MAIL (regra de 31/10): a Marcela vê a secretaria@,
+> o Wanderson a financeiro@. Não há perfil "diretoria" separado.
+
+
 Mesmo desenho para todos; **o conteúdo muda pelo perfil** (a trava continua
 no servidor).
 
@@ -78,3 +84,29 @@ no servidor).
    do China Park** — se o SISGEP não guarda, o item sai ou vira fase 3.
 3. Sino: avisos de verdade (proposta) ou tirar.
 4. Aprovar a ordem das fases e começar pela fase 1.
+
+## 8. Mapa de fontes (levantado no código em 06/11/2026)
+
+| Número do mockup | De onde sai | Situação |
+|---|---|---|
+| E-mails a tratar | `caixaResumoDoDia` (Caixa, por caixa de cada um) | ✅ existe (já está na Home) |
+| E-mails chegados hoje | data das conversas da Caixa | 🟡 dado existe, falta a conta |
+| Ofícios: fila · erro · e-mail voltou | `getDashboardOficiosData` (FilaOficios / Monitoramento) | ✅ existe — hoje soma os três num número só |
+| Ofícios do mês por tipo | registro dos ofícios emitidos | 🟡 dado existe, falta a conta |
+| Escolas que não descontaram | `oficiosConferenciaMensal` | ✅ existe |
+| Fichas novas no Drive | `ofdLinhas_` (robô das fichas) | ✅ existe |
+| Certificados de bolsa para conferir / faltam documentos | `voucherPedidosPainel` | ✅ existe |
+| China Park — reservas aguardando | `Reservaparquechina.gs`, STATUS = PENDENTE | ✅ existe |
+| China Park — pagamento a confirmar | STATUS_PAGAMENTO e VENCIMENTO_PAGAMENTO da reserva | ✅ existe |
+| Notas fiscais aguardando | `obterResumoDespesas_interno_` | ✅ existe (já está na Home) |
+| Escolas com cadastro incompleto | `listarEscolasCadastro` | ✅ existe (já está na Home) |
+| Festa — inscritos / dias | Compasso (importação das inscrições) | ✅ existe |
+| Comprovantes lidos pelo robô | `Caixa_Comprovantes_Lidos` | ✅ existe |
+| **Guias sindicais e boletos das escolas — a enviar / vencendo** | `TaxasSindicais.gs` tem VENCIMENTO e STATUS, mas **quem pagou é controlado no Condomob** (decisão de 03/11) | ⚠️ **não confiável no SISGEP**: o SISGEP não sabe quem já pagou, então "vencendo" mostraria escola que já pagou. Ver decisão abaixo |
+| Guias de pagamento (contas a pagar a prestadores) | `GuiasPagamento.gs` — LEGADO no cabeçalho | ⚠️ é outra coisa (pagar prestador), não boleto de escola |
+| "O robô já preparou" | soma de fichas lidas + e-mails categorizados + comprovantes lidos | 🟡 dados existem, falta a conta |
+
+**Decisão pendente — Financeiro (guias e boletos):** sem o Condomob, o
+SISGEP não sabe o que foi pago. Opções: (a) o card mostra só o que o SISGEP
+faz — guias **emitidas e enviadas** no mês, sem "vencendo"; (b) esperar o
+Robô do Condomob (descrito em 03/11) para trazer quem está devendo.
