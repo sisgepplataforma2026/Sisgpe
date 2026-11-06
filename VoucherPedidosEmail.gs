@@ -1446,15 +1446,44 @@ function vpeTrocarAssinatura_(texto, sessao) {
   return String(texto || "").split(VPE_ASSINATURA).join(vpeAssinaturaTexto_(sessao));
 }
 
+/* 06/11/2026: no formato da assinatura da KingHost que a equipe usa hoje
+   ("Olha como é hoje") — Atenciosamente, nome, cargo em itálico, telefone,
+   e-mail como link e o logo do sindicato. */
 function vpeAssinaturaHtml_(caixa, sessao) {
   var mapa = (typeof EMAIL_IA_ASSINATURAS_USUARIOS !== "undefined") ? EMAIL_IA_ASSINATURAS_USUARIOS : {};
   var end = caixa === "FINANCEIRO" ? "financeiro@sindeducacao.com" : "secretaria@sindeducacao.com";
   var d = sessao ? vpeDadosAssinatura_(sessao) : (mapa[end] || { nome: "SindEducação-ES", cargo: "", telefone: "", email: end });
-  return "<div style='font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#333;line-height:1.6;margin-top:18px;'>" +
-    "<strong>" + escHtmlVoucher_(d.nome) + (d.cargo ? " — " + escHtmlVoucher_(d.cargo) : "") + "</strong><br>" +
-    "SindEducação-ES<br>" +
-    (d.telefone ? "Tel/WhatsApp: " + escHtmlVoucher_(d.telefone) + " | " : "") +
-    "E-mail: " + escHtmlVoucher_(d.email) + "</div>";
+  var logo = (typeof LOGO_VOUCHER !== "undefined" && LOGO_VOUCHER) ? String(LOGO_VOUCHER) : "";
+  var email = String(d.email || "");
+  return "<div style='font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#333;line-height:1.5;margin-top:18px;'>" +
+    "Atenciosamente,<br><br>" +
+    "<div style='padding-left:12px;'>" +
+    "<strong style='color:#001f4d;font-size:14px;'>" + escHtmlVoucher_(d.nome) + "</strong><br>" +
+    (d.cargo ? "<em>" + escHtmlVoucher_(d.cargo) + "</em><br>" : "") +
+    (d.telefone ? escHtmlVoucher_(d.telefone) + "<br>" : "") +
+    (email ? "<a href='mailto:" + escHtmlVoucher_(email) + "' style='color:#1565C0;'>" + escHtmlVoucher_(email) + "</a><br>" : "") +
+    (logo ? "<img src='" + escHtmlVoucher_(logo) + "' alt='SindEducação-ES' width='200' style='display:block;margin-top:10px;border:0;'>" : "") +
+    "</div></div>";
+}
+
+/** A mesma assinatura em texto, como o Novo e-mail abre (à vista e editável). */
+function vpeAssinaturaTextoKH_(sessao) {
+  var d = vpeDadosAssinatura_(sessao);
+  return "Atenciosamente,\n\n" + [d.nome, d.cargo, d.telefone, d.email]
+    .filter(function (x) { return String(x || "").trim(); }).join("\n");
+}
+
+/** Texto com a assinatura que a tela pôs: tira o texto e põe a de verdade
+    (com o logo). Assinatura escrita à mão: fica como está, sem repetir. */
+function vpeCorpoComAssinatura_(texto, caixa, sessao) {
+  texto = String(texto || "");
+  if (!texto.trim()) return vpeTextoParaHtml_(texto);
+  var norm = function (x) { return String(x || "").replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").trim(); };
+  var t = norm(texto), a = norm(vpeAssinaturaTextoKH_(sessao));
+  var pos = t.lastIndexOf(a);
+  if (pos > -1 && !norm(t.substring(pos + a.length))) return vpeTextoParaHtml_(t.substring(0, pos).replace(/\s+$/, "")) + vpeAssinaturaHtml_(caixa, sessao);
+  if (/Atenciosamente|Tel\/WhatsApp:|E-mail: \S+@sindeducacao/i.test(texto)) return vpeTextoParaHtml_(texto);
+  return vpeTextoParaHtml_(texto) + vpeAssinaturaHtml_(caixa, sessao);
 }
 
 function vpeTextoParaHtml_(texto) {

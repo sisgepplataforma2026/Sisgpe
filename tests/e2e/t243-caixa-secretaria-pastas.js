@@ -173,7 +173,16 @@ const nE = enviados.filter(e => e.via === "novo").pop();
 b.ok(nv.ok && /pela secretaria@/.test(nv.mensagem), "envia", nv.mensagem);
 b.ok(nE && nE.to === "equipe@sindeducacao.com" && nE.cc === "outra@sindeducacao.com" && nE.from === "secretaria@sindeducacao.com" && nE.replyTo === "secretaria@sindeducacao.com",
   "sai como secretaria@, com Cc", JSON.stringify(nE && [nE.to, nE.cc, nE.from]));
-b.ok(nE && /A reunião é às 14h/.test(nE.htmlBody) && /Secretaria/.test(nE.htmlBody) && /SindEducação-ES/.test(nE.htmlBody) && /secretaria@sindeducacao\.com/.test(nE.htmlBody), "com a assinatura de quem está logado", (nE && nE.htmlBody || "").slice(-200));
+b.ok(nE && /A reunião é às 14h/.test(nE.htmlBody) && /Atenciosamente,/.test(nE.htmlBody) && /<em>Administrativo \/ Secretaria<\/em>/.test(nE.htmlBody) &&
+  /mailto:secretaria@sindeducacao\.com/.test(nE.htmlBody) && /lh3\.googleusercontent\.com\/d\/1c-RHfb0W/.test(nE.htmlBody), "com a assinatura da KingHost: cargo em itálico, e-mail em link e o logo", (nE && nE.htmlBody || "").slice(-300));
+/* Texto com a assinatura que a tela pôs: sai uma só, a de verdade, com o logo. */
+const assin = g.caixaMinhaAssinatura(T_M).texto;
+g.caixaSecretariaNovoEmail({ para: "equipe@sindeducacao.com", assunto: "Com a assinatura da tela", texto: "Olá!\n\n" + assin + "\n" }, T_M);
+const nE2 = enviados.filter(e => e.via === "novo").pop();
+b.ok((nE2.htmlBody.match(/Atenciosamente/g) || []).length === 1 && /<img /.test(nE2.htmlBody) && /<em>/.test(nE2.htmlBody), "a assinatura que veio na tela não sai repetida — sai a formatada, com o logo", nE2.htmlBody.slice(0, 300));
+g.caixaSecretariaNovoEmail({ para: "equipe@sindeducacao.com", assunto: "Assinada à mão", texto: "Olá!\n\nAtenciosamente,\nMarcela" }, T_M);
+const nE3 = enviados.filter(e => e.via === "novo").pop();
+b.ok((nE3.htmlBody.match(/Atenciosamente/g) || []).length === 1 && !/<img /.test(nE3.htmlBody), "assinou à mão: fica como ela escreveu, sem pôr outra");
 b.ok(nE && (nE.attachments || []).length === 1 && nE.attachments[0].getName() === "pauta.pdf", "com o anexo");
 b.ok(!g.caixaSecretariaNovoEmail({ para: "x@y.com", assunto: "a", texto: "texto qualquer" }, T_W).ok, "o Wanderson não escreve pela secretaria@");
 b.ok(!g.caixaSecretariaNovoEmail({ para: "nao-email", assunto: "a", texto: "texto qualquer" }, T_M).ok, "e-mail inválido é barrado antes de sair");
@@ -213,7 +222,7 @@ const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"]
   b.ok(/secretaria@sindeducacao\.com/.test(t.texto("#cxsNSub")), "a janela diz que sai pela secretaria@", t.texto("#cxsNSub"));
   await t.assentar(100);
   const txtN = t.doc.getElementById("cxsNTexto").value;
-  b.ok(/Atenciosamente,/.test(txtN) && /Marcelha/.test(txtN), "o texto já abre com a assinatura de quem está logado (à vista, editável)", txtN.slice(0, 120));
+  b.ok(/Atenciosamente,\n\nMarcelha Aline\nAdministrativo \/ Secretaria\n.+\nsecretaria@sindeducacao\.com/.test(txtN), "o texto já abre com a assinatura no formato da KingHost", txtN.slice(0, 160));
   doc.getElementById("cxsNovo").classList.remove("aberto");
   t.clicar("[data-cxs='abrirPasta'][data-arg='TRASH']"); await t.assentar(200);
   const lista = t.texto("#cxsLista");

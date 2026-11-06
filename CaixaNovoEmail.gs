@@ -82,7 +82,7 @@ function caixaFinanceiroNovoEmail(dados, tokenSessao) {
     var rasc = dados.rascunhoId ? cxnRascunho_(dados.rascunhoId) : null;
     /* Os anexos que o rascunho já tinha (posto no Gmail) continuam junto. */
     if (rasc) blobs = (rasc.getMessage().getAttachments() || []).concat(blobs);
-    var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) || !texto ? "" : vpeAssinaturaHtml_("FINANCEIRO", sessao));
+    var html = vpeCorpoComAssinatura_(texto, "FINANCEIRO", sessao);
     var op = { htmlBody: html, name: "SindEducação-ES — Financeiro" };
     if (cc.length) op.cc = cc.join(",");
     if (cco.length) op.bcc = cco.join(",");
@@ -156,7 +156,7 @@ function caixaSecretariaNovoEmail(dados, tokenSessao) {
     var ids = cxfGuardarAnexos_({ anexos: dados.anexos || [], anexosSisgep: dados.anexosSisgep || [] }, quem);
     var anexos = ids.map(function (fid) { var bl = DriveApp.getFileById(fid).getBlob();
       return { nome: bl.getName(), tipo: bl.getContentType(), b64: Utilities.base64Encode(bl.getBytes()) }; });
-    var html = vpeTextoParaHtml_(texto) + (/Atenciosamente/i.test(texto) || !texto ? "" : vpeAssinaturaHtml_("SECRETARIA", sessao));
+    var html = vpeCorpoComAssinatura_(texto, "SECRETARIA", sessao);
     var rid = String(dados.rascunhoId || "");
     if (rid && rid.indexOf(CXN_PREFIXO_RASCUNHO) !== 0) return { ok: false, mensagem: "Rascunho inválido." };
     var destino = para.join(", ");
@@ -183,7 +183,9 @@ function caixaSecretariaNovoEmail(dados, tokenSessao) {
 function caixaMinhaAssinatura(tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
-    return { ok: true, texto: vpeAssinaturaTexto_(sessao) };
+    /* O formato da assinatura da KingHost (06/11/2026, "Olha como é hoje");
+       no envio, vira a assinatura de verdade, com o logo (vpeCorpoComAssinatura_). */
+    return { ok: true, texto: vpeAssinaturaTextoKH_(sessao) };
   } catch (err) {
     return { ok: false, mensagem: err.message };
   }
