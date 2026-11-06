@@ -26,7 +26,7 @@ function cxoTipoOficio_(tipoCard) {
 }
 
 function cxoChave_(id, p, card) {
-  return "cxo_" + String(id).replace(/[^\w]/g, "") + "_" + String(p.ULTIMA_MENSAGEM_ID || "").replace(/[^\w]/g, "") + "_" + String(card || "");
+  return "cxo2_" + String(id).replace(/[^\w]/g, "") + "_" + String(p.ULTIMA_MENSAGEM_ID || "").replace(/[^\w]/g, "") + "_" + String(card || "");
 }
 
 /** O ofício que o robô preparou deste e-mail. (id, token) ou (id, forcar, token). */
@@ -119,7 +119,8 @@ function cxoDoEmail_(id, modo, forcar, tokenSessao) {
         : est && est.TIPO_CORRIGIDO ? "pelo card que a equipe escolheu" : "pelo assunto e pelo anexo (regra) — confira",
       escola: escola, escolaOrigem: pessoas.length ? pessoas[0].escolaOrigem : (escolaGeral ? escolaGeral.origem : ""),
       para: escola ? escola.email : "", paraOrigem: escola && escola.email ? "e-mail da escola no cadastro" : "a escola não tem e-mail no cadastro",
-      pessoas: pessoas, arquivos: arquivos, semPessoa: !pessoas.length
+      pessoas: pessoas, arquivos: arquivos, semPessoa: !pessoas.length,
+      anexosOficio: cxoAnexosParaOficio_(conv.p)   // o que pode ir junto ao ofício (06/11/2026)
     } };
     roboMemoriaRegistrar_({ tarefa: "oficio-email-lido", origem: "SECRETARIA", chave: String(id), remetente: cxsEmail_(conv.ultimo.de),
       assunto: conv.primeiro.assunto, sugerido: cxoAssinatura_(tipo, escola && escola.cnpj, pessoas), decidido: "", quem: sessao.email || "" });
@@ -184,6 +185,82 @@ function caixaOficioPreparar(id, conferido, tokenSessao) {
     }
     cxsAuditar_("OFICIO_PREPARADO", id, tipo + " · " + cnpj + " · " + pessoas.length + " pessoa(s)", sessao);
     return { ok: true, oficio: { tipo: tipo, escola: ofdEscolaCurta_(escola), pessoas: pessoas, ficha: ficha, origem: "Caixa da secretaria@" } };
+  } catch (err) {
+    return { ok: false, mensagem: err.message };
+  }
+}
+
+/* ================================================================
+   EMITIR E ENVIAR DAQUI — 06/11/2026
+   ================================================================
+   O usuário: "quando chega ofício de sindicalização, eu tenho que ter ali
+   no corpo do e-mail ... a opção de enviar o ofício"; "pode sim" usar a
+   MESMA emissão do módulo de Ofícios. É exatamente ela: gerarOficioWeb, o
+   que o botão "Emitir" do Novo ofício chama — mesmo número, mesmo PDF,
+   mesma fila de envio, mesmo registro, mesmo aviso de duplicata. Nada novo
+   no caminho da emissão (é a operação viva).
+   Travas a mais, daqui (aprovadas com o desenho):
+     - a pessoa confirma que conferiu escola e pessoas com o anexo;
+     - só vão junto os anexos que ela marcou (contracheque e identidade NÃO
+       vão para a escola por engano: o robô pré-marca só o que parece ficha);
+     - o que o robô propôs × o que foi emitido fica na memória do robô.
+   ================================================================ */
+var CXO_FICHA_NOME = /ficha|filia|sindicaliz|desfilia|oposi|carta|requerimento|autoriza/i;
+
+/** Os anexos do e-mail, com a sugestão do robô do que vai junto ao ofício. */
+function cxoAnexosParaOficio_(p) {
+  return vpeJson_(p.ANEXOS_JSON, []).map(function (a, i) {
+    var doc = /pdf|image/i.test(String(a.tipo || "")) || /\.(pdf|jpe?g|png)$/i.test(String(a.nome || ""));
+    return { indice: i, nome: String(a.nome || ""), tipo: String(a.tipo || ""), doc: doc, sugerido: doc && CXO_FICHA_NOME.test(String(a.nome || "")) };
+  });
+}
+
+/**
+ * Emite (e manda para a fila de envio, como o módulo de Ofícios) o ofício
+ * deste e-mail. conferido = { tipo, escolaCnpj, pessoas:[{nome,cpf}], card,
+ * conferi: true, anexos:[índices], confirmarDuplicata }.
+ */
+function caixaOficioEmitir(id, conferido, tokenSessao) {
+  try {
+    var sessao = cxsExigir_(tokenSessao);
+    conferido = conferido || {};
+    if (conferido.conferi !== true) return { ok: false, mensagem: "Marque que conferiu a escola e as pessoas com o anexo antes de emitir." };
+    var prep = caixaOficioPreparar(id, conferido, tokenSessao);   // valida tipo, pessoas, CPF e escola; guarda o que mudou
+    if (!prep.ok) return prep;
+    var conv = cxfConversa_(id, sessao);
+    var cnpj = ofdDig_(conferido.escolaCnpj), lista = [];
+    try { lista = listarEscolasCadastro_interno_() || []; } catch (e) {}
+    var e = lista.filter(function (x) { return ofdDig_(x.cnpj || x.documentoMascarado) === cnpj; })[0];
+    if (!e) return { ok: false, mensagem: "A escola não está no cadastro." };
+    var email = String(e.email || e.emailPrincipal || "").trim();
+    if (!email) return { ok: false, mensagem: "A escola não tem e-mail no cadastro — corrija o cadastro da escola antes de emitir." };
+    vpeChecarDestinoAmbiente_(email);
+    var disp = cxoAnexosParaOficio_(conv.p);
+    var idx = (conferido.anexos || []).map(Number).filter(function (n) { return disp[n] && disp[n].doc; });
+    var fichas = [];
+    idx.forEach(function (n) {
+      var ax = cxsAnexoInterno_(conv.p, n);
+      if (!ax.ok) throw new Error("Não consegui pegar o anexo " + disp[n].nome + ": " + ax.mensagem);
+      fichas.push({ nome: ax.nome, tipo: ax.tipo, base64: String(ax.dataUrl).split(",")[1] || "" });
+    });
+    var pessoas = prep.oficio.pessoas;
+    var dados = { tipo: prep.oficio.tipo, escola: String(e.nome || e.escola || e.Fantasia || ""), cnpj: cnpj, email: email,
+                  colaboradores: pessoas.map(function (x) { return { nome: x.nome, cpf: x.cpf }; }),
+                  cpfs: pessoas.map(function (x) { return x.cpf; }), fichas: fichas,
+                  confirmarDuplicata: conferido.confirmarDuplicata === true };
+    var r = gerarOficioWeb(dados, tokenSessao);   // A MESMA emissão do módulo de Ofícios
+    if (r && r.duplicataDetectada) return { ok: false, duplicata: true, mensagem: r.mensagem || "Já existe um ofício parecido. Confirme para emitir mesmo assim." };
+    if (!r || r.erro) return { ok: false, mensagem: (r && r.mensagem) || "O módulo de Ofícios não emitiu." };
+    var d = r.dados || {};
+    var quem = sessao.email || sessao.usuario || "";
+    cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESOLVIDO, NOTA: "Ofício nº " + (d.numero || "?") + " (" + dados.tipo + ") emitido pela Caixa e na fila de envio para " + email + "." }, quem);
+    cxsAuditar_("OFICIO_EMITIDO", id, dados.tipo + " nº " + (d.numero || "?") + " · " + cnpj + " · " + pessoas.length + " pessoa(s) · " + fichas.length + " anexo(s)", sessao);
+    roboMemoriaRegistrar_({ tarefa: "oficio-email-emitido", origem: String(conv.p.CAIXA || "SECRETARIA"), chave: String(id),
+      remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto,
+      sugerido: disp.filter(function (a) { return a.sugerido; }).map(function (a) { return a.nome; }).join("|"),
+      decidido: idx.map(function (n) { return disp[n].nome; }).join("|"), quem: quem });
+    return { ok: true, numero: d.numero || "", url: d.url || "", avisos: d.avisosDesfiliacao || [],
+             mensagem: "Ofício nº " + (d.numero || "?") + " emitido e na fila de envio para " + email + " (o mesmo caminho do módulo de Ofícios)." };
   } catch (err) {
     return { ok: false, mensagem: err.message };
   }

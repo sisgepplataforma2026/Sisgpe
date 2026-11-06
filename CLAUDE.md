@@ -357,6 +357,15 @@ a mensalidade sindical"*, no mesmo e-mail da escola — o e-mail fica em
 Contribuições com o aviso "também pede ofício" e o botão para preparar. "Ver ofício"
 (CaixaOficioEmail.gs) prepara; a EMISSÃO continua no módulo de Ofícios.
 
+**ATUALIZADO EM 06/11/2026 — EMITIR DO PRÓPRIO E-MAIL.** O usuário: "pode
+sim" usar a MESMA emissão do módulo de Ofícios. No e-mail aberto: "Emitir e
+enviar à escola" chama gerarOficioWeb (mesmo número, PDF, fila e registro;
+duplicata pergunta antes), com o "Conferi a escola e as pessoas" obrigatório
+e só os anexos marcados (o robô pré-marca a ficha; contracheque/identidade
+não vão). caixaOficioEmitir em CaixaOficioEmail.gs. Desenho:
+docs/mock-acoes-no-email.png. Próximos: nota fiscal do prestador → despesa
+→ contabilidade; voucher com os botões da conferência no e-mail.
+
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 
 Desenho aprovado. No reenvio: motivo (só reenviar = como antes / alguns não
