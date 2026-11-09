@@ -156,6 +156,11 @@ neste momento"*. CaixaRoboNiveis.gs:
   20, desliga sozinho e avisa. Comprovantes de pagamento ficam fora.
 - Nada que SAI (responder, encaminhar, emitir) sobe de nível sem o usuário
   pedir, olhando a taxa de acerto. Hoje ele avalia tudo antes.
+- **ATUALIZADO NO MESMO DIA (09/11/2026), depois de publicado:** *"Não quero
+  mais esse serviço. Quero que resolva."* O "não pede nada" foi DESLIGADO
+  (CRN_NADA_ATIVO = false): não aponta, não resolve, não aparece na tela.
+  Não propor de novo sem ele pedir. Fica só a MEDIÇÃO da categoria
+  (invisível) e a correção da Nota interna.
 
 ## 🚨 REGRA Nº 0.6 — AUTOMATIZAR É O PADRÃO, NÃO O EXTRA
 

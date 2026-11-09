@@ -26,6 +26,12 @@
    Gmail. Só muda a situação do e-mail dentro do SISGEP (dá para desfazer).
    ================================================================ */
 
+/* 09/11/2026, DEPOIS DE PUBLICADO — o usuário: "Não quero mais esse
+   serviço. Quero que resolva." O "não pede nada" (B) está DESLIGADO: não
+   aponta, não resolve, não aparece na tela, não registra. Fica a MEDIÇÃO
+   da categoria (A), que é invisível. O código de B fica aqui (REGRA 1);
+   para voltar, só com pedido dele: CRN_NADA_ATIVO = true e a tela. */
+var CRN_NADA_ATIVO = false;
 var CRN_QUEM = "ROBÔ";
 var CRN_TAREFA = "nada-a-fazer";
 var CRN_PROP = "CRN_NIVEIS";
@@ -43,6 +49,7 @@ var CRN_PEDE = /\?|por favor|favor\b|poderi|preciso|precisamos|gostari|segue|ane
 /** O e-mail não pede nada? Devolve o motivo ("" quando pede). Olha só a
     última mensagem de fora; anexo nela = pede (pode ser documento). */
 function crnNadaAFazer_(p) {
+  if (!CRN_NADA_ATIVO) return "";
   try {
     var msgs = vpeJson_(p.MENSAGENS_JSON, []);
     var ultima = msgs[msgs.length - 1];
@@ -132,6 +139,7 @@ function crnTratou_(id, p, acao, sessao) {
 
 /** Na lista: aponta o que não pede nada e, se ligado, resolve sozinho. */
 function crnAplicar_(pares) {
+  if (!CRN_NADA_ATIVO) return;
   var niveis = crnNiveis_();
   pares.forEach(function (x) {
     var p = x.p, r = x.r, est = x.est || {};
@@ -197,6 +205,7 @@ function crnTalvezDesligar_(tarefa, caixa) {
 function caixaRoboNiveis(tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
+    if (!CRN_NADA_ATIVO) return { ok: true, tarefas: [], desligado: true };
     var m = crnNiveis_(), out = [];
     ["SECRETARIA", "FINANCEIRO"].forEach(function (caixa) {
       if (!cxsPodeCaixa_(sessao, caixa)) return;
@@ -222,6 +231,7 @@ function caixaRoboNiveis(tokenSessao) {
 function caixaRoboNivelLigar(tarefa, caixa, ligar, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
+    if (!CRN_NADA_ATIVO) return { ok: false, mensagem: "Este serviço do robô está desligado." };
     if (!crcPodeLigar_(sessao)) return { ok: false, mensagem: "Só administrador liga ou desliga o robô." };
     caixa = String(caixa || "").toUpperCase();
     if (!CRN_TAREFAS[tarefa] || ["SECRETARIA", "FINANCEIRO"].indexOf(caixa) === -1) return { ok: false, mensagem: "Tarefa inválida." };

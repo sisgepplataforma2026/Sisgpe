@@ -160,16 +160,13 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
-### 132. 🔴 O ROBÔ APRENDE "E-MAIL QUE NÃO PEDE NADA" + MEDIÇÃO DA CATEGORIA (09/11/2026)
+### 132. 🔴 MEDIÇÃO DA CATEGORIA + NOTA INTERNA (09/11/2026)
 
-Na Caixa: chip "🤖 parece que não pede nada" e o aviso no e-mail aberto;
-resolver = acerto, responder = erro; rodapé com "o que o robô já sabe
-fazer" (falta X / Ligar / Desligar). Tratar o e-mail sem mudar o card conta
-acerto da categoria. Corrigido: a "Nota interna" não salvava (id duplicado
-com o quadro da NF, desde 06/11). Testado no emulador (t246, 36).
-**Não testado no ar:** a lista com o chip, o rodapé, e — quando chegar aos
-números — Ligar, resolver sozinho e Desfazer. Roteiro: abrir um "Obrigado!"
-na Caixa, ver o aviso, marcar como resolvido; conferir a nota interna salva.
+O "não pede nada" do robô foi DESLIGADO a pedido do usuário ("não quero
+mais esse serviço"). Ficou: tratar o e-mail sem mudar o card conta acerto da
+categoria (rodapé da Caixa) e a "Nota interna" voltou a salvar. Testado no
+emulador (t246). **Não testado no ar:** escrever uma nota interna, marcar
+como resolvido e reabrir o e-mail para ver a nota salva.
 
 ### 131. 🔴 ASSINATURA NO FORMATO DA KINGHOST, COM O LOGO (06/11/2026, produção)
 
