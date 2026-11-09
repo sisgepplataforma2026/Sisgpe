@@ -97,7 +97,7 @@ const t = dom.montar(g, ["VoucherPedidosEmailUI.html", "CaixaSecretariaUI.html"]
   t.win.cxsIniciar(); await t.assentar(300);
   g.caixaSecretariaReclassificar("F:n3", "NOTA_FISCAL", W);
   t.win.eval("void 0"); t.clicar("[data-cxs='abrir'][data-arg='F:n3']"); await t.assentar(300);
-  const box = () => t.texto("#cxsMNota");
+  const box = () => t.texto("#cxsMNF");
   b.ok(/Manutenção novembro/.test(box()) && /Anexar à despesa e enviar/.test(box()) && /Conferi a nota/.test(box()), "o quadro mostra a despesa e os botões", box().slice(0, 200));
   t.doc.getElementById("cxsNfConferi").checked = true;
   t.clicar("[data-cxs='nfAnexar'][data-arg='enviar']"); await t.assentar(50);

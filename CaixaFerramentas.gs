@@ -314,6 +314,7 @@ function caixaEncaminhar(id, para, nota, tokenSessao) {
     cxsAuditar_("ENCAMINHAR", id, "Encaminhado para " + para, sessao);
     roboMemoriaRegistrar_({ tarefa: "encaminhar-email", origem: String(conv.p.CAIXA || ""), chave: id,
       remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto, sugerido: "", decidido: para, quem: quem });
+    crnTratou_(id, conv.p, "TRATAR", sessao);
     return { ok: true, mensagem: (cxsEhFinanceiro_(id) || cxgEhSecretariaGmail_(id)) ? "Encaminhado para " + para + "." :
       "Encaminhamento para " + para + " na fila da Secretaria — sai em até 15 minutos." };
   } catch (err) {

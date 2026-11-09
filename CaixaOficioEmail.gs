@@ -254,6 +254,7 @@ function caixaOficioEmitir(id, conferido, tokenSessao) {
     var d = r.dados || {};
     var quem = sessao.email || sessao.usuario || "";
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESOLVIDO, NOTA: "Ofício nº " + (d.numero || "?") + " (" + dados.tipo + ") emitido pela Caixa e na fila de envio para " + email + "." }, quem);
+    crnTratou_(id, conv.p, "TRATAR", sessao);
     cxsAuditar_("OFICIO_EMITIDO", id, dados.tipo + " nº " + (d.numero || "?") + " · " + cnpj + " · " + pessoas.length + " pessoa(s) · " + fichas.length + " anexo(s)", sessao);
     roboMemoriaRegistrar_({ tarefa: "oficio-email-emitido", origem: String(conv.p.CAIXA || "SECRETARIA"), chave: String(id),
       remetente: cxsEmail_(conv.ultimo.de), assunto: conv.primeiro.assunto,

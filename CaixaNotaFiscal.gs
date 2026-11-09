@@ -108,6 +108,7 @@ function caixaNotaFiscalAnexar(id, dados, tokenSessao) {
     }
     var quem = sessao.email || sessao.usuario || "";
     var oque = "NF anexada à despesa " + (desp.numeroDespesa || idDesp) + " (" + desp.prestadorNome + ")" + (env ? " e enviada à contabilidade" : "");
+    crnTratou_(id, conv.p, "TRATAR", sessao);
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESOLVIDO, NOTA: oque + " pela Caixa." }, quem);
     cxsAuditar_("NF_DESPESA", id, oque + " · " + arquivos.length + " arquivo(s)", sessao);
     roboMemoriaRegistrar_({ tarefa: "nf-despesa", origem: String(conv.p.CAIXA || ""), chave: String(id), remetente: cxsEmail_(conv.ultimo.de),

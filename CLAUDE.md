@@ -140,6 +140,23 @@ partes abaixo — fluxo sem elas está incompleto:
    consistente, o sistema PROPÕE fazê-la sozinho; quem liga é o usuário,
    por tarefa, e dá para desligar. Até ele ligar, vale "nada sai sozinho".
 
+## 🤖 O ROBÔ SOBE DE NÍVEL — DECISÕES DE 09/11/2026
+
+O usuário: *"preciso que comece a entender e a fazer as tarefas"*; *"que
+ele aprende e vai fazendo sozinho quando tiver alta [taxa] de aprovação"*;
+*"o robô não envia nada sem a minha permissão, a não ser quando eu vejo que
+está com um percentual de acerto muito grande"*; *"eu avalio antes tudo
+neste momento"*. CaixaRoboNiveis.gs:
+- A categoria JÁ é automática (o e-mail cai no card). O que faltava era
+  MEDIR o acerto: tratar o e-mail sem mudar o card agora conta acerto.
+- Primeira tarefa que sobe de nível: "e-mail que não pede nada"
+  (agradecimento, "recebido", resposta automática). Regra: 50 decisões, 95%
+  de acerto, 20 seguidas → o robô PROPÕE; só administrador liga, por caixa;
+  ligado, só RESOLVE por dentro (com Desfazer); abaixo de 90% nas últimas
+  20, desliga sozinho e avisa. Comprovantes de pagamento ficam fora.
+- Nada que SAI (responder, encaminhar, emitir) sobe de nível sem o usuário
+  pedir, olhando a taxa de acerto. Hoje ele avalia tudo antes.
+
 ## 🚨 REGRA Nº 0.6 — AUTOMATIZAR É O PADRÃO, NÃO O EXTRA
 
 Definida pelo usuário em 2026-08-13: *"devemos pensar sempre em automatizar e

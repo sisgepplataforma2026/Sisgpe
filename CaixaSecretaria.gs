@@ -577,14 +577,17 @@ function caixaSecretariaPainel(tokenSessao) {
     var est = cxsEstados_();
     var envios = vpeEnviosPorConversa_();
     var veSecretaria = cxsPodeCaixa_(sessao, "SECRETARIA");
+    var paresRobo = [];
     var itens = (veSecretaria ? cxsLinhasPonte_() : []).filter(function (p) {
       var m = vpeJson_(p.MENSAGENS_JSON, [])[0] || {};
       return !CXS_CONFIRMACAO_LEITURA.test(String(m.assunto || ""));
     }).map(function (p) {
       var r = cxsResumo_(p, est[String(p.THREAD_ID)], envios);
       r.fonte = "EMAIL";
+      paresRobo.push({ p: p, r: r, est: est[String(p.THREAD_ID)] });
       return r;
     });
+    crnAplicar_(paresRobo);   // o robô: aponta o que não pede nada (e resolve, se ligado)
     var v = veSecretaria ? cxsVouchers_(sessao)
       : { itens: [], cont: { PRONTO: 0, FALTA_DOC: 0, NAO_ENCONTRADO: 0, PRECISA_VOCE: 0, AGUARDANDO: 0, EMITIDO: 0, PRESENCIAL: 0 }, pode: false };
     v.itens.forEach(function (i) { i.caixa = "SECRETARIA"; });
@@ -638,11 +641,14 @@ function caixaFinanceiroItens(tokenSessao) {
     var sessao = cxsExigir_(tokenSessao);
     if (!cxsPodeCaixa_(sessao, "FINANCEIRO")) return { ok: true, itens: [] };
     var est = cxsEstados_();
+    var paresRobo = [];
     var itens = cxsLinhasFinanceiro_().map(function (p) {
       var r = cxsResumo_(p, est[String(p.THREAD_ID)], {});
       r.fonte = "EMAIL";
+      paresRobo.push({ p: p, r: r, est: est[String(p.THREAD_ID)] });
       return r;
     });
+    crnAplicar_(paresRobo);
     return { ok: true, itens: itens, contagem: cxsFinContagem_ };
   } catch (e) {
     return { ok: false, mensagem: "Caixa do Financeiro: " + e.message };
@@ -677,7 +683,10 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
     primeiro = primeiro && primeiro.indexOf("@") === -1 ? primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase() : "";
     var sugestao = "Olá" + (primeiro ? ", " + primeiro : "") + "!\nTudo bem?\n\n\n\nEstamos à disposição para esclarecer qualquer dúvida!\n\n" +
       vpeAssinaturaTexto_(sessao);   // de quem está logado (30/10/2026)
+    var roboResolveu = est && est.DECIDIDO_POR === CRN_QUEM && resumo.estado === CXS_ESTADOS.RESOLVIDO
+      ? (String(est.NOTA || "").replace(/^🤖 Resolvido pelo robô:\s*/, "") || "não pede nada") : "";
     return { ok: true, item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
+             roboResolveu: roboResolveu, roboNada: !roboResolveu && resumo.estado === CXS_ESTADOS.NOVO ? crnNadaAFazer_(p) : "",
              nota: est ? String(est.NOTA || "") : "",
              tipos: Object.keys(CXS_TIPOS).filter(function (k) {
                  return (!CXS_TIPOS[k].caixa || CXS_TIPOS[k].caixa === resumo.caixa) &&
@@ -772,6 +781,7 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       var pela = secG ? "secretaria@" : "financeiro@";
       cxsAuditar_("RESPONDER", id, "Resposta (" + pela + ") para " + paraF + notaCopia + notaAnexos, sessao);
       try { CacheService.getScriptCache().remove("cxs_fin_lista_v1"); } catch (eC) {}
+      crnTratou_(id, p, "TRATAR", sessao);
       return { ok: true, mensagem: "Resposta enviada para " + paraF + " pela " + pela + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)." : ".") };
     }
     var sepA = vpeSepararAssinatura_(texto, "SECRETARIA", sessao);
@@ -780,6 +790,7 @@ function caixaSecretariaResponder(id, texto, a3, a4) {
       sepA.assinaturaHtml, { cc: cc, cco: cco });
     cxsGravarEstado_(id, { ESTADO: CXS_ESTADOS.RESPONDIDO, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) }, quem);
     cxsAuditar_("RESPONDER", id, "Resposta para " + para + notaCopia + notaAnexos, sessao);
+    crnTratou_(id, p, "TRATAR", sessao);
     return { ok: true, mensagem: "Resposta para " + para + (nomesAnexos.length ? ", com " + nomesAnexos.length + " anexo(s)," : "") +
       " na fila da Secretaria — sai em até 15 minutos." };
   } catch (e) {
@@ -797,13 +808,19 @@ function caixaSecretariaMarcar(id, estado, nota, tokenSessao) {
     var p = cxsLinhaPonte_(id);
     if (!p) return { ok: false, mensagem: "Conversa não encontrada na Caixa." };
     var quem = sessao.email || sessao.usuario || "";
+    var antes = cxsEstados_()[String(id)] || {};
     var mud = { ESTADO: estado, ULTIMA_VISTA: String(p.ULTIMA_MENSAGEM_ID) };
     if (nota !== undefined && nota !== null) mud.NOTA = String(nota).substring(0, 1000);
     cxsGravarEstado_(id, mud, quem);
     cxsAuditar_("MARCAR_" + estado, id, nota || "", sessao);
     roboMemoriaRegistrar_({ tarefa: "situacao-email", origem: String(p.CAIXA || "SECRETARIA"), chave: id,
       sugerido: "", decidido: estado + (nota ? " · " + String(nota).substring(0, 200) : ""), quem: quem });
-    return { ok: true, mensagem: estado === "RESOLVIDO" ? "Marcado como resolvido." : "Voltou para os novos." };
+    /* O robô aprende (CaixaRoboNiveis.gs): resolver = acerto do "não pede
+       nada"; voltar um que o robô resolveu = erro dele. */
+    var avisoRobo = "";
+    if (estado === CXS_ESTADOS.RESOLVIDO) crnTratou_(id, p, "RESOLVER", sessao);
+    else if (estado === CXS_ESTADOS.NOVO && antes.DECIDIDO_POR === CRN_QUEM) avisoRobo = crnDesfeito_(id, p, sessao);
+    return { ok: true, mensagem: (estado === "RESOLVIDO" ? "Marcado como resolvido." : "Voltou para os novos.") + (avisoRobo ? " " + avisoRobo : "") };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

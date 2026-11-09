@@ -53,6 +53,7 @@ function roboMemoriaRegistrar_(o) {
     };
     roboMemAba_().appendRow(ROBO_MEM_COLUNAS.map(function (c) { return linha[c]; }));
     delete ROBO_MEM_CACHE[linha.TAREFA];
+    if (typeof CRN_CACHE !== "undefined") CRN_CACHE = null;   // a leitura do robô que sobe de nível (CaixaRoboNiveis.gs)
     if (o.tarefa === "categoria-email" && String(o.origem || "") === "SECRETARIA" && linha.ACERTOU === "NAO") {
       roboMemoriaExemploPonte_(linha);
     }
