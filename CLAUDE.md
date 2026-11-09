@@ -343,6 +343,10 @@ decidida pelo usuário: **só a secretaria@, às 20h, no máximo 10 por vez**.
 Só lê e anota (CaixaRoboComprovantes.gs, aba Caixa_Comprovantes_Lidos) — não
 responde, não move, não marca nada. Começa desligado; quem liga é
 administrador, no rodapé da Caixa. A financeiro@ não entra até ele pedir.
+**09/11/2026 — FORA DO "SUBIR DE NÍVEL" DO ROBÔ:** *"Não precisa de comprovantes
+de pagamento, ainda não é gerado pagamentos e recebimentos de boletos pelo
+SISGEP."* A leitura de comprovante não entra entre as tarefas que o robô faz
+sozinho. O código fica (REGRA 1) e continua desligado até ele pedir.
 Existe uma rotina antiga, `processarEmailsMensalidade` (MensalidadeCore.gs),
 que põe etiqueta no Gmail; não foi tocada (REGRA 1).
 
