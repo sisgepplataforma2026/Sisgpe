@@ -78,6 +78,22 @@ balanço das tags, `</script>` dentro de string, e scriptlet em comentário.
 **É o piso, não o teto** — sintaxe válida não é comportamento correto. A
 REGRA Nº -1 continua valendo inteira por cima desta.
 
+## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
+
+O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo
+Diverso quebravam): *"eu sempre peço que você faça auditoria de todas as
+funções, o que é chamado, do que é proposto ... isso não pode acontecer."*
+**tests/e2e/t250-funcoes-chamadas-existem.js** lê TODO .gs e TODO script
+dos .html e reprova se uma função chamada não existe, ou se a tela chama
+função privada do servidor (terminada em "_" — o Apps Script bloqueia).
+Roda na suíte, então barra a publicação. Exceção nova só com o motivo
+escrito na lista ACEITAS do teste, conferida no código. Na primeira rodada
+achou e corrigiu: formatarCPF/formatarPix (Recibo.gs), o 📎 da Sofia na
+Home (chamava analisarAnexoSofiaHome_, privada) e três funções da tela do
+Oftalmo. Ficaram registradas, para o usuário decidir: o aviso de limite da
+Taxa Assistencial (enviarAlerteLimiteDiario nunca existiu) e o pixel antigo
+de GuiasPagamento.gs (legado).
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.

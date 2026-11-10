@@ -96,6 +96,18 @@ b.ok(h.statusAssinatura === "ASSINADO" && h.linkAssinado && h.statusContabilidad
 b.ok(amb.outbox.slice(antes).some(e => /financeiro@sindeducacao\.com/.test(JSON.stringify(e))), "o e-mail foi para a contabilidade (a mesma das Despesas)");
 b.ok(!g.caixaReciboAssinadoAnexar("F:p2", { numero: "RD-001/2026", anexo: 0, enviar: false, conferi: true }, W).ok, "o mesmo recibo não é anexado duas vezes");
 
+b.fluxo("RECIBO COMUM · gera de ponta a ponta (as funções que faltavam)");
+/* 10/11/2026: Recibo.gs chamava formatarDataExtensoBR, formatarCPF e formatarPix,
+   que nunca existiram — gerar recibo quebrava. */
+let htmlRecibo = "";
+const conv0 = g.recibo_converterHtmlParaPdf_;
+g.recibo_converterHtmlParaPdf_ = (html, nome, pasta) => { htmlRecibo = html; return conv0(html, nome, pasta); };
+const rc = g.gerarReciboWeb({ processo: "0001234-56.2026.5.17.0001", empresa: "Escola Exemplo", valorTotal: "150,00",
+  trabalhadores: [{ nome: "Maria Teste", cpf: "52998224725", valor: "150,00", formaPgto: "PIX", tipoPix: "CPF", pix: "52998224725" }] }, W);
+b.ok(rc && !rc.erro && rc.totalGerado === 1, "o recibo comum é gerado", JSON.stringify(rc).slice(0, 160));
+b.ok(/529\.982\.247-25/.test(htmlRecibo) && /\d{1,2} de [a-zç]+ de \d{4}/.test(htmlRecibo), "com o CPF formatado e a data por extenso");
+g.recibo_converterHtmlParaPdf_ = conv0;
+
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 T.push({ id: "p3", msgs: [msg("Maria Prestadora <maria@exemplo.com>", "Pagamento do processo", "Segue o PIX para o pagamento do processo. Recibo para a contabilidade.")] });
 limpar();

@@ -160,6 +160,16 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 135. 🔴 AUDITORIA "TODA FUNÇÃO CHAMADA EXISTE?" — O QUE ELA CORRIGIU (10/11/2026)
+
+t250 (estático, na suíte). Corrigido e testado no emulador/jsdom:
+Recibo comum gera de ponta a ponta (formatarCPF/formatarPix/data, t249);
+Oftalmo: e-mail e busca do titular (t251); 📎 da Sofia na Home (porta
+pública analisarAnexoSofiaHome). **Não testado no ar:** anexar um PDF no 📎
+da Home; no Oftalmo, digitar o nome do titular e escolher. **Para decidir
+(usuário):** o aviso de limite diário da Taxa Assistencial nunca saiu (a
+função não existe) — criar ou tirar?
+
 ### 134. 🔴 RECIBO DIVERSO PELO E-MAIL (fase 2 dos atalhos) + A DATA QUE FALTAVA (10/11/2026)
 
 Atalhos "Fazer recibo diverso" (o robô preenche nome, CPF/CNPJ, valor,

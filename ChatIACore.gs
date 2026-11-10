@@ -270,6 +270,13 @@ function extrairConteudoAnexoIA_(anexo) {
 /* ═══════════════════════════════════════════════════════
    ANEXO ENVIADO PELA HOME (SOFIA) — upload direto do usuário
 ═══════════════════════════════════════════════════════ */
+/* 10/11/2026 (auditoria): a tela (📎 da Home) chamava analisarAnexoSofiaHome_
+   — o Apps Script NÃO deixa o navegador chamar função terminada em "_", então o
+   anexo nunca funcionou. Esta é a porta pública; a sessão continua conferida
+   dentro (exigirSessaoDocumentos_). */
+function analisarAnexoSofiaHome(base64, nome, tipo, tokenSessao) {
+  return analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao);
+}
 function analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao) {
   try {
     exigirSessaoDocumentos_(tokenSessao, false);

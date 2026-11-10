@@ -32,6 +32,31 @@ function formatarDataExtensoBR(data) {
     " de " + Utilities.formatDate(d, tz, "yyyy");
 }
 
+/* 10/11/2026 (auditoria "toda função chamada existe?"): Recibo.gs chamava
+   formatarCPF e formatarPix, que também nunca existiram — gerar recibo
+   quebrava logo depois da data. */
+function formatarCPF(cpf) {
+  var d = String(cpf || "").replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return String(cpf || "").trim();
+}
+/** A chave PIX como deve aparecer no recibo, pelo tipo (CPF, TELEFONE, EMAIL, ALEATORIA). */
+function formatarPix(chave, tipo) {
+  chave = String(chave || "").trim();
+  tipo = String(tipo || "").toUpperCase();
+  if (!chave) return "";
+  if (tipo === "CPF" || tipo === "CNPJ") return formatarCPF(chave);
+  if (tipo === "TELEFONE") {
+    var t = chave.replace(/\D/g, "");
+    if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return chave;
+  }
+  if (tipo === "EMAIL") return chave.toLowerCase();
+  return chave;
+}
+
 /* ================= VALIDAÇÃO DE E-MAIL ================= */
 function emailValido(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());

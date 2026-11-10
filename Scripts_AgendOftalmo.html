@@ -30,6 +30,69 @@ function ocultarLoaderSistema() {
 var _timerBuscaNome = null;
 var _associadosEncontrados = [];
 
+/* 10/11/2026 (auditoria "toda função chamada existe?"): a tela do Oftalmo
+   chamava validarEmailOftalmo, buscarAssociadoPorNome e
+   renderizarSugestoesAssociados, que NUNCA existiram — sair do campo e-mail ou
+   digitar o nome do titular dava erro. O servidor (buscarAssociadosOftalmo,
+   AgendOftalm.gs) já existia. */
+function validarEmailOftalmo(input) {
+  if (!input) return true;
+  var v = String(input.value || '').trim();
+  var ok = !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  input.style.borderColor = ok ? '' : '#dc2626';
+  input.title = ok ? '' : 'E-mail inválido';
+  return ok;
+}
+var _oftBuscaTimer = null;
+function buscarAssociadoPorNome(termo) {
+  termo = String(termo || '').trim();
+  clearTimeout(_oftBuscaTimer);
+  if (termo.length < 2) { _associadosEncontrados = []; renderizarSugestoesAssociados([]); return; }
+  _oftBuscaTimer = setTimeout(function () {
+    if (!(window.google && google.script && google.script.run)) return;
+    google.script.run
+      .withSuccessHandler(function (r) {
+        _associadosEncontrados = (r && r.ok && Array.isArray(r.associados)) ? r.associados : [];
+        renderizarSugestoesAssociados(_associadosEncontrados);
+      })
+      .withFailureHandler(function () { renderizarSugestoesAssociados([]); })
+      .buscarAssociadosOftalmo(termo);
+  }, 300);
+}
+function renderizarSugestoesAssociados(lista) {
+  var inp = document.getElementById('oftalmoNomeTitular');
+  if (!inp) return;
+  var box = document.getElementById('oftalmoSugestoesAssoc');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'oftalmoSugestoesAssoc';
+    box.style.cssText = 'position:absolute;z-index:50;left:0;right:0;background:#fff;border:1px solid #cbd5e1;border-radius:8px;' +
+      'box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow:auto;';
+    if (inp.parentNode) { inp.parentNode.style.position = 'relative'; inp.parentNode.appendChild(box); }
+    inp.addEventListener('blur', function () { setTimeout(function () { box.style.display = 'none'; }, 150); });
+  }
+  if (!lista || !lista.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  box.style.display = '';
+  lista.slice(0, 8).forEach(function (a) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'display:block;width:100%;text-align:left;border:0;background:#fff;padding:8px 10px;cursor:pointer;font-size:13px;';
+    b.textContent = String(a.nome || '') + (a.escola ? ' — ' + a.escola : '') + (a.situacao ? ' (' + a.situacao + ')' : '');
+    b.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      var porCampo = function (id, v) { var el = document.getElementById(id); if (el && v) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+      porCampo('oftalmoNomeTitular', a.nome);
+      porCampo('oftalmoCpfTitular', typeof formatarCPFOftalmo === 'function' ? formatarCPFOftalmo(a.cpf) : a.cpf);
+      porCampo('oftalmoTelefone', a.telefone);
+      porCampo('oftalmoEmail', a.email);
+      porCampo('oftalmoEscola', a.escola);
+      box.style.display = 'none';
+    });
+    box.appendChild(b);
+  });
+}
+
   function init() {
   var hoje = new Date();
 

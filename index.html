@@ -2427,7 +2427,7 @@ window.spAnexarArquivo = function(input) {
         var msg = "Falha ao enviar o arquivo: " + (err && err.message ? err.message : err);
         if (typeof toast === "function") toast(msg, "erro"); else alert(msg);
       })
-      .analisarAnexoSofiaHome_(base64, arquivo.name, arquivo.type, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
+      .analisarAnexoSofiaHome(base64, arquivo.name, arquivo.type, (typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""));
   };
   leitor.onerror = function() {
     if (btn) { btn.disabled = false; btn.textContent = "📎"; }
