@@ -40,6 +40,13 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b
   await t.assentar(1500);
   const w = t.win, d = t.doc;
   w.confirm = () => true;
+  /* 10/11/2026: sem a faixa "Início — Painel do sindicato" na página inicial; nos módulos ela volta. */
+  b.ok(d.getElementById("spTitBox").style.visibility === "hidden", "na página inicial, a faixa do título não aparece");
+  b.ok(!/Gerar recibo de mensalidade/.test(d.body.textContent), "sem o atalho 'Gerar recibo de mensalidade' (não tem recibo de mensalidade)");
+  w.spIr("documentos"); await t.assentar(300);
+  b.ok(d.getElementById("spTitBox").style.visibility !== "hidden" && /Documentos/.test(d.getElementById("spTit").textContent), "num módulo (Documentos), a faixa volta com o nome");
+  w.spIr("inicio"); await t.assentar(300);
+  b.ok(d.getElementById("spTitBox").style.visibility === "hidden", "voltou para o Início: some de novo");
   try { w.location.reload = () => { w.__recarregou = true; }; } catch (e) {}
   w.eval(d.getElementById("spUserBtn").getAttribute("onclick"));
   b.ok(d.getElementById("spUserDropdown").classList.contains("show"), "clicar no perfil abre o menu");

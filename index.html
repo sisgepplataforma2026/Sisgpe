@@ -252,7 +252,9 @@
   ══════════════════════════════════════ -->
   <main id="spMain">
     <header id="spTopbar">
-      <div>
+      <!-- 10/11/2026, o usuário: tirar a faixa "Início — Painel do sindicato"
+           da página inicial (a saudação já diz). Nos módulos ela continua. -->
+      <div id="spTitBox" style="visibility:hidden;">
         <div id="spTit">Início</div>
         <div id="spSub">Painel do sindicato — o que precisa de você hoje</div>
       </div>
@@ -345,7 +347,6 @@
 
             <div class="spChips">
               <button onclick="spCmd('Emitir ofício de filiação')">Emitir ofício de filiação</button>
-              <button onclick="spCmd('Gerar recibo de mensalidade')">Gerar recibo de mensalidade</button>
               <button onclick="spCmd('Responder e-mails')">Responder e-mails</button>
               <button onclick="spCmd('Ver despesas pendentes')">Ver despesas pendentes</button>
             </div>
@@ -2293,6 +2294,7 @@ var flexMods={
   var t=document.getElementById("spTit"),s=document.getElementById("spSub");
   if(t)t.textContent=cfg[1];
   if(s)s.textContent=cfg[2];
+  var tb=document.getElementById("spTitBox"); if(tb) tb.style.visibility = mod==="inicio" ? "hidden" : "";
 
   setTimeout(function(){ initModulo(mod,opts); },220);
 };
