@@ -1211,11 +1211,21 @@ button,input{font-family:inherit;}
 .spXC{display:flex;gap:10px;align-items:center;padding:8px 2px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer}.spXC:first-child{border-top:0}
 .spXC p{flex:1;margin:0;font-size:12.5px;color:#e7ebff}.spXC p small{display:block;color:#8590c4;font-size:10.5px}
 /* 10/11/2026 — o usuário (tela no ar, 1366 px): "Sofia está muito grande",
-   "imagem cortada", "a fonte acho que está grande". A foto inteira, sem
-   zoom (contain), e as letras do topo e dos cards um pouco menores. */
+   "imagem cortada", "a fonte acho que está grande". As letras do topo e dos
+   cards um pouco menores; a foto, logo abaixo. */
 @media(min-width:981px){
-.spSofiaWrap{width:38%!important}
-.spSofiaImg{top:0!important;right:0!important;bottom:auto!important;height:100%!important;width:100%!important;object-fit:contain!important;object-position:right bottom!important}
+.spSofiaWrap{width:36%!important}
+}
+/* A foto é uma ARTE inteira (balão "Olá, eu sou a SOFIA", logo e uma caixa de
+   texto desenhada) — "Horrível" ao mostrar tudo (10/11/2026). Recorta só a
+   Sofia (object-view-box, Chrome) e cabe inteira, sem zoom; sem suporte,
+   fica o recorte de antes. */
+@supports (object-view-box: inset(0)) {
+@media(min-width:981px){
+.spSofiaImg{top:4%!important;right:2%!important;bottom:auto!important;height:96%!important;width:auto!important;max-width:100%!important;object-view-box:inset(0 0 15% 31%);object-fit:contain!important;object-position:right bottom!important}
+}
+}
+@media(min-width:981px){
 .spHero h1{font-size:34px!important;margin-bottom:8px!important}
 .spHero p{font-size:14px!important;line-height:1.6!important}
 .spAskBox{padding:12px 14px!important;margin-top:14px!important}
