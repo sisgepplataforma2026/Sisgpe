@@ -2713,8 +2713,13 @@ function spXDesenhar(r){
   window.__spXAcoes=[];
   var el=function(id){return document.getElementById(id);};
   var res=r.resumo||{assuntos:0,urgentes:0};
-  if(el("spResumoDia")) el("spResumoDia").innerHTML = res.assuntos
-    ? "Hoje há <b>"+res.assuntos+" pendências</b> esperando você"+(res.urgentes?" — <b class='u'>"+res.urgentes+" urgente"+(res.urgentes>1?"s":"")+"</b>":"")+". Separei tudo abaixo, por prioridade."
+  /* 10/11/2026 ("sim"): "263 pendências" assustava — somava tudo o que está
+     aberto. A frase fala do que pede ação HOJE: os urgentes e quantos
+     ASSUNTOS (linhas da lista) há para olhar; o total fica nos cards. */
+  var nAss=res.linhas||0, outros=Math.max(0,nAss-(res.linhasUrg||0));
+  if(el("spResumoDia")) el("spResumoDia").innerHTML = res.urgentes
+    ? "Hoje há <b class='u'>"+res.urgentes+" urgente"+(res.urgentes>1?"s":"")+"</b>"+(outros?" e <b>"+outros+" assunto"+(outros===1?"":"s")+"</b> para olhar":"")+". Separei tudo abaixo, por prioridade."
+    : nAss ? "Nada urgente hoje. Há <b>"+nAss+" assunto"+(nAss===1?"":"s")+"</b> para olhar — separei abaixo."
     : "Nada esperando você agora — tudo em dia.";
   if(el("spXKpis")) el("spXKpis").innerHTML=(r.kpis||[]).map(function(k){
     return "<button type='button' class='spXK' style='--c:"+spXEsc(k.cor)+"' onclick='spPainelAcao("+spXAcao(k.acao)+")'><span>"+spXEsc(k.rotulo)+"</span><b>"+(k.n===undefined?"…":k.n==null?"—":spXEsc(k.n))+"</b><small>"+spXEsc(k.n===undefined?"carregando…":k.n==null?"não consegui ler agora":k.sub)+"</small></button>";
@@ -2756,7 +2761,8 @@ function spXJuntar(st){
     return {chave:d[0],rotulo:d[1],cor:d[2],n:k?k.n:(pronto?null:undefined),sub:k?k.sub:"",acao:k?k.acao:null};
   });
   var urg=tarefas.filter(function(t){return t.sev==="URGENTE";}).reduce(function(s,t){return s+t.n;},0);
-  return {resumo:{assuntos:tarefas.reduce(function(s,t){return s+t.n;},0),urgentes:urg},kpis:kpis,tarefas:tarefas,areas:areas,
+  return {resumo:{assuntos:tarefas.reduce(function(s,t){return s+t.n;},0),urgentes:urg,linhas:tarefas.length,
+    linhasUrg:tarefas.filter(function(t){return t.sev==="URGENTE";}).length},kpis:kpis,tarefas:tarefas,areas:areas,
     chegou:tudo("chegou").slice(0,4),indisponiveis:tudo("indisponiveis").concat(st.erros),
     atualizadoEm:ok.length?st.r[ok[ok.length-1]].atualizadoEm:"",
     faltam:SPX_GRUPOS.filter(function(g){return !st.feito[g];})};
