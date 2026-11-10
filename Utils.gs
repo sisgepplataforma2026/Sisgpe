@@ -18,6 +18,20 @@ function dataPorExtenso() {
   return dia + " de " + meses[mes] + " de " + ano;
 }
 
+/* 10/11/2026: Recibo.gs e ReciboDiversos.gs chamavam formatarDataExtensoBR,
+   que NUNCA existiu no projeto — gerar recibo dava "formatarDataExtensoBR is
+   not defined" (achado ao ligar o recibo diverso à Caixa de E-mails). Mesmo
+   formato de dataPorExtenso, para qualquer data: "10 de novembro de 2026". */
+function formatarDataExtensoBR(data) {
+  var meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  var d = data instanceof Date ? data : new Date(data);
+  if (isNaN(d.getTime())) return "";
+  var tz = Session.getScriptTimeZone();
+  return parseInt(Utilities.formatDate(d, tz, "d"), 10) + " de " + meses[parseInt(Utilities.formatDate(d, tz, "M"), 10) - 1] +
+    " de " + Utilities.formatDate(d, tz, "yyyy");
+}
+
 /* ================= VALIDAÇÃO DE E-MAIL ================= */
 function emailValido(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
