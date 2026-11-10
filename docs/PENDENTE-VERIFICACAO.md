@@ -160,6 +160,18 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 134. 🔴 RECIBO DIVERSO PELO E-MAIL (fase 2 dos atalhos) + A DATA QUE FALTAVA (10/11/2026)
+
+Atalhos "Fazer recibo diverso" (o robô preenche nome, CPF/CNPJ, valor,
+descrição, forma, PIX e e-mail, com a origem; "Só gerar" ou "Gerar e enviar
+ao beneficiário") e "Recibo assinado → contabilidade" (acha o recibo
+pendente pelo número ou pelo e-mail; anexa, marca assinado, envia).
+Corrigido junto: formatarDataExtensoBR nunca existiu — gerar recibo (Recibos
+e Recibos Diversos) dava erro. Testado no emulador (t249, 26), com o módulo
+de verdade e o PDF falso. **Não testado no ar:** o PDF do recibo, o e-mail
+ao beneficiário e o da contabilidade; gerar um Recibo comum (Recibo.gs) e
+ver se a data por extenso sai certa no PDF.
+
 ### 133. 🔴 ATALHOS NO E-MAIL — FASE 1 + A SOFIA RECORTADA NA HOME (10/11/2026)
 
 Atalhos: em qualquer e-mail aberto, "⚡ Atalhos" com 1–2 sugeridos (motivo à

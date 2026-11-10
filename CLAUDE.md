@@ -406,8 +406,12 @@ ações"); *"começa pela fase 1"*. CaixaAtalhos.gs + caixaOficioComTipo.
   contabilidade e encaminhar, em QUALQUER e-mail, pelos fluxos que já
   existem. A memória guarda o atalho usado (tarefa "atalho-email").
 - **Não tem recibo de mensalidade** (usuário, 10/11/2026) — não propor.
-- Fase 2: Recibo diverso pelo e-mail — *"pode ser de processo, compras
-  avulsas e etc."*
+- Fase 2 (feita, 10/11/2026): Recibo diverso pelo e-mail — *"pode ser de
+  processo, compras avulsas e etc."*; o recibo é de *"quem recebeu do
+  sindicato"* (o beneficiário assina); dois botões, "só gerar" / "gerar e
+  enviar ao beneficiário" (*"2 - sim"*); secretaria@ e financeiro@.
+  CaixaReciboDiverso.gs, pelo módulo de Recibos Diversos. O recibo
+  assinado que volta é anexado e vai à contabilidade (a mesma das Despesas).
 - Fase 3 (só se ele quiser): cadastro do associado pela ficha.
 
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)

@@ -31,9 +31,11 @@ var CXA_ACOES = {
   OF_ASSISTENCIAL:{ rotulo: "Fazer ofício de taxa assistencial", icone: "📄", grupo: "Ofício", card: "OFICIO_TAXA_ASSISTENCIAL", caixa: "" },
   VOUCHER:        { rotulo: "Tratar como pedido de voucher", icone: "🎓", grupo: "Benefícios", modulo: "beneficios", caixa: "" },
   NF_CONTAB:      { rotulo: "Enviar NF à contabilidade", icone: "🧾", grupo: "Financeiro", modulo: "financeiro", caixa: "", precisaAnexo: true },
+  RECIBO:         { rotulo: "Fazer recibo diverso", icone: "🧾", grupo: "Recibos", modulo: "documentos", caixa: "" },
+  RECIBO_ASSINADO:{ rotulo: "Recibo assinado → contabilidade", icone: "✍", grupo: "Recibos", modulo: "documentos", caixa: "", precisaAnexo: true },
   ENCAMINHAR:     { rotulo: "Encaminhar", icone: "↪", grupo: "E-mail", caixa: "" }
 };
-var CXA_ORDEM = ["OF_FILIACAO", "OF_DESFILIACAO", "OF_OPOSICAO", "OF_TAXA", "OF_ASSISTENCIAL", "VOUCHER", "NF_CONTAB", "ENCAMINHAR"];
+var CXA_ORDEM = ["OF_FILIACAO", "OF_DESFILIACAO", "OF_OPOSICAO", "OF_TAXA", "OF_ASSISTENCIAL", "VOUCHER", "NF_CONTAB", "RECIBO", "RECIBO_ASSINADO", "ENCAMINHAR"];
 var CXA_CARD_ACAO = { OFICIO_FILIACAO: "OF_FILIACAO", OFICIO_DESFILIACAO: "OF_DESFILIACAO", OFICIO_OPOSICAO: "OF_OPOSICAO",
   OFICIO_TAXA: "OF_TAXA", NOTA_FISCAL: "NF_CONTAB", VOUCHER: "VOUCHER" };
 
@@ -65,6 +67,9 @@ function cxaSugestoes_(p, est, disponiveis) {
   else if (/ficha|sindicaliz|filia/.test(nomes) || /(ficha|pedido) de (filiacao|sindicalizacao)/.test(texto)) add("OF_FILIACAO", "tem ficha de filiação anexa");
   if (anexos.length && (/\bnf\b|nfs-?e|nota fiscal|danfe|\.xml/.test(nomes) || /nota fiscal|\bnfs?-?e?\b/.test(texto))) add("NF_CONTAB", "tem nota fiscal anexa");
   if (/voucher|bolsa de estudo|desconto (na|da) (faculdade|mensalidade escolar)/.test(texto)) add("VOUCHER", "o e-mail fala de voucher/bolsa");
+  /* Fase 2 (10/11/2026): recibo diverso — processo, compra avulsa, serviço pago pelo sindicato. */
+  if (/recibo/.test(nomes) && /assinad/.test(nomes + " " + texto)) add("RECIBO_ASSINADO", "tem recibo assinado anexo");
+  else if (/\brecibo\b/.test(texto) || /(chave )?pix|dados bancarios|(segue|seguem) (os )?dados para (o )?pagamento/.test(texto)) add("RECIBO", "o e-mail fala de pagamento/recibo");
   return out;
 }
 
