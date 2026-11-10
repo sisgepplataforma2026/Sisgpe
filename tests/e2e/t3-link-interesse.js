@@ -9,7 +9,10 @@ b.fluxo("BENEFÍCIOS · Enviar Link de Interesse");
 
 b.passo("1. Listar benefícios com formulário público");
 const lista = g.beneficiosListarLinksInteresse(TOKEN);
-b.ok(lista && lista.ok && lista.itens.length >= 3, "lista os benefícios que têm rota pública",
+const chavesLista = (lista.itens || []).map(i => i.chave);
+b.ok(lista && lista.ok && chavesLista.indexOf("chinapark") > -1 && chavesLista.indexOf("voucher") > -1 &&
+     chavesLista.indexOf("oftalmo") === -1,
+  "lista os benefícios com rota pública (o oftalmo fica fora da tela desde 10/11/2026)",
   (lista.itens || []).map(i => i.chave).join(", "));
 
 b.passo("2. Montar link e mensagem do China Park");

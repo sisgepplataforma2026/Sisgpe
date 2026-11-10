@@ -67,7 +67,10 @@ var BENEF_LINKS = {
     retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
     prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a conferência do cadastro."
   },
+  /* Fora da tela desde 10/11/2026 (o serviço não é mais oferecido): não entra
+     no seletor, mas a definição fica — "só não aparece na tela". */
   oftalmo: {
+    oculto: true,
     rotulo: "Exame oftalmológico",
     rota: "?portal=oftalmo",
     modulo: "beneficios",
@@ -150,6 +153,7 @@ function beneficiosListarLinksInteresse(tokenSessao) {
     exigirModulo_(tokenSessao, "beneficios", false);
     var itens = [];
     Object.keys(BENEF_LINKS).forEach(function (k) {
+      if (BENEF_LINKS[k].oculto) return;
       itens.push({ chave: k, rotulo: BENEF_LINKS[k].rotulo });
     });
     return { ok: true, itens: itens };

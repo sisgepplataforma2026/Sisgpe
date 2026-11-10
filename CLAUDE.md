@@ -94,6 +94,16 @@ Oftalmo. Ficaram registradas, para o usuário decidir: o aviso de limite da
 Taxa Assistencial (enviarAlerteLimiteDiario nunca existiu) e o pixel antigo
 de GuiasPagamento.gs (legado).
 
+## 👁 OFTALMOLOGIA — FORA DA TELA, NÃO APAGADA (10/11/2026)
+
+O usuário: *"não terá mais esse serviço ser oferecido"* e, logo em seguida,
+*"cuidado para não tirar qualquer coisa, ele só não aparece na tela"*. Saíram
+só os pontos de entrada visíveis (botão do menu e card de Benefícios, card do
+Portal do Associado, atalho de Despesas, item da prévia do portal, e o
+seletor de link de interesse via `oculto: true`). Os arquivos, os includes,
+a rota `?portal=oftalmo`, as funções e as abas de dados continuam.
+tests/e2e/t252 trava as duas metades. Não apagar nada do Oftalmo sem ele pedir.
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.
