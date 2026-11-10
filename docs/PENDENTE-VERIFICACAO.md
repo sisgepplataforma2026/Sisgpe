@@ -160,6 +160,17 @@ arquivo. Nenhum texto foi alterado — só o número no título.
 
 ## 🔴 ABERTO
 
+### 133. 🔴 ATALHOS NO E-MAIL — FASE 1 + A SOFIA RECORTADA NA HOME (10/11/2026)
+
+Atalhos: em qualquer e-mail aberto, "⚡ Atalhos" com 1–2 sugeridos (motivo à
+vista) e "Mais ações": ofício (filiação, desfiliação, oposição, taxa
+negocial, assistencial), voucher, NF → contabilidade, encaminhar. Testado no
+emulador (t247, 17), inclusive a emissão pelo módulo de Ofícios.
+**Não testado no ar:** abrir um e-mail em "Outros", Mais ações › Fazer
+ofício, conferir e emitir; NF → contabilidade num e-mail fora do card.
+Home: a Sofia recortada da arte (object-view-box) — o recorte foi calculado
+pela foto da tela; **conferir em HML** se não sobrou pedaço do balão.
+
 ### 132. 🔴 MEDIÇÃO DA CATEGORIA + NOTA INTERNA (09/11/2026)
 
 O "não pede nada" do robô foi DESLIGADO a pedido do usuário ("não quero

@@ -39,6 +39,12 @@ function caixaOficioJuntoDoEmail(id, a2, a3) {
   var forcar = a3 !== undefined ? a2 === true : false;
   return cxoDoEmail_(id, "JUNTO", forcar, a3 !== undefined ? a3 : a2);
 }
+/** ATALHO do e-mail (10/11/2026, "B, começa pela fase 1"): o ofício do
+    tipo que a PESSOA escolheu, qualquer que seja o card do e-mail.
+    card = OFICIO_FILIACAO | OFICIO_DESFILIACAO | OFICIO_OPOSICAO | OFICIO_TAXA | OFICIO_TAXA_ASSISTENCIAL. */
+function caixaOficioComTipo(id, card, forcar, tokenSessao) {
+  return cxoDoEmail_(id, "ATALHO:" + String(card || ""), forcar === true, tokenSessao);
+}
 function cxoDoEmail_(id, modo, forcar, tokenSessao) {
   try {
     var sessao = cxsExigir_(tokenSessao);
@@ -47,11 +53,18 @@ function cxoDoEmail_(id, modo, forcar, tokenSessao) {
     var card = cxsTipoDoEmail_(conv.p, est);
     var junto = modo === "JUNTO";
     if (junto) card = cxsOficioJunto_(conv.p, card);
+    var assistencialForcada = false;
+    if (String(modo || "").indexOf("ATALHO:") === 0) {
+      card = String(modo).substring(7);
+      if (card === "OFICIO_TAXA_ASSISTENCIAL") { card = "OFICIO_TAXA"; assistencialForcada = true; }
+      if (!cxoTipoOficio_(card)) return { ok: false, mensagem: "Tipo de ofício inválido." };
+    }
     var tipo = cxoTipoOficio_(card);
     if (!tipo) return { ok: true, oficio: null };
+    if (assistencialForcada) tipo = "Taxa Assistencial";
     /* O card de taxa é um só: o texto do e-mail diz qual das duas. */
-    if (card === "OFICIO_TAXA" && /(taxa|contribuicao) assistencial/.test(cxsSemAcento_(conv.msgs.map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" ")))) tipo = "Taxa Assistencial";
-    var chave = cxoChave_(id, conv.p, card);
+    else if (card === "OFICIO_TAXA" && /(taxa|contribuicao) assistencial/.test(cxsSemAcento_(conv.msgs.map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" ")))) tipo = "Taxa Assistencial";
+    var chave = cxoChave_(id, conv.p, card + (assistencialForcada ? "_ASSIST" : ""));
     var cache = null;
     try { cache = CacheService.getScriptCache(); var c0 = forcar ? null : cache.get(chave); if (c0) return JSON.parse(c0); } catch (e0) {}
 
@@ -115,7 +128,7 @@ function cxoDoEmail_(id, modo, forcar, tokenSessao) {
     });
     var escola = pessoas.length && pessoas[0].escola ? pessoas[0].escola : (escolaGeral ? ofdEscolaCurta_(escolaGeral.escola) : null);
     var out = { ok: true, oficio: {
-      tipo: tipo, card: card, tipoOrigem: junto ? "o e-mail fala de " + tipo.toLowerCase() + " junto com a mensalidade — confira"
+      tipo: tipo, card: card, tipoOrigem: String(modo || "").indexOf("ATALHO:") === 0 ? "pelo atalho que você escolheu no e-mail" : junto ? "o e-mail fala de " + tipo.toLowerCase() + " junto com a mensalidade — confira"
         : est && est.TIPO_CORRIGIDO ? "pelo card que a equipe escolheu" : "pelo assunto e pelo anexo (regra) — confira",
       escola: escola, escolaOrigem: pessoas.length ? pessoas[0].escolaOrigem : (escolaGeral ? escolaGeral.origem : ""),
       para: escola ? escola.email : "", paraOrigem: escola && escola.email ? "e-mail da escola no cadastro" : "a escola não tem e-mail no cadastro",

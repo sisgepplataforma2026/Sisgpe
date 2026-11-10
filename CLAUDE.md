@@ -396,6 +396,20 @@ a pessoa escolhe) e "Anexar e enviar à contabilidade" usa o caminho do
 módulo de Despesas (uploadDocumentoManual + enviarLoteDespesasParaContabilidade,
 o e-mail com o link de confirmação). CaixaNotaFiscal.gs. Próximo: voucher.
 
+## ⚡ ATALHOS NO E-MAIL (10/11/2026)
+
+O usuário: *"tudo que a gente oferece no sindicato, seja ofício, filiação,
+desfiliação, taxa negocial, taxa assistencial, voucher, a gente deveria ter
+esses atalhos direto"*; opção **B** (o robô sugere 1–2 com o motivo + "Mais
+ações"); *"começa pela fase 1"*. CaixaAtalhos.gs + caixaOficioComTipo.
+- Fase 1 (feita): os 4 ofícios + taxa assistencial, voucher, NF →
+  contabilidade e encaminhar, em QUALQUER e-mail, pelos fluxos que já
+  existem. A memória guarda o atalho usado (tarefa "atalho-email").
+- **Não tem recibo de mensalidade** (usuário, 10/11/2026) — não propor.
+- Fase 2: Recibo diverso pelo e-mail — *"pode ser de processo, compras
+  avulsas e etc."*
+- Fase 3 (só se ele quiser): cadastro do associado pela ficha.
+
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 
 Desenho aprovado. No reenvio: motivo (só reenviar = como antes / alguns não
