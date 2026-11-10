@@ -1227,9 +1227,14 @@ button,input{font-family:inherit;}
 .spSofiaImg{top:auto!important;bottom:0!important;right:4%!important;left:auto!important;height:94%!important;width:auto!important;max-width:100%!important;object-fit:contain!important;object-position:right bottom!important;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14%)!important;mask-image:linear-gradient(90deg,transparent 0,#000 14%)!important;filter:none!important}
 }
 @media(min-width:981px){
-.spHero h1{font-size:34px!important;margin-bottom:8px!important}
+/* "Consegue diminuir o espaço?" (10/11/2026): topo mais justo — menos
+   folga em cima e embaixo, e os atalhos numa linha só. */
+.spHero{padding:16px 36px 16px!important}
+.spResumoDia{margin-top:4px!important}
+.spChips{margin-top:8px!important;max-width:calc(64% - 36px)!important;flex-wrap:nowrap!important}
+.spHero h1{font-size:34px!important;margin-bottom:6px!important}
 .spHero p{font-size:14px!important;line-height:1.6!important}
-.spAskBox{padding:12px 14px!important;margin-top:14px!important}
+.spAskBox{padding:12px 14px!important;margin-top:10px!important}
 .spAskBox label{font-size:14px!important;margin-bottom:8px!important}
 .spSend{width:42px!important;height:42px!important;font-size:18px!important;border-radius:14px!important}
 .spIconBtn{width:32px!important;height:32px!important;font-size:14px!important}
