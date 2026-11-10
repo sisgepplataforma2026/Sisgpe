@@ -1223,6 +1223,9 @@ button,input{font-family:inherit;}
 @supports (object-view-box: inset(0)) {
 @media(min-width:981px){
 .spSofiaImg{top:4%!important;right:2%!important;bottom:auto!important;height:96%!important;width:auto!important;max-width:100%!important;object-view-box:inset(0 0 15% 31%);object-fit:contain!important;object-position:right bottom!important}
+/* "Ainda aparece fundos diferentes" (10/11/2026): o fundo da arte vira um
+   retângulo — as bordas somem em degradê e a foto se funde com o topo. */
+.spSofiaImg{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 30%,#000 90%,transparent 100%),linear-gradient(180deg,transparent 0,#000 6%,#000 82%,transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent 0,#000 30%,#000 90%,transparent 100%),linear-gradient(180deg,transparent 0,#000 6%,#000 82%,transparent 100%);mask-composite:intersect}
 }
 }
 @media(min-width:981px){
