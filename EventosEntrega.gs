@@ -469,16 +469,43 @@ function compasso_confirmarEnvioConfirmacao(inscricaoId, tokenSessao) {
 }
 
 /** Texto do e-mail e do WhatsApp num lugar só — mudar a redação é um lugar só. */
+/* O TEXTO DO INGRESSO (WhatsApp, e o texto simples do e-mail) — 12/11/2026.
+   O usuário: "melhora o texto do ingresso no zap" e "ele tem que levar o
+   documento também para conferir". Entram a data, a hora e o local da festa
+   (os mesmos do e-mail, de compasso_dadosDaFesta_), o documento com foto e o
+   negrito do WhatsApp (*assim*). Linha sem dado não aparece. */
 function compasso_textoEntrega_(ing, url) {
-  return 'Olá, ' + String(ing.nome || '').split(' ')[0] + '!\n\n' +
-    'Sua inscrição para a FESTA COMPASSO DA VIDA 2026 foi validada e o seu ingresso ' +
-    'está pronto.\n\n' +
-    'Ingresso: ' + String(ing.numero || '') + '\n' +
-    'Abra aqui: ' + url + '\n\n' +
-    'Guarde este link. Na entrada, basta apresentar o QR Code — pode ser na tela do ' +
-    'celular ou impresso.\n\n' +
-    'O ingresso é pessoal e vale para UMA entrada. Não compartilhe o link.\n\n' +
-    'SindEducação-ES';
+  var f = {};
+  try { f = compasso_dadosDaFesta_() || {}; } catch (e) { f = {}; }
+  var quando = '';
+  try { quando = compasso_dataPorExtenso_(f.data); } catch (e) { quando = ''; }
+  var nome = String(ing.nome || '').trim().split(/\s+/)[0] || '';
+  nome = nome ? nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase() : '';
+
+  var l = [];
+  l.push('Olá' + (nome ? ', *' + nome + '*' : '') + '! 🎉');
+  l.push('');
+  l.push('Sua inscrição na *Festa Compasso da Vida 2026* foi confirmada e o seu ingresso já está pronto.');
+  l.push('');
+  l.push('🎟️ *Ingresso nº ' + String(ing.numero || '') + '*');
+  if (quando) l.push('📅 *Quando:* ' + quando + (f.horaInicio ? ', às ' + f.horaInicio : ''));
+  if (f.horaAbertura) l.push('🚪 Portões abertos a partir das ' + f.horaAbertura);
+  if (f.local) l.push('📍 *Onde:* ' + f.local);
+  if (f.endereco) l.push(f.endereco);
+  if (f.referencia) l.push('(' + String(f.referencia).replace(/\.$/, '') + ')');
+  l.push('');
+  l.push('👉 *Seu ingresso, com o QR Code:*');
+  l.push(url);
+  l.push('');
+  l.push('*Na entrada, apresente:*');
+  l.push('✅ o QR Code (na tela do celular ou impresso);');
+  l.push('✅ um *documento oficial com foto* (RG, CNH ou outro), para conferência.');
+  l.push('');
+  l.push('⚠️ O ingresso é pessoal e vale para *uma* entrada. Não encaminhe este link.');
+  l.push('');
+  l.push('Até lá! 💙');
+  l.push('*SindEducação-ES*');
+  return l.join('\n');
 }
 
 /**
@@ -560,7 +587,8 @@ function compasso_emailIngressoHtml_(ing, url, temPdf) {
         'Abrir meu ingresso</a></p>' +
 
       '<p style="margin:0 0 10px;font:14px Arial;color:#475569;line-height:1.6">' +
-        'Na entrada, basta apresentar o QR Code — pode ser na tela do celular ou impresso.' +
+        'Na entrada, apresente o QR Code (na tela do celular ou impresso) e um ' +
+        '<b>documento oficial com foto</b> (RG, CNH ou outro), para conferência.' +
         (abertura ? ' ' + esc(abertura) : '') + '</p>' +
       (temPdf ? '<p style="margin:0 0 10px;font:14px Arial;color:#475569;line-height:1.6">' +
         'O ingresso também vai anexado em PDF, para imprimir.</p>' : '') +
