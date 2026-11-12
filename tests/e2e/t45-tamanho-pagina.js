@@ -53,7 +53,11 @@ const RAIZ = path.resolve(__dirname, "../..");
    TETO (3,5 MB): patamar que ninguém pretendeu atingir. Se a página chegar
    lá, houve include em duplicidade, arquivo colado duas vezes ou coisa
    parecida — é defeito, não crescimento. */
-const TETO = Math.round(3.5 * 1024 * 1024);
+/* 12/11/2026: o teto passou de 3,5 para 3,75 MB. A página chegou a 3,50 MB
+   com a Caixa v2 — conferido: nenhum include repetido (67, cada um uma vez),
+   crescimento real (Caixa de e-mails, atalhos, Home nova). O próximo passo
+   de verdade é o carregamento sob demanda (ver abaixo), não subir de novo. */
+const TETO = Math.round(3.75 * 1024 * 1024);
 const ATENCAO = Math.round(2.7 * 1024 * 1024);
 
 /* Se um dia o carregamento sob demanda entrar, o índice cai para a ordem de
