@@ -470,8 +470,17 @@ resposta (CXF_SINDICALIZACAO_MODELO em CaixaFerramentas.gs) e: *"se for
 email, sim o padrão de resposta é esse... podendo ser alterado também"*. O
 robô propõe nesse modelo (cxfRegraSindicalizacao_); o campo continua
 editável. Não vale para ficha anexa (essa vira ofício de filiação). Pedido
-em aberto: atalho para mandar pelo WhatsApp ao diretor que fará a visita
-(desenho a mostrar antes — REGRA 0.5). t254.
+aberto → FEITO em 12/11/2026: atalho "📱 Avisar o diretor da visita"
+(CaixaDiretorVisita.gs) — Jocimar Vila Real e Lindolpho Gadelha; WhatsApp de
+cada um cadastrado na tela (⚙ Diretores da visita, só administrador, nas
+Propriedades — nunca no código); o robô monta a mensagem do e-mail com a
+origem; o SISGEP abre o wa.me e o envio é o toque da pessoa; fica na nota
+interna e na memória ("diretor-visita"). t254, t257.
+
+**Caixa (12/11/2026):** o usuário escolheu "1 - embaixo, 2 - seletor": o
+e-mail aberto fica EMBAIXO da lista por padrão (cada um troca para ao lado ou
+janela no "📐", como o painel de leitura do Outlook) e as categorias ficam num
+seletor ▾.
 
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 

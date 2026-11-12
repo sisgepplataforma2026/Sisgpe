@@ -33,9 +33,11 @@ var CXA_ACOES = {
   NF_CONTAB:      { rotulo: "Enviar NF à contabilidade", icone: "🧾", grupo: "Financeiro", modulo: "financeiro", caixa: "", precisaAnexo: true },
   RECIBO:         { rotulo: "Fazer recibo diverso", icone: "🧾", grupo: "Recibos", modulo: "documentos", caixa: "" },
   RECIBO_ASSINADO:{ rotulo: "Recibo assinado → contabilidade", icone: "✍", grupo: "Recibos", modulo: "documentos", caixa: "", precisaAnexo: true },
-  ENCAMINHAR:     { rotulo: "Encaminhar", icone: "↪", grupo: "E-mail", caixa: "" }
+  ENCAMINHAR:     { rotulo: "Encaminhar", icone: "↪", grupo: "E-mail", caixa: "" },
+  /* 12/11/2026 (CaixaDiretorVisita.gs): a sindicalização é presencial. */
+  AVISAR_DIRETOR: { rotulo: "Avisar o diretor da visita (WhatsApp)", icone: "📱", grupo: "Sindicalização", caixa: "" }
 };
-var CXA_ORDEM = ["OF_FILIACAO", "OF_DESFILIACAO", "OF_OPOSICAO", "OF_TAXA", "OF_ASSISTENCIAL", "VOUCHER", "NF_CONTAB", "RECIBO", "RECIBO_ASSINADO", "ENCAMINHAR"];
+var CXA_ORDEM = ["OF_FILIACAO", "OF_DESFILIACAO", "OF_OPOSICAO", "OF_TAXA", "OF_ASSISTENCIAL", "VOUCHER", "NF_CONTAB", "RECIBO", "RECIBO_ASSINADO", "AVISAR_DIRETOR", "ENCAMINHAR"];
 var CXA_CARD_ACAO = { OFICIO_FILIACAO: "OF_FILIACAO", OFICIO_DESFILIACAO: "OF_DESFILIACAO", OFICIO_OPOSICAO: "OF_OPOSICAO",
   OFICIO_TAXA: "OF_TAXA", NOTA_FISCAL: "NF_CONTAB", VOUCHER: "VOUCHER" };
 
@@ -54,6 +56,8 @@ function cxaSugestoes_(p, est, disponiveis) {
   var msgs = vpeJson_(p.MENSAGENS_JSON, []), anexos = vpeJson_(p.ANEXOS_JSON, []);
   var texto = cxsSemAcento_(msgs.map(function (m) { return (m.assunto || "") + " " + (m.corpo || ""); }).join(" "));
   var nomes = cxsSemAcento_(anexos.map(function (a) { return a.nome || ""; }).join(" "));
+  /* 0. pedido de sindicalização → a visita é presencial (12/11/2026) */
+  try { if (cxfPedeSindicalizacao_(cxfConversaDe_(p))) add("AVISAR_DIRETOR", "pedido de sindicalização — a visita do diretor é presencial"); } catch (eS) {}
   /* 1. pelo card */
   add(CXA_CARD_ACAO[card], "pelo card do e-mail (" + ((CXS_TIPOS[card] || {}).rotulo || card) + ")");
   var junto = cxsOficioJunto_(p, card);

@@ -22,7 +22,8 @@ var PDD_TAREFAS = {
   "comprovante-conferido": "Leitura de comprovante",
   "oficio-email": "Ofício preparado do e-mail sem mudança",
   "atalho-email": "Atalho sugerido no e-mail",
-  "recibo-email": "Recibo diverso preenchido sem mudança"
+  "recibo-email": "Recibo diverso preenchido sem mudança",
+  "diretor-visita": "Diretor da visita sugerido certo"
 };
 var PDD_DIAS_ROBO = 90;
 
