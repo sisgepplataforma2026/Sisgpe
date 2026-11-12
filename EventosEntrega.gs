@@ -473,7 +473,10 @@ function compasso_confirmarEnvioConfirmacao(inscricaoId, tokenSessao) {
    O usuário: "melhora o texto do ingresso no zap" e "ele tem que levar o
    documento também para conferir". Entram a data, a hora e o local da festa
    (os mesmos do e-mail, de compasso_dadosDaFesta_), o documento com foto e o
-   negrito do WhatsApp (*assim*). Linha sem dado não aparece. */
+   negrito do WhatsApp (*assim*). Linha sem dado não aparece.
+   Sem o link (12/11/2026, "tira o link do ingresso, ele receberá em PDF"):
+   o ingresso vai em PDF, anexado pela pessoa no WhatsApp e anexado pelo
+   sistema no e-mail (o botão do e-mail continua no HTML). */
 function compasso_textoEntrega_(ing, url) {
   var f = {};
   try { f = compasso_dadosDaFesta_() || {}; } catch (e) { f = {}; }
@@ -494,14 +497,13 @@ function compasso_textoEntrega_(ing, url) {
   if (f.endereco) l.push(f.endereco);
   if (f.referencia) l.push('(' + String(f.referencia).replace(/\.$/, '') + ')');
   l.push('');
-  l.push('👉 *Seu ingresso, com o QR Code:*');
-  l.push(url);
+  l.push('📎 *Seu ingresso, com o QR Code, segue em PDF nesta conversa.* Guarde o arquivo no celular.');
   l.push('');
   l.push('*Na entrada, apresente:*');
-  l.push('✅ o QR Code (na tela do celular ou impresso);');
+  l.push('✅ o QR Code do PDF (na tela do celular ou impresso);');
   l.push('✅ um *documento oficial com foto* (RG, CNH ou outro), para conferência.');
   l.push('');
-  l.push('⚠️ O ingresso é pessoal e vale para *uma* entrada. Não encaminhe este link.');
+  l.push('⚠️ O ingresso é pessoal e vale para *uma* entrada. Não encaminhe este arquivo para outras pessoas.');
   l.push('');
   l.push('Até lá! 💙');
   l.push('*SindEducação-ES*');
