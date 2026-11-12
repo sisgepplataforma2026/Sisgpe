@@ -56,11 +56,12 @@ flags = {"INBOX.Sent": "\\HasNoChildren \\Sent", "INBOX.Trash": "\\HasNoChildren
 print("━━━ CÓPIA DA KINGHOST · destino de cada pasta")
 im = Imap(pastas, flags)
 linhas, total = M.levantar(im)
-dest = {n: d for n, _, d in linhas}
+dest = {n: d for n, _, d, _t in linhas}
 ok(dest["INBOX"] == 'pasta "CAIXA DE ENTRADA ANTIGA (KINGHOST)"', "caixa de entrada → pasta própria, fora da entrada do Gmail")
 ok(dest["INBOX.Sent"] == "Itens enviados", "enviados → Itens enviados")
 ok(dest["INBOX.FICHAS DE SINDICALIZAÇÃO"] == 'pasta "FICHAS DE SINDICALIZAÇÃO"', "pasta com acento (UTF-7) → mesmo nome")
 ok(dest["INBOX.OFICIOS.2025"] == 'pasta "OFICIOS/2025"', "subpasta → A/B")
+ok(M.destino({"nome": "INBOX.Drafts.CERTIFICADOS", "flags": ""}) == ("RASCUNHOS/CERTIFICADOS", False), "subpasta de Rascunhos → RASCUNHOS/…")
 ok(all(dest[x] == "fica de fora" for x in ["INBOX.Trash", "INBOX.Drafts", "INBOX.Spam"]), "lixeira, rascunhos e spam ficam de fora")
 ok(total == 3 + 2 + 150 + 1, "total a copiar: %d" % total)
 ok(all(im.modos), "toda pasta aberta em SÓ LEITURA")

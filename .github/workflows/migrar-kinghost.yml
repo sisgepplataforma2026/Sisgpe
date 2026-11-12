@@ -44,6 +44,7 @@ jobs:
           KINGHOST_SECRETARIA_SENHA: ${{ secrets.KINGHOST_SECRETARIA_SENHA }}
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           LIMITE_S: '19800'
+          MEDIR_TAMANHO: '1'
         run: |
           MODO="$(tr -d '[:space:]' < tools/kinghost-migrar/MODO)"
           if [ "$MODO" = "migrar" ]; then export SO_CONFERIR=0; else export SO_CONFERIR=1; fi

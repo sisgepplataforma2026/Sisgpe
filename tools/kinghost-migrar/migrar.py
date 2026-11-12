@@ -63,6 +63,8 @@ def destino(p):
     partes = [x for x in re.split(r"[./]", nome) if x]
     if partes and partes[0].upper() == "INBOX":
         partes = partes[1:]
+    if partes and re.match(r"drafts?$", partes[0], re.I):
+        partes[0] = "RASCUNHOS"   # subpasta criada dentro de Rascunhos
     return ("/".join(partes).strip() or ROTULO_ENTRADA, False)
 
 
@@ -74,6 +76,20 @@ def contar(imap, bruto):
     tipo, v = imap.response("UIDVALIDITY")
     uv = (v[0].decode() if v and v[0] else "") if tipo == "OK" else ""
     return n, uv
+
+
+def tamanho(imap, n):
+    """Soma do tamanho (bytes) da pasta já selecionada — só RFC822.SIZE."""
+    if not n:
+        return 0
+    tipo, partes = imap.fetch("1:*", "(RFC822.SIZE)")
+    total = 0
+    for x in partes or []:
+        t = x[0] if isinstance(x, tuple) else x
+        m = re.search(rb"RFC822\.SIZE (\d+)", t if isinstance(t, bytes) else str(t).encode())
+        if m:
+            total += int(m.group(1))
+    return total
 
 
 def uids_depois(imap, ultimo):
@@ -171,15 +187,23 @@ def gravar_estado(token, pid, fid, estado):
 
 def levantar(imap):
     """Todas as pastas, com destino e quantidade — nada é copiado."""
-    linhas, total = [], 0
+    linhas, total, bytes_ = [], 0, 0
     for p in P.listar_pastas(imap):
         d = destino(p)
         n, _ = contar(imap, p["bruto"])
+        tam = 0
+        if d is not None and n and os.environ.get("MEDIR_TAMANHO") == "1":
+            try:
+                tam = tamanho(imap, n)
+            except Exception:
+                tam = 0
         if d is None:
-            linhas.append((p["nome"], n, "fica de fora"))
+            linhas.append((p["nome"], n, "fica de fora", 0))
             continue
         total += n or 0
-        linhas.append((p["nome"], n, "Itens enviados" if d[1] else "pasta \"%s\"" % d[0]))
+        bytes_ += tam
+        linhas.append((p["nome"], n, "Itens enviados" if d[1] else "pasta \"%s\"" % d[0], tam))
+    levantar.bytes = bytes_
     return linhas, total
 
 
@@ -274,9 +298,9 @@ def main():
     print("Conectado à KingHost (só leitura).")
     linhas, total = levantar(con["imap"])
     print("PASTAS DA secretaria@ NA KINGHOST:")
-    for nome, n, para in linhas:
-        print("  %-45s %6s e-mail(s) → %s" % (nome, n if n is not None else "?", para))
-    print("Total a copiar: %d e-mail(s)." % total)
+    for nome, n, para, tam in linhas:
+        print("  %-45s %6s e-mail(s) %9.1f MB → %s" % (nome, n if n is not None else "?", tam / 1048576.0, para))
+    print("Total a copiar: %d e-mail(s), %.2f GB." % (total, getattr(levantar, "bytes", 0) / 1073741824.0))
     if os.environ.get("SO_CONFERIR") == "1":
         con["imap"].logout()
         print("Modo conferir: nada foi copiado.")
