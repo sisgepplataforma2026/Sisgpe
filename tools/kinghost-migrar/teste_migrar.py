@@ -151,5 +151,39 @@ cont3, _ = M.migrar({"imap": Cai({"INBOX": pastas["INBOX"]}, {}), "conectar": la
                     lambda: "tok", "raiz", {"pastas": {}, "lote": 0}, lambda e: None)
 ok(cont3["copiados"] == 3, "reconecta e continua (%d)" % cont3["copiados"])
 
+print("━━━ CÓPIA DA KINGHOST · Drive que recusa")
+import io
+import urllib.error
+
+
+def erro(cod, motivo):
+    return urllib.error.HTTPError("u", cod, "x", {}, io.BytesIO(('{"error":{"errors":[{"reason":"%s"}]}}' % motivo).encode()))
+
+
+seq = [erro(403, "userRateLimitExceeded"), erro(429, "rateLimitExceeded"), "ok"]
+
+
+def orig(*a):
+    x = seq.pop(0)
+    if isinstance(x, Exception):
+        raise x
+    return x
+
+
+esperas = []
+ok(M.drive_com_paciencia(orig, dormir=esperas.append)() == "ok" and esperas == [5, 10], "limite por minuto: espera e tenta de novo (%s)" % esperas)
+seq2 = [erro(403, "storageQuotaExceeded")]
+
+
+def orig2(*a):
+    raise seq2.pop(0)
+
+
+try:
+    M.drive_com_paciencia(orig2, dormir=lambda s: None)()
+    ok(False, "sem espaço deveria parar")
+except M.SemEspaco as e:
+    ok("sem espaço" in str(e), "sem espaço: para com o motivo à vista")
+
 print("\n%d falha(s)" % len(falhas))
 sys.exit(1 if falhas else 0)

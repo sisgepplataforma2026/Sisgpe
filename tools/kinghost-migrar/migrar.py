@@ -120,6 +120,40 @@ def descricao(raw, pasta, enviado, lido):
 
 # ── DRIVE ─────────────────────────────────────────────────────────────────
 
+class SemEspaco(Exception):
+    pass
+
+
+def drive_com_paciencia(original, dormir=None):
+    """O Drive responde 403/429 quando se sobe rápido demais (limite por
+    minuto) e 403 storageQuotaExceeded quando acaba o espaço. No primeiro caso
+    espera e tenta de novo; no segundo para, com o motivo à vista. 12/11/2026:
+    a primeira rodada morreu num 403 sem dizer qual dos dois era."""
+    import time
+    import urllib.error
+    dormir = dormir or time.sleep
+
+    def chamar(*a, **k):
+        espera = 5
+        for tentativa in range(8):
+            try:
+                return original(*a, **k)
+            except urllib.error.HTTPError as e:
+                try:
+                    corpo = e.read().decode("utf-8", "replace")
+                except Exception:
+                    corpo = ""
+                motivo = (re.search(r'"reason"\s*:\s*"([^"]+)"', corpo) or [None, ""])[1]
+                if e.code == 403 and motivo in ("storageQuotaExceeded", "quotaExceeded"):
+                    raise SemEspaco("Drive do Financeiro sem espaço (%s)" % motivo)
+                if e.code in (403, 429, 500, 502, 503, 504) and tentativa < 7:
+                    print("  Drive respondeu %d (%s) — esperando %ds e tentando de novo" % (e.code, motivo or "sem motivo", espera))
+                    dormir(espera)
+                    espera = min(espera * 2, 300)
+                    continue
+                raise RuntimeError("Drive %d: %s" % (e.code, motivo or corpo[:200]))
+    return chamar
+
 def _q(s):
     return urllib.parse.quote(s)
 
@@ -308,9 +342,15 @@ def migrar(con, tk, pid, estado, salvar, limite_tempo=None, relogio=None):
                 contar(con["imap"], p["bruto"])
                 raw, lido = baixar(con["imap"], uid)
             if raw:
-                subir(tk(), lote["id"], "%06d-%s.eml" % (lote["n"], uid), raw, descricao(raw, d[0], d[1], lido))
+                try:
+                    subir(tk(), lote["id"], "%06d-%s.eml" % (lote["n"], uid), raw, descricao(raw, d[0], d[1], lido))
+                except SemEspaco as e:
+                    print("  PAROU: " + str(e))
+                    return parar("sem espaço no Drive")
                 lote["n"] += 1
                 cont["copiados"] += 1
+                if cont["copiados"] % 100 == 0:
+                    print("  copiados nesta rodada: %d (pasta %s)" % (cont["copiados"], d[0] or "enviados"))
             st["ultimo"] = uid
             estado["pastas"][p["bruto"]] = st
             if cont["copiados"] and cont["copiados"] % 100 == 0:
@@ -331,6 +371,7 @@ def main():
         c = imaplib.IMAP4_SSL(servidor, 993, timeout=120)
         c.login(P.CAIXA, senha)
         return c
+    P.drive = drive_com_paciencia(P.drive)
     con = {"imap": conectar(), "conectar": conectar}
     print("Conectado à KingHost (só leitura).")
     linhas, total = levantar(con["imap"])
