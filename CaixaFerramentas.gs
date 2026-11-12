@@ -211,6 +211,39 @@ function cxfExemplosResposta_(caixa, tipoEmail, remetente) {
   } catch (e) { return ""; }
 }
 
+/* COMO O SINDICATO FAZ A SINDICALIZAÇÃO (12/11/2026). O usuário, vendo o
+   robô listar documentos a quem pediu para se sindicalizar: a sindicalização
+   é PRESENCIAL, na visita de um diretor ao local de trabalho; e deu o modelo
+   abaixo. Vale para quem pede para se sindicalizar e ainda não mandou ficha
+   (ficha anexa é outro fluxo: o ofício de filiação). */
+var CXF_SINDICALIZACAO_MODELO =
+  "[Primeiro nome], boa tarde!\n\nTudo bem?\n\n" +
+  "Agradecemos seu contato e o interesse em se associar ao SindEducação-ES.\n\n" +
+  "Informamos que o processo de sindicalização é realizado presencialmente, por meio de visita de um " +
+  "representante do sindicato ao local de trabalho.\n\n" +
+  "Nosso diretor entrará em contato com você para alinhar o melhor dia e horário para realizar sua " +
+  "sindicalização, ocasião em que serão prestados os esclarecimentos sobre os procedimentos, a documentação " +
+  "necessária e os benefícios oferecidos aos associados, incluindo o desconto educacional.\n\n" +
+  "Permanecemos à disposição para quaisquer esclarecimentos.\n\nTenha um excelente dia!";
+
+function cxfPedeSindicalizacao_(conv) {
+  var ult = conv && conv.ultimo || {};
+  var t = cxsSemAcento_(String(ult.assunto || "") + " " + String(ult.corpo || ""));
+  var temAnexo = false;
+  try { temAnexo = vpeJson_(conv.p.ANEXOS_JSON, []).length > 0; } catch (e) {}
+  if (temAnexo && /ficha/.test(t)) return false;
+  if (/desfilia|cancelar|cancelamento|desligamento|oposicao/.test(t)) return false;
+  return /sindicaliz|quero (me )?(filiar|associar)|(me )?filiar ao sindicato|me associar|associar-me|ser (associad|filiad|sindicalizad)|interesse em (se )?(associar|filiar|sindicalizar)/.test(t);
+}
+
+function cxfRegraSindicalizacao_(conv) {
+  if (!cxfPedeSindicalizacao_(conv)) return "";
+  return "COMO O SINDICATO FAZ (regra do sindicato — siga): a sindicalização é PRESENCIAL, por visita de um " +
+    "diretor ao local de trabalho. NÃO liste documentos nem passos, NÃO peça ficha, NÃO diga \"anexar\". " +
+    "Responda neste modelo, trocando só o primeiro nome e o cumprimento conforme a hora (bom dia/boa tarde), " +
+    "e mantendo o benefício que a pessoa citou:\n" + CXF_SINDICALIZACAO_MODELO + "\n\n";
+}
+
 /** Uma resposta escrita pela IA com o e-mail + o que o SISGEP sabe. Não envia. */
 /* (id, token) ou (id, forcar, token): o clique em ✨ pede uma nova; ao abrir
    a conversa, a já feita vale. */
@@ -240,6 +273,7 @@ function caixaSugerirResposta(id, a2, a3) {
       "Cite a CCT, se precisar, pela numeração do registro no MTE (ES000256/2026). Não assine (a assinatura entra depois). " +
       "Responda ao que foi pedido de fato: se a pessoa pede um documento (boleto, guia, declaração, relação), escreva como quem " +
       "envia o documento em anexo e diga em \"anexar\" o que precisa ir junto. Comece cumprimentando pelo primeiro nome.\n\n" +
+      cxfRegraSindicalizacao_(conv) +
       cxfExemplosResposta_(String(conv.p.CAIXA || "SECRETARIA"), cxsTipoDoEmail_(conv.p, cxsEstados_()[String(id)]),
         cxsEmail_(conv.ultimo.replyTo || conv.ultimo.de)) +
       (sabe.length ? "O QUE O SISTEMA SABE:\n" + sabe.join("\n") + "\n\n" : "") +
@@ -248,7 +282,8 @@ function caixaSugerirResposta(id, a2, a3) {
     var j = vpeChamarIA_(prompt, null, "sugerir-resposta");
     var corpo = String((j && j.resposta) || "").trim();
     if (!corpo) return { ok: false, mensagem: "A IA não devolveu texto. Escreva a resposta à mão." };
-    var out = { ok: true, texto: corpo + "\n\n" + vpeAssinaturaTexto_(sessao), anexar: String((j && j.anexar) || "").trim().substring(0, 200) };
+    var out = { ok: true, texto: corpo + "\n\n" + vpeAssinaturaTexto_(sessao),
+      anexar: cxfPedeSindicalizacao_(conv) ? "" : String((j && j.anexar) || "").trim().substring(0, 200) };
     try { cache.put(chaveCache, JSON.stringify(out), 21600); } catch (e1) {}
     return out;
   } catch (err) {

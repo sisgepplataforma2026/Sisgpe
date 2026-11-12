@@ -440,6 +440,17 @@ ações"); *"começa pela fase 1"*. CaixaAtalhos.gs + caixaOficioComTipo.
   assinado que volta é anexado e vai à contabilidade (a mesma das Despesas).
 - Fase 3 (só se ele quiser): cadastro do associado pela ficha.
 
+## 🪪 PEDIDO DE SINDICALIZAÇÃO POR E-MAIL (12/11/2026)
+
+A sindicalização é **presencial**, na visita de um diretor ao local de
+trabalho — não se listam documentos por e-mail. O usuário deu o modelo de
+resposta (CXF_SINDICALIZACAO_MODELO em CaixaFerramentas.gs) e: *"se for
+email, sim o padrão de resposta é esse... podendo ser alterado também"*. O
+robô propõe nesse modelo (cxfRegraSindicalizacao_); o campo continua
+editável. Não vale para ficha anexa (essa vira ofício de filiação). Pedido
+em aberto: atalho para mandar pelo WhatsApp ao diretor que fará a visita
+(desenho a mostrar antes — REGRA 0.5). t254.
+
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 
 Desenho aprovado. No reenvio: motivo (só reenviar = como antes / alguns não
