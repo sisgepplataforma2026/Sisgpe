@@ -365,6 +365,22 @@ para o SISGEP ("Caixa da Secretaria"), com esta condição:
   pasta, eu aviso"). 2026-1 e 2026-2 já passaram. Não acrescentar pasta
   sem ele pedir.
 
+## 📨 TODA A KINGHOST NO GMAIL DA SECRETARIA (12/11/2026)
+
+O usuário: *"tem que copiar todos os e-mails"*, *"e todas as pastas também"*,
+*"tudo no King deve aparecer no SISGEP — é o mesmo e-mail"*. As pastas da
+secretaria@ (ABRIR, FICHAS DE SINDICALIZAÇÃO, OFÍCIOS…) só existiam na
+KingHost; o SISGEP lê o Gmail da Secretaria. Cópia única, em duas peças:
+tools/kinghost-migrar/migrar.py (GitHub, IMAP SÓ LEITURA, lotes no Drive) e
+leitorMigracaoKingHost_ (leitor: Gmail.Users.Messages.import na pasta de
+mesmo nome, NUNCA na caixa de entrada; Enviados → Itens enviados; mesmo
+Message-ID não duplica, só ganha a pasta). Caixa de entrada antiga → pasta
+"CAIXA DE ENTRADA ANTIGA (KINGHOST)". Lixeira, Spam e Rascunhos ficam de fora.
+Modo em tools/kinghost-migrar/MODO (conferir|migrar); workflow
+migrar-kinghost.yml; retoma de onde parou. Testes: teste_migrar.py e t255.
+NÃO usar a importação do próprio Gmail (duplicaria a caixa de entrada e
+gastaria IA).
+
 ## 📄 ROBÔ DAS FICHAS DO DRIVE → OFÍCIO (03/11/2026, em desenho)
 
 O usuário: a maioria dos ofícios nasce de FICHA EM PAPEL, digitalizada e
