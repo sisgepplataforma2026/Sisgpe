@@ -6949,3 +6949,15 @@ Ações no e-mail aberto (desenho docs/mock-acoes-no-email.png) + secretaria@ co
 | NF de prestador (financeiro@, card Notas fiscais) → 📤 Anexar e enviar à contabilidade | despesa certa achada pelo e-mail do prestador; despesa vira "enviada à contabilidade"; o e-mail da contabilidade chega com o link |
 | Voucher pronto → ✓ Conferir, emitir e enviar / Conferir e só emitir | o mesmo de antes, com a ordem nova |
 | secretaria@ (DEPENDE do passo único na conta da Secretaria: App da Web + caixaApiConfigurar) | pastas na lateral (Enviados, Rascunhos, Lixeira, criadas); Novo e-mail sai como secretaria@ com a assinatura |
+
+## 🔴 12/11/2026 — o que foi entregue hoje e ainda não rodou no ar
+
+| Onde | Teste | Esperado |
+|---|---|---|
+| PRODUÇÃO (auditoria t250) | Recibo comum e Recibo diverso: gerar 1 | PDF sai com data por extenso, CPF/CNPJ e PIX formatados |
+| PRODUÇÃO | 📎 da Sofia na Home: anexar um PDF | a Sofia lê o arquivo (antes nunca funcionou) |
+| PRODUÇÃO | Benefícios, Portal do Associado, Despesas | o Oftalmo não aparece em lugar nenhum (o código continua lá) |
+| PRODUÇÃO | Texto do ingresso no WhatsApp | sem link, avisa que vai em PDF, pede documento com foto (só dá para ver com ingresso emitido — depende do Firebase) |
+| HML | Caixa: e-mail pedindo sindicalização (sem ficha) | a proposta de resposta vem no modelo da visita do diretor, sem lista de documentos |
+| HML | Caixa: rolar a lista | cabeçalho, cards, filtros e ações ficam parados; só os e-mails rolam |
+| Gmail da Secretaria | Cópia da KingHost (opção 3, ~21 mil e-mails) | as pastas da KingHost aparecem na lateral da secretaria@ e no "Mover para…"; nada novo em "a tratar" |
