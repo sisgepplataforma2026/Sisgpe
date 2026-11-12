@@ -77,4 +77,18 @@ b.passo("6. Teto do dia: não toma o tempo do leitor");
 props.setProperty("MIG_DIA", JSON.stringify({ d: ctx.Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd"), ms: 99999999 }));
 lotes.push(lote("lote-000006", [arq("000000-7.eml", { r: "P", s: false, u: false, m: "<z@x>" })]));
 b.ok(ctx.leitorMigracaoKingHost_().pausa === "teto do dia", "pausa até amanhã");
+b.passo("7. Conta quase cheia: para antes de lotar (folga de 2 GB)");
+props.setProperty("MIG_DIA", "{}");
+const GB = 1024 * 1024 * 1024;
+ctx.DriveApp.getStorageLimit = () => 15 * GB;
+ctx.DriveApp.getStorageUsed = () => 13.5 * GB;
+importados.length = 0;
+const rr = ctx.leitorMigracaoKingHost_();
+b.ok(/sem espaço/.test(rr.pausa) && importados.length === 0, "não importa nada", rr.pausa);
+ctx.DriveApp.getStorageUsed = () => 13 * GB - 150;   // cabe 1 arquivo de 100 bytes, não 2
+lotes.push(lote("lote-000007", [arq("000000-a.eml", { r: "P", s: false, u: false, m: "<y1@x>" }), arq("000001-b.eml", { r: "P", s: false, u: false, m: "<y2@x>" })]));
+const r2 = ctx.leitorMigracaoKingHost_();
+/* O lote 6 (1 arquivo, parado pelo teto do dia) vem antes; depois dele só sobram 50 bytes. */
+b.ok(/sem espaço/.test(r2.pausa || "") && importados.length === 1 && JSON.parse(props.getProperty("MIG_ATUAL")).lote === "lote-000007",
+  "importa o que cabe e para, guardando o ponto (" + importados.length + ")", JSON.stringify(r2));
 b.resumo();

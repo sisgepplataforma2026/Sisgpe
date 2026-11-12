@@ -45,10 +45,14 @@ import pendentes as P  # noqa: E402
 PASTA_DRIVE = "SISGEP — Migração KingHost (temporário)"
 ESTADO = "estado-migracao.json"
 POR_LOTE = 100
-LOTES_NA_FILA = 20
+LOTES_NA_FILA = 10
 ROTULO_ENTRADA = "CAIXA DE ENTRADA ANTIGA (KINGHOST)"
 FORA = re.compile(r"(^|[./])(trash|lixeira|lixo|junk|spam|drafts?|rascunhos?)$", re.I)
 FLAGS_FORA = ("\\Trash", "\\Junk", "\\Drafts", "\\Noselect")
+# OPÇÃO 3 DO USUÁRIO (12/11/2026): tudo junto dava 38 GB e o Gmail gratuito da
+# Secretaria tem 15 GB. Ficam SÓ na KingHost (que continua guardando tudo):
+# os Enviados (14 GB) e os certificados de 2022 a 2025.
+SO_NA_KINGHOST = re.compile(r"(^|[./])CERTIFICADOS?\s+202[2-5]\b", re.I)
 
 
 def destino(p):
@@ -57,7 +61,9 @@ def destino(p):
     if any(f in flags for f in FLAGS_FORA) or FORA.search(nome):
         return None
     if P.ENVIADOS.search(nome) or "\\Sent" in flags:
-        return ("", True)
+        return None   # opção 3: os Enviados ficam na KingHost
+    if SO_NA_KINGHOST.search(nome):
+        return None
     if nome.upper() == "INBOX":
         return (ROTULO_ENTRADA, False)
     partes = [x for x in re.split(r"[./]", nome) if x]
@@ -198,13 +204,34 @@ def levantar(imap):
             except Exception:
                 tam = 0
         if d is None:
-            linhas.append((p["nome"], n, "fica de fora", 0))
+            linhas.append((p["nome"], n, "fica só na KingHost", 0))
             continue
         total += n or 0
         bytes_ += tam
         linhas.append((p["nome"], n, "Itens enviados" if d[1] else "pasta \"%s\"" % d[0], tam))
     levantar.bytes = bytes_
     return linhas, total
+
+
+ESPERA_S = 600
+
+
+def esperar_fila(tk, pid, relogio, t0, limite_tempo, dormir=None):
+    """Fila cheia: espera o leitor terminar lotes (ele roda a cada 15 min),
+    apaga os terminados e devolve quantos ainda esperam. None = acabou o tempo."""
+    import time
+    dormir = dormir or time.sleep
+    while True:
+        if limite_tempo is None or relogio() - t0 + ESPERA_S > limite_tempo:
+            return None
+        dormir(ESPERA_S)
+        lotes = listar(tk(), "'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false" % pid)
+        for l in lotes:
+            if l["name"].endswith(" OK"):
+                P.drive(tk(), "PATCH", "https://www.googleapis.com/drive/v3/files/" + l["id"], json.dumps({"trashed": True}).encode())
+        na = len([l for l in lotes if not l["name"].endswith(" OK")])
+        if na < LOTES_NA_FILA:
+            return na
 
 
 def migrar(con, tk, pid, estado, salvar, limite_tempo=None, relogio=None):
@@ -237,10 +264,16 @@ def migrar(con, tk, pid, estado, salvar, limite_tempo=None, relogio=None):
         fechar()
         salvar(estado)
         return cont, motivo
+    fila = []
     for p in P.listar_pastas(con["imap"]):
-        d = destino(p)
-        if d is None:
+        if destino(p) is None:
             continue
+        n0, _ = contar(con["imap"], p["bruto"])
+        fila.append((n0 or 0, p))
+    # As pastas pequenas primeiro: aparecem logo no SISGEP; as grandes depois.
+    fila.sort(key=lambda x: x[0])
+    for _n0, p in fila:
+        d = destino(p)
         n, uv = contar(con["imap"], p["bruto"])
         if n is None:
             continue
@@ -253,7 +286,11 @@ def migrar(con, tk, pid, estado, salvar, limite_tempo=None, relogio=None):
             if lote["id"] is None or lote["n"] >= POR_LOTE:
                 fechar()
                 if na_fila >= LOTES_NA_FILA:
-                    return parar("fila cheia")
+                    fechar()
+                    salvar(estado)
+                    na_fila = esperar_fila(tk, pid, relogio, t0, limite_tempo)
+                    if na_fila is None:
+                        return parar("fila cheia")
                 estado["lote"] += 1
                 lote["nome"] = "lote-%06d" % estado["lote"]
                 lote["id"] = pasta(tk(), "enchendo-" + lote["nome"], pai=pid)

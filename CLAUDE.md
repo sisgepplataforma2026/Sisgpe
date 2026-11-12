@@ -380,6 +380,12 @@ Modo em tools/kinghost-migrar/MODO (conferir|migrar); workflow
 migrar-kinghost.yml; retoma de onde parou. Testes: teste_migrar.py e t255.
 NÃO usar a importação do próprio Gmail (duplicaria a caixa de entrada e
 gastaria IA).
+**Medido em 12/11/2026: 45.763 e-mails, 38 GB — não cabem nos 15 GB do Gmail
+gratuito.** O usuário escolheu a **opção 3**: ficam SÓ na KingHost os
+Enviados (14 GB) e os certificados de 2022 a 2025; vem o resto (~21 mil
+e-mails, ~10 GB), pastas pequenas primeiro. O leitor para sozinho se a conta
+chegar a 2 GB do limite (MIG_SEM_ESPACO). Se um dia ele comprar espaço, é só
+tirar SO_NA_KINGHOST/Enviados de migrar.py e rodar de novo (retoma).
 
 ## 📄 ROBÔ DAS FICHAS DO DRIVE → OFÍCIO (03/11/2026, em desenho)
 

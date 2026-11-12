@@ -58,12 +58,16 @@ im = Imap(pastas, flags)
 linhas, total = M.levantar(im)
 dest = {n: d for n, _, d, _t in linhas}
 ok(dest["INBOX"] == 'pasta "CAIXA DE ENTRADA ANTIGA (KINGHOST)"', "caixa de entrada → pasta própria, fora da entrada do Gmail")
-ok(dest["INBOX.Sent"] == "Itens enviados", "enviados → Itens enviados")
+ok(dest["INBOX.Sent"] == "fica só na KingHost", "opção 3: enviados ficam na KingHost")
+ok(M.destino({"nome": "INBOX.CERTIFICADO 2024-1", "flags": ""}) is None and M.destino({"nome": "INBOX.CERTIFICADOS 2025-1", "flags": ""}) is None
+   and M.destino({"nome": "INBOX.CERTIFICADO 2022 E 2022-1", "flags": ""}) is None, "opção 3: certificados 2022–2025 ficam na KingHost")
+ok(M.destino({"nome": "INBOX.CERTIFICADOS 2026-1 - EMITIDOS", "flags": ""}) == ("CERTIFICADOS 2026-1 - EMITIDOS", False)
+   and M.destino({"nome": "INBOX.CERTIFICADO 2027-1", "flags": ""}) == ("CERTIFICADO 2027-1", False), "certificados de 2026 e 2027 vêm")
 ok(dest["INBOX.FICHAS DE SINDICALIZAÇÃO"] == 'pasta "FICHAS DE SINDICALIZAÇÃO"', "pasta com acento (UTF-7) → mesmo nome")
 ok(dest["INBOX.OFICIOS.2025"] == 'pasta "OFICIOS/2025"', "subpasta → A/B")
 ok(M.destino({"nome": "INBOX.Drafts.CERTIFICADOS", "flags": ""}) == ("RASCUNHOS/CERTIFICADOS", False), "subpasta de Rascunhos → RASCUNHOS/…")
-ok(all(dest[x] == "fica de fora" for x in ["INBOX.Trash", "INBOX.Drafts", "INBOX.Spam"]), "lixeira, rascunhos e spam ficam de fora")
-ok(total == 3 + 2 + 150 + 1, "total a copiar: %d" % total)
+ok(all(dest[x] == "fica só na KingHost" for x in ["INBOX.Trash", "INBOX.Drafts", "INBOX.Spam"]), "lixeira, rascunhos e spam ficam de fora")
+ok(total == 3 + 150 + 1, "total a copiar: %d" % total)
 ok(all(im.modos), "toda pasta aberta em SÓ LEITURA")
 
 print("━━━ CÓPIA DA KINGHOST · lotes no Drive e retomada")
@@ -98,13 +102,14 @@ estado = {"pastas": {}, "lote": 0}
 salvos = []
 con = {"imap": Imap(pastas, flags), "conectar": lambda: Imap(pastas, flags)}
 cont, motivo = M.migrar(con, lambda: "tok", "raiz", estado, lambda e: salvos.append(json.dumps(e)))
-ok(cont["copiados"] == 100 and motivo == "fila cheia", "fila cheia: para em 1 lote de 100 (%d, %s)" % (cont["copiados"], motivo))
+ok(cont["copiados"] == 100 and motivo == "fila cheia", "fila cheia e sem tempo para esperar: para em 1 lote de 100 (%d, %s)" % (cont["copiados"], motivo))
 ok(all("PEEK" in str(x) for x in con["imap"].itens), "busca com BODY.PEEK (não marca como lido)")
 ok(all(n.startswith("lote-") for n in drive["pastas"].values()), "lote só ganha o nome que o leitor pega quando está completo")
 ok(drive["arqs"] and list(drive["pastas"].values())[0] == "lote-000001" and nomes_vistos == ["lote-000001"], "nasce 'enchendo-', fecha como 'lote-000001'")
-d0 = drive["arqs"][0][2]
-ok(d0["r"] == "CAIXA DE ENTRADA ANTIGA (KINGHOST)" and d0["m"] == "<in-0@x>" and "u" in d0, "descrição: pasta, Message-ID, lido/não lido")
-ok(any(a[2]["s"] for a in drive["arqs"]), "os enviados vão marcados como enviados")
+d0 = [a[2] for a in drive["arqs"] if a[2]["r"].startswith("CAIXA")][0]
+ok(d0["m"] == "<in-0@x>" and "u" in d0, "descrição: pasta, Message-ID, lido/não lido")
+ok(not any(a[2]["s"] for a in drive["arqs"]), "nenhum enviado copiado (opção 3)")
+ok(drive["arqs"][0][2]["r"] == "OFICIOS/2025", "as pastas pequenas vêm primeiro")
 ok(not any(a[2]["m"].startswith(("<tr", "<dr", "<sp")) for a in drive["arqs"]), "nada da lixeira, rascunhos ou spam")
 # o leitor termina o lote: vira OK; a próxima rodada apaga e continua de onde parou
 for k in list(drive["pastas"]):
@@ -118,6 +123,17 @@ ok(len(lixo) >= 1, "lote terminado pelo leitor vai para a lixeira do Drive")
 mids = [a[2]["m"] for a in drive["arqs"]]
 ok(len(mids) == len(set(mids)), "retomou sem repetir nenhum e-mail")
 ok(len(drive["arqs"]) == total and motivo2 == "tudo copiado", "no fim, todos copiados: %d de %d" % (len(drive["arqs"]), total))
+
+print("━━━ CÓPIA DA KINGHOST · fila cheia: espera o leitor")
+estados = [["lote-1", "lote-2"], ["lote-1 OK", "lote-2"]]
+M.listar = lambda tok, q, campos=None: [{"id": "i%d" % k, "name": n} for k, n in enumerate(estados.pop(0) if estados else [])]
+M.LOTES_NA_FILA = 2
+apagados = []
+M.P.drive = lambda tok, met, url, corpo=None, tipo=None: apagados.append(url) or {}
+t = [0]
+na = M.esperar_fila(lambda: "tok", "raiz", lambda: t[0], 0, 99999, dormir=lambda s: t.__setitem__(0, t[0] + s))
+ok(na == 1 and len(apagados) == 1 and t[0] == 2 * M.ESPERA_S, "esperou o leitor terminar um lote e seguiu (%s)" % na)
+M.listar = f_listar
 
 print("━━━ CÓPIA DA KINGHOST · conexão que cai")
 
