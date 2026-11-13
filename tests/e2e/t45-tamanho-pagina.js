@@ -163,6 +163,22 @@ if (!dentroDoTeto) {
   console.log("  um módulo que dobrou de tamanho. O ranking acima diz onde.\n");
 }
 
+/* 6. O PROJETO INTEIRO CABE NO APPS SCRIPT (13/11/2026). O push de homologação
+   falhou com "The project is too large to save" ao acrescentar 6 KB: o limite
+   do projeto é ~10 MB de carga (JSON), e o projeto (todos os .gs, .html e o
+   appsscript.json) tinha 9,87 MB. Medido: entrou com 9.874.654 bytes; não
+   entrou com ~9.880.800. Este teste barra ANTES do push, com o motivo escrito. */
+b.passo("6. O projeto inteiro cabe no limite do Apps Script");
+const fs2 = require("fs");
+let totalProjeto = 0;
+fs2.readdirSync(RAIZ).filter(f => /\.(gs|html)$/.test(f) || f === "appsscript.json")
+  .forEach(f => { totalProjeto += fs2.statSync(path.join(RAIZ, f)).size; });
+const LIMITE_PROJETO = 9876000, ENTROU = 9874654;
+b.ok(totalProjeto <= LIMITE_PROJETO,
+  "projeto dentro do limite do Apps Script",
+  totalProjeto.toLocaleString("pt-BR") + " bytes · aceito até ≥ " + ENTROU.toLocaleString("pt-BR") + " · folga: " + (LIMITE_PROJETO - totalProjeto).toLocaleString("pt-BR") + " bytes" +
+  (totalProjeto <= LIMITE_PROJETO ? "" : "  — NÃO PUBLIQUE: o clasp push falha. Libere espaço (imagem embutida, arquivo legado, comentário) com o usuário"));
+
 b.naoTestavel("Onde fica o limite de entrega do HtmlService",
   "não é documentado pelo Google e não foi medido aqui; a página de ~2,53 MB da versão 650 abre todas as telas, então o limite é maior que isso");
 b.naoTestavel("Se a página realmente renderiza no navegador", "exige abrir o portal");

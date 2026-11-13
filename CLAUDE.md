@@ -78,6 +78,19 @@ balanço das tags, `</script>` dentro de string, e scriptlet em comentário.
 **É o piso, não o teto** — sintaxe válida não é comportamento correto. A
 REGRA Nº -1 continua valendo inteira por cima desta.
 
+## 📦 O PROJETO ESTÁ NO LIMITE DE TAMANHO DO APPS SCRIPT (13/11/2026)
+
+O push de homologação falhou com *"The project is too large to save"* ao
+acrescentar 6 KB. O limite é ~10 MB de carga e o projeto (todos os .gs, .html e
+o appsscript.json) tinha 9,87 MB: entrou com 9.874.654 bytes, não entrou com
+~9.880.800. Recuperado sem perda (as duas imagens JPEG embutidas em
+CompassoCanhotosArte.html recomprimidas sem mudar nenhum pixel: −8,8 KB), mas a
+folga é de ~4 KB. **Antes de acrescentar código, ver a folga no t45 (passo 6),
+que barra o push.** Espaço de verdade só sai com decisão do usuário: o banner
+de 321 KB embutido em CompassoCanhotosArte.html (poderia morar no Drive), os
+.gs de teste/legado (EventosImportacaoTeste.gs 32 KB, RHSeedColaboradores.gs
+17 KB…) ou arquivos de módulos não usados. REGRA 1: nada é apagado sem ele pedir.
+
 ## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
 
 O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo
