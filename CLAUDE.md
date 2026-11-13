@@ -477,10 +477,16 @@ Propriedades — nunca no código); o robô monta a mensagem do e-mail com a
 origem; o SISGEP abre o wa.me e o envio é o toque da pessoa; fica na nota
 interna e na memória ("diretor-visita"). t254, t257.
 
-**Caixa (12/11/2026):** o usuário escolheu "1 - embaixo, 2 - seletor": o
-e-mail aberto fica EMBAIXO da lista por padrão (cada um troca para ao lado ou
-janela no "📐", como o painel de leitura do Outlook) e as categorias ficam num
-seletor ▾.
+**Caixa — FORMATO OUTLOOK, OPÇÃO A (13/11/2026).** O usuário não gostou das
+versões de 12/11 ("duas faixas", "e-mail muito curto", "filtros uma bagunça";
+"mockup sempre antes de implementar"; "quero desse formato", o do Outlook) e
+escolheu a opção A de docs/mock-caixa-v3-*.png: uma faixa só, categorias na
+coluna da ESQUERDA junto das pastas, lista por dia com as abas A tratar /
+Respondidos / Resolvidos / Todos, e-mail à DIREITA com a altura toda e a barra
+Responder · Encaminhar · Resolver · Lixeira · Ações do sindicato. "📐" (dentro
+de ⚙ Filtros) ainda troca para embaixo/janela. Não há "Responder a todos" (a
+Caixa não guarda os destinatários em cópia) — tem o campo Cc. **Desenho de
+tela: SEMPRE mostrar o mockup e esperar a escolha antes de implementar.**
 
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)
 

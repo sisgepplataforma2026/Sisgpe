@@ -74,8 +74,14 @@ win.open = (u) => { abertos.push(u); return null; };
   b.fluxo("CAIXA · e-mail embaixo, categorias no seletor, aviso ao diretor (tela)");
   Object.defineProperty(win, "innerWidth", { value: 1400, configurable: true });
   win.cxsIniciar(); await t.assentar(250);
-  b.passo("6. Padrão: e-mail embaixo; categorias num seletor ▾");
-  b.ok(el("cxsSecao").classList.contains("cxs-vis-baixo") && el("cxsVis").value === "baixo", "embaixo por padrão");
+  b.passo("6. Formato Outlook: e-mail à direita, categorias à esquerda, lista por dia");
+  /* 13/11/2026: o usuário escolheu a opção A (formato Outlook): e-mail à direita por padrão. */
+  b.ok(el("cxsSecao").classList.contains("cxs-vis-lado") && el("cxsVis").value === "lado", "à direita por padrão (opção A, Outlook)");
+  b.ok(el("cxsTipos").parentNode === el("cxsTiposLugar") && el("cxsPastas").contains(el("cxsTipos")), "categorias na coluna da esquerda, junto das pastas");
+  b.ok(doc.querySelectorAll("#cxsLista .cxs-dia").length >= 1 && /Hoje|Ontem|semana|mês|antigos/.test(doc.querySelector("#cxsLista .cxs-dia").textContent), "lista agrupada por dia");
+  t.clicar("[data-cxs='abaEstado'][data-arg='']"); await t.assentar(30);
+  b.ok(el("cxsFEstado").value === "" && doc.querySelector("#cxsAbas button.on").textContent === "Todos", "abas A tratar/Respondidos/Resolvidos/Todos filtram");
+  t.clicar("[data-cxs='abaEstado'][data-arg='ABERTOS']"); await t.assentar(30);
   b.ok(/Todos/.test(el("cxsCatSelRot").textContent), "seletor mostra a categoria atual", el("cxsCatSelRot").textContent);
   t.clicar("[data-cxs='catAbrir']");
   b.ok(el("cxsCatSel").classList.contains("aberto"), "a setinha abre a lista de categorias");
@@ -86,7 +92,7 @@ win.open = (u) => { abertos.push(u); return null; };
   let ls = null; try { ls = win.localStorage.getItem("cxs_vis"); } catch (e) { ls = "sem-localStorage"; }
   b.ok(el("cxsSecao").classList.contains("cxs-vis-janela") && el("cxsModal").parentNode !== el("cxsLeitura") && (ls === "janela" || ls === "sem-localStorage"), "janela, lembrada",
     [el("cxsSecao").className, el("cxsModal").parentNode === el("cxsLeitura"), ls].join(" | "));
-  el("cxsVis").value = "baixo"; el("cxsVis").dispatchEvent(new win.Event("change", { bubbles: true })); await t.assentar(30);
+  el("cxsVis").value = "lado"; el("cxsVis").dispatchEvent(new win.Event("change", { bubbles: true })); await t.assentar(30);
   b.passo("8. No e-mail: 📱 abre o quadro, troca o diretor e abre o WhatsApp certo");
   const linha = [...doc.querySelectorAll("#cxsLista .cxs-item")].find(x => /sindicaliza/i.test(x.textContent));
   linha.querySelector(".cxs-item-nome").dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
