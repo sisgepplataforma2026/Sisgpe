@@ -83,7 +83,6 @@
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:parqueChina" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:guririBeach" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:assefaz" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
-        <!-- Exame oftalmológico: fora da tela desde 10/11/2026 (serviço não é mais oferecido); o código continua no projeto. -->
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:vouchers" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:historico" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
       </div>
@@ -559,10 +558,6 @@ function benefAdminPesquisar(){var input=document.getElementById("benefAdminBusc
             <?!= include('Scripts_Certificado'); ?>
         </div>
 
-<div id="benefSubAgendaOftalmo" class="docSubPanel" style="display:none;">
-  <?!= include('AgendOftalmo'); ?>
-  <?!= include('Scripts_AgendOftalmo'); ?>
-</div>
 
         <div id="benefSubGuririBeach" class="docSubPanel" style="display:none;">
         </div>
@@ -1375,15 +1370,6 @@ button,input{font-family:inherit;}
   height: auto !important;
 }
 
-#benefSubAgendaOftalmo {
-  min-height: 100%;
-  height: auto !important;
-  padding-bottom: 80px;
-}
-
-#benefSubAgendaOftalmo .oftalmo-wrap {
-  min-height: 1200px;
-}
 #mBeneficios::-webkit-scrollbar {
   width: 12px;
 }
@@ -1400,27 +1386,6 @@ button,input{font-family:inherit;}
 
 #mBeneficios::-webkit-scrollbar-thumb:hover {
   background: #334155;
-}
-/* Corrige textos invisíveis na tabela da Agenda Oftalmo */
-#benefSubAgendaOftalmo .oftalmo-tabela tbody td {
-  color: #0f172a !important;
-}
-
-#benefSubAgendaOftalmo .oftalmo-tabela tbody td strong {
-  color: #0f172a !important;
-  font-weight: 800 !important;
-}
-
-#benefSubAgendaOftalmo .oftalmo-tabela thead th {
-  color: #475569 !important;
-}
-
-#benefSubAgendaOftalmo .oftalmo-tabela tbody tr {
-  background: #ffffff !important;
-}
-
-#benefSubAgendaOftalmo .oftalmo-tabela tbody tr:hover {
-  background: #f8fafc !important;
 }
 </style>
 
@@ -1561,7 +1526,6 @@ var BENEF_SUB_PAINEIS = {
   inicio: "benefSubInicio",
   parqueChina: "benefSubParqueChina",
   vouchers: "benefSubVouchers",
-  agendaOftalmo: "benefSubAgendaOftalmo",
   guririBeach: "benefSubGuririBeach",
   assefaz: "benefSubAssefaz",
   historico: "benefSubHistorico",
@@ -1572,7 +1536,6 @@ var BENEF_SUB_TITULOS = {
   inicio: ["Gestão de Benefícios", "Solicitações, reservas, aprovações e pagamentos"],
   parqueChina: ["China Park Eco Resort", "Gestão de reservas, suítes e pagamentos"],
   vouchers: ["Vouchers", "Emissão, validade e acompanhamento"],
-  agendaOftalmo: ["Exame oftalmológico", "Agenda e gestão de atendimentos"],
   guririBeach: ["Guriri Beach Acqua Park", "Gestão de solicitações e acessos"],
   assefaz: ["Pousada Club Assefaz", "Gestão de reservas e utilização"],
   historico: ["Central de solicitações", "Acompanhamento administrativo dos benefícios"],
@@ -1898,17 +1861,6 @@ if(mod==="beneficios"){
     if(subBeneficio === "vouchers"){
       setTimeout(function(){ callFn("cert_carregarLista"); },100);
       setTimeout(function(){ if(window.VPE && typeof window.VPE.carregar === "function") window.VPE.carregar(); },150);
-    }
-
-    if(subBeneficio === "agendaOftalmo"){
-      setTimeout(function(){
-        if(
-          window.AgendOftalmo &&
-          typeof window.AgendOftalmo.iniciar === "function"
-        ){
-          window.AgendOftalmo.iniciar();
-        }
-      },100);
     }
 
     return;

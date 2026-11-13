@@ -1,33 +1,8 @@
 {
   "medidoEm": "2026-11-13",
-  "totalPublicas": 1114,
-  "protegidas": 821,
+  "totalPublicas": 1098,
+  "protegidas": 811,
   "expostas": [
-    {
-      "nome": "validarCPF",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterDataLiberadaOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "listarHorariosOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "reservarHorarioOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "buscarAssociadosOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
@@ -1024,5 +999,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 89
+  "inconclusivas": 88
 }

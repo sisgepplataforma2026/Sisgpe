@@ -107,15 +107,15 @@ Oftalmo. Ficaram registradas, para o usuário decidir: o aviso de limite da
 Taxa Assistencial (enviarAlerteLimiteDiario nunca existiu) e o pixel antigo
 de GuiasPagamento.gs (legado).
 
-## 👁 OFTALMOLOGIA — FORA DA TELA, NÃO APAGADA (10/11/2026)
+## 👁 OFTALMOLOGIA — SERVIÇO ENCERRADO E CÓDIGO APAGADO (13/11/2026)
 
-O usuário: *"não terá mais esse serviço ser oferecido"* e, logo em seguida,
-*"cuidado para não tirar qualquer coisa, ele só não aparece na tela"*. Saíram
-só os pontos de entrada visíveis (botão do menu e card de Benefícios, card do
-Portal do Associado, atalho de Despesas, item da prévia do portal, e o
-seletor de link de interesse via `oculto: true`). Os arquivos, os includes,
-a rota `?portal=oftalmo`, as funções e as abas de dados continuam.
-tests/e2e/t252 trava as duas metades. Não apagar nada do Oftalmo sem ele pedir.
+10/11/2026: *"não terá mais esse serviço ser oferecido"* (saiu só da tela).
+13/11/2026, com o projeto no limite de tamanho do Apps Script: *"pode apagar e só
+tenha cuidado para não cair outro módulo"*. Apagados: AgendOftalm.gs,
+AgendOftalmo.html, Scripts_AgendOftalmo.html, AgendaOftalmoPublica.html e o
+teste t251. `?portal=oftalmo` responde um aviso de serviço encerrado. As ABAS de
+dados (Agend_Oftalmo, Log_Agend_Oftalmo) NÃO foram tocadas. tests/e2e/t252 trava
+que nada mais inclui os arquivos apagados. Não recriar sem ele pedir.
 
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 

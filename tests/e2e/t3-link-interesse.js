@@ -12,7 +12,7 @@ const lista = g.beneficiosListarLinksInteresse(TOKEN);
 const chavesLista = (lista.itens || []).map(i => i.chave);
 b.ok(lista && lista.ok && chavesLista.indexOf("chinapark") > -1 && chavesLista.indexOf("voucher") > -1 &&
      chavesLista.indexOf("oftalmo") === -1,
-  "lista os benefícios com rota pública (o oftalmo fica fora da tela desde 10/11/2026)",
+  "lista os benefícios com rota pública (o oftalmo saiu: serviço encerrado)",
   (lista.itens || []).map(i => i.chave).join(", "));
 
 b.passo("2. Montar link e mensagem do China Park");
@@ -50,7 +50,7 @@ b.ok(semNome.ok && semNome.texto.indexOf("Olá!") > 0 && semNome.texto.indexOf("
   "vira 'Olá!' sem sobrar espaço nem 'undefined'");
 
 b.passo("2e. Os três benefícios têm o texto completo");
-["chinapark", "voucher", "oftalmo"].forEach(function (chave) {
+["chinapark", "voucher"].forEach(function (chave) {
   const t = g.beneficiosPrepararLinkInteresse(chave, {}, TOKEN);
   const completo = t.ok && ["Recebemos", "Importante:", "Prazo de resposta"]
     .every(function (p) { return t.texto.indexOf(p) > 0; });
@@ -63,7 +63,7 @@ b.passo("3. A rota gerada é a mesma que o Code.gs atende?");
 // do associado. Este teste amarra os dois lados.
 const fs = require("fs");
 const code = fs.readFileSync(require("path").resolve(__dirname, "..", "..", "Code.gs"), "utf8");
-["chinapark", "voucher", "oftalmo"].forEach(chave => {
+["chinapark", "voucher"].forEach(chave => {
   const rota = g.BENEF_LINKS[chave].rota.replace("?portal=", "");
   b.ok(code.indexOf('p.portal === "' + rota + '"') > 0,
     "rota '" + rota + "' existe em Code.gs", "");

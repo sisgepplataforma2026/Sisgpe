@@ -1,4 +1,4 @@
-/** TESTE PONTA A PONTA — MÓDULO BENEFÍCIOS (China Park, reserva simples, oftalmo) */
+/** TESTE PONTA A PONTA — MÓDULO BENEFÍCIOS (China Park, reserva simples) */
 const b = require("./base");
 const { g, amb } = b.subir({});
 b.seedUsuarios(g);
@@ -109,15 +109,6 @@ b.ok(rs && rs.ok, "criarReservaBeneficioSimples registra", rs && !rs.ok ? "ERRO:
 b.passo("2. Listar");
 let ls; try { ls = g.listarReservasBeneficioSimples("GURIRI_BEACH", {}, TOKEN); } catch (e) { ls = { erro: e.message }; }
 b.ok(ls && !ls.erro, "listarReservasBeneficioSimples responde", ls && ls.erro ? "ERRO: " + ls.erro : JSON.stringify(ls).slice(0, 90));
-
-/* ════════ OFTALMOLOGIA ════════ */
-b.fluxo("BENEFÍCIOS · Agenda de oftalmologia");
-["listarAgendamentosOftalmo", "obterConfigAgendaOftalmo", "oft_listarAgendamentos"].forEach(nome => {
-  if (typeof g[nome] !== "function") return;
-  b.passo(nome);
-  try { const r = g[nome]({}, TOKEN); b.ok(r && !r.erro, nome + " responde", JSON.stringify(r).slice(0, 80)); }
-  catch (e) { b.ok(false, nome + " responde sem exceção", "EXCEÇÃO: " + e.message); }
-});
 
 b.naoTestavel("Ofício de autorização de entrada no China Park (PDF)", "depende de template do Google Docs");
 b.naoTestavel("Entrega dos e-mails ao hóspede e ao parque", "Gmail real");

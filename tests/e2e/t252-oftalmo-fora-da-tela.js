@@ -1,44 +1,38 @@
 /**
- * OFTALMO · FORA DA TELA, NADA APAGADO (10/11/2026).
- * O usuário: "tudo que for de oftalmo no sistema pode retirar (não terá mais
- * esse serviço)" e, em seguida, "cuidado para não tirar qualquer coisa, ele só
- * não aparece na tela". Este teste trava as duas metades:
- *   1. nenhuma tela mostra o Oftalmo (menu, card, portal do associado,
- *      atalho de Despesas, seletor de link de interesse);
- *   2. o código e as rotas continuam no projeto (REGRA 1).
+ * OFTALMOLOGIA — SERVIÇO ENCERRADO E CÓDIGO APAGADO (10/11/2026 → 13/11/2026).
+ * 10/11: "não terá mais esse serviço" e "cuidado para não tirar qualquer coisa, ele só
+ * não aparece na tela" (saiu só da tela). 13/11: o projeto bateu no limite de tamanho do
+ * Apps Script e o usuário disse "pode apagar e só tenha cuidado para não cair outro
+ * módulo". Este teste trava:
+ *   1. os 4 arquivos do Oftalmo não existem mais e NADA no projeto os inclui;
+ *   2. nenhuma tela mostra o Oftalmo (menu, card, portal, atalho, seletor de link);
+ *   3. o link público antigo (?portal=oftalmo) responde com o aviso, não com erro;
+ *   4. os DADOS continuam (as abas Agend_Oftalmo/Log_Agend_Oftalmo não são tocadas aqui).
  */
 const fs = require("fs"), path = require("path");
 const b = require("./base");
 const RAIZ = path.join(__dirname, "..", "..");
 const ler = f => fs.readFileSync(path.join(RAIZ, f), "utf8");
 
-b.fluxo("OFTALMO · fora da tela");
-const index = ler("index.html");
-b.passo("1. O menu de Benefícios não tem mais o botão do exame oftalmológico");
-b.ok(!/data-benef-sub="agendaOftalmo"/.test(index), "sem botão no menu");
-b.passo("2. O painel de Benefícios não tem mais o card do exame oftalmológico");
-b.ok(!/<h4>Exame oftalmológico<\/h4>/.test(index), "sem card");
-b.passo("3. O Portal do Associado não mostra o card Oftalmo");
-b.ok(!/onclick="mostrarOftalmo\(\)"/.test(ler("PortalAssociado.html")), "sem card no portal");
-b.passo("4. Despesas não oferece o atalho 'Agenda de Oftalmo'");
-b.ok(!/sisgepAplicarBeneficioRapido\(\\'Agenda de Oftalmo\\'\)/.test(ler("DespesasAdmin.html")), "sem atalho");
-b.passo("5. A prévia do portal (Portalassociado.gs) não mostra 'Agenda Oftalmo'");
-b.ok(!/Agenda Oftalmo/.test(ler("Portalassociado.gs")), "sem item na prévia");
-
-const { g } = b.subir({}); b.seedUsuarios(g); const T = b.logar(g, "wanderson");
-b.passo("6. O seletor de link de interesse não lista o Oftalmo");
-const lista = g.beneficiosListarLinksInteresse(T);
-const chaves = (lista.itens || []).map(i => i.chave);
-b.ok(lista.ok && chaves.indexOf("oftalmo") === -1 && chaves.indexOf("voucher") > -1, "fora do seletor", chaves.join(", "));
-
-b.fluxo("OFTALMO · nada apagado");
-b.passo("7. Os quatro arquivos do Oftalmo continuam no projeto");
+b.fluxo("OFTALMO · apagado, sem deixar rastro quebrado");
+b.passo("1. Os arquivos saíram e nada os inclui");
 ["AgendOftalm.gs", "AgendOftalmo.html", "AgendaOftalmoPublica.html", "Scripts_AgendOftalmo.html"].forEach(f =>
-  b.ok(fs.existsSync(path.join(RAIZ, f)), f + " existe"));
-b.passo("8. A tela e a rota pública continuam ligadas (só não aparecem)");
-b.ok(/include\('AgendOftalmo'\)/.test(index) && /include\('Scripts_AgendOftalmo'\)/.test(index), "includes mantidos");
-b.ok(/p\.portal === "oftalmo"/.test(ler("Code.gs")), "rota ?portal=oftalmo mantida");
-b.ok(typeof g.buscarAgendamentosOftalmo === "function" && typeof g.reservarHorarioOftalmo === "function" && typeof g.buscarAssociadosOftalmo === "function", "funções do servidor carregadas");
-b.passo("9. A definição do link continua, marcada como oculta");
-b.ok(g.BENEF_LINKS && g.BENEF_LINKS.oftalmo && g.BENEF_LINKS.oftalmo.oculto === true, "BENEF_LINKS.oftalmo.oculto");
+  b.ok(!fs.existsSync(path.join(RAIZ, f)), f + " não existe mais"));
+const projeto = fs.readdirSync(RAIZ).filter(f => /\.(gs|html)$/.test(f));
+const citam = projeto.filter(f => /include\(\s*['"](AgendOftalmo|Scripts_AgendOftalmo|AgendaOftalmoPublica)['"]|createHtmlOutputFromFile\(\s*["']AgendaOftalmoPublica/.test(ler(f)));
+b.igual(citam, [], "nenhum arquivo inclui ou serve as páginas apagadas");
+b.passo("2. Nenhuma tela mostra o Oftalmo");
+const index = ler("index.html");
+b.ok(!/data-benef-sub="agendaOftalmo"|benefSubAgendaOftalmo|AgendOftalmo\b/.test(index), "sem menu, painel nem script no index");
+b.ok(!/<h4>Exame oftalmológico<\/h4>/.test(index), "sem card em Benefícios");
+b.ok(!/mostrarOftalmo|onclick="mostrarOftalmo/.test(ler("PortalAssociado.html")), "sem card no Portal do Associado");
+b.ok(!/sisgepAplicarBeneficioRapido\(\\'Agenda de Oftalmo\\'\)/.test(ler("DespesasAdmin.html")), "sem atalho em Despesas");
+b.ok(!/Agenda Oftalmo/.test(ler("Portalassociado.gs")), "sem item na prévia do portal");
+b.ok(!/oftalmo\s*:\s*\{/.test(ler("BeneficiosLinkInteresse.gs")), "sem 'oftalmo' no seletor de link de interesse");
+b.passo("3. O link público antigo mostra o aviso");
+const code = ler("Code.gs");
+b.ok(/p\.portal === "oftalmo"/.test(code) && /não é mais oferecido/.test(code), "a rota ?portal=oftalmo responde com o aviso");
+b.ok(!/AgendaOftalmoPublica/.test(code.replace(/\/\*[\s\S]*?\*\//g, "")), "e não serve mais a página apagada");
+b.passo("4. Os dados ficam");
+b.ok(/Agend_Oftalmo/.test(ler("EscolasVinculos.gs")), "a aba Agend_Oftalmo continua prevista na migração de escolas (dado, não código)");
 b.resumo();

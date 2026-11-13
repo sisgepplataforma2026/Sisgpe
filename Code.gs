@@ -81,12 +81,18 @@ function doGet(e) {
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
+    /* Oftalmologia: serviço encerrado (usuário, 10/11/2026; arquivos apagados em 13/11/2026
+       com o "pode apagar"). Quem ainda tiver o link antigo vê o aviso, não um erro. */
     if (p.portal === "oftalmo") {
-      return HtmlService.createHtmlOutputFromFile("AgendaOftalmoPublica")
-        .setTitle("SindEducação-ES — Agendamento de Oftalmologia")
+      return HtmlService.createHtmlOutput(
+          '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
+          '<body style="font-family:Arial,sans-serif;background:#f5f7fb;color:#001f4d;margin:0;padding:48px 16px;text-align:center">' +
+          '<h2 style="margin:0 0 12px">Agendamento de exame oftalmológico</h2>' +
+          '<p style="font-size:16px;margin:0">Este serviço não é mais oferecido pelo SindEducação-ES.</p>' +
+          '<p style="font-size:14px;color:#475569">Em caso de dúvida, fale com a Secretaria do sindicato.</p></body></html>')
+        .setTitle("SindEducação-ES — Serviço encerrado")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-        .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
     // ── INSCRIÇÃO PÚBLICA DO COMPASSO: o link que vai na lista de transmissão ─

@@ -110,14 +110,14 @@ igual(divergentes, [],
 passo("os 21 pontos migrados");
 
 const MIGRADOS = [
-  "AgendOftalm.gs", "Comprovantes.gs", "Escolas.gs", "EventosAgenda.gs",
+  "Comprovantes.gs", "Escolas.gs", "EventosAgenda.gs",
   "Juridico.gs", "RHColaboradores.gs", "RHDocumentos.gs", "Receita.gs",
   "Recibo.gs", "ReciboDiversos.gs", "RecibosHistorico.gs", "Voucher.gs",
   "contatos.gs"
 ];
 const semLixeira = MIGRADOS.filter(f =>
   !/lixeira(Mover_|MoverVarias_|Aba_)/.test(fs.readFileSync(path.join(RAIZ, f), "utf8")));
-igual(semLixeira, [], "os 13 arquivos com exclusão de cadastro chamam a lixeira");
+igual(semLixeira, [], "os 12 arquivos com exclusão de cadastro chamam a lixeira");
 
 /* ─── 4. o teto de lote ─── */
 passo("o limite pedido em 20/08/2026");
