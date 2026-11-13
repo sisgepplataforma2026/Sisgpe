@@ -484,8 +484,12 @@ escolheu a opção A de docs/mock-caixa-v3-*.png: uma faixa só, categorias na
 coluna da ESQUERDA junto das pastas, lista por dia com as abas A tratar /
 Respondidos / Resolvidos / Todos, e-mail à DIREITA com a altura toda e a barra
 Responder · Encaminhar · Resolver · Lixeira · Ações do sindicato. "📐" (dentro
-de ⚙ Filtros) ainda troca para embaixo/janela. Não há "Responder a todos" (a
-Caixa não guarda os destinatários em cópia) — tem o campo Cc. **Desenho de
+de ⚙ Filtros) ainda troca para embaixo/janela. No mesmo dia ("tem que ter
+responder a todos, mover para a pasta arrastando o e-mail e os não lidos"):
+**Responder a todos** (põe em Cc o Para+Cc da última mensagem de fora, sem os
+nossos — cxsTodosDaConversa_), **arrastar o e-mail para a pasta** (o mesmo
+MOVER) e aba **Não lidos** (aba Caixa_Lidos: abrir no SISGEP = leu; não mexe
+na ULTIMA_VISTA). t258. **Desenho de
 tela: SEMPRE mostrar o mockup e esperar a escolha antes de implementar.**
 
 ## 📤 REENVIO DE OFÍCIO COM MOTIVO (04/11/2026)

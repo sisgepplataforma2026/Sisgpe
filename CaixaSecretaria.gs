@@ -165,6 +165,57 @@ function cxsAba_() {
   }
   return sh;
 }
+/* LIDO / NÃO LIDO (13/11/2026, "tem que ter ... os não lidos"). Aba própria
+   (Caixa_Lidos: conversa → última mensagem aberta no SISGEP) para não mexer
+   na ULTIMA_VISTA, que decide a situação e o "mensagem nova". */
+var CXS_ABA_LIDOS = "Caixa_Lidos", CXS_LIDOS_MEMO = null;
+function cxsAbaLidos_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID), sh = ss.getSheetByName(CXS_ABA_LIDOS);
+  if (!sh) { sh = ss.insertSheet(CXS_ABA_LIDOS); sh.getRange(1, 1, 1, 4).setValues([["THREAD_ID", "MENSAGEM_ID", "QUEM", "EM"]]); }
+  return sh;
+}
+function cxsLidos_() {
+  if (CXS_LIDOS_MEMO) return CXS_LIDOS_MEMO;
+  var m = {};
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(CXS_ABA_LIDOS);
+    if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(function (l, i) { m[String(l[0])] = { msg: String(l[1]), linha: i + 2 }; });
+  } catch (e) {}
+  CXS_LIDOS_MEMO = m;
+  return m;
+}
+function cxsMarcarLido_(id, msgId, quem) {
+  try {
+    var m = cxsLidos_(), r = m[String(id)];
+    if (r && r.msg === String(msgId)) return;
+    var sh = cxsAbaLidos_(), linha = [String(id), String(msgId), String(quem || ""), new Date()];
+    if (r) sh.getRange(r.linha, 1, 1, 4).setValues([linha]);
+    else { sh.appendRow(linha); r = { linha: sh.getLastRow() }; }
+    m[String(id)] = { msg: String(msgId), linha: r.linha };
+  } catch (e) { Logger.log("Caixa: não marcou como lido — " + e.message); }
+}
+function cxsNaoLido_(p, est, ultima) {
+  if (CXS_NOSSOS.indexOf(cxsEmail_((ultima || {}).de)) > -1) return false;         // a última é nossa
+  var ult = String(p.ULTIMA_MENSAGEM_ID || "");
+  if (est && String(est.ULTIMA_VISTA || "") === ult) return false;                 // já foi tratada
+  var l = cxsLidos_()[String(p.THREAD_ID)];
+  return !(l && l.msg === ult);
+}
+/* Com quem mais a conversa é (para o "Responder a todos"): Para + Cc da
+   última mensagem de fora, sem os nossos endereços e sem o remetente. */
+function cxsTodosDaConversa_(p) {
+  var msgs = vpeJson_(p.MENSAGENS_JSON, []);
+  var fora = msgs.filter(function (m) { return CXS_NOSSOS.indexOf(cxsEmail_(m.de)) === -1; });
+  var u = fora[fora.length - 1];
+  if (!u) return [];
+  var rem = cxsEmail_(u.replyTo || u.de), vistos = {}, out = [];
+  (String(u.para || "") + "," + String(u.cc || "")).split(/[,;]/).forEach(function (x) {
+    var e = cxsEmail_(x);
+    if (!e || e.indexOf("@") === -1 || vistos[e] || e === rem || CXS_NOSSOS.indexOf(e) > -1 || /sindeducacaosecretaria@gmail\.com|financeirosind/.test(e)) return;
+    vistos[e] = 1; out.push(e);
+  });
+  return out;
+}
 function cxsEstados_() {
   var m = {};
   vpeLinhas_(cxsAba_()).forEach(function (r) { m[String(r.THREAD_ID)] = r; });
@@ -328,7 +379,9 @@ function cxsMensagemFin_(m) {
   var de = String(m.getFrom() || "");
   var rt = "";
   try { rt = String(m.getReplyTo() || ""); } catch (e) {}
-  return { id: m.getId(), de: de, replyTo: rt, para: String(m.getTo() || ""), cc: "",
+  var cc = "";
+  try { cc = String(m.getCc() || ""); } catch (eCc) {}
+  return { id: m.getId(), de: de, replyTo: rt, para: String(m.getTo() || ""), cc: cc,
            assunto: String(m.getSubject() || ""), data: new Date(m.getDate()).toISOString(),
            corpo: vpeSemCitacao_(String(m.getPlainBody() || "")).substring(0, 4000) };
 }
@@ -485,7 +538,7 @@ function cxsResumo_(p, est, envios) {
     caixa: String(p.CAIXA || "SECRETARIA"),
     recebidoTs: ultima.data ? new Date(ultima.data).getTime() : 0,
     recebidoEm: ultima.data ? Utilities.formatDate(new Date(ultima.data), "America/Sao_Paulo", "dd/MM HH:mm") : "",
-    estado: sit.estado, mensagemNova: sit.mensagemNova,
+    estado: sit.estado, mensagemNova: sit.mensagemNova, naoLido: cxsNaoLido_(p, est, ultima),
     ultimaResposta: meus.length ? vpeRotuloEnvio_(meus[meus.length - 1].STATUS) : "",
     decididoPor: est ? String(est.DECIDIDO_POR || "") : ""
   };
@@ -685,7 +738,9 @@ function caixaSecretariaDetalhe(id, tokenSessao) {
       vpeAssinaturaTexto_(sessao);   // de quem está logado (30/10/2026)
     var roboResolveu = est && est.DECIDIDO_POR === CRN_QUEM && resumo.estado === CXS_ESTADOS.RESOLVIDO
       ? (String(est.NOTA || "").replace(/^🤖 Resolvido pelo robô:\s*/, "") || "não pede nada") : "";
-    return { ok: true, item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
+    cxsMarcarLido_(id, p.ULTIMA_MENSAGEM_ID, sessao.email || sessao.usuario || "");   // abriu = leu
+    resumo.naoLido = false;
+    return { ok: true, todos: cxsTodosDaConversa_(p), item: resumo, mensagens: msgs, anexos: anexos, sugestao: sugestao,
              roboResolveu: roboResolveu, roboNada: !roboResolveu && resumo.estado === CXS_ESTADOS.NOVO ? crnNadaAFazer_(p) : "",
              nota: est ? String(est.NOTA || "") : "",
              tipos: Object.keys(CXS_TIPOS).filter(function (k) {
