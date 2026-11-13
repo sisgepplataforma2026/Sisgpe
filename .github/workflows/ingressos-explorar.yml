@@ -1,0 +1,41 @@
+# RECONHECIMENTO DO SITE DE INGRESSOS (13/11/2026) — só estrutura, nada de dado pessoal no log.
+# Entra no painel com o login do robô (segredos INGRESSOS_USUARIO / INGRESSOS_SENHA, que só o
+# usuário cria; eu não vejo), descreve como a página é montada e testa UM PDF e o CSV.
+# Dispara quando algo muda em tools/ingressos-robo/ (o arquivo EXECUTAR serve para isso) ou a
+# mão, em "Re-run". Sem os segredos, sai sem fazer nada.
+name: Ingressos — reconhecimento do site
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/ingressos-robo/**'
+      - '.github/workflows/ingressos-explorar.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingressos-explorar
+  cancel-in-progress: false
+
+jobs:
+  explorar:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar o navegador do robô
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Reconhecer o site (sem dados pessoais no log)
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/explorar.js
