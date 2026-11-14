@@ -88,7 +88,8 @@ const p = (...a) => console.log(...a.map(x => (typeof x === "string" ? x : JSON.
     p("ações:", acoes.map(a => ({ ...a, href: mascarar(a.href), onclick: mascarar(a.onclick), dados: a.dados.map(mascarar) })));
 
     p("━━ 5. TESTE DE UM PDF (não é salvo; só o tamanho e o tipo)");
-    const idx = acoes.findIndex(a => /pdf|ingresso|ticket|download|baixar|emitir/i.test(a.title + a.icone + a.cls + a.href + a.onclick));
+    /* SÓ o "Reemitir (PDF)": o botão do WhatsApp também casa com "pdf/ingresso" e CONTA um envio na plataforma (erro da 1ª rodada). */
+    const idx = acoes.findIndex(a => /reemitir/i.test(a.title) && a.tag === "a" && /page=ticket/.test(a.href) && !/whatsapp|e-?mail|excluir|editar/i.test(a.title));
     if (idx < 0) p("não identifiquei o botão do PDF pelo nome — veja a lista de ações acima");
     else {
       const el = (await linha.$$("a,button"))[idx];
