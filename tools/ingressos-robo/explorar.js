@@ -124,6 +124,34 @@ const p = (...a) => console.log(...a.map(x => (typeof x === "string" ? x : JSON.
     p("quantos ingressos por tipo na lista:", tipos, "· colunas:", pagina);
   } catch (e) { p("erro ao ler o seletor:", mascarar(e.message).slice(0, 100)); }
 
+  p("━━ 5c. A GRADE DE LUGARES E O POP-UP DE EMISSÃO (só leitura: abre e fecha, não emite, não salva, não exclui)");
+  try {
+    const grupos = await pg.evaluate(() => {
+      const bs = [...document.querySelectorAll("button[onclick*='abrirPopUpAssentoAdmin']")];
+      const g = {}; bs.forEach(b => { const k = (b.className || "").toString().replace(/\s+/g, " ").trim(); (g[k] = g[k] || []).push((b.innerText || "").trim()); });
+      return { total: bs.length, grupos: Object.keys(g).map(k => ({ classe: k.slice(0, 160), qtd: g[k].length, exemplos: g[k].slice(0, 3), ultimo: g[k][g[k].length - 1] })) };
+    });
+    p("lugares:", grupos.total, "· grupos de aparência:", grupos.grupos);
+    for (let gi = 0; gi < Math.min(grupos.grupos.length, 3); gi++) {
+      const classe = grupos.grupos[gi].classe;
+      const aberto = await pg.evaluate((cl) => {
+        const b = [...document.querySelectorAll("button[onclick*='abrirPopUpAssentoAdmin']")].find(x => (x.className || "").toString().replace(/\s+/g, " ").trim().slice(0, 160) === cl);
+        if (!b) return false; b.click(); return true;
+      }, classe);
+      await pg.waitForTimeout(800);
+      const pop = await pg.evaluate(() => {
+        const vis = e => e.offsetParent !== null;
+        const bt = [...document.querySelectorAll("button")].filter(vis).map(b => (b.innerText || "").trim()).filter(Boolean);
+        const campos = [...document.querySelectorAll("input,select,textarea")].filter(vis).map(c => ({ id: c.id || c.name || "", preenchido: !!(c.value || "").trim() }));
+        const titulo = [...document.querySelectorAll("h1,h2,h3,h4")].filter(vis).map(h => (h.innerText || "").trim()).slice(-3);
+        return { titulo, botoes: bt.slice(-10), campos: campos.filter(c => /popup/.test(c.id)) };
+      });
+      p("grupo", gi, "· abriu:", aberto, "· pop-up:", pop);
+      await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
+      await pg.waitForTimeout(400);
+    }
+  } catch (e) { p("erro na grade:", mascarar(e.message).slice(0, 120)); }
+
   p("━━ 6. A EXPORTAÇÃO CSV (só o cabeçalho)");
   try {
     const csv = await pg.$("button:has-text('CSV'), a:has-text('CSV')");
