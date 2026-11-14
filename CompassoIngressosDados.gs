@@ -114,9 +114,7 @@ function cingRotuloCategoria_(valor) {
 
 /** A base que o robô deixou no Drive. null se ainda não existe. */
 function cingLerBase_() {
-  var pastas = DriveApp.getFoldersByName(CING_PASTA);
-  if (!pastas.hasNext()) return null;
-  var arqs = pastas.next().getFilesByName(CING_ARQ);
+  var arqs = cingPastaRobo_().getFilesByName(CING_ARQ);
   if (!arqs.hasNext()) return null;
   var doc = JSON.parse(arqs.next().getBlob().getDataAsString());
   doc.linhas = (doc.linhas || []).map(function (l) {
@@ -268,7 +266,7 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       var k = cingNomeChave_(l.nome);
       if (k) (porNome[k] = porNome[k] || []).push(l);
     });
-    var vistos = {}, idade = cingIdadeMin_(base.lidoEm), res = [];
+    var vistos = {}, idade = cingIdadeMin_(base.lidoEm), res = [], pdfs = cingPdfs_();
     lista.forEach(function (it, i) {
       it = it || {};
       var nome = String(it.nome || "").trim().substring(0, 120), cpf = cingSoDigitos_(it.cpf);
@@ -289,6 +287,7 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       }
       if (achado) {
         o.situacao = "ja_tem"; o.codigo = achado.codigo; o.tipoNaBase = achado.tipo; o.ref = achado.ref;
+        o.nomeNaBase = achado.nome; o.pdfDrive = pdfs[cingNomeChave_(achado.nome)] || "";
         o.urlIngresso = achado.ref ? CING_URL_TICKET + encodeURIComponent(achado.ref) : "";
         if (!fone && cingFone_(achado.tel)) { o.telefone = cingFone_(achado.tel); foneOrigem = "telefone da base do ingresso"; }
       } else {

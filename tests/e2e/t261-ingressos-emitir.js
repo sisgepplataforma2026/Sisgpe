@@ -66,8 +66,9 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
     b.fluxo("EMISSÃO · tela");
     win.cingCarregar(); await t.assentar(300);
     t.clicar("[data-ci='aba'][data-arg='solicitar']");
-    el("ciFNome").value = "Teste Fictício da Silva"; el("ciFCpf").value = "168.995.350-09"; el("ciFEsc").value = "UVV"; el("ciFCid").value = "Cariacica"; el("ciFCat").value = "acompanhante";
-    t.clicar("[data-ci='addUm']"); t.clicar("[data-ci='conferir']"); await t.assentar(400);
+    const card = doc.querySelectorAll("#ciPessoas .ci-pessoa")[0];
+    [["nome", "Teste Fictício da Silva"], ["cpf", "168.995.350-09"], ["escola", "UVV"], ["cidade", "Cariacica"], ["categoria", "acompanhante"]].forEach(([k, v]) => { const f = card.querySelector("[data-k=" + k + "]"); f.value = v; f.dispatchEvent(new win.Event(f.tagName === "SELECT" ? "change" : "input", { bubbles: true })); });
+    t.clicar("[data-ci='conferir']"); await t.assentar(400);
     b.ok(!!doc.querySelector("[data-ci='emisAbrir']") && /Pedir emissão dos 1 novos/.test(el("ciRes").textContent), "pesquisa limpa: aparece 'Pedir emissão'");
     t.clicar("[data-ci='emisAbrir']"); await t.assentar(20);
     b.ok(el("ciEmis").hidden === false && /Teste Fictício da Silva/.test(el("ciEmisQuem").textContent) && /cria ingresso de verdade/.test(el("ciEmis").textContent), "abre a confirmação com quem vai ser emitido e o aviso");

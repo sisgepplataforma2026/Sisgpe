@@ -68,6 +68,7 @@ async function gravar(tk, texto) {
   if (!linhas) { p("FALHA: não achei a tabela de ingressos."); process.exitCode = 1; return; }
   const porTipo = {}; linhas.forEach(l => { porTipo[l.tipo] = (porTipo[l.tipo] || 0) + 1; });
   const doc = { lidoEm: new Date().toISOString(), evento: "No Compasso da Vida", total: linhas.length, linhas };
+  if (process.env.BASE_LOCAL) { require("fs").writeFileSync(process.env.BASE_LOCAL, JSON.stringify(doc)); p("OK: lidas", linhas.length, "linhas (saída local de teste)"); return; }
   const id = await gravar(await tokenGoogle(), JSON.stringify(doc));
   p("OK: lidas", linhas.length, "linhas · por tipo:", porTipo, "· com ref:", linhas.filter(l => l.ref).length, "· arquivo no Drive gravado (id", id.slice(0, 6) + "…)");
 })().catch(e => { p("ERRO:", String(e.message).replace(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/g, "<CPF>").slice(0, 160)); process.exitCode = 1; });
