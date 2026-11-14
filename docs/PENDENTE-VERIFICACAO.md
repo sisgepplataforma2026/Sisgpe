@@ -6970,3 +6970,11 @@ pessoas, com CPF mascarado; (2) num celular, abrir o WhatsApp de UMA pessoa de t
 e conferir que "Confirmar envio" marca; (3) "Solicitar novos": colar 2–3 pessoas (uma que já tem
 ingresso) e ver que "já tem" mostra o código. A EMISSÃO pelo robô não existe ainda. O contador de
 envios do TickOne da 1ª linha da lista subiu 1→2 por erro do robô (sem mensagem enviada).
+
+## 🗑 Excluir ingresso no TickOne — entregue em 14/11/2026, NÃO TESTADO no TickOne de verdade
+
+Botão 🗑 Excluir (Eventos › Festa › Ingressos) + fila + robô (excluir.js). Testado só contra um TickOne
+FALSO (t260). Falta: (1) emitir/ter UM ingresso de TESTE no TickOne; (2) pedir a exclusão dele na tela;
+(3) pedir ao Claude para rodar o robô; (4) conferir que o ingresso sumiu do TickOne e a linha mostra
+"Excluído". O pop-up de confirmação do TickOne real (botão "Confirmar") só foi visto no reconhecimento,
+nunca clicado. Se o pop-up for diferente, o robô PARA sem excluir ("a confirmação não apareceu").

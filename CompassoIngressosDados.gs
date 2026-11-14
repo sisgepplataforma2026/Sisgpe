@@ -23,6 +23,15 @@
    - O envio é individual: o SISGEP abre o WhatsApp da pessoa com a mensagem
      pronta; o PDF o operador abre no TickOne e anexa; o envio é o toque dele.
      Só vira "enviado" depois que a pessoa confirma.
+   - EXCLUIR UM INGRESSO (usuário, 14/11/2026: "o cara não vai, quero excluir ... eu vou lá,
+     pesquiso no SISGEP o nome dele, vou em exclusão e você faz toda a operação por trás"):
+     botão "Excluir" na linha, com confirmação ("não tem volta"). O pedido vai para uma FILA
+     (aba Ingressos_Exclusoes, com uma cópia dos dados, porque no TickOne eles se perdem) e
+     para o arquivo exclusoes-fila.json; o robô (tools/ingressos-robo/excluir.js) exclui no
+     TickOne SÓ o que está na fila, confere código E CPF, não exclui quem já passou na
+     portaria, relê e confere que sumiu, e devolve exclusoes-resultado.json. O PDF da pasta do
+     Drive NÃO é apagado. O robô ainda é acionado por mim (não pelo botão): o pedido espera.
+     NÃO TESTADO no TickOne de verdade: o primeiro uso é com um ingresso de TESTE.
    - A EMISSÃO não está ligada nesta etapa: não testada, fica por último, com
      uma pessoa de teste.
    ================================================================ */
@@ -32,6 +41,10 @@ var CING_ARQ = "ingressos-base.json";
 var CING_ABA_ENVIOS = "Ingressos_Envios";
 var CING_COLUNAS_ENVIOS = ["CODIGO", "NOME", "TELEFONE", "CANAL", "ENVIADO_EM", "ENVIADO_POR"];
 var CING_PASTA_PDF_ID = "1A6vZ_aVW1fXW7pKhNH14oWbOjMs4SdjV";   // "INGRESSOS FESTA COMPASSO 2026" (Drive do Financeiro): os PDFs "TickOne - Nome.pdf"
+var CING_ABA_EXCL = "Ingressos_Exclusoes";
+var CING_COLUNAS_EXCL = ["PEDIDO", "CODIGO", "NOME", "CPF", "TIPO", "ESCOLA", "CIDADE", "TELEFONE", "MOTIVO", "PEDIDO_EM", "PEDIDO_POR", "STATUS", "RESULTADO", "EXECUTADO_EM"];
+var CING_ARQ_FILA = "exclusoes-fila.json";
+var CING_ARQ_RESULTADO = "exclusoes-resultado.json";
 var CING_IDADE_MAX_MIN = 15;   // a base precisa ser recente para pedir ingresso novo
 var CING_URL_TICKET = "https://ingressos.sindeducacao.com.br/index.php?page=ticket&ref=";
 var CING_CATEGORIAS = [
@@ -172,7 +185,8 @@ function compassoIngressos_lista(tokenSessao) {
     exigirModulo_(tokenSessao, "eventos", false);
     var base = cingLerBase_();
     if (!base) return { ok: false, mensagem: "A base do TickOne ainda não foi lida pelo robô." };
-    var envios = cingEnvios_(), pdfs = cingPdfs_();
+    cingSincronizarResultado_();
+    var envios = cingEnvios_(), pdfs = cingPdfs_(), excl = cingExclusaoPorCodigo_();
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
       var falta = [];
@@ -180,7 +194,9 @@ function compassoIngressos_lista(tokenSessao) {
         if (!l.nome) falta.push("nome"); if (!cingCpfValido_(l.cpf)) falta.push("CPF válido");
         if (!fone) falta.push("telefone com DDD"); if (!l.escola) falta.push("nome da escola"); if (!l.cidade) falta.push("cidade");
       }
-      return { nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, codigo: l.codigo,
+      var ex = excl[l.codigo], exOk = ex && (ex.STATUS === "PEDIDO" || ex.STATUS === "EXCLUIDO" || ex.STATUS === "FALHOU" || ex.STATUS === "JA_ENTROU");
+      return { exclusao: exOk ? { pedido: String(ex.PEDIDO), status: String(ex.STATUS), quem: String(ex.PEDIDO_POR || ""), quando: cingFmtData_(ex.PEDIDO_EM), resultado: String(ex.RESULTADO || "") } : null,
+        nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, codigo: l.codigo,
         categoria: cingCategoria_(l.tipo) || "", tipo: l.tipo, escola: l.escola, cidade: l.cidade,
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
@@ -301,6 +317,125 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       emissaoLiberada: false,
       emissaoMotivo: "A emissão pelo robô ainda não foi ligada (próxima etapa, só com uma pessoa de teste)." +
         (recente ? "" : " Além disso, a base está com mais de " + CING_IDADE_MAX_MIN + " minutos: leia de novo antes de pedir.") };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+
+/* ================= EXCLUSÃO DE INGRESSO (fila para o robô) ================= */
+
+function cingAbaExcl_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(CING_ABA_EXCL);
+  if (!sh) { sh = ss.insertSheet(CING_ABA_EXCL); sh.getRange(1, 1, 1, CING_COLUNAS_EXCL.length).setValues([CING_COLUNAS_EXCL]); }
+  return sh;
+}
+
+function cingExclusoes_() {
+  var sh = cingAbaExcl_();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CING_COLUNAS_EXCL.length).getValues().map(function (l, i) {
+    var o = { _linha: i + 2 };
+    CING_COLUNAS_EXCL.forEach(function (c, k) { o[c] = l[k]; });
+    return o;
+  }).filter(function (o) { return o.PEDIDO; });
+}
+
+function cingFmtData_(v) { return v instanceof Date ? Utilities.formatDate(v, "America/Sao_Paulo", "dd/MM HH:mm") : String(v || ""); }
+
+function cingPastaRobo_() {
+  var it = DriveApp.getFoldersByName(CING_PASTA);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(CING_PASTA);
+}
+
+function cingGravarArquivo_(pasta, nome, texto) {
+  var it = pasta.getFilesByName(nome);
+  if (it.hasNext()) it.next().setContent(texto); else pasta.createFile(nome, texto, "application/json");
+}
+
+/** A fila que o robô lê: só os pedidos ainda abertos. */
+function cingPublicarFila_() {
+  var fila = cingExclusoes_().filter(function (o) { return o.STATUS === "PEDIDO"; }).map(function (o) {
+    return { pedido: String(o.PEDIDO), codigo: String(o.CODIGO), cpf: cingSoDigitos_(o.CPF), nome: String(o.NOME) };
+  });
+  cingGravarArquivo_(cingPastaRobo_(), CING_ARQ_FILA, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
+  return fila.length;
+}
+
+/** Aplica o que o robô devolveu (excluído, falhou, já entrou) nos pedidos abertos. */
+function cingSincronizarResultado_() {
+  try {
+    var it = cingPastaRobo_().getFilesByName(CING_ARQ_RESULTADO);
+    if (!it.hasNext()) return 0;
+    var res = JSON.parse(it.next().getBlob().getDataAsString()), porPedido = {};
+    (res.itens || []).forEach(function (r) { porPedido[String(r.pedido)] = r; });
+    var sh = cingAbaExcl_(), n = 0, iStatus = CING_COLUNAS_EXCL.indexOf("STATUS") + 1;
+    cingExclusoes_().forEach(function (o) {
+      var r = porPedido[String(o.PEDIDO)];
+      if (o.STATUS !== "PEDIDO" || !r || ["EXCLUIDO", "FALHOU", "JA_ENTROU"].indexOf(r.status) < 0) return;
+      sh.getRange(o._linha, iStatus, 1, 3).setValues([[r.status, String(r.detalhe || "").substring(0, 200), r.em ? new Date(r.em) : new Date()]]);
+      n++;
+    });
+    return n;
+  } catch (e) { return 0; }
+}
+
+/** O pedido mais recente de cada ingresso (codigo → pedido). */
+function cingExclusaoPorCodigo_() {
+  var m = {};
+  cingExclusoes_().forEach(function (o) { m[String(o.CODIGO)] = o; });
+  return m;
+}
+
+function compassoIngressos_pedirExclusao(codigo, motivo, confirmado, tokenSessao) {
+  try {
+    var sessao = exigirModulo_(tokenSessao, "eventos", true);
+    if (confirmado !== true) return { ok: false, mensagem: "Confirme que entende que a exclusão no TickOne não tem volta." };
+    var base = cingLerBase_();
+    var l = base && base.linhas.filter(function (x) { return x.codigo === String(codigo); })[0];
+    if (!l) return { ok: false, mensagem: "Ingresso não encontrado na base do TickOne (talvez já tenha sido excluído)." };
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está mexendo nas exclusões agora. Tente de novo." };
+    try {
+      var atual = cingExclusaoPorCodigo_()[l.codigo];
+      if (atual && (atual.STATUS === "PEDIDO" || atual.STATUS === "EXCLUIDO")) return { ok: false, mensagem: "Este ingresso já tem pedido de exclusão (" + String(atual.STATUS).toLowerCase() + ")." };
+      var id = "X" + Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + l.codigo;
+      cingAbaExcl_().appendRow([id, l.codigo, l.nome, l.cpf, l.tipo, l.escola, l.cidade, l.tel,
+        String(motivo || "").trim().substring(0, 200), new Date(), cingQuem_(sessao), "PEDIDO", "", ""]);
+      var abertos = cingPublicarFila_();
+      return { ok: true, pedido: id, abertos: abertos, mensagem: "Pedido de exclusão registrado. O robô exclui no TickOne quando for acionado." };
+    } finally { lock.releaseLock(); }
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+function compassoIngressos_cancelarPedidoExclusao(pedido, tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", true);
+    var o = cingExclusoes_().filter(function (x) { return String(x.PEDIDO) === String(pedido); })[0];
+    if (!o) return { ok: false, mensagem: "Pedido não encontrado." };
+    if (o.STATUS !== "PEDIDO") return { ok: false, mensagem: "Este pedido já foi tratado (" + String(o.STATUS).toLowerCase() + ") e não dá mais para cancelar." };
+    cingAbaExcl_().getRange(o._linha, CING_COLUNAS_EXCL.indexOf("STATUS") + 1).setValue("CANCELADO");
+    cingPublicarFila_();
+    return { ok: true, mensagem: "Pedido cancelado. Nada foi excluído." };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+/** Para a tela: os pedidos (mais novos primeiro). */
+function compassoIngressos_exclusoes(tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", false);
+    cingSincronizarResultado_();
+    var lista = cingExclusoes_().reverse().map(function (o) {
+      return { pedido: String(o.PEDIDO), codigo: String(o.CODIGO), nome: String(o.NOME), motivo: String(o.MOTIVO || ""),
+        status: String(o.STATUS), resultado: String(o.RESULTADO || ""), pedidoEm: cingFmtData_(o.PEDIDO_EM), pedidoPor: String(o.PEDIDO_POR || ""),
+        executadoEm: cingFmtData_(o.EXECUTADO_EM) };
+    });
+    return { ok: true, exclusoes: lista };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

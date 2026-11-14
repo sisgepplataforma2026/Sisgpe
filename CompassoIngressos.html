@@ -60,6 +60,14 @@
 </div>
 
 <div id="ciPEnviar">
+  <div id="ciExcl" class="ci-erro" hidden>
+    <b>Excluir ingresso no TickOne</b>
+    <p id="ciExclQuem" style="margin:6px 0"></p>
+    <p style="margin:6px 0">Isto <b>apaga o ingresso no TickOne e não tem volta</b>: o código deixa de existir e o QR Code do PDF não entra mais. O PDF da pasta do Drive não é apagado. O robô só exclui depois de você confirmar aqui, e confere código e CPF antes.</p>
+    <input type="text" id="ciExclMotivo" placeholder="Motivo (ex.: não vai mais)" style="width:100%;margin-bottom:8px">
+    <label style="display:block;margin-bottom:8px"><input type="checkbox" id="ciExclOk"> Entendo que não tem volta</label>
+    <div class="ci-acoes"><button class="ci-btn ci-nv" data-ci="exclVoltar">Voltar</button><button class="ci-btn" style="background:#dc2626;color:#fff" data-ci="exclPedir">🗑 Pedir exclusão</button></div>
+  </div>
   <div class="ci-filtros">
     <input type="text" id="ciBusca" placeholder="Buscar nome, CPF, telefone ou escola" style="flex:1;min-width:200px">
     <select id="ciCat"><option value="">Todas as categorias</option></select>
@@ -69,6 +77,7 @@
     <button class="ci-chip" data-ci="chip" data-arg="falta">Falta enviar</button>
     <button class="ci-chip" data-ci="chip" data-arg="enviados">Enviados</button>
     <button class="ci-chip" data-ci="chip" data-arg="fone">Conferir telefone</button>
+    <button class="ci-chip" data-ci="chip" data-arg="excluidos">Exclusões</button>
     <button class="ci-chip" data-ci="chip" data-arg="falta_dados">Faltam dados do associado</button>
   </div>
   <div class="ci-box" style="padding:10px 12px">
@@ -140,9 +149,10 @@
   function passa(l){
     var q=g('ciBusca').value.trim().toLowerCase(), c=g('ciCat').value;
     if(c && l.categoria!==c) return false;
-    if(FILTRO==='falta' && l.enviado) return false;
+    if(FILTRO==='falta' && (l.enviado||(l.exclusao&&(l.exclusao.status==='PEDIDO'||l.exclusao.status==='EXCLUIDO')))) return false;
     if(FILTRO==='enviados' && !l.enviado) return false;
     if(FILTRO==='fone' && l.foneOk) return false;
+    if(FILTRO==='excluidos' && !l.exclusao) return false;
     if(FILTRO==='falta_dados' && !(l.faltando&&l.faltando.length)) return false;
     if(q && (l.nome+' '+l.cpf+' '+l.tel+' '+l.escola+' '+l.codigo).toLowerCase().indexOf(q)<0) return false;
     return true;
@@ -152,19 +162,44 @@
       :(!l.foneOk?'<span class="ci-b c">Conferir telefone</span>':'<span class="ci-b n">Falta enviar</span>');
     if(l.faltando&&l.faltando.length) sit+='<br><span class="ci-b c">Associado: está faltando '+esc(l.faltando.join(', '))+'</span>';
     if(l.enviadoTick) sit+='<br><small>No TickOne: enviado '+l.enviadoTick+'×</small>';
-    var botao;
+    var ex=l.exclusao, botao, exBtn='';
+    if(ex){
+      var txt={PEDIDO:'Exclusão pedida em '+ex.quando+' por '+ex.quem+' — aguardando o robô',EXCLUIDO:'Excluído no TickOne ('+ex.resultado+')',FALHOU:'Exclusão falhou: '+ex.resultado,JA_ENTROU:'Já passou na portaria: NÃO foi excluído'}[ex.status]||ex.status;
+      sit+='<br><span class="ci-b '+(ex.status==='EXCLUIDO'?'e':'c')+'">🗑 '+esc(txt)+'</span>';
+    }
+    var bloqueado=ex&&(ex.status==='PEDIDO'||ex.status==='EXCLUIDO');
     if(ABERTO[l.codigo]) botao='<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(l.codigo)+'">✔ Confirmar envio</button>';
-    else botao='<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+(l.foneOk?'':' disabled')+'>📱 '+(l.enviado?'Reenviar':'WhatsApp')+'</button>';
+    else botao='<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+((l.foneOk&&!bloqueado)?'':' disabled')+'>📱 '+(l.enviado?'Reenviar':'WhatsApp')+'</button>';
+    if(ex&&ex.status==='PEDIDO') exBtn='<button class="ci-btn ci-ol" data-ci="cancExcl" data-arg="'+esc(ex.pedido)+'">Cancelar pedido</button>';
+    else if(!ex||ex.status==='FALHOU') exBtn='<button class="ci-btn ci-ol" style="border-color:#dc2626;color:#dc2626" data-ci="excl" data-arg="'+esc(l.codigo)+'">🗑 Excluir</button>';
     var pdf=l.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.pdfDrive)+'">📎 PDF</a>'
       :(l.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Abrir ingresso</a>':'');
     return '<div class="ci-linha"><div><b>'+esc(l.nome)+'</b><small>'+esc(l.escola)+(l.cidade?' · '+esc(l.cidade):'')+' · '+esc(rotuloCat(l.categoria||l.tipo))+'</small></div>'+
-      '<div>'+esc(l.cpf)+'</div><div>'+esc(l.tel||'—')+'<small>'+esc(l.codigo)+'</small></div><div>'+sit+'</div><div class="ci-acoes">'+pdf+botao+'</div></div>';
+      '<div>'+esc(l.cpf)+'</div><div>'+esc(l.tel||'—')+'<small>'+esc(l.codigo)+'</small></div><div>'+sit+'</div><div class="ci-acoes">'+pdf+botao+exBtn+'</div></div>';
   }
   function desenhar(){
     var vis=BASE.filter(passa), parte=vis.slice(0,MOSTRAR);
     g('ciLista').innerHTML=parte.length?parte.map(linhaHtml).join(''):'<div class="ci-vazio">Nenhum ingresso com esse filtro.</div>';
     g('ciMais').hidden=vis.length<=MOSTRAR; g('ciMais').textContent='Mostrar mais ('+(vis.length-MOSTRAR)+')';
     [].forEach.call(g('ciChips').querySelectorAll('.ci-chip'),function(b){ b.classList.toggle('on',b.getAttribute('data-arg')===FILTRO); });
+  }
+  var EXCL=null;
+  function excl(cod){
+    var l=achar(cod); if(!l) return; EXCL=cod;
+    g('ciExclQuem').innerHTML='<b>'+esc(l.nome)+'</b> · '+esc(l.cpf)+' · código '+esc(l.codigo)+' · '+esc(rotuloCat(l.categoria||l.tipo));
+    g('ciExclMotivo').value=''; g('ciExclOk').checked=false; g('ciExcl').hidden=false; g('ciExcl').scrollIntoView({block:'center'});
+  }
+  function exclPedir(){
+    if(!EXCL) return;
+    rodar('compassoIngressos_pedirExclusao',[EXCL,g('ciExclMotivo').value,g('ciExclOk').checked],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      EXCL=null; g('ciExcl').hidden=true; aviso(r.mensagem); carregarLista();
+    });
+  }
+  function cancExcl(ped){
+    rodar('compassoIngressos_cancelarPedidoExclusao',[ped],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; } aviso(r.mensagem); carregarLista();
+    });
   }
   function achar(cod){ for(var i=0;i<BASE.length;i++) if(BASE[i].codigo===cod) return BASE[i]; return null; }
 
@@ -243,6 +278,8 @@
       [].forEach.call(document.querySelectorAll('#compassoIngressos .ci-aba'),function(b){ b.classList.toggle('on',b===t); }); }
     else if(a==='chip'){ FILTRO=arg; MOSTRAR=100; desenhar(); }
     else if(a==='mais'){ MOSTRAR+=100; desenhar(); }
+    else if(a==='excl') excl(arg); else if(a==='exclVoltar'){ EXCL=null; g('ciExcl').hidden=true; }
+    else if(a==='exclPedir') exclPedir(); else if(a==='cancExcl') cancExcl(arg);
     else if(a==='zap') zap(arg); else if(a==='confirmar') confirmar(arg);
     else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
     else if(a==='lerPlan') lerPlan(); else if(a==='addUm') addUm();

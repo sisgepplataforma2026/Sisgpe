@@ -140,6 +140,16 @@ celular — CompassoIngressos.html + CompassoIngressosDados.gs, t259). Decisões
   privada do Drive. **ERRO MEU de 14/11:** no reconhecimento o robô clicou no botão do WhatsApp
   da 1ª linha (casou com "pdf/ingresso") e subiu o contador de envios do TickOne (1x→2x);
   corrigido — só clica em "Reemitir (PDF)". O robô nunca deve clicar em WhatsApp/e-mail/excluir.
+- **EXCLUIR INGRESSO (usuário, 14/11/2026):** *"o cara não vai, quero excluir ... pesquiso no SISGEP
+  o nome dele, vou em exclusão e você faz toda a operação por trás"*; antes: *"você não pode mexer nos
+  ingressos emitidos"*. Botão 🗑 Excluir na linha → confirmação "não tem volta" → fila
+  (Ingressos_Exclusoes + exclusoes-fila.json) → robô excluir.js exclui no TickOne SÓ o que está na
+  fila (máx. 5), confere código E CPF, não exclui quem já fez check-in, relê e confere que sumiu;
+  PDF do Drive não é apagado. O robô é acionado por MIM (push em tools/ingressos-robo/PEDIDO-EXCLUSAO
+  ou reexecução), não pelo botão — o botão direto exigiria o workflow na branch principal + chave do
+  GitHub no SISGEP (decisão do usuário, não feita). Testado só contra um TickOne FALSO (t260); a
+  exclusão REAL nunca rodou: o primeiro uso é com um ingresso de TESTE. Nunca excluir sem pedido
+  confirmado na tela.
 - **EMISSÃO PELO ROBÔ: NÃO LIGADA, não testada.** É irreversível (cria ingresso de verdade):
   só com lista aprovada pelo usuário e primeiro com UMA pessoa de teste. Hoje o robô só roda
   por push/reexecução (workflow novo só dispara por push no branch de homologação).
