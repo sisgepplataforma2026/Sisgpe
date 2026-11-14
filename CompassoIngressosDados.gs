@@ -228,8 +228,10 @@ function compassoIngressos_mensagem(codigo, tokenSessao) {
     if (!l) return { ok: false, mensagem: "Ingresso não encontrado na base." };
     var fone = cingFone_(l.tel);
     if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado. Corrija no TickOne e leia a base de novo." };
-    var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, "");
-    return { ok: true, fone: fone, texto: texto, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
+    var link = l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "";   // o mesmo link que o TickOne usa no botão dele
+    var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, link);
+    if (link) texto = texto.indexOf("📎") >= 0 ? texto.replace("📎", "🔗 *Link do seu ingresso:* " + link + "\n\n📎") : texto + "\n\n🔗 Link do seu ingresso: " + link;   // o texto-padrão não leva o link; o PDF vai anexo pelo operador
+    return { ok: true, fone: fone, texto: texto, link: link, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
