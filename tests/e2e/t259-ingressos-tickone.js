@@ -103,7 +103,7 @@ if (SEM_MODULO) b.ok(g.compassoIngressos_lista("token-invalido").ok === false, "
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 const t = dom.montar(g, ["CompassoIngressos.html"], { token: TOKEN });
 const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
-const abertos = []; win.open = u => { abertos.push(u); return null; };
+const abertos = []; win.open = u => { const w = { closed: false, close() { this.closed = true; }, _h: "" }; Object.defineProperty(w, "location", { value: { set href(v) { abertos.push(v); } } }); if (u && u !== "about:blank") abertos.push(u); return w; };
 (async function () {
   b.fluxo("INGRESSOS · tela (computador e celular, mesma página)");
   win.cingCarregar(); await t.assentar(300);

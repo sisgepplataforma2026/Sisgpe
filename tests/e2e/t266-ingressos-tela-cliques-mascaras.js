@@ -41,7 +41,7 @@ g.PropertiesService.getScriptProperties().setProperty("INGRESSOS_GH_TOKEN", "ghp
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
 const t = dom.montar(g, ["CompassoIngressos.html"], { token: TOKEN });
 const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
-const abertos = []; win.open = u => { abertos.push(u); return null; };
+const abertos = []; win.open = u => { const w = { closed: false, close() { this.closed = true; }, _h: "" }; Object.defineProperty(w, "location", { value: { set href(v) { abertos.push(v); } } }); if (u && u !== "about:blank") abertos.push(u); return w; };
 const contar = nome => { const o = g[nome]; const c = { n: 0 }; g[nome] = function () { c.n++; return o.apply(this, arguments); }; return c; };
 const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pessoa")[i].querySelector("[data-k=" + k + "]"); f.value = v; f.dispatchEvent(new win.Event(f.tagName === "SELECT" ? "change" : "input", { bubbles: true })); return f; };
 
@@ -75,6 +75,14 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   await t.assentar(300);
   b.ok(cReg.n === 1 && g.compassoIngressos_estado(TOKEN).enviados === 1, "3 cliques em Confirmar envio: registra 1 envio", "chamadas " + cReg.n);
   b.ok(g.compassoIngressos_registrarEnvio("AAAA-0003", TOKEN).repetido === true && g.compassoIngressos_estado(TOKEN).enviados === 1, "e se chegar de novo em 30 s, o servidor também não duplica");
+
+  b.passo("navegador que BLOQUEIA a janela (celular/Safari): aparece 'Abrir WhatsApp'");
+  const abrirOk = win.open; win.open = () => null;
+  t.clicar("[data-ci='zap'][data-arg='AAAA-0001']"); await t.assentar(300);
+  const lk = doc.querySelector("a[data-ci='abriuLink'][data-arg='AAAA-0001']");
+  b.ok(!!lk && /^https:\/\/wa\.me\/5527999990001\?text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
+  b.ok(!!doc.querySelector("[data-ci='confirmar'][data-arg='AAAA-0001']"), "e o 'Confirmar envio' continua ao lado");
+  win.open = abrirOk;
 
   b.passo("pedir emissão, 3 cliques");
   t.clicar("[data-ci='aba'][data-arg='solicitar']"); await t.assentar(20);
