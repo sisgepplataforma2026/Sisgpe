@@ -1,0 +1,52 @@
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--gold:#C9A84C;--ok:#0f8a5f;--warn:#d97706;--err:#dc2626;--bg:#f4f6fa;--bd:#dde3ee}
+*{box-sizing:border-box}body{margin:0;font-family:"Plus Jakarta Sans",system-ui,sans-serif;background:var(--bg);color:#1b2433}
+.hd{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px 20px}
+.hd small{opacity:.75;display:block;font-size:12px}.hd b{font-size:18px}
+.passos{display:flex;gap:8px;padding:12px 20px;flex-wrap:wrap}
+.p{background:#fff;border:1px solid var(--bd);border-radius:20px;padding:6px 14px;font-size:13px;color:#667}
+.p.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 20px}
+.c{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px 14px}.c b{font-size:24px;display:block}.c span{font-size:12px;color:#667}
+.bar{display:flex;gap:10px;padding:14px 20px;flex-wrap:wrap;align-items:center}
+.btn{border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer}
+.nv{background:var(--navy);color:#fff}.ol{background:#fff;border:1px solid var(--bd);color:var(--navy)}.gd{background:var(--gold);color:#241b00}
+.wa{background:#1fa855;color:#fff}.pdf{background:#fff;border:1px solid var(--blue);color:var(--blue)}.off{background:#e8ebf1;color:#99a;cursor:not-allowed}
+table{width:calc(100% - 40px);margin:0 20px 20px;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--bd);border-radius:14px;overflow:hidden;font-size:13px}
+th{background:#eef2f9;text-align:left;padding:9px 10px;font-size:12px;color:#445}td{padding:9px 10px;border-top:1px solid #edf0f6}
+.b{display:inline-block;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700}
+.b.n{background:#e7f1ff;color:var(--blue)}.b.j{background:#e3f6ee;color:var(--ok)}.b.c{background:#fff1dc;color:var(--warn)}.b.e{background:#eee;color:#555}
+.ap{margin:0 20px 14px;background:#fff7e0;border:1px solid var(--gold);border-radius:12px;padding:10px 14px;font-size:13px}
+.m{max-width:390px;margin:0 auto;background:var(--bg);min-height:760px;position:relative;padding-bottom:70px}
+.m .hd{padding:12px 14px}.m .cards{grid-template-columns:1fr 1fr;padding:0 12px;gap:8px}.m .passos{padding:10px 12px;overflow:auto;flex-wrap:nowrap}.m .p{white-space:nowrap}
+.chips{display:flex;gap:6px;padding:10px 12px;overflow:auto}.chip{white-space:nowrap;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:5px 11px;font-size:12px}.chip.on{background:var(--navy);color:#fff}
+.pc{background:#fff;border:1px solid var(--bd);border-radius:14px;margin:0 12px 10px;padding:12px}
+.pc h4{margin:0 0 2px;font-size:15px}.pc p{margin:0 0 8px;font-size:12px;color:#667}
+.pc .ac{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pc .btn{padding:12px 8px;font-size:14px}
+.fix{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);padding:10px 12px;display:flex;gap:8px}
+.fix .btn{flex:1;padding:13px}
+.rot{font:700 12px system-ui;color:#667;text-align:center;padding:8px}
+</style></head><body>
+<div id="desk">
+<div class="hd"><small>Eventos › Ingressos</small><b>No Compasso da Vida · 19/12/2026</b></div>
+<div class="passos"><span class="p on">1 Lista</span><span class="p">2 Conferir</span><span class="p">3 Emitir</span><span class="p">4 Enviar</span></div>
+<div class="cards"><div class="c"><b>12</b><span>novos para emitir</span></div><div class="c"><b>5</b><span>já têm ingresso</span></div><div class="c"><b style="color:var(--warn)">2</b><span>conferir dados</span></div><div class="c"><b style="color:var(--ok)">3</b><span>enviados no WhatsApp</span></div></div>
+<div class="bar"><button class="btn ol">📄 Subir planilha</button><button class="btn ol">➕ Adicionar pessoa</button><button class="btn ol">🔄 Ler base do ingresso</button><span style="flex:1"></span><button class="btn gd">Emitir os 12 novos…</button></div>
+<div class="ap"><b>Nada é emitido sem o seu OK.</b> Ao clicar em "Emitir os 12 novos…" o sistema mostra a lista inteira e pede confirmação. Quem já tem ingresso nunca é emitido de novo.</div>
+<table><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Escola</th><th>Situação</th><th>Ações</th></tr>
+<tr><td>Maria Exemplo da Silva</td><td>123.***.***-00</td><td>(27) 99999-0001</td><td>Escola Modelo</td><td><span class="b n">Novo</span></td><td><button class="btn off">📎 PDF</button> <button class="btn off">📱 WhatsApp</button></td></tr>
+<tr><td>João Teste Souza</td><td>456.***.***-11</td><td>(27) 98888-0002</td><td>Colégio Fictício</td><td><span class="b j">Já tem · código ABCD-1234</span></td><td><button class="btn pdf">📎 PDF</button> <button class="btn wa">📱 WhatsApp</button></td></tr>
+<tr><td>Ana Demonstração</td><td>789.***.***-22</td><td>99999-0003</td><td>Escola Modelo</td><td><span class="b c">Conferir telefone (sem DDD)</span></td><td><button class="btn pdf">📎 PDF</button> <button class="btn off">📱 WhatsApp</button></td></tr>
+<tr><td>Carlos Fictício Lima</td><td>321.***.***-33</td><td>(27) 97777-0004</td><td>Instituto Exemplo</td><td><span class="b e">Enviado 14/11 por Marcela</span></td><td><button class="btn pdf">📎 PDF</button> <button class="btn ol">📱 Reenviar</button></td></tr>
+</table></div>
+<div id="mob"><div class="m">
+<div class="hd"><small>Eventos › Ingressos</small><b>No Compasso da Vida</b></div>
+<div class="passos"><span class="p">1 Lista</span><span class="p">2 Conferir</span><span class="p">3 Emitir</span><span class="p on">4 Enviar</span></div>
+<div class="cards"><div class="c"><b>12</b><span>novos</span></div><div class="c"><b style="color:var(--ok)">3</b><span>enviados</span></div></div>
+<div class="chips"><span class="chip on">Todos</span><span class="chip">Falta enviar</span><span class="chip">Novos</span><span class="chip">Conferir</span></div>
+<div class="pc"><h4>João Teste Souza</h4><p>Colégio Fictício · (27) 98888-0002<br><span class="b j">Já tem · ABCD-1234</span></p><div class="ac"><button class="btn pdf">📎 Baixar PDF</button><button class="btn wa">📱 WhatsApp</button></div></div>
+<div class="pc"><h4>Ana Demonstração</h4><p>Escola Modelo · 99999-0003<br><span class="b c">Conferir telefone</span></p><div class="ac"><button class="btn pdf">📎 Baixar PDF</button><button class="btn off">📱 WhatsApp</button></div></div>
+<div class="pc"><h4>Carlos Fictício Lima</h4><p>Instituto Exemplo · (27) 97777-0004<br><span class="b e">Enviado 14/11 por Marcela</span></p><div class="ac"><button class="btn pdf">📎 Baixar PDF</button><button class="btn ol">📱 Reenviar</button></div></div>
+<div class="fix"><button class="btn ol">📄 Planilha</button><button class="btn ol">➕ Pessoa</button><button class="btn gd">Emitir 12…</button></div>
+</div></div></body></html>
