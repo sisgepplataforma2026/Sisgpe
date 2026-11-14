@@ -388,6 +388,11 @@
     <?!= include('CompassoRecibos'); ?>
   </div>
 
+  <!-- ══ INGRESSOS DA FESTA (TickOne) — 14/11/2026 ══ -->
+  <div class="ev-conteudo" id="conteudo-ingressos" hidden>
+    <?!= include('CompassoIngressos'); ?>
+  </div>
+
   <div class="ev-conteudo" id="conteudo-sorteios" hidden>
     <p class="ev-secao">Bingo online</p>
     <div class="ev-acoes">
@@ -446,7 +451,9 @@ var EV_SUBMODULOS = {
     { id:'dados',      rotulo:'Dados da Festa', conteudo:'informacoes' },
     /* 04/11/2026 — "Preciso gerar vários recibos para festa": recibos em
        branco, numerados, para quem presta serviço na festa (CompassoRecibos). */
-    { id:'recibos',    rotulo:'Recibos em branco', conteudo:'recibos' }
+    { id:'recibos',    rotulo:'Recibos em branco', conteudo:'recibos' },
+    /* 14/11/2026 — ingressos emitidos no TickOne: enviar pelo WhatsApp e pesquisar antes de pedir (CompassoIngressos). */
+    { id:'ingressos',  rotulo:'Ingressos',         conteudo:'ingressos' }
   ],
   credenciamento: [
     { id:'entrada', rotulo:'Entrada do evento', conteudo:'credenciamento' }
@@ -530,6 +537,7 @@ function evTelaInterno(id){
   if(alvos.indexOf('conteudo-painel')>=0)      try{ evPainelCarregar(); }catch(e){ console.error(e); }
   if(alvos.indexOf('conteudo-executivo')>=0)   try{ evExecutivoCarregar(); }catch(e){ console.error(e); }
   if(alvos.indexOf('conteudo-recibos')>=0 && typeof window.crecCarregar==='function') try{ window.crecCarregar(); }catch(e){ console.error(e); }
+  if(alvos.indexOf('conteudo-ingressos')>=0 && typeof window.cingCarregar==='function') try{ window.cingCarregar(); }catch(e){ console.error(e); }
 }
 
 /* ══ EXECUTIVO ═════════════════════════════════════════════════════════════

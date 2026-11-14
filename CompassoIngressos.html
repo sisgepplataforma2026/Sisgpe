@@ -1,0 +1,252 @@
+<!-- INGRESSOS DA FESTA (TickOne) — Compasso da Vida 2026 (14/11/2026).
+     Enviar: os ingressos que já estão na base do TickOne, um a um, pelo WhatsApp.
+     Solicitar: pesquisa ANTES (quem já tem ingresso) e só depois, em etapa futura, pede.
+     Backend: CompassoIngressosDados.gs. Funciona no computador e no celular. -->
+<div id="compassoIngressos">
+<style>
+  #compassoIngressos{padding:4px 0 40px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
+  #compassoIngressos .ci-box{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+  #compassoIngressos .ci-topo{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+  #compassoIngressos .ci-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  #compassoIngressos .ci-card{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:10px 14px}
+  #compassoIngressos .ci-card b{display:block;font-size:24px;color:var(--navy,#001f4d)}
+  #compassoIngressos .ci-card span{font-size:12px;color:#64748b}
+  #compassoIngressos .ci-abas{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  #compassoIngressos .ci-aba,#compassoIngressos .ci-chip{border:1px solid #d8e0ea;background:#fff;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#475569}
+  #compassoIngressos .ci-aba.on,#compassoIngressos .ci-chip.on{background:var(--navy,#001f4d);color:#fff;border-color:var(--navy,#001f4d)}
+  #compassoIngressos .ci-filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  #compassoIngressos input[type=text],#compassoIngressos select,#compassoIngressos textarea{border:1px solid #cbd5e1;border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;max-width:100%}
+  #compassoIngressos textarea{width:100%;min-height:96px}
+  #compassoIngressos .ci-btn{border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+  #compassoIngressos .ci-wa{background:#1fa855;color:#fff}.ci-btn.ci-wa[disabled]{background:#e2e8f0;color:#94a3b8;cursor:not-allowed}
+  #compassoIngressos .ci-nv{background:var(--navy,#001f4d);color:#fff}
+  #compassoIngressos .ci-ol{background:#fff;border:1px solid #1565C0;color:#1565C0;text-decoration:none;display:inline-block}
+  #compassoIngressos .ci-ok{background:#0f8a5f;color:#fff}
+  #compassoIngressos .ci-linha{display:grid;grid-template-columns:2.2fr 1.1fr 1.4fr 1.3fr auto;gap:8px 12px;align-items:center;padding:10px 4px;border-top:1px solid #edf0f6;font-size:13px}
+  #compassoIngressos .ci-linha.ci-cab{font-size:12px;font-weight:800;color:#475569;border-top:0;background:#eef2f9;border-radius:10px;padding:8px 4px}
+  #compassoIngressos .ci-linha small{display:block;color:#64748b}
+  #compassoIngressos .ci-acoes{display:flex;gap:6px;flex-wrap:wrap}
+  #compassoIngressos .ci-b{display:inline-block;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700}
+  #compassoIngressos .ci-b.n{background:#e7f1ff;color:#1565C0}.ci-b.j{background:#e3f6ee;color:#0f8a5f}
+  #compassoIngressos .ci-b.c{background:#fff1dc;color:#d97706}.ci-b.e{background:#eee;color:#555}
+  #compassoIngressos .ci-aviso{background:#fff7e0;border:1px solid #C9A84C;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+  #compassoIngressos .ci-erro{background:#fee2e2;border:1px solid #dc2626;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:12px}
+  #compassoIngressos .ci-form{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+  #compassoIngressos .ci-vazio{padding:24px;text-align:center;color:#64748b}
+  #compassoIngressos [hidden]{display:none!important}
+  @media(max-width:760px){
+    #compassoIngressos .ci-cards{grid-template-columns:1fr 1fr}
+    #compassoIngressos .ci-linha{grid-template-columns:1fr;background:#fff;border:1px solid #d8e0ea;border-radius:14px;margin-bottom:10px;padding:12px}
+    #compassoIngressos .ci-linha.ci-cab{display:none}
+    #compassoIngressos .ci-acoes .ci-btn{flex:1;padding:13px 8px;font-size:14px;text-align:center}
+    #compassoIngressos .ci-form{grid-template-columns:1fr 1fr}
+    #compassoIngressos .ci-filtros input[type=text]{width:100%}
+  }
+</style>
+
+<div class="ci-box ci-topo">
+  <div><b>Ingressos — No Compasso da Vida</b><br><span id="ciBase" style="font-size:13px;color:#64748b">Carregando…</span></div>
+</div>
+<div id="ciErro" class="ci-erro" hidden></div>
+<div class="ci-cards">
+  <div class="ci-card"><b id="ciTotal">—</b><span>ingressos na base</span></div>
+  <div class="ci-card"><b id="ciEnv" style="color:#0f8a5f">—</b><span>enviados pelo SISGEP</span></div>
+  <div class="ci-card"><b id="ciFalta" style="color:#d97706">—</b><span>falta enviar</span></div>
+  <div class="ci-card"><b id="ciCats" style="font-size:13px;line-height:1.5">—</b><span>por categoria</span></div>
+</div>
+<div class="ci-abas">
+  <button class="ci-aba on" data-ci="aba" data-arg="enviar">📱 Enviar ingressos</button>
+  <button class="ci-aba" data-ci="aba" data-arg="solicitar">➕ Solicitar novos (pesquisa antes)</button>
+</div>
+
+<div id="ciPEnviar">
+  <div class="ci-filtros">
+    <input type="text" id="ciBusca" placeholder="Buscar nome, CPF, telefone ou escola" style="flex:1;min-width:200px">
+    <select id="ciCat"><option value="">Todas as categorias</option></select>
+  </div>
+  <div class="ci-filtros" id="ciChips">
+    <button class="ci-chip on" data-ci="chip" data-arg="todos">Todos</button>
+    <button class="ci-chip" data-ci="chip" data-arg="falta">Falta enviar</button>
+    <button class="ci-chip" data-ci="chip" data-arg="enviados">Enviados</button>
+    <button class="ci-chip" data-ci="chip" data-arg="fone">Conferir telefone</button>
+  </div>
+  <div class="ci-box" style="padding:10px 12px">
+    <div class="ci-linha ci-cab"><div>Nome</div><div>CPF</div><div>Telefone</div><div>Situação</div><div>Ações</div></div>
+    <div id="ciLista"><div class="ci-vazio">Carregando…</div></div>
+    <div style="text-align:center;margin-top:8px"><button class="ci-btn ci-ol" id="ciMais" data-ci="mais" hidden>Mostrar mais</button></div>
+  </div>
+  <div class="ci-aviso">O WhatsApp abre com a mensagem pronta; <b>o PDF você abre em "📎 PDF" (pasta INGRESSOS FESTA COMPASSO 2026 do Drive) e anexa</b>; se a pessoa ainda não tem PDF na pasta, o botão é "Abrir ingresso" (TickOne → Salvar / Imprimir PDF). O envio é o seu toque no WhatsApp. Só vira "enviado" depois que você confirmar.</div>
+</div>
+
+<div id="ciPSolicitar" hidden>
+  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> A lista é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Nada é emitido nesta etapa.</div>
+  <div class="ci-box">
+    <b>1. Planilha</b> <span style="font-size:12px;color:#64748b">— salve como CSV (colunas: Nome;Email;CPF;Telefone;Cidade;Escola;Tipo) ou cole aqui</span>
+    <textarea id="ciPlan" placeholder="Nome;Email;CPF;Telefone;Cidade;Escola;Tipo"></textarea>
+    <div class="ci-filtros" style="margin-top:8px"><input type="file" id="ciArq" accept=".csv,.txt,text/csv"><button class="ci-btn ci-nv" data-ci="lerPlan">Adicionar à lista</button></div>
+  </div>
+  <div class="ci-box">
+    <b>2. Ou uma pessoa por vez</b> <span style="font-size:12px;color:#64748b">— Associado: todos os campos; os demais: só nome e CPF (o resto em branco libera)</span>
+    <div class="ci-form">
+      <input type="text" id="ciFNome" placeholder="Nome completo"><input type="text" id="ciFCpf" placeholder="CPF" inputmode="numeric">
+      <input type="text" id="ciFTel" placeholder="Telefone com DDD" inputmode="tel"><input type="text" id="ciFEsc" placeholder="Escola">
+      <input type="text" id="ciFCid" placeholder="Cidade"><input type="text" id="ciFMail" placeholder="E-mail (opcional)">
+      <select id="ciFCat"></select><button class="ci-btn ci-nv" data-ci="addUm">Adicionar à lista</button>
+    </div>
+  </div>
+  <div class="ci-box ci-topo"><div><b id="ciQtd">0 pessoas na lista</b></div>
+    <div class="ci-acoes"><button class="ci-btn ci-ol" data-ci="limpar">Limpar lista</button><button class="ci-btn ci-ok" data-ci="conferir">🔎 Conferir (pesquisar antes)</button></div></div>
+  <div id="ciRes"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var CATS=[], BASE=[], FILTRO='todos', MOSTRAR=100, LISTA=[], ABERTO={};
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function aviso(t,erro){ if(typeof window.toast==='function') window.toast(t, erro?'err':'ok'); }
+  function rodar(fn,args,ok){
+    var r=google.script.run.withSuccessHandler(function(x){ ok(x||{ok:false,mensagem:'Sem resposta.'}); })
+      .withFailureHandler(function(e){ ok({ok:false,mensagem:(e&&e.message)||String(e)}); });
+    r[fn].apply(r,args.concat([token()]));
+  }
+  function erro(t){ var e=g('ciErro'); e.hidden=!t; e.textContent=t||''; }
+  function rotuloCat(v){ for(var i=0;i<CATS.length;i++) if(CATS[i].valor===v) return CATS[i].rotulo; return v||'—'; }
+
+  function estado(){
+    rodar('compassoIngressos_estado',[],function(r){
+      if(!r.ok){ erro('🔒 '+r.mensagem); g('ciBase').textContent='—'; return; }
+      CATS=r.categorias||[];
+      var sel=g('ciCat'), f=g('ciFCat');
+      if(sel.options.length<2) CATS.forEach(function(c){ sel.add(new Option(c.rotulo,c.valor)); });
+      if(!f.options.length) CATS.forEach(function(c){ f.add(new Option(c.rotulo,c.valor)); });
+      if(!r.existe){ erro(r.mensagem); g('ciBase').textContent='Base ainda não lida.'; return; }
+      erro('');
+      var idade=r.idadeMin==null?'':(r.idadeMin<60?r.idadeMin+' min':(Math.round(r.idadeMin/60*10)/10)+' h');
+      g('ciBase').textContent='Base do TickOne lida há '+idade+' pelo robô.';
+      g('ciTotal').textContent=r.total; g('ciEnv').textContent=r.enviados; g('ciFalta').textContent=r.total-r.enviados;
+      g('ciCats').innerHTML=Object.keys(r.porTipo).map(function(k){ return esc(rotuloCat(k))+': <b style="display:inline;font-size:13px">'+r.porTipo[k]+'</b>'; }).join('<br>');
+    });
+  }
+  function carregarLista(){
+    rodar('compassoIngressos_lista',[],function(r){
+      if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
+      BASE=r.linhas||[]; desenhar();
+    });
+  }
+  function passa(l){
+    var q=g('ciBusca').value.trim().toLowerCase(), c=g('ciCat').value;
+    if(c && l.categoria!==c) return false;
+    if(FILTRO==='falta' && l.enviado) return false;
+    if(FILTRO==='enviados' && !l.enviado) return false;
+    if(FILTRO==='fone' && l.foneOk) return false;
+    if(q && (l.nome+' '+l.cpf+' '+l.tel+' '+l.escola+' '+l.codigo).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }
+  function linhaHtml(l,i){
+    var sit=l.enviado?'<span class="ci-b j">Enviado '+esc(l.enviado.quando)+' · '+esc(l.enviado.quem)+'</span>'
+      :(!l.foneOk?'<span class="ci-b c">Conferir telefone</span>':'<span class="ci-b n">Falta enviar</span>');
+    if(l.enviadoTick) sit+='<br><small>No TickOne: enviado '+l.enviadoTick+'×</small>';
+    var botao;
+    if(ABERTO[l.codigo]) botao='<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(l.codigo)+'">✔ Confirmar envio</button>';
+    else botao='<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+(l.foneOk?'':' disabled')+'>📱 '+(l.enviado?'Reenviar':'WhatsApp')+'</button>';
+    var pdf=l.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.pdfDrive)+'">📎 PDF</a>'
+      :(l.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Abrir ingresso</a>':'');
+    return '<div class="ci-linha"><div><b>'+esc(l.nome)+'</b><small>'+esc(l.escola)+(l.cidade?' · '+esc(l.cidade):'')+' · '+esc(rotuloCat(l.categoria||l.tipo))+'</small></div>'+
+      '<div>'+esc(l.cpf)+'</div><div>'+esc(l.tel||'—')+'<small>'+esc(l.codigo)+'</small></div><div>'+sit+'</div><div class="ci-acoes">'+pdf+botao+'</div></div>';
+  }
+  function desenhar(){
+    var vis=BASE.filter(passa), parte=vis.slice(0,MOSTRAR);
+    g('ciLista').innerHTML=parte.length?parte.map(linhaHtml).join(''):'<div class="ci-vazio">Nenhum ingresso com esse filtro.</div>';
+    g('ciMais').hidden=vis.length<=MOSTRAR; g('ciMais').textContent='Mostrar mais ('+(vis.length-MOSTRAR)+')';
+    [].forEach.call(g('ciChips').querySelectorAll('.ci-chip'),function(b){ b.classList.toggle('on',b.getAttribute('data-arg')===FILTRO); });
+  }
+  function achar(cod){ for(var i=0;i<BASE.length;i++) if(BASE[i].codigo===cod) return BASE[i]; return null; }
+
+  function zap(cod){
+    rodar('compassoIngressos_mensagem',[cod],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      window.open(r.url,'_blank'); ABERTO[cod]=true; desenhar();
+      aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".');
+    });
+  }
+  function confirmar(cod){
+    rodar('compassoIngressos_registrarEnvio',[cod],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      var l=achar(cod); if(l) l.enviado=r.enviado; delete ABERTO[cod]; desenhar(); estado(); aviso('Envio registrado.');
+    });
+  }
+
+  /* ── solicitar: lista, planilha, conferência ── */
+  function partir(linha,sep){
+    var out=[],cur='',asp=false;
+    for(var i=0;i<linha.length;i++){ var c=linha.charAt(i);
+      if(c==='"'){ asp=!asp; } else if(c===sep&&!asp){ out.push(cur); cur=''; } else cur+=c; }
+    out.push(cur); return out.map(function(x){ return x.trim(); });
+  }
+  function lerTexto(txt){
+    var ls=String(txt||'').split(/\r?\n/).filter(function(x){ return x.trim(); });
+    if(!ls.length) return [];
+    var sep=[';','\t',','].sort(function(a,b){ return ls[0].split(b).length-ls[0].split(a).length; })[0];
+    var cab=partir(ls[0],sep).map(function(x){ return x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); });
+    var temCab=cab.indexOf('nome')>=0||cab.indexOf('cpf')>=0;
+    var ordem=temCab?cab:['nome','email','cpf','telefone','cidade','escola','tipo'];
+    var chave={nome:'nome',email:'email','e-mail':'email',cpf:'cpf',telefone:'telefone',celular:'telefone',whatsapp:'telefone',cidade:'cidade',escola:'escola',tipo:'categoria',categoria:'categoria'};
+    return ls.slice(temCab?1:0).map(function(l){
+      var c=partir(l,sep), o={};
+      ordem.forEach(function(k,i){ if(chave[k]) o[chave[k]]=c[i]||''; });
+      return o;
+    });
+  }
+  function qtd(){ g('ciQtd').textContent=LISTA.length+(LISTA.length===1?' pessoa':' pessoas')+' na lista'; }
+  function lerPlan(){
+    var arq=g('ciArq').files&&g('ciArq').files[0];
+    function usar(t){ var n=lerTexto(t); LISTA=LISTA.concat(n); g('ciPlan').value=''; g('ciArq').value=''; qtd(); aviso(n.length+' linha(s) adicionada(s). Agora toque em Conferir.'); }
+    if(arq){ var fr=new FileReader(); fr.onload=function(){ usar(fr.result); }; fr.readAsText(arq,'utf-8'); }
+    else if(g('ciPlan').value.trim()) usar(g('ciPlan').value);
+    else aviso('Cole a planilha ou escolha o arquivo CSV.',true);
+  }
+  function addUm(){
+    var o={nome:g('ciFNome').value,cpf:g('ciFCpf').value,telefone:g('ciFTel').value,escola:g('ciFEsc').value,cidade:g('ciFCid').value,email:g('ciFMail').value,categoria:g('ciFCat').value};
+    if(!o.nome.trim()){ aviso('Escreva o nome.',true); return; }
+    LISTA.push(o); ['ciFNome','ciFCpf','ciFTel','ciFEsc','ciFCid','ciFMail'].forEach(function(id){ g(id).value=''; }); qtd(); aviso('Adicionado.');
+  }
+  function conferir(){
+    if(!LISTA.length){ aviso('A lista está vazia.',true); return; }
+    g('ciRes').innerHTML='<div class="ci-vazio">Pesquisando na base do TickOne…</div>';
+    rodar('compassoIngressos_conferir',[LISTA],function(r){
+      if(!r.ok){ g('ciRes').innerHTML='<div class="ci-erro">'+esc(r.mensagem)+'</div>'; return; }
+      var c=r.contagem, h='<div class="ci-cards"><div class="ci-card"><b>'+c.novo+'</b><span>novos (ainda sem ingresso)</span></div><div class="ci-card"><b style="color:#0f8a5f">'+c.ja_tem+
+        '</b><span>já têm ingresso</span></div><div class="ci-card"><b style="color:#d97706">'+c.conferir+'</b><span>conferir dados</span></div><div class="ci-card"><b>'+r.idadeMin+' min</b><span>idade da base</span></div></div>';
+      h+='<div class="ci-aviso">'+esc(r.emissaoMotivo)+'</div><div class="ci-box" style="padding:10px 12px">';
+      h+=r.resultados.map(function(x){
+        var b=x.situacao==='ja_tem'?'<span class="ci-b j">Já tem · '+esc(x.codigo)+'</span>':(x.situacao==='conferir'?'<span class="ci-b c">Conferir</span>':'<span class="ci-b n">Novo</span>');
+        var m=x.motivos.length?'<small>'+x.motivos.map(esc).join('<br>')+'</small>':'';
+        if(x.avisos&&x.avisos.length) m+='<small style="color:#64748b">ℹ '+x.avisos.map(esc).join('<br>ℹ ')+'</small>';
+        var tl=x.telefone?x.telefone+(x.telefoneOrigem?' <small>('+esc(x.telefoneOrigem)+')</small>':''):(x.telefoneDigitado||'—');
+        var link=x.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.urlIngresso)+'">🎟️ Abrir ingresso</a>':'';
+        return '<div class="ci-linha"><div><b>'+esc(x.nome||'(sem nome)')+'</b><small>'+esc(x.escola)+(x.cidade?' · '+esc(x.cidade):'')+' · '+esc(rotuloCat(x.categoria))+'</small></div><div>'+esc(x.cpfMascara)+'</div><div>'+esc(tl)+'</div><div>'+b+m+'</div><div class="ci-acoes">'+link+'</div></div>';
+      }).join('')+'</div>';
+      g('ciRes').innerHTML=h;
+    });
+  }
+
+  document.getElementById('compassoIngressos').addEventListener('click',function(ev){
+    var t=ev.target.closest('[data-ci]'); if(!t) return; var a=t.getAttribute('data-ci'), arg=t.getAttribute('data-arg');
+    if(a==='aba'){ g('ciPEnviar').hidden=arg!=='enviar'; g('ciPSolicitar').hidden=arg!=='solicitar';
+      [].forEach.call(document.querySelectorAll('#compassoIngressos .ci-aba'),function(b){ b.classList.toggle('on',b===t); }); }
+    else if(a==='chip'){ FILTRO=arg; MOSTRAR=100; desenhar(); }
+    else if(a==='mais'){ MOSTRAR+=100; desenhar(); }
+    else if(a==='zap') zap(arg); else if(a==='confirmar') confirmar(arg);
+    else if(a==='lerPlan') lerPlan(); else if(a==='addUm') addUm();
+    else if(a==='limpar'){ LISTA=[]; qtd(); g('ciRes').innerHTML=''; }
+    else if(a==='conferir') conferir();
+  });
+  g('ciBusca').addEventListener('input',function(){ MOSTRAR=100; desenhar(); });
+  g('ciCat').addEventListener('change',function(){ MOSTRAR=100; desenhar(); });
+  window.cingCarregar=function(){ estado(); carregarLista(); };
+})();
+</script>
+</div>

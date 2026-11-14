@@ -6961,3 +6961,12 @@ Ações no e-mail aberto (desenho docs/mock-acoes-no-email.png) + secretaria@ co
 | HML | Caixa: e-mail pedindo sindicalização (sem ficha) | a proposta de resposta vem no modelo da visita do diretor, sem lista de documentos |
 | HML | Caixa: rolar a lista | cabeçalho, cards, filtros e ações ficam parados; só os e-mails rolam |
 | Gmail da Secretaria | Cópia da KingHost (opção 3, ~21 mil e-mails) | as pastas da KingHost aparecem na lateral da secretaria@ e no "Mover para…"; nada novo em "a tratar" |
+
+## 🎟️ Ingressos da Festa (TickOne) — entregue em 14/11/2026, NÃO TESTADO no sistema no ar
+
+Tela Eventos › Festa › Ingressos (computador e celular). Testado só no emulador (t259, dados
+fictícios). Falta, por você: (1) abrir a tela em homologação e conferir que a lista traz as 494
+pessoas, com CPF mascarado; (2) num celular, abrir o WhatsApp de UMA pessoa de teste, anexar o PDF
+e conferir que "Confirmar envio" marca; (3) "Solicitar novos": colar 2–3 pessoas (uma que já tem
+ingresso) e ver que "já tem" mostra o código. A EMISSÃO pelo robô não existe ainda. O contador de
+envios do TickOne da 1ª linha da lista subiu 1→2 por erro do robô (sem mensagem enviada).

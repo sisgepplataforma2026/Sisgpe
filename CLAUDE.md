@@ -117,6 +117,33 @@ teste t251. `?portal=oftalmo` responde um aviso de serviço encerrado. As ABAS d
 dados (Agend_Oftalmo, Log_Agend_Oftalmo) NÃO foram tocadas. tests/e2e/t252 trava
 que nada mais inclui os arquivos apagados. Não recriar sem ele pedir.
 
+## 🎟️ INGRESSOS DA FESTA — TICKONE (14/11/2026)
+
+Os ingressos são emitidos no **TickOne** (ingressos.sindeducacao.com.br, plataforma paga;
+evento "No Compasso da Vida", 494 ingressos lidos). O SISGEP NÃO emite: **lê** a base e
+ajuda a **enviar, um a um, pelo WhatsApp** (Eventos › Festa › Ingressos, no computador e no
+celular — CompassoIngressos.html + CompassoIngressosDados.gs, t259). Decisões do usuário:
+- *"Quando for solicitar, sempre pesquisar antes"*: toda conferência compara a lista com a
+  base lida pelo robô (CPF, e na falta o nome); quem já tem ingresso aparece com o código e
+  nunca é pedido de novo. A base precisa ter menos de 15 min para pedir.
+- Lista por planilha (CSV) ou pessoa a pessoa. **Sem limite de vagas.**
+- Cinco categorias, as do TickOne: Associado, Acompanhante Associado (solta, sem ligação com
+  um associado), Convite, Cortesia, Pago. **Associado: todos os campos obrigatórios** (nome,
+  CPF, telefone, e-mail, escola, cidade); **os demais: só nome e CPF**, o resto em branco libera.
+- Envio individual; WhatsApp só por link (wa.me), o PDF o operador anexa; só vira "enviado"
+  depois do "Confirmar envio". Fora de questão enviar em massa ou pela API da Meta.
+- Os PDFs ("TickOne - Nome.pdf") ficam na pasta do Drive INGRESSOS FESTA COMPASSO 2026
+  (Financeiro); o usuário já tinha essa pasta — não criar outra.
+- O robô (tools/ingressos-robo/, GitHub Actions + Playwright) usa o login nos Secrets
+  INGRESSOS_USUARIO/INGRESSOS_SENHA (+ CLASPRC_JSON); **nunca** pedir nem guardar a senha fora
+  dos Secrets; nada pessoal no log. ler-base.js só lê e grava ingressos-base.json numa pasta
+  privada do Drive. **ERRO MEU de 14/11:** no reconhecimento o robô clicou no botão do WhatsApp
+  da 1ª linha (casou com "pdf/ingresso") e subiu o contador de envios do TickOne (1x→2x);
+  corrigido — só clica em "Reemitir (PDF)". O robô nunca deve clicar em WhatsApp/e-mail/excluir.
+- **EMISSÃO PELO ROBÔ: NÃO LIGADA, não testada.** É irreversível (cria ingresso de verdade):
+  só com lista aprovada pelo usuário e primeiro com UMA pessoa de teste. Hoje o robô só roda
+  por push/reexecução (workflow novo só dispara por push no branch de homologação).
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.
