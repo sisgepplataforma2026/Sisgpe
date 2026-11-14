@@ -53,6 +53,7 @@ const p = (...a) => console.log(...a);
       await pg.waitForSelector("#popup-buyer-nome", { state: "visible", timeout: 6000 }).catch(() => null);
       const vazio = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-cpf"].every(id => { const e = document.getElementById(id); return e && e.offsetParent !== null && !(e.value || "").trim(); }));
       if (!vazio) { await registrar(it.pedido, "FALHOU", "o pop-up do lugar não estava vazio (lugar já usado?): NÃO emiti"); process.exitCode = 1; break; }
+      await pg.screenshot({ path: "/tmp/popup-vazio.png" }).catch(() => {});
       await pg.selectOption("#popup-tipo-ingresso", cat);
       await pg.fill("#popup-buyer-nome", nome);
       if (it.email) await pg.fill("#popup-buyer-email", String(it.email));
@@ -60,13 +61,37 @@ const p = (...a) => console.log(...a);
       if (it.telefone) await pg.fill("#popup-buyer-telefone", String(it.telefone));
       if (it.cidade) await pg.fill("#popup-buyer-cidade", String(it.cidade));
       if (it.escola) await pg.fill("#popup-buyer-observacao", String(it.escola));
-      const emitir = await pg.evaluateHandle(() => [...document.querySelectorAll("button")].filter(b => b.offsetParent !== null && (b.innerText || "").trim() === "Emitir Ingresso")[0] || null);
+      /* o botão "Emitir Ingresso" DO MESMO pop-up do campo de nome (sobe a árvore a partir do nome) */
+      const emitir = await pg.evaluateHandle(() => {
+        let x = document.getElementById("popup-buyer-nome");
+        while (x && x !== document.body) { x = x.parentElement; if (!x) break;
+          const bs = [...x.querySelectorAll("button")].filter(b => (b.innerText || "").trim() === "Emitir Ingresso");
+          if (bs.length) return bs.find(b => b.offsetParent !== null) || bs[0]; }
+        return null;
+      });
       const el = emitir.asElement();
       if (!el) { await registrar(it.pedido, "FALHOU", "não achei o botão Emitir Ingresso: NÃO emiti"); process.exitCode = 1; break; }
       jaNaRodada[cpf] = true;
-      await el.click();
+      /* A lista do TickOne numa ABA SEPARADA: é a prova de que o CPF já foi emitido (evita emitir em dobro). */
+      const jaTemNaLista = async () => { const aux = await ctx.newPage(); try { await aux.goto(BASE, { waitUntil: "domcontentloaded" }); await aux.waitForTimeout(1200); const e2 = await ler(aux); return !!(e2 && e2.linhas.some(l => l.cpf === cpf)); } finally { await aux.close().catch(() => {}); } };
+      try { await el.scrollIntoViewIfNeeded({ timeout: 5000 }); await el.click({ timeout: 10000 }); }
+      catch (eClique) {
+        /* Se a página recarregou/navegou durante o clique, o elemento se desconecta: isso quer dizer que o clique VALEU; a
+           conferência (exatamente 1 linha nova) decide. Só se o botão continua na tela é que foi falha de clique de verdade. */
+        const conectado = await el.evaluate(b => b.isConnected).catch(() => false);
+        if (conectado) {
+          const diag = await el.evaluate(b => { const out = []; let x = b; for (let i = 0; i < 5 && x; i++, x = x.parentElement) { const s = getComputedStyle(x), r = x.getBoundingClientRect();
+            out.push((x.id ? "#" + x.id : x.tagName.toLowerCase()) + "{d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",pos:" + s.position + ",ov:" + s.overflow + ",z:" + s.zIndex + ",w:" + Math.round(r.width) + ",h:" + Math.round(r.height) + ",x:" + Math.round(r.x) + ",y:" + Math.round(r.y) + "}"); }
+            return out.join(" < "); }).catch(() => "(sem diagnóstico)");
+          p("clique normal falhou:", String(eClique.message).split("\n")[0].slice(0, 90), "· viewport:", JSON.stringify(pg.viewportSize()), "· botão:", diag);
+          await pg.evaluate(() => document.querySelectorAll("input,textarea").forEach(i => { i.value = ""; })).catch(() => {});
+          await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
+          if (await jaTemNaLista()) p("o CPF já está na lista do TickOne: NÃO clico de novo");
+          else { p("o CPF ainda não está na lista: tento UMA vez o clique do próprio navegador"); await el.evaluate(b => b.click()); }
+        } else p("a página navegou durante o clique (normal depois de emitir): a conferência decide");
+      }
       const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 3000 }).catch(() => null);
-      if (sim) await sim.click();
+      if (sim) await sim.click().catch(() => {});
       await pg.waitForTimeout(3500);
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForTimeout(1500);
       const depois = await ler(pg);

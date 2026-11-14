@@ -43,3 +43,13 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           NODE_PATH: /tmp/robo/node_modules
         run: node tools/ingressos-robo/emitir.js
+      - name: Guardar as capturas de tela (SEM dado pessoal: campos limpos)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emissao-capturas
+          path: |
+            /tmp/popup-vazio.png
+            /tmp/popup-erro.png
+          if-no-files-found: ignore
+          retention-days: 2

@@ -8,7 +8,7 @@
   #compassoIngressos{padding:0 0 90px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
   #compassoIngressos [hidden]{display:none!important}
   #compassoIngressos *,#compassoIngressos *::before,#compassoIngressos *::after{box-sizing:border-box}
-  #compassoIngressos .ci-top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#001f4d,#002f6c);color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  #compassoIngressos .ci-top{position:relative;z-index:5;background:linear-gradient(135deg,#001f4d,#002f6c);color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px}
   #compassoIngressos .ci-top small{display:block;opacity:.8;font-size:12px;margin:2px 0 8px}
   #compassoIngressos .ci-top input{width:100%;border:0;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px}
   #compassoIngressos .ci-seg{display:grid;grid-template-columns:1fr 1fr;background:#e8ecf4;border-radius:12px;padding:3px;margin-bottom:10px}
@@ -53,6 +53,9 @@
   #compassoIngressos .ci-mini button{border:1px solid #d8e0ea;background:#fff;border-radius:10px;width:40px;height:36px;font-size:16px;cursor:pointer}
   #compassoIngressos .ci-campos{display:grid;grid-template-columns:1fr;gap:8px}
   #compassoIngressos .ci-campos input,#compassoIngressos .ci-campos select{width:100%}
+  #compassoIngressos .ci-f.ci-inval{border-color:#dc2626;background:#fff5f5}
+  #compassoIngressos .ci-dica{font-size:12px;color:#b45309;margin-top:6px;min-height:0}
+  #compassoIngressos .ci-btn[disabled]{opacity:.7;cursor:wait}
   #compassoIngressos .ci-v{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13px}
   #compassoIngressos .ci-v.j{background:#e3f6ee;border:1.5px solid #86d1b3}.ci-v.n{background:#e7f1ff;border:1.5px solid #9ec3f0}.ci-v.c{background:#fff1dc;border:1.5px solid #f3c98b}
   #compassoIngressos .ci-v b{font-size:14px}
@@ -62,7 +65,7 @@
   #compassoIngressos .ci-cartao{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:10px 14px}
   #compassoIngressos .ci-cartao b{display:block;font-size:22px;color:#001f4d}.ci-cartao span{font-size:12px;color:#64748b}
   @media(min-width:761px){
-    #compassoIngressos .ci-top{display:flex;gap:16px;align-items:center;justify-content:space-between}
+    #compassoIngressos .ci-top{position:sticky;top:0;display:flex;gap:16px;align-items:center;justify-content:space-between}
     #compassoIngressos .ci-top input{width:340px}#compassoIngressos .ci-top small{margin:2px 0 0}
     #compassoIngressos .ci-seg{display:inline-grid;grid-template-columns:auto auto;min-width:380px}
     #compassoIngressos .ci-linha{grid-template-columns:2.2fr 1.1fr 1.4fr 1.3fr 340px;align-items:center;gap:8px 12px}
@@ -156,10 +159,33 @@
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
   function aviso(t,erro){ if(typeof window.toast==='function') window.toast(t, erro?'err':'ok'); }
+  /* PEND: quem travou o botão (ver o despachante de cliques). O rodar() pega, e libera quando a chamada TERMINA (certo ou errado). */
+  var PEND=null, TRAVA={};
   function rodar(fn,args,ok){
-    var r=google.script.run.withSuccessHandler(function(x){ ok(x||{ok:false,mensagem:'Sem resposta.'}); })
-      .withFailureHandler(function(e){ ok({ok:false,mensagem:(e&&e.message)||String(e)}); });
+    var lib=PEND; PEND=null;
+    function fim(x){ try{ ok(x); } finally { if(lib) lib(); } }
+    var r=google.script.run.withSuccessHandler(function(x){ fim(x||{ok:false,mensagem:'Sem resposta.'}); })
+      .withFailureHandler(function(e){ fim({ok:false,mensagem:(e&&e.message)||String(e)}); });
     r[fn].apply(r,args.concat([token()]));
+  }
+  /* MÁSCARAS (CPF, telefone, e-mail) */
+  function soDig(s){ return String(s==null?'':s).replace(/\D/g,''); }
+  function mCpf(v){ var d=soDig(v).slice(0,11), o=d.slice(0,3); if(d.length>3) o+='.'+d.slice(3,6); if(d.length>6) o+='.'+d.slice(6,9); if(d.length>9) o+='-'+d.slice(9,11); return o; }
+  function mTel(v){ var d=soDig(v); if(d.length>11&&d.slice(0,2)==='55') d=d.slice(2); d=d.slice(0,11);
+    if(!d) return ''; var o='('+d.slice(0,2); if(d.length<=2) return o; o+=') '; var r=d.slice(2);
+    return o+(r.length>5?r.slice(0,r.length-4)+'-'+r.slice(-4):r); }
+  function mMail(v){ return String(v==null?'':v).toLowerCase().replace(/\s+/g,''); }
+  function cpfOk(c){ var d=soDig(c); if(d.length!==11||/^(\d)\1{10}$/.test(d)) return false;
+    for(var t=9;t<11;t++){ var s=0; for(var i=0;i<t;i++) s+=Number(d.charAt(i))*(t+1-i); if((s*10)%11%10!==Number(d.charAt(t))) return false; } return true; }
+  function telOk(v){ var d=soDig(v); if(d.length>11&&d.slice(0,2)==='55') d=d.slice(2); return (d.length===10||(d.length===11&&d.charAt(2)==='9'))&&Number(d.slice(0,2))>=11; }
+  function mailOk(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+  function mascara(k,v){ return k==='cpf'?mCpf(v):(k==='telefone'?mTel(v):(k==='email'?mMail(v):v)); }
+  function invalido(k,v){ if(!v) return ''; if(k==='cpf') return (soDig(v).length===11&&!cpfOk(v))?'CPF inválido':(soDig(v).length<11?'CPF incompleto':'');
+    if(k==='telefone') return telOk(v)?'':'Telefone incompleto (DDD + número)'; if(k==='email') return mailOk(v)?'':'E-mail inválido'; return ''; }
+  function marcar(card){
+    var dicas=[]; [].forEach.call(card.querySelectorAll('.ci-f'),function(f){ var k=f.getAttribute('data-k'), m=(k==='cpf'||k==='telefone'||k==='email')?invalido(k,f.value):'';
+      f.classList.toggle('ci-inval',!!m&&(k!=='cpf'||soDig(f.value).length===11||false)&&!(m==='CPF incompleto')); if(m&&!(k==='cpf'&&m==='CPF incompleto')) dicas.push(m); });
+    var d=card.querySelector('.ci-dica'); if(d) d.textContent=dicas.length?'⚠ '+dicas.join(' · '):'';
   }
   function erro(t){ var e=g('ciErro'); e.hidden=!t; e.textContent=t||''; }
   function rotuloCat(v){ for(var i=0;i<CATS.length;i++) if(CATS[i].valor===v) return CATS[i].rotulo; return v||'—'; }
@@ -251,7 +277,8 @@
     if(!EXCL) return;
     rodar('compassoIngressos_pedirExclusao',[EXCL,g('ciExclMotivo').value,g('ciExclOk').checked],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
-      EXCL=null; g('ciExcl').hidden=true; MENU=null; aviso(r.mensagem); carregarLista();
+      var lx=achar(EXCL); if(lx) lx.exclusao={pedido:r.pedido||'',status:'PEDIDO',quem:'você',quando:'agora',resultado:''};
+      EXCL=null; g('ciExcl').hidden=true; MENU=null; aviso('Pedido de exclusão registrado — aguardando o robô.'); desenhar(); carregarLista();
     });
   }
   function cancExcl(ped){
@@ -275,10 +302,10 @@
     return '<div class="ci-v n"><b>✅ Nova pessoa — pode emitir</b>'+(x.telefoneOrigem?'<br><small>'+esc(x.telefoneOrigem)+'</small>':'')+av+'</div>';
   }
   function pessoaHtml(p,i){
-    var c=CAMPOS.map(function(k){ return '<input type="text" class="ci-f" data-i="'+i+'" data-k="'+k[0]+'" placeholder="'+k[1]+'" value="'+esc(p[k[0]]||'')+'"'+(k[0]==='cpf'?' inputmode="numeric"':(k[0]==='telefone'?' inputmode="tel"':''))+'>'; }).join('');
+    var c=CAMPOS.map(function(k){ return '<input type="text" class="ci-f" data-i="'+i+'" data-k="'+k[0]+'" placeholder="'+k[1]+'" value="'+esc(mascara(k[0],p[k[0]]||''))+'"'+(k[0]==='cpf'?' inputmode="numeric" maxlength="14" autocomplete="off"':(k[0]==='telefone'?' inputmode="tel" maxlength="16" autocomplete="tel"':(k[0]==='email'?' inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="email"':'')))+'>'; }).join('');
     var sel='<select class="ci-f" data-i="'+i+'" data-k="categoria">'+(p.categoria===''?'<option value="" selected>Categoria…</option>':'')+CATS.map(function(t){ return '<option value="'+esc(t.valor)+'"'+(p.categoria===t.valor?' selected':'')+'>'+esc(t.rotulo)+'</option>'; }).join('')+'</select>';
     return '<div class="ci-pessoa" data-i="'+i+'"><div class="ci-pessoa-topo"><span>Pessoa '+(i+1)+'</span><span class="ci-mini"><button type="button" data-ci="addApos" data-arg="'+i+'" title="Adicionar outra pessoa depois desta" aria-label="Adicionar outra pessoa depois desta">+</button><button type="button" data-ci="delPessoa" data-arg="'+i+'" title="Tirar esta pessoa" aria-label="Tirar esta pessoa">×</button></span></div>'+
-      '<div class="ci-campos">'+c+sel+'</div><div class="ci-res" id="ciRes'+i+'">'+resHtml(i)+'</div></div>';
+      '<div class="ci-campos">'+c+sel+'</div><div class="ci-dica"></div><div class="ci-res" id="ciRes'+i+'">'+resHtml(i)+'</div></div>';
   }
   function desenharPessoas(){
     if(!LISTA.length) LISTA=[{}];
@@ -291,7 +318,8 @@
   function lerDom(){
     [].forEach.call(document.querySelectorAll('#ciPessoas .ci-pessoa'),function(card){
       var i=Number(card.getAttribute('data-i')); if(!LISTA[i]) LISTA[i]={};
-      [].forEach.call(card.querySelectorAll('.ci-f'),function(f){ LISTA[i][f.getAttribute('data-k')]=f.value; });
+      [].forEach.call(card.querySelectorAll('.ci-f'),function(f){ var k=f.getAttribute('data-k'), m=mascara(k,f.value); if(m!==f.value) f.value=m; LISTA[i][k]=m; });
+      marcar(card);
     });
     qtd();
   }
@@ -344,7 +372,7 @@
       lerDom();
       var n=lerTexto(t);
       if(LISTA.length===1&&vazia(LISTA[0])) LISTA=[];
-      n.forEach(function(p){ p.categoria=catDe(p.categoria); });
+      n.forEach(function(p){ p.categoria=catDe(p.categoria); p.cpf=mCpf(p.cpf||''); p.telefone=mTel(p.telefone||''); p.email=mMail(p.email||''); });
       LISTA=LISTA.concat(n); RESULT={}; g('ciPlan').value=''; g('ciArq').value=''; g('ciBoxPlan').hidden=true; desenharPessoas();
       aviso(n.length+' pessoa(s) adicionada(s). Agora toque em Conferir.');
     }
@@ -381,24 +409,47 @@
     lerDom();
     rodar('compassoIngressos_pedirEmissao',[validas().lista,g('ciEmisOk').checked],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
-      g('ciEmis').hidden=true; aviso(r.mensagem); carregarEmissoes();
+      g('ciEmis').hidden=true; aviso('Pedido registrado — aguardando o robô.'); passos(3);
+      if(r.emissoes) mostrarEmissoes(r.emissoes); else carregarEmissoes();
+      try{ g('ciEmisBox').scrollIntoView({block:'center'}); }catch(e){}
     });
   }
   function carregarEmissoes(){
     rodar('compassoIngressos_emissoes',[],function(r){
-      var box=g('ciEmisBox'); if(!r.ok||!r.emissoes.length){ box.hidden=true; return; }
+      if(!r.ok){ g('ciEmisBox').hidden=true; return; }
+      mostrarEmissoes(r.emissoes);
+    });
+  }
+  function mostrarEmissoes(emissoes){
+    (function(r){
+      var box=g('ciEmisBox'); if(!r.emissoes.length){ box.hidden=true; return; }
       box.hidden=false;
       g('ciEmisLista').innerHTML=r.emissoes.map(function(e){
         var st={PEDIDO:'aguardando o robô',EMITIDO:'emitido · código '+e.codigo,FALHOU:'falhou: '+e.resultado,CANCELADO:'cancelado'}[e.status]||e.status;
         return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid #edf0f6"><div><b>'+esc(e.nome)+'</b><br><small style="color:#64748b">'+esc(rotuloCat(e.categoria))+' · pedido por '+esc(e.pedidoPor)+' · '+esc(e.pedidoEm)+'</small></div><div><span class="ci-b '+(e.status==='EMITIDO'?'j':(e.status==='PEDIDO'?'n':'c'))+'">'+esc(st)+'</span>'+(e.status==='PEDIDO'?' <button class="ci-btn ci-ol" data-ci="cancEmis" data-arg="'+esc(e.pedido)+'">Cancelar pedido</button>':'')+'</div></div>';
       }).join('');
-    });
+    })({emissoes:emissoes});
   }
   function cancEmis(ped){ rodar('compassoIngressos_cancelarPedidoEmissao',[ped],function(r){ aviso(r.mensagem,!r.ok); carregarEmissoes(); }); }
 
   /* ══ eventos ══ */
+  /* AÇÕES QUE FALAM COM O SERVIDOR: o botão trava no 1º toque, mostra "⏳ …" na hora e ignora toques repetidos
+     (antes, tocar 2 ou 3 vezes parecia gerar 2 ou 3 pedidos). Destrava quando a resposta chega, certa ou errada. */
+  var OCUPADAS={emisPedir:'Pedindo…',exclPedir:'Pedindo…',conferir:'Pesquisando…',zap:'Abrindo…',confirmar:'Registrando…',cancEmis:'Cancelando…',cancExcl:'Cancelando…',lerPlan:'Lendo…'};
   document.getElementById('compassoIngressos').addEventListener('click',function(ev){
     var t=ev.target.closest('[data-ci]'); if(!t) return; var a=t.getAttribute('data-ci'), arg=t.getAttribute('data-arg');
+    if(t.disabled) return;
+    if(OCUPADAS[a]){
+      var chave=a+':'+(arg||''); if(TRAVA[chave]) return; TRAVA[chave]=true;
+      var rot=t.innerHTML; t.disabled=true; t.innerHTML='⏳ '+OCUPADAS[a];
+      PEND=function(){ TRAVA[chave]=false; if(t.isConnected){ t.disabled=false; t.innerHTML=rot; } };
+      var pend0=PEND;
+      try{ despachar(a,arg,t); } finally { if(PEND===pend0){ PEND=null; pend0(); } }
+      return;
+    }
+    despachar(a,arg,t);
+  });
+  function despachar(a,arg,t){
     if(a==='aba'){ g('ciPEnviar').hidden=arg!=='enviar'; g('ciPSolicitar').hidden=arg!=='solicitar';
       [].forEach.call(document.querySelectorAll('#compassoIngressos .ci-aba'),function(b){ b.classList.toggle('on',b===t); }); if(arg==='solicitar') desenharPessoas(); }
     else if(a==='chip'){ FILTRO=arg; MOSTRAR=100; desenhar(); }
@@ -414,11 +465,12 @@
     else if(a==='conferir') conferir();
     else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar'){ g('ciEmis').hidden=true; passos(2); }
     else if(a==='emisPedir') emisPedir(); else if(a==='cancEmis') cancEmis(arg);
-  });
+  }
   document.getElementById('compassoIngressos').addEventListener('input',function(ev){
     var t=ev.target; if(!t.classList||!t.classList.contains('ci-f')) return;
     var i=Number(t.getAttribute('data-i')), k=t.getAttribute('data-k'); if(!LISTA[i]) LISTA[i]={};
-    LISTA[i][k]=t.value; qtd();
+    var m=mascara(k,t.value); if(m!==t.value) t.value=m;
+    LISTA[i][k]=m; qtd(); var card=t.closest('.ci-pessoa'); if(card) marcar(card);
   });
   document.getElementById('compassoIngressos').addEventListener('change',function(ev){
     var t=ev.target; if(t.classList&&t.classList.contains('ci-f')){ var i=Number(t.getAttribute('data-i')); if(!LISTA[i]) LISTA[i]={}; LISTA[i][t.getAttribute('data-k')]=t.value; qtd(); }
