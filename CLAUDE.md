@@ -150,9 +150,15 @@ celular — CompassoIngressos.html + CompassoIngressosDados.gs, t259). Decisões
   GitHub no SISGEP (decisão do usuário, não feita). Testado só contra um TickOne FALSO (t260); a
   exclusão REAL nunca rodou: o primeiro uso é com um ingresso de TESTE. Nunca excluir sem pedido
   confirmado na tela.
-- **EMISSÃO PELO ROBÔ: NÃO LIGADA, não testada.** É irreversível (cria ingresso de verdade):
-  só com lista aprovada pelo usuário e primeiro com UMA pessoa de teste. Hoje o robô só roda
-  por push/reexecução (workflow novo só dispara por push no branch de homologação).
+- **EMISSÃO PELO ROBÔ (usuário, 14/11/2026: "faz um ingresso de teste"):** depois da conferência, "Pedir
+  emissão" (confirmação "cria ingresso de verdade") → fila (Ingressos_Emissoes + emissoes-fila.json) →
+  emitir.js abre UM lugar livre da grade (2.500 lugares; sem limite de vagas), preenche o pop-up
+  (tipo, nome, e-mail, CPF, telefone, cidade, escola na observação) e clica só em "Emitir Ingresso";
+  recarrega e confere UMA linha nova com o CPF e lê o código. Trava: CPF que já tem ingresso não é emitido
+  (pesquisar antes, base lida há <15 min); qualquer falha PARA a execução e não tenta de novo (evita
+  emitir em dobro); máx. 5. Acionado por MIM (push em PEDIDO-EMISSAO ou reexecução). Testado só contra um
+  TickOne FALSO (t261); a emissão REAL nunca rodou — o 1º uso é UM ingresso de TESTE (do próprio usuário,
+  dados digitados por ele na tela; nunca no código nem no git). TickOne não tem campo de data de nascimento.
 
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 

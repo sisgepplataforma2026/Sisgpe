@@ -32,8 +32,12 @@
      portaria, relê e confere que sumiu, e devolve exclusoes-resultado.json. O PDF da pasta do
      Drive NÃO é apagado. O robô ainda é acionado por mim (não pelo botão): o pedido espera.
      NÃO TESTADO no TickOne de verdade: o primeiro uso é com um ingresso de TESTE.
-   - A EMISSÃO não está ligada nesta etapa: não testada, fica por último, com
-     uma pessoa de teste.
+   - EMISSÃO (usuário, 14/11/2026: "faz um ingresso de teste"): depois da conferência, "Pedir emissão"
+     com confirmação ("cria ingresso de verdade") grava o pedido (aba Ingressos_Emissoes) e
+     emissoes-fila.json; o robô (tools/ingressos-robo/emitir.js) abre UM lugar livre da grade do
+     TickOne, preenche o pop-up e clica "Emitir Ingresso", depois confere na lista. Só com a base
+     lida há menos de 15 min e só para quem a conferência deu "novo". O robô é acionado por mim.
+     NÃO TESTADO no TickOne de verdade: o primeiro uso é UM ingresso de teste.
    ================================================================ */
 
 var CING_PASTA = "SISGEP — Ingressos (robô)";
@@ -45,6 +49,10 @@ var CING_ABA_EXCL = "Ingressos_Exclusoes";
 var CING_COLUNAS_EXCL = ["PEDIDO", "CODIGO", "NOME", "CPF", "TIPO", "ESCOLA", "CIDADE", "TELEFONE", "MOTIVO", "PEDIDO_EM", "PEDIDO_POR", "STATUS", "RESULTADO", "EXECUTADO_EM"];
 var CING_ARQ_FILA = "exclusoes-fila.json";
 var CING_ARQ_RESULTADO = "exclusoes-resultado.json";
+var CING_ABA_EMIS = "Ingressos_Emissoes";
+var CING_COLUNAS_EMIS = ["PEDIDO", "NOME", "CPF", "EMAIL", "TELEFONE", "CIDADE", "ESCOLA", "CATEGORIA", "PEDIDO_EM", "PEDIDO_POR", "STATUS", "CODIGO", "RESULTADO", "EXECUTADO_EM"];
+var CING_ARQ_FILA_EMIS = "emissoes-fila.json";
+var CING_ARQ_RES_EMIS = "emissoes-resultado.json";
 var CING_IDADE_MAX_MIN = 15;   // a base precisa ser recente para pedir ingresso novo
 var CING_URL_TICKET = "https://ingressos.sindeducacao.com.br/index.php?page=ticket&ref=";
 var CING_CATEGORIAS = [
@@ -314,9 +322,10 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       .map(function (r) { return "Associado " + (r.nome || "(sem nome)") + ": está faltando " + r.faltando.join(", ") + "."; });
     var recente = idade != null && idade <= CING_IDADE_MAX_MIN;
     return { ok: true, resultados: res, contagem: cont, faltasAssociado: faltas, lidoEm: base.lidoEm, idadeMin: idade, baseRecente: recente,
-      emissaoLiberada: false,
-      emissaoMotivo: "A emissão pelo robô ainda não foi ligada (próxima etapa, só com uma pessoa de teste)." +
-        (recente ? "" : " Além disso, a base está com mais de " + CING_IDADE_MAX_MIN + " minutos: leia de novo antes de pedir.") };
+      emissaoLiberada: recente && cont.conferir === 0 && cont.novo > 0,
+      emissaoMotivo: !recente ? "A base do TickOne está com mais de " + CING_IDADE_MAX_MIN + " minutos: leia de novo antes de pedir (a pesquisa antes de pedir precisa ser recente)."
+        : (cont.conferir > 0 ? "Corrija as linhas em 'Conferir' antes de pedir a emissão."
+        : (cont.novo === 0 ? "Ninguém novo para emitir: todos já têm ingresso." : "Pronto: " + cont.novo + " novo(s) podem ser pedidos. Isto cria ingresso de verdade no TickOne.")) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
@@ -436,6 +445,107 @@ function compassoIngressos_exclusoes(tokenSessao) {
         executadoEm: cingFmtData_(o.EXECUTADO_EM) };
     });
     return { ok: true, exclusoes: lista };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+
+/* ================= EMISSÃO DE INGRESSO (fila para o robô) ================= */
+
+function cingAbaEmis_() {
+  var ss = SpreadsheetApp.openById(PLANILHA_ID);
+  var sh = ss.getSheetByName(CING_ABA_EMIS);
+  if (!sh) { sh = ss.insertSheet(CING_ABA_EMIS); sh.getRange(1, 1, 1, CING_COLUNAS_EMIS.length).setValues([CING_COLUNAS_EMIS]); }
+  return sh;
+}
+
+function cingEmissoes_() {
+  var sh = cingAbaEmis_();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CING_COLUNAS_EMIS.length).getValues().map(function (l, i) {
+    var o = { _linha: i + 2 };
+    CING_COLUNAS_EMIS.forEach(function (c, k) { o[c] = l[k]; });
+    return o;
+  }).filter(function (o) { return o.PEDIDO; });
+}
+
+function cingPublicarFilaEmissao_() {
+  var fila = cingEmissoes_().filter(function (o) { return o.STATUS === "PEDIDO"; }).map(function (o) {
+    return { pedido: String(o.PEDIDO), nome: String(o.NOME), cpf: cingSoDigitos_(o.CPF), email: String(o.EMAIL || ""), telefone: String(o.TELEFONE || ""),
+             cidade: String(o.CIDADE || ""), escola: String(o.ESCOLA || ""), categoria: String(o.CATEGORIA) };
+  });
+  cingGravarArquivo_(cingPastaRobo_(), CING_ARQ_FILA_EMIS, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
+  return fila.length;
+}
+
+function cingSincronizarEmissoes_() {
+  try {
+    var it = cingPastaRobo_().getFilesByName(CING_ARQ_RES_EMIS);
+    if (!it.hasNext()) return 0;
+    var res = JSON.parse(it.next().getBlob().getDataAsString()), por = {};
+    (res.itens || []).forEach(function (r) { por[String(r.pedido)] = r; });
+    var sh = cingAbaEmis_(), n = 0, iSt = CING_COLUNAS_EMIS.indexOf("STATUS") + 1;
+    cingEmissoes_().forEach(function (o) {
+      var r = por[String(o.PEDIDO)];
+      if (o.STATUS !== "PEDIDO" || !r || ["EMITIDO", "FALHOU"].indexOf(r.status) < 0) return;
+      sh.getRange(o._linha, iSt, 1, 4).setValues([[r.status, String(r.codigo || ""), String(r.detalhe || "").substring(0, 200), r.em ? new Date(r.em) : new Date()]]);
+      n++;
+    });
+    return n;
+  } catch (e) { return 0; }
+}
+
+/** Pede a emissão dos NOVOS da lista. Refaz a conferência aqui (pesquisar antes) e só aceita se estiver tudo certo. */
+function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
+  try {
+    var sessao = exigirModulo_(tokenSessao, "eventos", true);
+    if (confirmado !== true) return { ok: false, mensagem: "Confirme que entende que isto cria ingresso de verdade no TickOne." };
+    var cf = compassoIngressos_conferir(lista, tokenSessao);
+    if (!cf.ok) return cf;
+    if (!cf.emissaoLiberada) return { ok: false, mensagem: cf.emissaoMotivo };
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está pedindo emissão agora. Tente de novo." };
+    try {
+      var abertos = {};
+      cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingSoDigitos_(o.CPF)] = true; });
+      var sh = cingAbaEmis_(), n = 0, quem = cingQuem_(sessao), agora = new Date();
+      cf.resultados.forEach(function (r, i) {
+        if (r.situacao !== "novo" || abertos[r.cpf]) return;
+        var id = "E" + Utilities.formatDate(agora, "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + (i + 1);
+        sh.appendRow([id, r.nome, r.cpf, r.email, r.telefone || r.telefoneDigitado, r.cidade, r.escola, r.categoria, agora, quem, "PEDIDO", "", "", ""]);
+        n++;
+      });
+      if (!n) return { ok: false, mensagem: "Estes já estão na fila de emissão." };
+      return { ok: true, pedidos: n, naFila: cingPublicarFilaEmissao_(), mensagem: n + " pedido(s) de emissão registrado(s). O robô emite no TickOne quando for acionado." };
+    } finally { lock.releaseLock(); }
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+function compassoIngressos_cancelarPedidoEmissao(pedido, tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", true);
+    var o = cingEmissoes_().filter(function (x) { return String(x.PEDIDO) === String(pedido); })[0];
+    if (!o) return { ok: false, mensagem: "Pedido não encontrado." };
+    if (o.STATUS !== "PEDIDO") return { ok: false, mensagem: "Este pedido já foi tratado (" + String(o.STATUS).toLowerCase() + ")." };
+    cingAbaEmis_().getRange(o._linha, CING_COLUNAS_EMIS.indexOf("STATUS") + 1).setValue("CANCELADO");
+    cingPublicarFilaEmissao_();
+    return { ok: true, mensagem: "Pedido cancelado. Nada foi emitido." };
+  } catch (e) {
+    return { ok: false, mensagem: e.message };
+  }
+}
+
+function compassoIngressos_emissoes(tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", false);
+    cingSincronizarEmissoes_();
+    return { ok: true, emissoes: cingEmissoes_().reverse().slice(0, 50).map(function (o) {
+      return { pedido: String(o.PEDIDO), nome: String(o.NOME), categoria: String(o.CATEGORIA), status: String(o.STATUS), codigo: String(o.CODIGO || ""),
+        resultado: String(o.RESULTADO || ""), pedidoEm: cingFmtData_(o.PEDIDO_EM), pedidoPor: String(o.PEDIDO_POR || "") };
+    }) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

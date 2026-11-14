@@ -1,0 +1,45 @@
+# EMITE NO TICKONE OS INGRESSOS PEDIDOS NO SISGEP (14/11/2026). CRIA INGRESSO DE VERDADE.
+# O usuário pede a emissão no SISGEP (depois da pesquisa "já tem ingresso?" e da confirmação
+# "cria ingresso de verdade"); o pedido vai para emissoes-fila.json na pasta privada do Drive.
+# Este robô só emite o que está nessa fila (máx. 5 por execução), não emite CPF que já tem ingresso,
+# abre um lugar livre da grade, confere que apareceu uma linha nova e devolve emissoes-resultado.json.
+# Dispara por push em tools/ingressos-robo/PEDIDO-EMISSAO (que o Claude atualiza quando o usuário
+# avisa) ou por reexecução. NÃO dispara sozinho por horário. Nada pessoal no log.
+# Segredos: INGRESSOS_USUARIO, INGRESSOS_SENHA, CLASPRC_JSON.
+name: Ingressos — emitir pedidos no TickOne
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/ingressos-robo/PEDIDO-EMISSAO'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingressos-emitir
+  cancel-in-progress: false
+
+jobs:
+  emitir:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar o navegador do robô
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Emitir só o que está na fila (sem dados pessoais no log)
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/emitir.js

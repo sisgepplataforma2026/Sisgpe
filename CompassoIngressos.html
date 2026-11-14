@@ -107,6 +107,14 @@
   <div class="ci-box ci-topo"><div><b id="ciQtd">0 pessoas na lista</b></div>
     <div class="ci-acoes"><button class="ci-btn ci-ol" data-ci="limpar">Limpar lista</button><button class="ci-btn ci-ok" data-ci="conferir">🔎 Conferir (pesquisar antes)</button></div></div>
   <div id="ciRes"></div>
+  <div id="ciEmis" class="ci-erro" hidden>
+    <b>Pedir a emissão no TickOne</b>
+    <p id="ciEmisQuem" style="margin:6px 0"></p>
+    <p style="margin:6px 0">Isto <b>cria ingresso de verdade no TickOne</b> (um código novo por pessoa). O robô abre um lugar livre, preenche e emite, depois confere na lista. Só vale para quem a pesquisa deu "Novo". Dá para cancelar o pedido enquanto o robô não tiver rodado.</p>
+    <label style="display:block;margin-bottom:8px"><input type="checkbox" id="ciEmisOk"> Entendo que isto cria ingresso de verdade</label>
+    <div class="ci-acoes"><button class="ci-btn ci-nv" data-ci="emisVoltar">Voltar</button><button class="ci-btn ci-ok" data-ci="emisPedir">🎟️ Pedir emissão</button></div>
+  </div>
+  <div class="ci-box" id="ciEmisBox" hidden><b>Pedidos de emissão</b><div id="ciEmisLista"></div></div>
 </div>
 
 <script>
@@ -251,14 +259,39 @@
     if(!o.nome.trim()){ aviso('Escreva o nome.',true); return; }
     LISTA.push(o); ['ciFNome','ciFCpf','ciFTel','ciFEsc','ciFCid','ciFMail'].forEach(function(id){ g(id).value=''; }); qtd(); aviso('Adicionado.');
   }
+  var ULTIMA=null;
+  function emisAbrir(){
+    if(!ULTIMA) return;
+    var nv=ULTIMA.resultados.filter(function(x){ return x.situacao==='novo'; });
+    g('ciEmisQuem').innerHTML=nv.map(function(x){ return '<b>'+esc(x.nome)+'</b> · '+esc(x.cpfMascara)+' · '+esc(rotuloCat(x.categoria)); }).join('<br>');
+    g('ciEmisOk').checked=false; g('ciEmis').hidden=false; g('ciEmis').scrollIntoView({block:'center'});
+  }
+  function emisPedir(){
+    rodar('compassoIngressos_pedirEmissao',[LISTA,g('ciEmisOk').checked],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      g('ciEmis').hidden=true; aviso(r.mensagem); carregarEmissoes();
+    });
+  }
+  function carregarEmissoes(){
+    rodar('compassoIngressos_emissoes',[],function(r){
+      var box=g('ciEmisBox'); if(!r.ok||!r.emissoes.length){ box.hidden=true; return; }
+      box.hidden=false;
+      g('ciEmisLista').innerHTML=r.emissoes.map(function(e){
+        var st={PEDIDO:'aguardando o robô',EMITIDO:'emitido · código '+e.codigo,FALHOU:'falhou: '+e.resultado,CANCELADO:'cancelado'}[e.status]||e.status;
+        return '<div class="ci-linha" style="grid-template-columns:2fr 1fr 2fr auto"><div><b>'+esc(e.nome)+'</b><small>pedido por '+esc(e.pedidoPor)+' · '+esc(e.pedidoEm)+'</small></div><div>'+esc(rotuloCat(e.categoria))+'</div><div><span class="ci-b '+(e.status==='EMITIDO'?'j':(e.status==='PEDIDO'?'n':'c'))+'">'+esc(st)+'</span></div><div>'+(e.status==='PEDIDO'?'<button class="ci-btn ci-ol" data-ci="cancEmis" data-arg="'+esc(e.pedido)+'">Cancelar pedido</button>':'')+'</div></div>';
+      }).join('');
+    });
+  }
+  function cancEmis(ped){ rodar('compassoIngressos_cancelarPedidoEmissao',[ped],function(r){ aviso(r.mensagem,!r.ok); carregarEmissoes(); }); }
   function conferir(){
     if(!LISTA.length){ aviso('A lista está vazia.',true); return; }
     g('ciRes').innerHTML='<div class="ci-vazio">Pesquisando na base do TickOne…</div>';
     rodar('compassoIngressos_conferir',[LISTA],function(r){
       if(!r.ok){ g('ciRes').innerHTML='<div class="ci-erro">'+esc(r.mensagem)+'</div>'; return; }
-      var c=r.contagem, h='<div class="ci-cards"><div class="ci-card"><b>'+c.novo+'</b><span>novos (ainda sem ingresso)</span></div><div class="ci-card"><b style="color:#0f8a5f">'+c.ja_tem+
+      ULTIMA=r; var c=r.contagem, h='<div class="ci-cards"><div class="ci-card"><b>'+c.novo+'</b><span>novos (ainda sem ingresso)</span></div><div class="ci-card"><b style="color:#0f8a5f">'+c.ja_tem+
         '</b><span>já têm ingresso</span></div><div class="ci-card"><b style="color:#d97706">'+c.conferir+'</b><span>conferir dados</span></div><div class="ci-card"><b>'+r.idadeMin+' min</b><span>idade da base</span></div></div>';
       if(r.faltasAssociado&&r.faltasAssociado.length) h+='<div class="ci-erro"><b>Faltam dados de associado ('+r.faltasAssociado.length+'):</b><br>'+r.faltasAssociado.map(esc).join('<br>')+'</div>';
+      if(r.emissaoLiberada) h+='<div class="ci-box ci-topo"><div>'+esc(r.emissaoMotivo)+'</div><button class="ci-btn ci-ok" data-ci="emisAbrir">🎟️ Pedir emissão dos '+r.contagem.novo+' novos</button></div>';
       h+='<div class="ci-aviso">'+esc(r.emissaoMotivo)+'</div><div class="ci-box" style="padding:10px 12px">';
       h+=r.resultados.map(function(x){
         var b=x.situacao==='ja_tem'?'<span class="ci-b j">Já tem · '+esc(x.codigo)+'</span>':(x.situacao==='conferir'?'<span class="ci-b c">Conferir</span>':'<span class="ci-b n">Novo</span>');
@@ -285,10 +318,12 @@
     else if(a==='lerPlan') lerPlan(); else if(a==='addUm') addUm();
     else if(a==='limpar'){ LISTA=[]; qtd(); g('ciRes').innerHTML=''; }
     else if(a==='conferir') conferir();
+    else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar') g('ciEmis').hidden=true;
+    else if(a==='emisPedir') emisPedir(); else if(a==='cancEmis') cancEmis(arg);
   });
   g('ciBusca').addEventListener('input',function(){ MOSTRAR=100; desenhar(); });
   g('ciCat').addEventListener('change',function(){ MOSTRAR=100; desenhar(); });
-  window.cingCarregar=function(){ estado(); carregarLista(); };
+  window.cingCarregar=function(){ estado(); carregarLista(); carregarEmissoes(); };
 })();
 </script>
 </div>

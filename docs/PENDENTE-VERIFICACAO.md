@@ -6978,3 +6978,11 @@ FALSO (t260). Falta: (1) emitir/ter UM ingresso de TESTE no TickOne; (2) pedir a
 (3) pedir ao Claude para rodar o robô; (4) conferir que o ingresso sumiu do TickOne e a linha mostra
 "Excluído". O pop-up de confirmação do TickOne real (botão "Confirmar") só foi visto no reconhecimento,
 nunca clicado. Se o pop-up for diferente, o robô PARA sem excluir ("a confirmação não apareceu").
+
+## 🎟️ Emitir ingresso pelo robô — entregue em 14/11/2026, NÃO TESTADO no TickOne de verdade
+
+"Pedir emissão" (tela) + robô emitir.js. Testado só contra um TickOne FALSO (t261). Falta o 1º uso real,
+com UM ingresso de teste: (1) o Claude lê a base de novo (<15 min); (2) você digita o ingresso de teste em
+Solicitar novos › Conferir › Pedir emissão; (3) o Claude roda o robô; (4) conferir no TickOne que o ingresso
+apareceu, com a categoria/escola/cidade certas, e que o pop-up real não pediu nada a mais. Se o TickOne real
+mostrar um aviso ou confirmação diferente, o robô PARA e diz o que viu.
