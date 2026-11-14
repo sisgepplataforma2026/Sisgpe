@@ -129,7 +129,8 @@ const abertos = []; win.open = u => { const w = { closed: false, close() { this.
   b.ok(g.compassoIngressos_estado(TOKEN).enviados === antes && !!doc.querySelector("[data-ci='confirmar'][data-arg='AAAA-0003']"), "ainda NÃO marcou enviado; apareceu 'Confirmar envio'");
   t.clicar("[data-ci='confirmar'][data-arg='AAAA-0003']"); await t.assentar(300);
   b.ok(g.compassoIngressos_estado(TOKEN).enviados === antes + 1 && /Enviado/.test(el("ciLista").textContent), "confirmou: registrado e a linha mostra 'Enviado'");
-  b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0002']").disabled === true, "telefone sem DDD: botão do WhatsApp travado");
+  { const nA = abertos.length; t.clicar("[data-ci='zap'][data-arg='AAAA-0002']"); await t.assentar(50);
+  b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0002']").getAttribute("data-off") === "1" && abertos.length === nA && el("ciErro").hidden === false && /sem DDD/.test(el("ciErro").textContent), "telefone sem DDD: o botão fica apagado e, ao tocar, a tela EXPLICA o motivo (não fica mudo) e não abre WhatsApp"); }
   b.passo("10. Pedir ingresso: cartões de pessoa (como o '+ Adicionar' do Ofício), planilha, conferência");
   const preencher = (i, o) => { const card = doc.querySelectorAll("#ciPessoas .ci-pessoa")[i]; Object.keys(o).forEach(k => { const f = card.querySelector("[data-k=" + k + "]"); f.value = o[k]; f.dispatchEvent(new win.Event(f.tagName === "SELECT" ? "change" : "input", { bubbles: true })); }); };
   t.clicar("[data-ci='aba'][data-arg='solicitar']");

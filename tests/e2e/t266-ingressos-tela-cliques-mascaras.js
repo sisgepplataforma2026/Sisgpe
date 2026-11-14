@@ -84,6 +84,13 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   b.ok(!!doc.querySelector("[data-ci='confirmar'][data-arg='AAAA-0001']"), "e o 'Confirmar envio' continua ao lado");
   win.open = abrirOk;
 
+  b.passo("erro do servidor aparece NA TELA (não só no toast)");
+  const msgOrig = g.compassoIngressos_mensagem; g.compassoIngressos_mensagem = () => { throw new Error("falha simulada do servidor"); };
+  t.clicar("[data-ci='zap'][data-arg='AAAA-0003']"); await t.assentar(300);
+  b.ok(el("ciErro").hidden === false && /falha simulada/.test(el("ciErro").textContent), "se o servidor falha, a faixa vermelha mostra o motivo", el("ciErro").textContent);
+  b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']") && !doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']").disabled, "e o botão destrava para tentar de novo");
+  g.compassoIngressos_mensagem = msgOrig;
+
   b.passo("pedir emissão, 3 cliques");
   t.clicar("[data-ci='aba'][data-arg='solicitar']"); await t.assentar(20);
   digitar(0, "nome", "Pedro Individual"); digitar(0, "cpf", "453.178.287-91"); digitar(0, "telefone", "27977770009"); digitar(0, "categoria", "acompanhante");

@@ -265,7 +265,7 @@
     var bloqueado=ex&&(ex.status==='PEDIDO'||ex.status==='EXCLUIDO');
     var prim;
     if(ABERTO[l.codigo]) prim=linkZap(l.codigo)+'<button class="ci-btn ci-ok ci-prim" data-ci="confirmar" data-arg="'+esc(l.codigo)+'">✔ Confirmar envio</button>';
-    else prim='<button class="ci-btn ci-wa ci-prim" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+((l.foneOk&&!bloqueado)?'':' disabled')+'>📱 '+(l.enviado?'Reenviar no WhatsApp':'Enviar no WhatsApp')+'</button>';
+    else prim='<button class="ci-btn ci-wa ci-prim" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+((l.foneOk&&!bloqueado)?'':' data-off="1" style="opacity:.5"')+'>📱 '+(l.enviado?'Reenviar no WhatsApp':'Enviar no WhatsApp')+'</button>';
     var pdf=l.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.pdfDrive)+'">📎 PDF</a>'
       :(l.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Ingresso</a>':'<span></span>');
     var itens='';
@@ -289,16 +289,25 @@
      WhatsApp. Se o navegador bloquear mesmo assim (celular, Safari), aparece o botão "Abrir WhatsApp": é um link
      comum, que abre no toque seguinte. */
   var WALINK={};
+  function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }
   function zap(cod){
+    var l=achar(cod);
+    if(l&&l.exclusao&&(l.exclusao.status==='PEDIDO'||l.exclusao.status==='EXCLUIDO')){ falha('Este ingresso tem pedido de exclusão: não dá para enviar.'); return; }
+    if(l&&l.foneOk===false){ falha('Telefone de '+l.nome+' ('+(l.tel||'em branco')+') sem DDD ou com tamanho errado. Corrija no TickOne, toque em 🔄 Atualizar base e tente de novo.'); return; }
+    erro('');
     var w=null; try{ w=window.open('about:blank','_blank'); }catch(e){}
+    var espera=setTimeout(function(){ falha('O servidor não respondeu em 20 segundos. Tente de novo.'); },20000);
     rodar('compassoIngressos_mensagem',[cod],function(r){
-      if(!r.ok){ try{ if(w) w.close(); }catch(e){} aviso(r.mensagem,true); return; }
-      var abriu=false;
-      try{ if(w&&!w.closed){ w.location.href=r.url; abriu=true; } else { abriu=!!window.open(r.url,'_blank'); } }catch(e){}
-      ABERTO[cod]=true;
-      if(abriu){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".'); }
-      else { WALINK[cod]=r.url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); }
-      desenhar(); desenharPessoas();
+      clearTimeout(espera);
+      try{
+        if(!r.ok){ try{ if(w) w.close(); }catch(e){} falha(r.mensagem||'Não consegui montar a mensagem.'); return; }
+        var abriu=false;
+        try{ if(w&&!w.closed){ w.location.href=r.url; abriu=true; } else { abriu=!!window.open(r.url,'_blank'); } }catch(e){}
+        ABERTO[cod]=true;
+        if(abriu){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".'); }
+        else { WALINK[cod]=r.url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); }
+        desenhar(); desenharPessoas();
+      }catch(e){ falha('Erro na tela ao abrir o WhatsApp: '+((e&&e.message)||e)); }
     });
   }
   function linkZap(cod){ return WALINK[cod]?'<a class="ci-btn ci-wa ci-prim" target="_blank" rel="noopener" href="'+esc(WALINK[cod])+'" data-ci="abriuLink" data-arg="'+esc(cod)+'">📱 Abrir WhatsApp</a>':''; }
@@ -334,7 +343,7 @@
     var x=RESULT[i]; if(!x) return '';
     if(x.situacao==='ja_tem'){
       var pdf=x.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.pdfDrive)+'">📎 Baixar PDF</a>':(x.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.urlIngresso)+'">🎟️ Abrir no TickOne</a>':'');
-      var bt=ABERTO[x.codigo]?linkZap(x.codigo)+'<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(x.codigo)+'">✔ Confirmar envio</button>':'<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(x.codigo)+'"'+(x.telefone?'':' disabled')+'>📱 Enviar no WhatsApp</button>';
+      var bt=ABERTO[x.codigo]?linkZap(x.codigo)+'<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(x.codigo)+'">✔ Confirmar envio</button>':'<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(x.codigo)+'"'+(x.telefone?'':' data-off="1" style="opacity:.5"')+'>📱 Enviar no WhatsApp</button>';
       return '<div class="ci-v j"><b>🎟️ Já tem ingresso · '+esc(x.codigo)+'</b><br>Não precisa emitir de novo: envie ou baixe o que já existe.<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+bt+pdf+'</div></div>';
     }
     var av=(x.avisos&&x.avisos.length)?'<br><small style="color:#64748b">ℹ '+x.avisos.map(esc).join('<br>ℹ ')+'</small>':'';
