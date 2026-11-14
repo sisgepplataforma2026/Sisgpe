@@ -42,3 +42,11 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           NODE_PATH: /tmp/robo/node_modules
         run: node tools/ingressos-robo/excluir.js
+      - name: Atualizar a base do TickOne (a contagem da tela acompanha)
+        if: always()
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/ler-base.js

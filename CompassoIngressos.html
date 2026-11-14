@@ -87,6 +87,15 @@
 <div class="ci-top">
   <div><b style="font-size:17px">Ingressos — No Compasso da Vida</b><small id="ciBase">Carregando…</small></div>
   <input type="text" id="ciBusca" placeholder="🔎 Buscar nome, CPF, telefone ou escola">
+  <button class="ci-chip" data-ci="atualizarBase" id="ciAtu" title="O robô lê o TickOne de novo (só leitura)">🔄 Atualizar base</button>
+  <button class="ci-chip" data-ci="robo" id="ciRoboBt" title="Disparo automático dos robôs (administrador)">🤖 Robô</button>
+</div>
+<div id="ciRobo" class="ci-erro" hidden>
+  <b>Disparo automático dos robôs</b>
+  <p id="ciRoboEst" style="margin:6px 0"></p>
+  <p style="margin:6px 0;font-size:12px">Cole aqui a chave do GitHub (permissão só de <i>Actions</i>, só deste repositório). Ela vai direto para as configurações protegidas do sistema e não aparece de novo. Deixe em branco e salve para desligar.</p>
+  <input type="password" id="ciRoboChave" autocomplete="off" placeholder="chave do GitHub" style="width:100%;margin-bottom:8px">
+  <button class="ci-chip" data-ci="roboSalvar">Salvar</button> <button class="ci-chip" data-ci="robo">Fechar</button>
 </div>
 <div id="ciErro" class="ci-erro" hidden></div>
 <div class="ci-seg">
@@ -206,6 +215,26 @@
       desenharPessoas();
     });
   }
+  var PEND_BASE=false;
+  function atualizarBase(){
+    if(PEND_BASE) return; PEND_BASE=true; var b=g('ciAtu'); b.textContent='⏳ Lendo o TickOne…'; b.disabled=true;
+    rodar('compassoIngressos_atualizarBase',[],function(r){
+      aviso(r.mensagem,!r.ok);
+      setTimeout(function(){ PEND_BASE=false; b.textContent='🔄 Atualizar base'; b.disabled=false; estado(); carregarLista(); },r.robo&&r.robo.acionado?60000:1500);
+    });
+  }
+  function roboEstado(){
+    rodar('compassoIngressos_estadoRobo',[],function(r){
+      if(!r.ok) return; g('ciRoboEst').innerHTML=r.ligado?'🟢 <b>Ligado</b> — pedir emissão/exclusão aciona o robô na hora.':'⚪ <b>Desligado</b> — os pedidos ficam na fila até o Claude acionar o robô.';
+    });
+  }
+  function roboAbrir(){ var bx=g('ciRobo'); bx.hidden=!bx.hidden; if(!bx.hidden) roboEstado(); }
+  function roboSalvar(){
+    var v=g('ciRoboChave').value;
+    rodar('compassoIngressos_salvarChaveRobo',[v],function(r){
+      aviso(r.mensagem,!r.ok); if(r.ok){ g('ciRoboChave').value=''; roboEstado(); }
+    });
+  }
   function carregarLista(){
     rodar('compassoIngressos_lista',[],function(r){
       if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
@@ -278,7 +307,7 @@
     rodar('compassoIngressos_pedirExclusao',[EXCL,g('ciExclMotivo').value,g('ciExclOk').checked],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
       var lx=achar(EXCL); if(lx) lx.exclusao={pedido:r.pedido||'',status:'PEDIDO',quem:'você',quando:'agora',resultado:''};
-      EXCL=null; g('ciExcl').hidden=true; MENU=null; aviso('Pedido de exclusão registrado — aguardando o robô.'); desenhar(); carregarLista();
+      EXCL=null; g('ciExcl').hidden=true; MENU=null; aviso(r.robo&&r.robo.acionado?'Pedido registrado — robô acionado, excluindo no TickOne…':'Pedido de exclusão registrado — aguardando o robô.'); desenhar(); carregarLista();
     });
   }
   function cancExcl(ped){
@@ -409,7 +438,7 @@
     lerDom();
     rodar('compassoIngressos_pedirEmissao',[validas().lista,g('ciEmisOk').checked],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
-      g('ciEmis').hidden=true; aviso('Pedido registrado — aguardando o robô.'); passos(3);
+      g('ciEmis').hidden=true; aviso(r.robo&&r.robo.acionado?'Pedido registrado — robô acionado, emitindo no TickOne…':(r.mensagem||'Pedido registrado — aguardando o robô.')); passos(3);
       if(r.emissoes) mostrarEmissoes(r.emissoes); else carregarEmissoes();
       try{ g('ciEmisBox').scrollIntoView({block:'center'}); }catch(e){}
     });
@@ -464,6 +493,7 @@
     else if(a==='limpar'){ LISTA=[{}]; RESULT={}; ULTIMA=null; g('ciRes').innerHTML=''; g('ciEmis').hidden=true; passos(1); desenharPessoas(); }
     else if(a==='conferir') conferir();
     else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar'){ g('ciEmis').hidden=true; passos(2); }
+    else if(a==='atualizarBase') atualizarBase(); else if(a==='robo') roboAbrir(); else if(a==='roboSalvar') roboSalvar();
     else if(a==='emisPedir') emisPedir(); else if(a==='cancEmis') cancEmis(arg);
   }
   document.getElementById('compassoIngressos').addEventListener('input',function(ev){

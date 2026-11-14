@@ -432,7 +432,8 @@ function compassoIngressos_pedirExclusao(codigo, motivo, confirmado, tokenSessao
       shX.appendRow([id, l.codigo, l.nome, l.cpf, l.tipo, l.escola, l.cidade, l.tel,
         String(motivo || "").trim().substring(0, 200), new Date(), cingQuem_(sessao), "PEDIDO", "", ""]);
       var abertos = cingPublicarFila_();
-      return { ok: true, pedido: id, abertos: abertos, mensagem: "Pedido de exclusão registrado. O robô exclui no TickOne quando for acionado." };
+      var rb = cingDispararRobo_("excluir");
+      return { ok: true, pedido: id, abertos: abertos, robo: rb, mensagem: rb.acionado ? "Pedido de exclusão registrado. O robô já foi acionado." : "Pedido de exclusão registrado. " + rb.motivo };
     } finally { lock.releaseLock(); }
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -542,7 +543,8 @@ function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
         area.setValues(linhas);
       }
       if (!n) return { ok: false, mensagem: "Estes já estão na fila de emissão." };
-      return { ok: true, pedidos: n, naFila: cingPublicarFilaEmissao_(), emissoes: cingListaEmissoes_(), mensagem: n + " pedido(s) de emissão registrado(s). O robô emite no TickOne quando for acionado." };
+      var naFilaE = cingPublicarFilaEmissao_(), rb = cingDispararRobo_("emitir");
+      return { ok: true, pedidos: n, naFila: naFilaE, emissoes: cingListaEmissoes_(), robo: rb, mensagem: n + " pedido(s) registrado(s). " + (rb.acionado ? "O robô já foi acionado." : rb.motivo) };
     } finally { lock.releaseLock(); }
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -578,4 +580,61 @@ function compassoIngressos_emissoes(tokenSessao) {
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
+}
+
+
+/* ══ DISPARO AUTOMÁTICO DOS ROBÔS (14/11/2026) ══
+ * O botão do SISGEP aciona o workflow do GitHub sozinho (workflow_dispatch) — sem esperar pelo Claude.
+ * A chave do GitHub (permissão SÓ de Actions, só neste repositório) fica nas Propriedades do script
+ * (INGRESSOS_GH_TOKEN), gravada por administrador na tela; nunca no código, nunca no chat, nunca no log.
+ * Sem chave, tudo segue como antes: o pedido fica na fila e o robô é acionado à mão. */
+var CING_GH_REPO = "sisgepplataforma2026/Sisgpe";
+var CING_GH_REF = "integracao/sisgep-homologacao";
+var CING_ROBOS = { emitir: "ingressos-emitir.yml", excluir: "ingressos-excluir.yml", lerBase: "ingressos-ler-base.yml" };
+
+function cingDispararRobo_(qual) {
+  var arq = CING_ROBOS[qual];
+  var tk = PropertiesService.getScriptProperties().getProperty("INGRESSOS_GH_TOKEN");
+  if (!arq) return { acionado: false, motivo: "robô desconhecido" };
+  if (!tk) return { acionado: false, motivo: "A chave do disparo automático ainda não foi cadastrada — o robô será acionado pelo Claude." };
+  try {
+    var r = UrlFetchApp.fetch("https://api.github.com/repos/" + CING_GH_REPO + "/actions/workflows/" + arq + "/dispatches", {
+      method: "post", contentType: "application/json", muteHttpExceptions: true,
+      headers: { Authorization: "Bearer " + tk, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+      payload: JSON.stringify({ ref: CING_GH_REF }) });
+    var cod = r.getResponseCode();
+    if (cod === 204) return { acionado: true, motivo: "" };
+    return { acionado: false, motivo: "O GitHub recusou o disparo (código " + cod + "). O pedido está na fila; o Claude aciona o robô." };
+  } catch (e) {
+    return { acionado: false, motivo: "Não consegui falar com o GitHub agora. O pedido está na fila." };
+  }
+}
+
+/** Só administrador. O valor vem da tela do SISGEP e vai direto às Propriedades; não é devolvido nem registrado. */
+function compassoIngressos_salvarChaveRobo(chave, tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", true);
+    chave = String(chave || "").trim();
+    var props = PropertiesService.getScriptProperties();
+    if (!chave) { props.deleteProperty("INGRESSOS_GH_TOKEN"); return { ok: true, ligado: false, mensagem: "Disparo automático desligado (chave removida)." }; }
+    if (!/^[A-Za-z0-9_\-]{20,255}$/.test(chave)) return { ok: false, mensagem: "Esta chave não parece válida. Cole só o token do GitHub, sem espaços." };
+    props.setProperty("INGRESSOS_GH_TOKEN", chave);
+    return { ok: true, ligado: true, mensagem: "Chave guardada. O disparo automático está ligado." };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+function compassoIngressos_estadoRobo(tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", false);
+    return { ok: true, ligado: !!PropertiesService.getScriptProperties().getProperty("INGRESSOS_GH_TOKEN") };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}
+
+/** Botão "Atualizar base": só leitura. */
+function compassoIngressos_atualizarBase(tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", false);
+    var d = cingDispararRobo_("lerBase");
+    return { ok: true, robo: d, mensagem: d.acionado ? "Lendo o TickOne agora. Em cerca de 1 minuto a contagem atualiza." : d.motivo };
+  } catch (e) { return { ok: false, mensagem: e.message }; }
 }
