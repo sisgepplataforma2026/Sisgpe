@@ -18,7 +18,8 @@
 const { chromium } = require("playwright");
 
 const BASE = process.env.INGRESSOS_URL || "https://ingressos.sindeducacao.com.br/index.php?page=admin&evt_id=17";
-const USUARIO = process.env.INGRESSOS_USUARIO || "", SENHA = process.env.INGRESSOS_SENHA || "";
+const USUARIO_BRUTO = process.env.INGRESSOS_USUARIO || "", SENHA_BRUTA = process.env.INGRESSOS_SENHA || "";
+const USUARIO = USUARIO_BRUTO.trim(), SENHA = SENHA_BRUTA.trim();
 
 /* Tudo que for impresso passa por aqui. */
 function mascarar(t) {
@@ -52,17 +53,23 @@ const p = (...a) => console.log(...a.map(x => (typeof x === "string" ? x : JSON.
   const html = (await pg.content()).toLowerCase();
   p("verificação extra? recaptcha:", /recaptcha/.test(html), "· hcaptcha:", /hcaptcha/.test(html), "· código por sms/e-mail:", /c[oó]digo de (verifica|confirma|acesso)|2fa|autentica[cç][aã]o em dois/.test(html));
 
-  const senha = await pg.$("input[type=password]");
+  p("tamanho dos Secrets (só o número de caracteres): usuário", USUARIO_BRUTO.length, "→", USUARIO.length, "depois de tirar espaço/quebra de linha · senha", SENHA_BRUTA.length, "→", SENHA.length);
+  const senha = await pg.$("input[name=password]") || await pg.$("input[type=password]");
   if (!senha) { p("Não achei campo de senha — talvez já esteja dentro, ou a tela é diferente. Seguindo."); }
   else {
-    const user = await pg.$("input[type=email], input[name*=user i], input[name*=login i], input[name*=email i], input[type=text]");
+    const user = await pg.$("input[name=username]") || await pg.$("input[type=email], input[name*=user i], input[name*=login i], input[name*=email i]");
     if (user) await user.fill(USUARIO);
     await senha.fill(SENHA);
-    const btn = await pg.$("button[type=submit], input[type=submit], form button");
-    await Promise.all([pg.waitForLoadState("domcontentloaded").catch(() => {}), btn ? btn.click() : senha.press("Enter")]);
-    await pg.waitForTimeout(2500);
+    const btn = await senha.evaluateHandle(e => e.form && e.form.querySelector("button[type=submit], input[type=submit]"));
+    const el = btn && btn.asElement();
+    await Promise.all([pg.waitForLoadState("domcontentloaded").catch(() => {}), el ? el.click() : senha.press("Enter")]);
+    await pg.waitForTimeout(3500);
     p("depois de entrar → caminho:", mascarar(new URL(pg.url()).pathname + new URL(pg.url()).search), "· título:", mascarar(await pg.title()));
-    if (await pg.$("input[type=password]")) { p("AINDA NA TELA DE SENHA: o login não entrou (senha errada, captcha ou verificação extra)."); await br.close(); return; }
+    if (await pg.$("input[name=password]")) {
+      const aviso = await pg.$$eval("[role=alert], .alert, .erro, .error, .text-red-500, .text-red-600, .toast, [class*=erro], [class*=error]", els => els.filter(e => e.offsetParent !== null).map(e => (e.innerText || "").trim().slice(0, 120)).filter(Boolean).slice(0, 4)).catch(() => []);
+      p("AINDA NA TELA DE SENHA: o login não entrou. Aviso na tela:", aviso.map(mascarar));
+      await br.close(); return;
+    }
   }
   if (!/page=admin/.test(pg.url())) { await pg.goto(BASE, { waitUntil: "domcontentloaded" }).catch(() => {}); await pg.waitForTimeout(2000); }
 
