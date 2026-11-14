@@ -30,8 +30,9 @@ Regras:
     ]
   };
 
-  const response = UrlFetchApp.fetch(
-    "https://api.anthropic.com/v1/messages",
+  /* 05/11/2026: passa pela medição de uso (IAUso.gs). */
+  const response = iaFetch_(
+    "textos-ia",
     {
       method: "post",
       contentType: "application/json",

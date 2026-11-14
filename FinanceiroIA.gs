@@ -307,7 +307,7 @@ function finAnalisarComClaude(dados) {
       muteHttpExceptions: true
     };
 
-    var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var resp = iaFetch_("financeiro-analise", options);
     var body = JSON.parse(resp.getContentText());
 
     if (!body || !body.content || !body.content[0]) {
@@ -429,7 +429,7 @@ function finGerarInsightsFinanceirosIA(tokenSessao) {
       muteHttpExceptions: true
     };
 
-    var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", options);
+    var resp = iaFetch_("financeiro-insights", options);
     var body = JSON.parse(resp.getContentText());
 
     if (!body || !body.content || !body.content[0]) {

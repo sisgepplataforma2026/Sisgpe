@@ -1,0 +1,274 @@
+<style>
+/* ── progresso envio em massa ── */
+.taxa-progresso-wrap {
+  background: var(--color-background-primary, #fff);
+  border: 1.5px solid #bfdbfe;
+  border-left: 4px solid #1565C0;
+  border-radius: 0;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.taxa-progresso-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.taxa-progresso-titulo { font-size: 13px; font-weight: 700; color: #001f4d; }
+.taxa-progresso-pct { font-size: 22px; font-weight: 900; color: #1565C0; }
+.taxa-progresso-bar-track {
+  height: 10px;
+  background: #e8f0fe;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.taxa-progresso-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1565C0, #0d52b5);
+  border-radius: 999px;
+  transition: width .8s ease;
+  min-width: 0;
+}
+.taxa-progresso-bar-fill.completo { background: linear-gradient(90deg, #059669, #065f46); }
+.taxa-progresso-bar-fill.erro { background: linear-gradient(90deg, #dc2626, #991b1b); }
+.taxa-progresso-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.taxa-stat-mini {
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+}
+.taxa-stat-mini .n { font-size: 20px; font-weight: 900; line-height: 1; }
+.taxa-stat-mini .l { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+.taxa-stat-total    { background: #e8f0fe; border-color: #bfdbfe; }
+.taxa-stat-total    .n { color: #1e40af; }
+.taxa-stat-enviado  { background: var(--color-background-success, #d1fae5); border-color: #6ee7b7; }
+.taxa-stat-enviado  .n { color: var(--color-text-success, #065f46); }
+.taxa-stat-pendente { background: var(--color-background-warning, #fef3c7); border-color: #fcd34d; }
+.taxa-stat-pendente .n { color: var(--color-text-warning, #92400e); }
+.taxa-stat-erro     { background: var(--color-background-danger, #fee2e2); border-color: #fca5a5; }
+.taxa-stat-erro     .n { color: var(--color-text-danger, #991b1b); }
+.taxa-tempo-restante {
+  font-size: 11.5px;
+  color: var(--color-text-secondary, #64748b);
+  margin-top: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+</style>
+
+<script>
+(function() {
+  var _pollingTimer = null;
+  var _pollingAtivo = false;
+  var _iniciouEm = null;
+  var _ultimoEnviado = 0;
+
+  function ensureProgressoWrap() {
+    if (document.getElementById("taxaProgressoWrap")) return;
+
+    var ref =
+      document.getElementById("painelStatusFila") ||
+      document.getElementById("blocoTaxaAssistencial") ||
+      document.querySelector(".of-card-body") ||
+      document.body;
+
+    if (!ref) return;
+
+    var wrap = document.createElement("div");
+    wrap.id = "taxaProgressoWrap";
+    wrap.className = "taxa-progresso-wrap";
+    wrap.style.display = "none";
+
+    wrap.innerHTML =
+      '<div class="taxa-progresso-header">' +
+        '<div class="taxa-progresso-titulo">Progresso do envio em massa</div>' +
+        '<div class="taxa-progresso-pct" id="taxaProgPct">0%</div>' +
+      '</div>' +
+      '<div class="taxa-progresso-bar-track">' +
+        '<div id="taxaProgFill" class="taxa-progresso-bar-fill" style="width:0%"></div>' +
+      '</div>' +
+      '<div class="taxa-progresso-stats">' +
+        '<div class="taxa-stat-mini taxa-stat-total"><div class="n" id="taxaProgTotal">0</div><div class="l">Total</div></div>' +
+        '<div class="taxa-stat-mini taxa-stat-enviado"><div class="n" id="taxaProgEnviado">0</div><div class="l">Enviado</div></div>' +
+        '<div class="taxa-stat-mini taxa-stat-pendente"><div class="n" id="taxaProgPendente">0</div><div class="l">Pendente</div></div>' +
+        '<div class="taxa-stat-mini taxa-stat-erro"><div class="n" id="taxaProgErro">0</div><div class="l">Erro</div></div>' +
+      '</div>' +
+      '<div class="taxa-tempo-restante" id="taxaTempoRestante"></div>';
+
+    if (ref.parentNode && ref !== document.body) {
+      ref.parentNode.insertBefore(wrap, ref);
+    } else {
+      document.body.prepend(wrap);
+    }
+  }
+
+  function setText(id, valor) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = String(valor || 0);
+  }
+
+  function normalizarStatus(resp) {
+    resp = resp || {};
+
+    return {
+      preparada: resp.preparada !== false && (resp.ativa !== false || Number(resp.total || 0) > 0),
+      ativa: resp.ativa !== false,
+      numero: resp.numero || "",
+      total: Number(resp.total || 0),
+      enviado: Number(resp.enviado || resp.enviados || 0),
+      pendente: Number(resp.pendente || resp.pendentes || 0),
+      erro: Number(resp.erro || resp.erros || 0),
+      emAndamento: resp.emAndamento === true || Number(resp.pendente || resp.pendentes || 0) > 0,
+      mensagem: resp.mensagem || ""
+    };
+  }
+
+  function atualizarProgresso(resp) {
+    var dados = normalizarStatus(resp);
+
+    ensureProgressoWrap();
+
+    var wrap = document.getElementById("taxaProgressoWrap");
+    if (!wrap) return;
+
+    if (!dados.preparada || dados.total <= 0) {
+      wrap.style.display = "none";
+      return;
+    }
+
+    wrap.style.display = "block";
+
+    var total = dados.total;
+    var enviado = dados.enviado;
+    var pendente = dados.pendente;
+    var erro = dados.erro;
+    var pct = total > 0 ? Math.round((enviado / total) * 100) : 0;
+
+    setText("taxaProgTotal", total);
+    setText("taxaProgEnviado", enviado);
+    setText("taxaProgPendente", pendente);
+    setText("taxaProgErro", erro);
+
+    var pctEl = document.getElementById("taxaProgPct");
+    var fill = document.getElementById("taxaProgFill");
+
+    if (pctEl) pctEl.textContent = pct + "%";
+
+    if (fill) {
+      fill.style.width = Math.max(pct, enviado > 0 ? 2 : 0) + "%";
+      fill.className =
+        "taxa-progresso-bar-fill" +
+        (pct >= 100 || pendente === 0 ? " completo" : erro > 0 ? " erro" : "");
+    }
+
+    var tempoEl = document.getElementById("taxaTempoRestante");
+
+    if (tempoEl) {
+      if (!_iniciouEm) _iniciouEm = Date.now();
+
+      if (enviado > _ultimoEnviado) {
+        var elapsed = Math.max((Date.now() - _iniciouEm) / 1000 / 60, 0.017);
+        var ritmo = enviado / elapsed;
+        var restante = ritmo > 0 ? Math.ceil(pendente / ritmo) : null;
+        _ultimoEnviado = enviado;
+
+        if (restante !== null && pendente > 0) {
+          tempoEl.textContent = "~" + restante + (restante === 1 ? " minuto restante" : " minutos restantes");
+        } else if (pendente === 0) {
+          tempoEl.textContent = "Envio concluído!";
+        }
+      } else if (pendente > 0) {
+        tempoEl.textContent = "Atualizando progresso automaticamente...";
+      } else {
+        tempoEl.textContent = "Envio concluído!";
+      }
+    }
+
+    if (!dados.emAndamento || pendente === 0 || pct >= 100) {
+      pararPolling();
+    }
+  }
+
+  function consultarStatus() {
+    if (!window.google || !google.script || !google.script.run) return;
+
+    google.script.run
+      .withSuccessHandler(atualizarProgresso)
+      .withFailureHandler(function(err) {
+        console.warn("Erro ao consultar progresso da Taxa Assistencial:", err);
+      })
+      .obterStatusFilaTaxaAssistencial(
+        typeof SISGEP_TOKEN_SESSAO !== "undefined" ? SISGEP_TOKEN_SESSAO : ""
+      );
+  }
+
+  function iniciarPolling() {
+    if (_pollingAtivo) return;
+
+    _pollingAtivo = true;
+    _iniciouEm = Date.now();
+    _ultimoEnviado = 0;
+
+    ensureProgressoWrap();
+
+    var wrap = document.getElementById("taxaProgressoWrap");
+    if (wrap) wrap.style.display = "block";
+
+    consultarStatus();
+
+    _pollingTimer = setInterval(consultarStatus, 10000);
+  }
+
+  function pararPolling() {
+    _pollingAtivo = false;
+
+    if (_pollingTimer) {
+      clearInterval(_pollingTimer);
+      _pollingTimer = null;
+    }
+  }
+
+  function esconder() {
+    pararPolling();
+    var wrap = document.getElementById("taxaProgressoWrap");
+    if (wrap) wrap.style.display = "none";
+  }
+
+  document.addEventListener("click", function(ev) {
+    var alvo = ev.target;
+    if (!alvo || typeof alvo.closest !== "function") return;
+
+    var btnIniciar =
+      alvo.closest("#btnIniciarEnvioTaxa") ||
+      alvo.closest("[data-taxa-progresso='iniciar']");
+
+    if (btnIniciar) {
+      setTimeout(iniciarPolling, 2000);
+    }
+
+    var btnCancelar =
+      alvo.closest("#btnCancelarEnvioEmAndamento") ||
+      alvo.closest("[data-taxa-progresso='parar']");
+
+    if (btnCancelar) {
+      esconder();
+    }
+  });
+
+  window.taxaProgresso = {
+    iniciar: iniciarPolling,
+    parar: pararPolling,
+    esconder: esconder,
+    atualizar: atualizarProgresso,
+    consultar: consultarStatus
+  };
+
+  window.TaxaProgresso = window.taxaProgresso;
+})();
+</script>

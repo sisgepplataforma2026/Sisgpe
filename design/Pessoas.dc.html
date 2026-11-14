@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+    a { color: #1565C0; text-decoration: none; } a:hover { color: #002f6c; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; display: flex; background: #eef2f8; overflow: hidden;">
+
+  <div style="width: 64px; flex-shrink: 0; background: linear-gradient(180deg, #001f4d 0%, #001634 100%); display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 14px;">
+    <div style="width: 32px; height: 32px; border-radius: 9px; background: #C9A84C; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: #001f4d;">S</div>
+    <div style="width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2" stroke-linecap="round"><path d="M4 20V9l8-5 8 5v11"/><path d="M9 20v-6h6v6"/></svg></div>
+    <div style="width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg,#002f6c,#0d52b5); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,47,108,.45);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></div>
+    <div style="width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h11"/></svg></div>
+  </div>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;">
+
+    <!-- CONTEXTO + ABAS DO EVENTO (aqui aba é submódulo, não estado) -->
+    <div style="background: #fff; border-bottom: 1px solid #e2e8f0; padding: 15px 26px 0; flex-shrink: 0;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px;">
+        <div style="display: flex; align-items: center; gap: 11px;">
+          <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">Eventos</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+          <span style="font-size: 15px; font-weight: 800; color: #001f4d; letter-spacing: -.01em;">Festa Compasso da Vida 2026</span>
+          <span style="background: #e8f0fe; color: #1e40af; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px;">19/12 · 116 dias</span>
+          <span style="background: #d1fae5; color: #065f46; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 999px;">1.412 de 2.000</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px;">
+          <button style="height: 36px; padding: 0 15px; border: 1.5px solid #e2e8f0; border-radius: 999px; background: #fff; color: #334155; font-family: inherit; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v13M7 11l5 5 5-5M4 20h16"/></svg>Importar planilha</button>
+          <button style="height: 36px; padding: 0 15px; border: 1.5px solid #e2e8f0; border-radius: 999px; background: #fff; color: #334155; font-family: inherit; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Copiar link</button>
+          <button style="height: 36px; padding: 0 17px; border: none; border-radius: 999px; background: linear-gradient(135deg,#002f6c,#0d52b5); color: #fff; font-family: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 14px rgba(0,47,108,.26);">Nova inscrição</button>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent;">Painel</div>
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 800; color: #001f4d; border-bottom: 3px solid #C9A84C;">Pessoas</div>
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent;">Portaria</div>
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent;">Bingo</div>
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent;">Fornecedores</div>
+        <div style="padding: 0 2px 12px; font-size: 13.5px; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent;">Prestação de contas</div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; min-height: 0; padding: 15px 26px 0; display: flex; flex-direction: column;">
+
+      <!-- OS ESTADOS VIRARAM FICHAS: recortam a lista, não trocam de tela -->
+      <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 12px; flex-wrap: wrap;">
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: linear-gradient(135deg,#002f6c,#0d52b5); color: #fff; font-size: 12.5px; font-weight: 800; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0,47,108,.24);">Todas · 1.324</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #f0c98a; color: #b45309; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#d97706;"></span>A analisar · 12</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#94a3b8;"></span>Pendentes · 5</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#7c3aed;"></span>Sem ingresso · 31</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#1565C0;"></span>A enviar · 27</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#059669;"></span>Confirmados · 1.240</div>
+        <div style="height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 7px;"><span style="width:7px;height:7px;border-radius:50%;background:#dc2626;"></span>Reprovadas · 9</div>
+        <div style="margin-left: auto; height: 32px; min-width: 250px; background: #fff; border: 1px solid #e2e8f0; border-radius: 999px; display: flex; align-items: center; gap: 8px; padding: 0 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span style="font-size: 12.5px; color: #94a3b8; font-weight: 500;">Nome, CPF, escola ou nº do ingresso</span>
+        </div>
+      </div>
+
+      <!-- CABEÇALHO -->
+      <div style="display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; padding: 0 15px 8px; align-items: center;">
+        <div style="width: 15px; height: 15px; border: 2px solid #cbd5e1; border-radius: 4px;"></div>
+        <span style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Pessoa</span>
+        <span style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Escola · Cidade</span>
+        <span style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Contato</span>
+        <span style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Vínculo</span>
+        <span style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Situação</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; position: relative;">
+
+        <!-- LINHA COM O MENU DE STATUS ABERTO -->
+        <div style="background: #fff; border: 1.5px solid #1565C0; border-radius: 12px; padding: 11px 15px; display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; align-items: center; box-shadow: 0 6px 20px rgba(21,101,192,.14); position: relative; z-index: 5;">
+          <div style="width: 15px; height: 15px; background: #1565C0; border-radius: 4px; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>
+          <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+            <div style="width: 33px; height: 33px; border-radius: 50%; background: #e8f0fe; color: #1e40af; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">WC</div>
+            <div style="min-width: 0;">
+              <div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">Wanderson Nascimento Castelo</div>
+              <div style="font-size: 11.5px; color: #64748b; font-weight: 500;">395.207.881-44 · +1 acompanhante</div>
+            </div>
+          </div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">EEEFM Maria Ortiz</div><div style="font-size: 11.5px; color: #94a3b8;">Vila Velha</div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">wanderson@gmail.com</div><div style="font-size: 11.5px; color: #94a3b8;">(27) 99876-5432</div></div>
+          <div><span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 4px 11px; border-radius: 999px;">Ativo</span></div>
+          <div>
+            <button style="height: 31px; padding: 0 13px; border: 1.5px solid #1565C0; border-radius: 999px; background: #e8f0fe; color: #1e40af; font-family: inherit; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">
+              Ingresso a enviar
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- O MENU QUE O BOTÃO DE STATUS ABRE -->
+        <div style="position: absolute; right: 0; top: 60px; width: 268px; background: #fff; border: 1px solid #e2e8f0; border-radius: 13px; box-shadow: 0 16px 48px rgba(0,20,60,.18), 0 4px 16px rgba(0,20,60,.08); padding: 7px; z-index: 10;">
+          <div style="padding: 9px 12px 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 5px;">
+            <div style="font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #94a3b8;">Situação agora</div>
+            <div style="font-size: 12.5px; font-weight: 700; color: #0f172a; margin-top: 4px;">Ingresso #0428 emitido</div>
+            <div style="font-size: 11.5px; color: #b45309; font-weight: 600; margin-top: 2px;">Não enviado — parado há 4 dias</div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; background: #f0fdf4;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.5L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z"/></svg>
+            <span style="font-size: 13px; font-weight: 700; color: #14532d;">Enviar pelo WhatsApp</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #334155;">Enviar por e-mail</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #334155;">Ver o ingresso</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v5h-5"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #334155;">Reemitir ingresso</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"/><path d="M14 6l4 4"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #334155;">Editar dados</span>
+          </div>
+          <div style="height: 1px; background: #f1f5f9; margin: 5px 8px;"></div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #b45309;">Cancelar inscrição</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+            <span style="font-size: 13px; font-weight: 600; color: #b91c1c;">Excluir</span>
+          </div>
+        </div>
+
+        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 11px 15px; display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; align-items: center;">
+          <div style="width: 15px; height: 15px; border: 2px solid #cbd5e1; border-radius: 4px;"></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 33px; height: 33px; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;">MA</div><div><div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">Maria Aparecida da Silva</div><div style="font-size: 11.5px; color: #64748b; font-weight: 500;">111.444.777-35</div></div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">EMEF Castelo Branco</div><div style="font-size: 11.5px; color: #94a3b8;">Vitória</div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">maria.aps@gmail.com</div><div style="font-size: 11.5px; color: #94a3b8;">(27) 99612-8877</div></div>
+          <div><span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 4px 11px; border-radius: 999px;">Ativo</span></div>
+          <div><button style="height: 31px; padding: 0 13px; border: 1.5px solid #f0c98a; border-radius: 999px; background: #fffbf2; color: #b45309; font-family: inherit; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">A analisar · 3 dias<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button></div>
+        </div>
+
+        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 11px 15px; display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; align-items: center;">
+          <div style="width: 15px; height: 15px; border: 2px solid #cbd5e1; border-radius: 4px;"></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 33px; height: 33px; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;">JC</div><div><div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">José Carlos Ferreira</div><div style="font-size: 11.5px; color: #64748b; font-weight: 500;">028.911.340-07</div></div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">CMEI Darcy Ribeiro</div><div style="font-size: 11.5px; color: #94a3b8;">Serra</div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">jcferreira@outlook.com</div><div style="font-size: 11.5px; color: #94a3b8;">(27) 99145-2200</div></div>
+          <div><span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 4px 11px; border-radius: 999px;">Ativo</span></div>
+          <div><button style="height: 31px; padding: 0 13px; border: 1.5px solid #bbf7d0; border-radius: 999px; background: #f0fdf4; color: #15803d; font-family: inherit; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">Enviado 22/08<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button></div>
+        </div>
+
+        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 11px 15px; display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; align-items: center;">
+          <div style="width: 15px; height: 15px; border: 2px solid #cbd5e1; border-radius: 4px;"></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 33px; height: 33px; border-radius: 50%; background: #fee2e2; color: #991b1b; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;">RS</div><div><div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">Rosângela Soares Pinto</div><div style="font-size: 11.5px; color: #64748b; font-weight: 500;">744.028.116-90</div></div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">EEEFM Maria Ortiz</div><div style="font-size: 11.5px; color: #94a3b8;">Vila Velha</div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #b91c1c;">rosangela@dominio.com</div><div style="font-size: 11.5px; color: #b91c1c; font-weight: 600;">caixa inexistente</div></div>
+          <div><span style="background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 800; padding: 4px 11px; border-radius: 999px;">Não filiada</span></div>
+          <div><button style="height: 31px; padding: 0 13px; border: 1.5px solid #fecaca; border-radius: 999px; background: #fff5f5; color: #b91c1c; font-family: inherit; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">E-mail voltou<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button></div>
+        </div>
+
+        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 11px 15px; display: grid; grid-template-columns: 32px 2.15fr 1.35fr 1.5fr 0.85fr 1.35fr; gap: 14px; align-items: center;">
+          <div style="width: 15px; height: 15px; border: 2px solid #cbd5e1; border-radius: 4px;"></div>
+          <div style="display: flex; align-items: center; gap: 10px;"><div style="width: 33px; height: 33px; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;">ID</div><div><div style="font-size: 13.5px; font-weight: 700; color: #0f172a;">Ivete Duarte Campos</div><div style="font-size: 11.5px; color: #64748b; font-weight: 500;">610.334.729-05</div></div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #334155;">Colégio São Vicente</div><div style="font-size: 11.5px; color: #94a3b8;">Vitória</div></div>
+          <div><div style="font-size: 12.5px; font-weight: 600; color: #b45309;">Sem e-mail no cadastro</div><div style="font-size: 11.5px; color: #94a3b8;">(27) 99320-1187</div></div>
+          <div><span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 4px 11px; border-radius: 999px;">Ativo</span></div>
+          <div><button style="height: 31px; padding: 0 13px; border: 1.5px solid #ddd6fe; border-radius: 999px; background: #f5f3ff; color: #6d28d9; font-family: inherit; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; cursor: pointer;">Acompanhante a pagar<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button></div>
+        </div>
+
+      </div>
+
+      <!-- BARRA DE LOTE: aparece com a seleção, e só oferece o que vale para todas -->
+      <div style="margin-top: 14px; min-height: 46px; background: linear-gradient(135deg,#002f6c,#0d52b5); border-radius: 11px; display: flex; align-items: center; padding: 0 16px; gap: 12px; box-shadow: 0 6px 20px rgba(0,47,108,.24);">
+        <span style="font-size: 12.5px; font-weight: 800; color: #fff;">1 selecionada</span>
+        <span style="width: 1px; height: 18px; background: rgba(255,255,255,.22);"></span>
+        <button style="height: 31px; padding: 0 14px; border: none; border-radius: 999px; background: #22c55e; color: #05310f; font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer;">Enviar pelo WhatsApp</button>
+        <button style="height: 31px; padding: 0 14px; border: none; border-radius: 999px; background: rgba(255,255,255,.16); color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">Enviar por e-mail</button>
+        <button style="height: 31px; padding: 0 14px; border: none; border-radius: 999px; background: rgba(255,255,255,.16); color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">Baixar PDF</button>
+        <span style="margin-left: auto; font-size: 11.5px; color: rgba(255,255,255,.72); font-weight: 600;">A barra só mostra o que vale para TODAS as selecionadas</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

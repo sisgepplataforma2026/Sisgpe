@@ -1,0 +1,160 @@
+<!-- RECIBOS EM BRANCO DA FESTA — Compasso da Vida 2026 (04/11/2026)
+
+     FRAGMENTO, NÃO PÁGINA: é incluído na tela de Eventos, submódulo Festa.
+     O script vive numa função que se executa sozinha e só publica nomes com
+     o prefixo crec (todos os scripts incluídos viram UM escopo global). CSS
+     escopado sob #compassoRecibos pelo mesmo motivo.
+
+     O modelo é o A aprovado (docs/mock-recibo-festa-A-1-por-folha.png): o
+     timbrado do sindicato, o número, a festa, o dia e a data impressos; nome,
+     CPF, valor, valor por extenso e serviço em branco, para preencher à mão
+     na festa. Os números são reservados no servidor (CompassoRecibos.gs). -->
+<div id="compassoRecibos">
+<style>
+  #compassoRecibos{padding:4px 0 40px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
+  #compassoRecibos .cr-etapa{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 6px rgba(16,24,40,.05)}
+  #compassoRecibos .cr-etapa>h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--navy,#001f4d);font-weight:800}
+  #compassoRecibos .cr-nota{font-size:13px;color:#4b5565;line-height:1.55;margin:0 0 12px}
+  #compassoRecibos .cr-grade{display:grid;grid-template-columns:1fr 140px 140px 120px;gap:10px}
+  #compassoRecibos label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:#334155}
+  #compassoRecibos input{padding:8px 10px;border:1.5px solid #d8e0ea;border-radius:9px;font:inherit;font-size:14px;font-weight:500}
+  #compassoRecibos .cr-prox{margin:12px 0;font-size:13.5px}
+  #compassoRecibos .cr-prox b{font-size:16px;color:var(--navy,#001f4d)}
+  #compassoRecibos .cr-bt{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  #compassoRecibos .cr-bt.pri{background:var(--navy,#001f4d);color:#fff}
+  #compassoRecibos .cr-bt.sec{background:#fff;color:var(--navy,#001f4d);border:1.5px solid #d8e0ea}
+  #compassoRecibos .cr-bt:disabled{opacity:.45;cursor:default}
+  #compassoRecibos .cr-msg{font-size:13px;font-weight:700;margin-left:8px}
+  #compassoRecibos .cr-lote{display:grid;grid-template-columns:150px 1fr 120px 110px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #eef2f7;font-size:13px}
+  @media(max-width:760px){#compassoRecibos .cr-grade{grid-template-columns:1fr 1fr}#compassoRecibos .cr-lote{grid-template-columns:1fr 1fr}}
+</style>
+
+  <div class="cr-etapa">
+    <h3>🧾 Recibos em branco da festa</h3>
+    <p class="cr-nota">Sai impresso o número, a festa, o dia e a data. <b>Nome, CPF, valor e serviço ficam em branco</b>, para preencher na hora.
+      Os números não se repetem: cada lote continua de onde o anterior parou.</p>
+    <div class="cr-grade">
+      <label>Festa<input type="text" id="crecFesta"></label>
+      <label>Dia da festa<input type="text" id="crecDia" placeholder="dd/mm/aaaa"></label>
+      <label>Cidade<input type="text" id="crecCidade"></label>
+      <label>Quantidade<input type="number" id="crecQtd" min="1" value="30"></label>
+    </div>
+    <div class="cr-prox" id="crecProx">Próximo número: <b>…</b></div>
+    <div>
+      <button class="cr-bt sec" id="crecBtPrevia">👁 Prévia (1 recibo)</button>
+      <button class="cr-bt pri" id="crecBtGerar">🖨 Gerar e reservar os números</button>
+      <span class="cr-msg" id="crecMsg"></span>
+    </div>
+    <p class="cr-nota" style="margin:12px 0 0">Abre numa janela nova, pronta para imprimir (A4, um recibo por folha). Para guardar, escolha <b>Salvar como PDF</b>.</p>
+  </div>
+
+  <div class="cr-etapa">
+    <h3>Lotes já gerados</h3>
+    <div id="crecLotes"><span class="cr-nota">Carregando…</span></div>
+  </div>
+
+<script>
+(function(){
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function msg(t, erro){
+    var m=g('crecMsg'); m.textContent=t; m.style.color=erro?'#dc2626':'#0f8a5f';
+    if (typeof window.toast==='function') window.toast(t, erro?'err':'ok');
+  }
+  function rodar(fn, args, ok){
+    var r=google.script.run.withSuccessHandler(function(x){ ok(x||{ok:false,mensagem:'Sem resposta.'}); })
+      .withFailureHandler(function(e){ ok({ok:false,mensagem:(e&&e.message)||String(e)}); });
+    r[fn].apply(r, args.concat([token()]));
+  }
+  var PREENCHIDO=false;
+  function carregar(){
+    rodar('compassoRecibos_estado', [], function(r){
+      if(!r.ok){ g('crecLotes').innerHTML='<span class="cr-nota">🔒 '+esc(r.mensagem)+'</span>'; return; }
+      if(!PREENCHIDO){ g('crecFesta').value=r.padrao.festa; g('crecDia').value=r.padrao.dia; g('crecCidade').value=r.padrao.cidade; PREENCHIDO=true; }
+      g('crecQtd').max=r.max;
+      g('crecProx').innerHTML='Próximo número: <b>Nº '+esc(num(r.proximo))+'</b>';
+      g('crecLotes').innerHTML=(r.lotes||[]).length ? r.lotes.map(function(l){
+        return '<div class="cr-lote"><b>Nº '+esc(num(l.inicio))+' a '+esc(num(l.fim))+'</b><span>'+esc(l.quantidade)+' recibo(s) · '+esc(l.festa)+' · '+esc(l.dia)+'</span>'+
+          '<span style="color:#64748b">'+esc(l.geradoEm)+'</span>'+
+          '<button class="cr-bt sec" style="padding:6px 10px;font-size:12.5px" data-crec-reimp="'+esc(l.lote)+'">↻ Reimprimir</button></div>';
+      }).join('') : '<span class="cr-nota">Nenhum lote ainda.</span>';
+    });
+  }
+  function num(n){ n=Number(n||0); return n<1000 ? ('00'+n).slice(-3) : String(n); }
+  function dados(){ return { festa:g('crecFesta').value, dia:g('crecDia').value, cidade:g('crecCidade').value, quantidade:+g('crecQtd').value }; }
+
+  /* ── a folha (modelo A aprovado) ── */
+  function campo(rot, w){ return '<span class="cp" style="'+(w?'flex:none;width:'+w:'')+'"><span class="ln"></span><span class="lg">'+rot+'</span></span>'; }
+  function cpf(){ var h=''; [3,3,3,2].forEach(function(n,i){ for(var k=0;k<n;k++) h+='<i></i>'; h+= i<2?'<b>.</b>':(i===2?'<b>-</b>':''); }); return '<span class="cpf">'+h+'</span>'; }
+  function recibo(r, n){
+    var a=r.arte||{};
+    return '<section class="folha">'+(a.cab?'<img class="cab" src="'+a.cab+'">':'')+(a.md?'<img class="md" src="'+a.md+'">':'')+
+      '<div class="miolo"><div class="topo"><h1>RECIBO</h1><div class="num">Nº <b>'+(r.previa?'PRÉVIA':esc(num(n)))+'</b></div></div>'+
+      '<div class="valor"><span>VALOR</span><b>R$</b><span class="vl"></span></div>'+
+      '<div class="txt">'+
+        '<div class="linha">Eu, '+campo('nome completo')+'</div>'+
+        '<div class="linha">inscrito(a) no CPF nº '+cpf()+' , recebi do <b>SINDEDUCAÇÃO-ES</b></div>'+
+        '<div class="linha">a importância de R$ '+campo('valor','30mm')+' ( '+campo('valor por extenso')+' ),</div>'+
+        '<div class="linha">referente a serviço de '+campo('serviço prestado (ex.: garçom, DJ, segurança, montagem)')+'</div>'+
+        '<div class="linha">na <b>'+esc(r.festa)+'</b>, no dia <b>'+esc(r.dia)+'</b>.</div>'+
+      '</div>'+
+      '<div class="data">'+esc(r.cidade)+', <b>'+esc(r.dataExtenso)+'</b>.</div>'+
+      '<div class="ass"><div class="assl"><span class="ln"></span><span class="lg">Assinatura</span></div>'+
+        '<div class="duas"><div class="assl"><span class="ln"></span><span class="lg">Nome (letra de forma)</span></div><div class="assl c"><span class="ln"></span><span class="lg">CPF</span></div></div></div>'+
+      '</div>'+(a.rod?'<img class="rod" src="'+a.rod+'">':'')+'</section>';
+  }
+  var CSS='@page{size:A4 portrait;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    'body{margin:0;background:#dfe3ec;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a}'+
+    '.barra{position:sticky;top:0;z-index:5;background:#001f4d;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;font:600 14px Arial}'+
+    '.barra button{background:#ffd51c;color:#001f4d;border:0;border-radius:8px;padding:8px 14px;font:800 14px Arial;cursor:pointer}'+
+    '.folha{width:210mm;height:297mm;margin:10mm auto;background:#fff;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.2)}'+
+    '.cab{position:absolute;left:0;top:0;width:210mm}.rod{position:absolute;left:0;bottom:0;width:210mm}'+
+    '.md{position:absolute;right:-30mm;bottom:20mm;width:150mm;opacity:.55}'+
+    '.miolo{position:absolute;left:20mm;right:20mm;top:50mm}'+
+    '.topo{display:flex;align-items:center;justify-content:space-between;border-bottom:.6mm solid #1565C0;padding-bottom:2mm}'+
+    'h1{margin:0;font:800 24pt Arial;letter-spacing:.12em;color:#001f4d}'+
+    '.num{font:600 12pt Arial;color:#555;border:.4mm solid #bbb;border-radius:2mm;padding:1.2mm 3mm}.num b{color:#c2185b;font-size:14pt}'+
+    '.valor{margin:6mm 0 0 auto;width:72mm;height:13mm;border:.5mm solid #001f4d;border-radius:2mm;display:flex;align-items:center;gap:2mm;padding:0 3mm}'+
+    '.valor span:first-child{font:700 8pt Arial;color:#666}.valor b{font:800 15pt Arial;color:#001f4d}.vl{flex:1}'+
+    '.txt{margin-top:8mm;font-size:12.5pt;line-height:1.25}'+
+    '.linha{display:flex;align-items:flex-end;gap:2mm;margin-bottom:6.5mm;white-space:nowrap}'+
+    '.cp{display:inline-flex;flex-direction:column;flex:1 1 auto;min-width:0}'+
+    '.ln{display:block;border-bottom:.35mm solid #222;height:6.5mm}'+
+    '.lg{font:400 7pt Arial;color:#777;margin-top:.6mm}'+
+    '.cpf{display:inline-flex;align-items:flex-end;gap:.4mm}.cpf i{display:inline-block;width:4.4mm;height:6.6mm;border:.35mm solid #222;border-radius:.6mm}.cpf b{font-weight:700;padding:0 .3mm}'+
+    '.data{font-size:12.5pt;text-align:right;margin-top:26mm}'+
+    '.ass{margin-top:12mm}.assl{display:flex;flex-direction:column}.assl .ln{height:9mm}.assl .lg{font-size:8pt;text-align:center}'+
+    '.duas{display:flex;gap:8mm;margin-top:8mm}.duas .assl{flex:1.6}.duas .assl.c{flex:1}'+
+    '@media print{body{background:#fff}.barra{display:none}.folha{margin:0;box-shadow:none;page-break-after:always}}';
+  function documento(r, imprimir){
+    var pags=[];
+    if(r.previa) pags.push(recibo(r,0)); else for(var n=r.inicio;n<=r.fim;n++) pags.push(recibo(r,n));
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Recibos da festa'+(r.previa?' — prévia':' — Nº '+num(r.inicio)+' a '+num(r.fim))+'</title>'+
+      '<style>'+CSS+'</style></head><body><div class="barra"><span>'+pags.length+' recibo(s)'+(r.previa?' · prévia, sem número':' · Nº '+num(r.inicio)+' a '+num(r.fim))+'</span>'+
+      '<button onclick="window.print()">Imprimir / Salvar PDF</button></div>'+pags.join('')+
+      (imprimir?'<scr'+'ipt>setTimeout(function(){window.print();},500);<\/scr'+'ipt>':'')+'</body></html>';
+  }
+  function abrir(fn, args, imprimir){
+    var w=window.open('','_blank');
+    if(!w){ msg('O navegador bloqueou a janela nova. Permita pop-ups para o SISGEP.', true); return; }
+    w.document.write('<p style="font:16px Arial;padding:30px">Montando os recibos…</p>');
+    rodar(fn, args, function(r){
+      if(!r.ok){ w.close(); msg(r.mensagem||'Não foi possível.', true); return; }
+      w.document.open(); w.document.write(documento(r, imprimir)); w.document.close();
+      msg(r.previa ? 'Prévia aberta.' : 'Recibos Nº '+num(r.inicio)+' a '+num(r.fim)+' prontos para imprimir.');
+      if(!r.previa) carregar();
+    });
+  }
+  g('crecBtPrevia').addEventListener('click',function(){ abrir('compassoRecibos_previa',[dados()],false); });
+  g('crecBtGerar').addEventListener('click',function(){ abrir('compassoRecibos_gerar',[dados()],true); });
+  g('crecLotes').addEventListener('click',function(e){
+    var b=e.target&&e.target.closest?e.target.closest('[data-crec-reimp]'):null;
+    if(b) abrir('compassoRecibos_reimprimir',[b.getAttribute('data-crec-reimp')],true);
+  });
+  /* Carrega quando a aba abre (EventosAdmin chama crecCarregar), não ao montar a página. */
+  window.crecCarregar=carregar;
+})();
+</script>
+</div>

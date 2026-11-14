@@ -176,7 +176,7 @@ function taxa_gerarParcelas(payload, tokenSessao) {
     }
     if (!(base > 0)) {
       return { ok: false, mensagem: tipo === TAXA_TIPO.NEGOCIAL
-        ? "Informe a base de cálculo: soma dos salários dos empregados NÃO filiados (os filiados são isentos pela cláusula 57)."
+        ? "Informe a base de cálculo: soma dos salários dos empregados NÃO filiados (os filiados são isentos pela cláusula 40)."
         : "Informe a base de cálculo: folha bruta da escola." };
     }
 

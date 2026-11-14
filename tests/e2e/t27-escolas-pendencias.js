@@ -52,7 +52,7 @@ function zerarTudo() {
   const sh = ss.insertSheet("Escolas");
   sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]);
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   return sh;
 }
 

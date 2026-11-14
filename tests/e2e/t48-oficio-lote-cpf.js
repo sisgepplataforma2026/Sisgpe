@@ -147,7 +147,7 @@ b.ok(cinquenta.filter(n => r7.html.indexOf(n) !== -1).length === 50,
   "as 50 pessoas saem no documento",
   cinquenta.filter(n => r7.html.indexOf(n) !== -1).length + " de 50");
 
-b.passo("8. O texto cita a CCT 2026/2027 e a regra da Cláusula 57");
+b.passo("8. O texto cita a CCT 2026/2027 e a regra da Cláusula 40ª");
 const texto = r1.proc.corpoTexto;
 b.ok(/2026\/2027/.test(texto), "cita a CCT 2026/2027");
 b.ok(!/2025\/2026/.test(texto), "não cita mais a CCT vencida 2025/2026");
@@ -196,9 +196,9 @@ const fsCct = require("fs"), pathCct = require("path");
     /CCT 2025\/2026/.test(txt) ? "AINDA CITA 2025/2026" : "ok");
 });
 
-b.passo("12. A Taxa Assistencial passou a trazer os dados da Cláusula 58");
+b.passo("12. A Taxa Assistencial passou a trazer os dados da Cláusula 38ª – Assistência Médica");
 const corpoAssist = gerar("TAXA_ASSISTENCIAL", ["Teste Da Silva"]).proc.corpoTexto;
-b.ok(/Cláusula 58/.test(corpoAssist), "cita a Cláusula 58ª");
+b.ok(/Cláusula 38ª – Assistência Médica/.test(corpoAssist), "cita a Cláusula 38ª – Assistência Médica");
 /* Olha a COMPETÊNCIA, não qualquer menção ao mês: o texto cita "1º de março
    de 2026" ao informar a vigência da CCT, e isso está certo. O que não pode
    é a competência da apuração continuar em 2026. */
@@ -214,7 +214,7 @@ const corpoFil = gerar("FILIACAO", ["Teste Da Silva"]).proc.corpoTexto;
 b.ok(/10º \(décimo\) dia do mês subsequente/.test(corpoFil),
   "prazo de repasse escrito no ofício");
 b.ok(/relação nominal/.test(corpoFil),
-  "pede a relação nominal dos contribuintes, como manda a Cláusula 56");
+  "pede a relação nominal dos contribuintes, como manda a Cláusula 38ª");
 b.ok(!/conforme os prazos dispostos na CCT/.test(corpoFil),
   "saiu o 'conforme os prazos dispostos na CCT', que não dizia nada à escola");
 
@@ -229,7 +229,7 @@ let abaReg = ssNum.getSheetByName(g.PLANILHA_REGISTRO);
 if (!abaReg) abaReg = ssNum.insertSheet(g.PLANILHA_REGISTRO);
 abaReg.getRange(1, 1, 1, 2).setValues([["Número do Ofício", "Escola"]]);
 
-const n1 = g.gerarProximoNumeroSeguro();
+const n1 = g.gerarProximoNumeroSeguro_();
 const anoAtual = new Date().getFullYear();
 b.ok(new RegExp("^\\d+/" + anoAtual + "$").test(n1),
   "o número sai no formato NNN/ANO", n1);
@@ -237,7 +237,7 @@ b.ok(new RegExp("^\\d+/" + anoAtual + "$").test(n1),
 /* Grava o primeiro como se o ofício tivesse sido emitido e pede o próximo:
    sem gravar, o "próximo" seria sempre o mesmo. */
 abaReg.getRange(2, 1).setValue(n1);
-const n2 = g.gerarProximoNumeroSeguro();
+const n2 = g.gerarProximoNumeroSeguro_();
 const seq1 = parseInt(String(n1).split("/")[0], 10);
 const seq2 = parseInt(String(n2).split("/")[0], 10);
 b.igual(seq2, seq1 + 1, "o próximo ofício recebe o número seguinte");
@@ -249,11 +249,21 @@ b.ok(seq1 >= g.PRIMEIRO_OFICIO_PLATAFORMA,
   "primeiro da plataforma: " + g.PRIMEIRO_OFICIO_PLATAFORMA + " · gerado: " + seq1);
 
 /* Número de outro ano na planilha não pode influenciar o contador do ano
-   corrente — senão a virada de ano herdaria a sequência antiga. */
+   corrente. O número n2 já foi RESERVADO mesmo sem ser gravado na planilha:
+   isso impede que duas emissões simultâneas recebam a mesma sequência. */
 abaReg.getRange(3, 1).setValue("999/" + (anoAtual - 1));
-const n3 = g.gerarProximoNumeroSeguro();
-b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 1,
-  "ofício de ano anterior não empurra a numeração do ano corrente");
+const n3 = g.gerarProximoNumeroSeguro_();
+b.igual(parseInt(String(n3).split("/")[0], 10), seq1 + 2,
+  "a reserva anterior é respeitada e o ofício de outro ano não interfere");
+
+const n4 = g.gerarProximoNumeroSeguro_();
+b.igual(parseInt(String(n4).split("/")[0], 10), seq1 + 3,
+  "duas reservas consecutivas recebem números diferentes sem depender da planilha");
+
+const ambienteSeq = String(g.getAmbienteAtual() || "producao").toUpperCase();
+const chaveSeq = "SISGEP_OFICIO_SEQ_" + ambienteSeq + "_" + anoAtual;
+b.igual(parseInt(g.PropertiesService.getScriptProperties().getProperty(chaveSeq), 10), seq1 + 3,
+  "a última reserva fica persistida antes da liberação da trava");
 
 b.naoTestavel("Numeração sob emissão simultânea de dois usuários",
   "o emulador é de um processo só; a trava (travarSisgep_) existe no código e é exercitada, mas concorrência real exige o Apps Script");

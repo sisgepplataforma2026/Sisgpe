@@ -131,6 +131,22 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
 
     var aprovar = dados.aprovar === true;
     var agora = new Date();
+
+    /* A DATA DO PEDIDO NÃO É A DATA DA DIGITAÇÃO — 30/09/2026, pedido seu:
+     * "na observação tem que constar a data da solicitação e a informação".
+     *
+     * Aqui `DATA_SOLICITACAO` recebia `agora`. Numa solicitação manual isso é
+     * o instante em que a secretaria transcreve o e-mail — e o e-mail chegou
+     * dias antes. A DATA_SOLICITACAO existe desde 22/09 para medir o prazo de
+     * atendimento até a DATA_EMISSAO; com as duas nascendo do mesmo clique,
+     * o prazo dava sempre perto de zero. Número que existe e mente é pior do
+     * que número que falta.
+     *
+     * O FUTURO É RECUSADO, o passado não. Pedido datado de amanhã é erro de
+     * digitação, sempre; pedido de três meses atrás pode ser atraso real da
+     * secretaria, e inventar um limite para trás esconderia justamente o
+     * caso que a medição de prazo existe para mostrar. */
+    var dataPedido = voucherDataPedido_(dados.dataPedido, agora);
     var protocolo = gerarNumeroProtocolo_();
     var quem = (sessao && (sessao.email || sessao.usuario || sessao.nome)) || "";
 
@@ -142,8 +158,11 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
 
     var valores = {
       ID_SOLICITACAO: gerarIdPadrao_("SOL"),
-      DATA_SOLICITACAO: agora,
-      DATA_SOLICITACAO_TEXTO: Utilities.formatDate(agora, "America/Sao_Paulo", "dd/MM/yyyy HH:mm"),
+      DATA_SOLICITACAO: dataPedido,
+      DATA_SOLICITACAO_TEXTO: Utilities.formatDate(dataPedido, "America/Sao_Paulo", "dd/MM/yyyy"),
+      /* O instante da digitação, que era o que DATA_SOLICITACAO guardava. */
+      DATA_REGISTRO: agora,
+      DATA_REGISTRO_TEXTO: Utilities.formatDate(agora, "America/Sao_Paulo", "dd/MM/yyyy HH:mm"),
       CPF_SOLICITANTE: cpf,
       NOME_SOLICITANTE: nome,
       EMAIL: String(dados.email || "").trim(),
@@ -270,6 +289,18 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       OBSERVACOES: String(dados.observacoes || "").trim(),
       NUMERO_PROTOCOLO: protocolo
     };
+
+    /* O CABEÇALHO DA OBSERVAÇÃO, escrito pelo sistema — 30/09/2026.
+     *
+     * Vai NA FRENTE do que a pessoa digitou, separado por uma linha. Quem
+     * abrir a solicitação daqui a seis meses lê primeiro quando foi pedido,
+     * quem registrou e o que foi concedido — sem precisar cruzar três
+     * colunas da planilha para montar a frase.
+     *
+     * Montado DEPOIS de `valores`, e não dentro, porque depende do
+     * percentual e do beneficiário que as regras acabaram de resolver: montar
+     * antes gravaria o que foi pedido, não o que foi concedido. */
+    valores.OBSERVACOES = voucherCabecalhoObservacao_(valores, dataPedido, agora, quem);
 
     /* UM VOUCHER POR PESSOA, POR CURSO, POR JANELA — e esta é a checagem que
      * VALE, não a da tela.
@@ -610,6 +641,14 @@ function voucherBuscarEscola(termo, tokenSessao) {
           cnpj: String(e.cnpjLimpo || e.cnpj || e.CNPJ || "").replace(/\D/g, ""),
           cidade: String(e.cidade || e.municipio || e.Cidade || "").trim(),
           uf: String(e.uf || e.UF || "").trim(),
+          /* O E-MAIL VAI JUNTO, e não é para preencher a escola — ela nem tem
+           * campo de e-mail na tela. É para o botão "mesma da escola" da
+           * instituição de ensino ter o que copiar sem uma segunda ida ao
+           * servidor: a professora que dá aula na faculdade e estuda nessa
+           * mesma faculdade é caso comum, e hoje ela é digitada duas vezes.
+           * O cadastro de Escolas já tem esse e-mail; pedir de novo a quem
+           * atende é fazer a pessoa buscar o que o sistema sabe. */
+          email: String(e.email || e.Email || e["E-mail (principal)"] || "").trim(),
           escolaId: String(e.EscolaID || e.escolaId || (typeof ESC_COL_ID !== "undefined" ? e[ESC_COL_ID] : "") || "").trim()
         };
       })
@@ -858,4 +897,156 @@ function voucherCriarSolicitacoesEmLote(pedido, tokenSessao) {
           ? "Nenhuma solicitação foi criada — veja o motivo em cada beneficiário."
           : criados + " de " + lista.length + " criadas. As demais estão marcadas com o motivo.")
   };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   A DATA DO PEDIDO E O CABEÇALHO DA OBSERVAÇÃO — 30/09/2026
+
+   "Na observação tem que constar a data da solicitação e a informação" e
+   "controle de quem fez o voucher" — você, no mesmo dia, olhando o modal de
+   nova solicitação e o de análise.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Normaliza a data do pedido vinda da tela.
+ *
+ * Aceita "AAAA-MM-DD" (o que um <input type="date"> manda) e Date. Vazio,
+ * ilegível ou no futuro vira a data de hoje — a tela também barra o futuro,
+ * mas quem grava é quem responde: `google.script.run` aceita qualquer coisa
+ * que chegue, e uma data de 2030 numa solicitação estragaria a medição de
+ * prazo de todo mundo, não só a daquela linha.
+ *
+ * A hora é zerada de propósito. O que se guarda aqui é um DIA — o dia em que
+ * o associado pediu. Hora falsa (00:00 do fuso errado, ou a hora da
+ * digitação) daria a impressão de precisão que o dado não tem.
+ */
+function voucherDataPedido_(bruto, agora) {
+  agora = agora || new Date();
+  var hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  try {
+    if (!bruto) return hoje;
+
+    var d;
+    if (Object.prototype.toString.call(bruto) === "[object Date]") {
+      d = new Date(bruto.getFullYear(), bruto.getMonth(), bruto.getDate());
+    } else {
+      var txt = String(bruto).trim();
+      /* "AAAA-MM-DD" montado PEÇA POR PEÇA, e não com `new Date(txt)`: essa
+       * forma é lida como UTC e, no fuso de Vitória, devolve o DIA ANTERIOR.
+       * Um pedido de 01/10 viraria 30/09 — e ninguém notaria, porque a data
+       * continua plausível. */
+      var m = txt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      } else {
+        /* "DD/MM/AAAA", para o caso de a tela mudar ou de alguém chamar de
+         * outro lugar. Mesma montagem peça por peça, mesmo motivo. */
+        var br = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (br) d = new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
+      }
+    }
+
+    if (!d || isNaN(d.getTime())) return hoje;
+    if (d.getTime() > hoje.getTime()) return hoje;   // futuro não existe
+    return d;
+  } catch (e) {
+    Logger.log("voucherDataPedido_: " + e);
+    return hoje;
+  }
+}
+
+/**
+ * Monta o cabeçalho que vai na frente da observação digitada.
+ *
+ * Formato pedido por você, com esta redação:
+ *
+ *   Pedido solicitado em 24/09/2026 · registrado por Marcela em 30/09/2026 14:12
+ *   Titular — Pós-Graduação · Direito Marítimo · 70%
+ *   ──────────
+ *   (o que a pessoa digitou)
+ *
+ * Cada pedaço só entra se existir. Uma linha com "—" no lugar do curso não
+ * informa nada e ainda dá ao bloco inteiro cara de formulário mal preenchido.
+ */
+function voucherCabecalhoObservacao_(valores, dataPedido, agora, quem) {
+  try {
+    function dia(d) {
+      return d ? Utilities.formatDate(d, "America/Sao_Paulo", "dd/MM/yyyy") : "";
+    }
+    function minuto(d) {
+      return d ? Utilities.formatDate(d, "America/Sao_Paulo", "dd/MM/yyyy HH:mm") : "";
+    }
+
+    var l1 = "Pedido solicitado em " + dia(dataPedido);
+    /* O NOME DE QUEM REGISTROU, e não o e-mail, quando dá para saber: quem lê
+     * a observação seis meses depois reconhece "Marcela", não
+     * "marcela.secretaria@sindeducacao.com". O e-mail continua em
+     * USUARIO_CADASTRO, que é a coluna para conferência. */
+    var nomeQuem = voucherNomeCurtoUsuario_(quem);
+    if (nomeQuem) l1 += " · registrado por " + nomeQuem + " em " + minuto(agora);
+    else l1 += " · registrado em " + minuto(agora);
+
+    /* QUEM RECEBE A BOLSA, na linguagem da tela. "TITULAR" é o valor do
+     * banco; "Titular" é o que a pessoa vê no seletor. */
+    var tipo = String(valores.TIPO_BENEFICIARIO || "").trim().toUpperCase();
+    var quemBolsa = tipo === "TITULAR" || tipo === "PROPRIO" || tipo === "PRÓPRIO"
+      ? "Titular"
+      : (String(valores.NOME_BENEFICIARIO || "").trim() ||
+         (tipo ? tipo.charAt(0) + tipo.slice(1).toLowerCase() : ""));
+
+    var partes = [];
+    var modalidade = voucherModalidadeTexto_(valores.MODALIDADE);
+    if (modalidade) partes.push(modalidade);
+    if (String(valores.CURSO || "").trim()) partes.push(String(valores.CURSO).trim());
+    if (String(valores.PERCENTUAL_APLICADO || "").trim() !== "") {
+      partes.push(String(valores.PERCENTUAL_APLICADO).trim() + "%");
+    }
+
+    var l2 = quemBolsa && partes.length ? quemBolsa + " — " + partes.join(" · ")
+           : quemBolsa || partes.join(" · ");
+
+    var cabecalho = [l1, l2].filter(function (t) { return String(t || "").trim(); }).join("\n");
+    var digitado = String(valores.OBSERVACOES || "").trim();
+
+    /* A linha separadora só aparece quando há o que separar. */
+    return digitado ? cabecalho + "\n──────────\n" + digitado : cabecalho;
+  } catch (e) {
+    /* CABEÇALHO NÃO PODE DERRUBAR UMA SOLICITAÇÃO. Ele é conveniência de
+     * leitura; a bolsa é o trabalho. Falhando, a observação fica como a
+     * pessoa digitou — que é exatamente o que existia antes de hoje. */
+    Logger.log("voucherCabecalhoObservacao_: " + e);
+    return String((valores && valores.OBSERVACOES) || "").trim();
+  }
+}
+
+/** "marcela.secretaria@sindeducacao.com" → "Marcela". Nome do cadastro quando existe. */
+function voucherNomeCurtoUsuario_(quem) {
+  var txt = String(quem || "").trim();
+  if (!txt) return "";
+  if (txt.indexOf("@") === -1) return txt;          // já é nome
+  var antes = txt.split("@")[0].replace(/[._-]+/g, " ").trim();
+  if (!antes) return "";
+  /* Só o primeiro nome: é como a secretaria se refere umas às outras, e o
+   * cabeçalho tem de caber numa linha. */
+  var primeiro = antes.split(/\s+/)[0];
+  return primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
+}
+
+/** "POS_GRADUACAO" → "Pós-Graduação", quando a lista souber; senão devolve como veio. */
+function voucherModalidadeTexto_(valor) {
+  var v = String(valor || "").trim().toUpperCase();
+  if (!v) return "";
+  var mapa = {
+    CRECHE: "Creche",
+    EDUCACAO_INFANTIL: "Educação Infantil",
+    ENSINO_FUNDAMENTAL: "Ensino Fundamental",
+    ENSINO_MEDIO: "Ensino Médio",
+    TECNICO: "Técnico",
+    GRADUACAO: "Graduação",
+    POS_GRADUACAO: "Pós-Graduação",
+    MESTRADO: "Mestrado",
+    DOUTORADO: "Doutorado",
+    IDIOMAS: "Idiomas"
+  };
+  return mapa[v] || String(valor).trim();
 }

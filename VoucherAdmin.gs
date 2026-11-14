@@ -69,30 +69,120 @@ function atualizarStatusProtocolo_(protocolo, status, responsavel, observacao) {
   }
 }
 
-function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao) {
+/**
+ * PEDIR DOCUMENTO SEM DIZER QUAL NÃO É PEDIDO, É ADIVINHAÇÃO — 17/09/2026.
+ *
+ * O usuário perguntou se o associado recebia e-mail ao ter a complementação
+ * solicitada. Recebia — e foi ao conferir POR EXECUÇÃO que o defeito
+ * apareceu: sem ninguém digitar nada, saía um e-mail dizendo
+ *
+ *   "Precisamos de complementação para dar continuidade à sua solicitação.
+ *    Complementação solicitada pela análise administrativa."
+ *
+ * ...que não nomeia UM documento. Quem recebe não sabe o que mandar, e liga
+ * para o sindicato para perguntar — o oposto do que o e-mail existia para
+ * fazer. O texto padrão preenchia a lacuna e, ao preenchê-la, escondia que
+ * ela existia.
+ *
+ * Agora a orientação é OBRIGATÓRIA, como já era a justificativa do
+ * indeferimento. A trava fica aqui, no backend, e não só na tela: tela é
+ * conveniência, servidor é regra.
+ */
+/**
+ * PEDIR COMPLEMENTAÇÃO DIZENDO O QUE FALTA.
+ *
+ * O DEFEITO QUE ORIGINOU ESTA VERSÃO — 22/09/2026, você: "essa complementação
+ * eu deveria informar quais documentos estariam pendentes" e, logo depois,
+ * "mas o sistema encaminhou direto! Não entendi".
+ *
+ * A trava de "escreva o que está faltando" existia e não pegou, porque o
+ * campo de observação NÃO ESTAVA VAZIO: ele já vinha preenchido pelo próprio
+ * sistema — "Solicitação enquadrada por ordem do filho. | Escola não
+ * localizada no cadastro de escolas." Era uma anotação interna da análise, e
+ * foi ela que saiu no e-mail do associado como se fosse o pedido de
+ * documento. Ou seja: a pessoa recebeu uma mensagem que não nomeia documento
+ * nenhum, e o clique passou pela trava sem esforço.
+ *
+ * A CORREÇÃO É SEPARAR AS DUAS COISAS. `obs` volta a ser o que o nome diz —
+ * observação interna da análise, que fica na planilha. O que vai para o
+ * associado é `pedido`, montado na tela a partir de uma lista de documentos
+ * marcados mais um detalhe livre. Sem nenhum documento marcado e sem detalhe,
+ * não se envia nada.
+ *
+ * @param {Object} pedido  { documentos: string[], detalhe: string }
+ */
+function solicitarComplementacaoVoucher(protocolo, obs, tokenSessao, pedido) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
 
-    const usuario = obterUsuarioAtualVoucher_();
-    const observacao = obs || "Complementação solicitada pela análise administrativa.";
+    const observacao = String(obs || "").trim();
 
-    atualizarStatusSolicitacao_(item, "ANALISE", observacao);
-    atualizarStatusProtocolo_(protocolo, "ANALISE", usuario, observacao);
+    const documentos = (pedido && Array.isArray(pedido.documentos) ? pedido.documentos : [])
+      .map(function (d) { return String(d || "").trim(); })
+      .filter(function (d) { return d !== ""; });
+    const detalhe = String((pedido && pedido.detalhe) || "").trim();
+
+    /* O TEXTO DO E-MAIL SAI DAQUI, e só daqui.
+     *
+     * A DISTINÇÃO ENTRE "NÃO MANDOU PEDIDO" E "MANDOU PEDIDO VAZIO" É O
+     * CONSERTO. Escrever este trecho com um único `else` que cai na
+     * observação reproduzia o defeito inteiro: a tela mandaria o pedido vazio
+     * (ninguém marcou nada), o código acharia que era uma chamada antiga e
+     * enviaria a anotação interna para o associado — de novo. Foi assim que
+     * o teste pegou, e a primeira versão desta função tinha exatamente isso.
+     *
+     * Chamada SEM o quarto argumento é código antigo (um script, uma tela
+     * anterior) e ainda pode usar a observação. Chamada COM pedido vazio é a
+     * tela nova dizendo "não marcaram nada" — e aí não se envia. */
+    const pedidoVeio = !!pedido && typeof pedido === "object";
+    let textoAssociado = "";
+    if (documentos.length || detalhe) {
+      textoAssociado = documentos.join("\n");
+      if (detalhe) textoAssociado += (textoAssociado ? "\n" : "") + detalhe;
+    } else if (!pedidoVeio) {
+      textoAssociado = observacao;
+    }
+
+    if (!String(textoAssociado || "").trim()) {
+      return {
+        ok: false,
+        mensagem: "Diga o que está faltando — marque os documentos ou escreva o que o associado precisa enviar. Este texto vai no e-mail para ele."
+      };
+    }
+
+    const usuario = obterUsuarioAtualVoucher_();
+
+    /* A OBSERVAÇÃO GRAVADA É A INTERNA, quando existe. O que foi pedido ao
+       associado tem coluna própria — misturar os dois é o que produziu o
+       e-mail errado. */
+    atualizarStatusSolicitacao_(item, "ANALISE", observacao || textoAssociado, {
+      DOCUMENTOS_PENDENTES: documentos.join(" | ") + (detalhe ? (documentos.length ? " | " : "") + detalhe : ""),
+      DATA_COMPLEMENTACAO: new Date()
+    });
+    atualizarStatusProtocolo_(protocolo, "ANALISE", usuario, textoAssociado);
 
     registrarHistoricoVoucher_(
       item.registro.ID_SOLICITACAO,
       item.registro.CPF_SOLICITANTE,
       "COMPLEMENTACAO_SOLICITADA",
       usuario,
-      observacao,
+      /* O histórico guarda o que foi PEDIDO — é por ele que se confere, meses
+         depois, se o que chegou é o que se pediu. */
+      textoAssociado,
       protocolo
     );
 
-    enviarEmailComplementacaoVoucher_(item.registro, protocolo, observacao);
+    enviarEmailComplementacaoVoucher_(item.registro, protocolo, textoAssociado, documentos);
 
-    return { ok: true, mensagem: "Complementação solicitada com sucesso." };
+    return {
+      ok: true,
+      mensagem: documentos.length
+        ? "Complementação solicitada — " + documentos.length +
+          (documentos.length === 1 ? " documento pedido." : " documentos pedidos.")
+        : "Complementação solicitada com sucesso."
+    };
 
   } catch (e) {
     return { ok: false, mensagem: "Erro ao solicitar complementação: " + e.message };
@@ -180,11 +270,47 @@ function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
   }
 }
 
-function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
+/**
+ * `percentual` é OPCIONAL e entrou em 16/09/2026.
+ *
+ * "Aqui eu tenho que ter uma opção de alterar o desconto caso esteja errado"
+ * — o usuário, olhando o modal de análise, onde o percentual calculado pela
+ * convenção aparecia como número fixo.
+ *
+ * O cálculo automático continua sendo o padrão: quem aprova sem mexer no
+ * campo aprova com o que a convenção mandou. Mas o cálculo depende de dados
+ * que a própria pessoa digitou no portal (modalidade, área do curso, ordem do
+ * filho), e um desses errado produz percentual errado — que hoje só seria
+ * descoberto depois do voucher emitido, com a escola já informada.
+ *
+ * Ajustar aqui NÃO É silencioso: quem muda deixa rastro no histórico, com o
+ * valor de antes e o de depois, e a observação registra a mudança.
+ * Sugerir com origem à vista, nunca impor em silêncio — REGRA Nº 0.6.
+ */
+function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
     if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    /* O AJUSTE DO PERCENTUAL, CONFERIDO ANTES DE QUALQUER ESCRITA.
+     *
+     * Percentual fora de 1–100 não é ajuste, é dedo errado — e gravar 700%
+     * num voucher seria descoberto pela escola, não por nós. Zero também não
+     * passa: bolsa de 0% é indeferimento, e indeferir tem botão próprio, com
+     * justificativa e e-mail ao associado. */
+    var pctAntes = String(valorSeguroVoucher_(item.registro.PERCENTUAL_APLICADO) || "").replace("%", "").trim();
+    var pctNovo  = String(percentual === undefined || percentual === null ? "" : percentual).replace("%", "").trim();
+    var mudouPct = false;
+
+    if (pctNovo !== "") {
+      var n = Number(pctNovo);
+      if (isNaN(n) || n <= 0 || n > 100) {
+        return { ok: false, mensagem: "O desconto precisa ser um número entre 1 e 100." };
+      }
+      pctNovo = String(Math.round(n));
+      mudouPct = (pctNovo !== pctAntes);
+    }
 
     const situacaoSindical = String(item.registro.SITUACAO_SINDICAL || "").toUpperCase();
 
@@ -231,12 +357,15 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
         "presencial: solicitação em papel, retirada na sede, sem envio por e-mail."
       : "Solicitação aprovada pela análise administrativa.");
 
-    atualizarStatusSolicitacao_(item, "APROVADO", observacao, {
+    const extras = {
       SITUACAO_SINDICAL: situacaoSindical || "ASSOCIADO",
       STATUS_VALIDACAO_SINDICAL: "VALIDADO",
       USUARIO_VALIDACAO: usuario,
       DATA_VALIDACAO: new Date()
-    });
+    };
+    if (mudouPct) extras.PERCENTUAL_APLICADO = pctNovo;
+
+    atualizarStatusSolicitacao_(item, "APROVADO", observacao, extras);
     atualizarStatusProtocolo_(protocolo, "APROVADO", usuario, observacao);
 
     registrarHistoricoVoucher_(
@@ -248,15 +377,111 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao) {
       protocolo
     );
 
+    /* O RASTRO DA MUDANÇA VAI PARA O HISTÓRICO, que é append-only — e não
+     * para OBSERVACOES, que a ação seguinte sobrescreve. Com o valor de
+     * antes: saber que mudou sem saber de quanto não serve para conferir. */
+    if (mudouPct) {
+      registrarHistoricoVoucher_(
+        item.registro.ID_SOLICITACAO,
+        item.registro.CPF_SOLICITANTE,
+        "PERCENTUAL_AJUSTADO",
+        usuario,
+        "Desconto alterado de " + (pctAntes || "vazio") + "% para " + pctNovo +
+          "% na aprovação, pela análise administrativa.",
+        protocolo
+      );
+      /* O e-mail de aprovação lê o percentual do registro em memória, que
+       * ainda traz o valor antigo — sem isto o associado receberia a
+       * aprovação anunciando o desconto que NÃO foi concedido. */
+      item.registro.PERCENTUAL_APLICADO = pctNovo;
+    }
+
     enviarEmailAprovacaoVoucher_(item.registro, protocolo);
 
     return {
       ok: true,
-      mensagem: "Solicitação aprovada com sucesso."
+      percentual: mudouPct ? pctNovo : pctAntes,
+      mensagem: mudouPct
+        ? "Solicitação aprovada com o desconto ajustado para " + pctNovo + "%."
+        : "Solicitação aprovada com sucesso."
     };
 
   } catch (e) {
     return { ok: false, mensagem: "Erro ao aprovar: " + e.message };
+  }
+}
+
+/**
+ * CONFIRMA QUE A PESSOA É ASSOCIADA, e tira a solicitação do limbo.
+ *
+ * POR QUE PRECISOU EXISTIR — 16/09/2026.
+ *
+ * `AGUARDANDO_VALIDACAO_CADASTRAL` é o estado de quem pediu pelo portal e
+ * cujo CPF NÃO FOI ENCONTRADO na base de Associados. Não é recusa: pode ser
+ * associado novo ainda não lançado, e barrá-lo seria negar direito por atraso
+ * de cadastro. O sistema pede conferência humana.
+ *
+ * SÓ QUE A CONFERÊNCIA NÃO TINHA ONDE ACONTECER. Nenhum card de contagem
+ * cobria esse status, o filtro de status não o oferecia, e não havia ação que
+ * o resolvesse — só Aprovar, Indeferir e Complementação. Uma solicitação real
+ * (Marcelha, pela Fucape) ficou parada, invisível em todos os indicadores,
+ * esperando um passo que o sistema exigia e não oferecia.
+ *
+ * O QUE ESTA FUNÇÃO NÃO FAZ: aprovar. Confirmar o cadastro é dizer "esta
+ * pessoa é associada"; aprovar é dizer "esta bolsa está deferida". São duas
+ * decisões, e juntá-las faria a conferência cadastral conceder benefício sem
+ * ninguém olhar a regra. A solicitação vai para PENDENTE — a fila de análise
+ * normal, de onde ela deveria ter saído se o CPF estivesse na base.
+ *
+ * O RASTRO VAI PARA O HISTÓRICO, que é append-only, e não para OBSERVACOES,
+ * que a ação seguinte sobrescreve.
+ */
+function confirmarCadastroSolicitacaoVoucher(protocolo, obs, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    const item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    const statusAtual = String(item.registro.STATUS_SOLICITACAO || "").toUpperCase();
+    if (statusAtual !== "AGUARDANDO_VALIDACAO_CADASTRAL") {
+      /* Recusa explicando, em vez de aceitar em silêncio: confirmar cadastro
+         de uma solicitação já aprovada ou indeferida a jogaria de volta para
+         PENDENTE, desfazendo uma decisão sem que ninguém percebesse. */
+      return {
+        ok: false,
+        mensagem: "Esta solicitação não está aguardando validação cadastral (está " +
+                  (statusAtual || "sem status") + "). Nada foi alterado."
+      };
+    }
+
+    const usuario = obterUsuarioAtualVoucher_();
+    const observacao = obs ||
+      "Cadastro conferido pela Secretaria: filiação confirmada fora da base no momento da solicitação.";
+
+    atualizarStatusSolicitacao_(item, "PENDENTE", observacao, {
+      SITUACAO_SINDICAL: "ASSOCIADO",
+      STATUS_VALIDACAO_SINDICAL: "VALIDADO",
+      USUARIO_VALIDACAO: usuario,
+      DATA_VALIDACAO: new Date()
+    });
+    atualizarStatusProtocolo_(protocolo, "PENDENTE", usuario, observacao);
+
+    registrarHistoricoVoucher_(
+      item.registro.ID_SOLICITACAO,
+      item.registro.CPF_SOLICITANTE,
+      "CADASTRO_CONFIRMADO",
+      usuario,
+      observacao,
+      protocolo
+    );
+
+    return {
+      ok: true,
+      mensagem: "Cadastro confirmado. A solicitação foi para a fila de análise."
+    };
+
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao confirmar cadastro: " + e.message };
   }
 }
 
@@ -298,23 +523,64 @@ function indeferirSolicitacaoVoucher(protocolo, obs, tokenSessao) {
 
 /* ================= E-MAILS ADMIN ================= */
 
-function enviarEmailComplementacaoVoucher_(reg, protocolo, obs) {
+function enviarEmailComplementacaoVoucher_(reg, protocolo, obs, documentos) {
   try {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Complementação de documentos — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#002f6c;'>Solicitação de complementação</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
-        "<p>Precisamos de complementação para dar continuidade à sua solicitação de bolsa.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
-        "<p><strong>Orientação:</strong> " + escHtmlVoucher_(obs) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        voucherEmailHtml_("Solicitação de complementação",
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
+        /* DE QUEM É A BOLSA, quando não é do próprio associado. Quem tem três
+         * filhos recebe três mensagens parecidas, e sem o nome não sabe a
+         * qual delas o documento pedido pertence. */
+        (function () {
+          const benef = valorSeguroVoucher_(reg.NOME_BENEFICIARIO);
+          const tit = valorSeguroVoucher_(reg.NOME_SOLICITANTE);
+          return benef && String(benef).toUpperCase() !== String(tit).toUpperCase()
+            ? "<p>Para dar continuidade à solicitação de bolsa de <strong>" +
+              escHtmlVoucher_(benef) + "</strong>, precisamos do seguinte:</p>"
+            : "<p>Para dar continuidade à sua solicitação de bolsa, precisamos do seguinte:</p>";
+        })() +
+        /* O QUE FALTA VEM ANTES DO PROTOCOLO e em destaque. Na versão
+         * anterior o pedido aparecia depois do número, num bloco cinza sem
+         * título — e quem lê no celular via primeiro um código e depois uma
+         * frase administrativa. O documento pedido é a única informação que
+         * essa mensagem precisa entregar. */
+        /* LISTA, NÃO PARÁGRAFO — 22/09/2026. Quando são três documentos, um
+         * parágrafo corrido faz a pessoa mandar o primeiro e esquecer os
+         * outros dois; e aí ela recebe uma segunda cobrança e conclui que o
+         * sindicato é desorganizado. Cada documento numa linha própria é o
+         * que faz a conferência ser possível do lado de lá. */
+        "<div style='margin:14px 0;padding:14px 16px;background:#fffbeb;border:1px solid #fcd34d;" +
+        "border-left:4px solid #d97706;border-radius:8px;font-size:14.5px;color:#92400e;'>" +
+        (Array.isArray(documentos) && documentos.length
+          ? "<ul style='margin:0;padding-left:20px;'>" +
+            documentos.map(function (d) {
+              return "<li style='margin:3px 0;'>" + escHtmlVoucher_(d) + "</li>";
+            }).join("") +
+            "</ul>" +
+            /* O detalhe livre vem depois da lista, separado: ele costuma ser
+               uma explicação ("o contracheque precisa ser de agosto"), não um
+               item a mais. */
+            (function () {
+              const extra = String(obs || "").split("\n")
+                .filter(function (linha) { return documentos.indexOf(linha) === -1; })
+                .join(" ").trim();
+              return extra
+                ? "<div style='margin-top:10px;padding-top:10px;border-top:1px solid #fcd34d;'>" +
+                  escHtmlVoucher_(extra) + "</div>"
+                : "";
+            })()
+          : escHtmlVoucher_(obs)) +
+        "</div>" +
+        "<p style='font-size:13px;color:#475569;'>Basta responder a este e-mail com o documento anexado, " +
+        "ou falar com a Secretaria se tiver dúvida sobre o que enviar.</p>" +
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Complementação" })
     });
 
   } catch (e) {
@@ -327,20 +593,18 @@ function enviarEmailNaoAssociadoVoucher_(reg, protocolo) {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Atendimento presencial necessário — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#92400e;'>Atendimento presencial necessário</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        voucherEmailHtml_("Atendimento presencial necessário",
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
         "<p>Seu cadastro foi identificado como <strong>não associado</strong>.</p>" +
         "<p>Para continuidade da solicitação, compareça à sede do SindEducação-ES em até <strong>15 dias úteis</strong>, levando este protocolo e a documentação necessária.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Endereço:</strong> " + escHtmlVoucher_(ENDERECO_SIND_V) + "</p>" +
         "<p><strong>Telefone:</strong> " + escHtmlVoucher_(TELEFONE_SIND_V) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Atendimento presencial" })
     });
 
   } catch (e) {
@@ -372,15 +636,13 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
      * a última frase, que passa a dizer a verdade do canal dela. */
     const presencial = voucherEhNaoAssociado_(reg.SITUACAO_SINDICAL);
 
-    MailApp.sendEmail({
+    voucherEnviarMsg_({
       to: email,
       subject: "Bolsa aprovada — " + protocolo + " · SindEducação-ES",
       htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#166534;'>Bolsa aprovada</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
+        voucherEmailHtml_("Bolsa aprovada",
+        sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
         "<p>Sua solicitação de bolsa foi aprovada.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
         "<p><strong>Curso:</strong> " + escHtmlVoucher_(reg.CURSO) + "</p>" +
         "<p><strong>Desconto:</strong> " + escHtmlVoucher_(percentual || "—") + "%</p>" +
         (presencial
@@ -390,8 +652,8 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
             "e-mail.</p>"
           : "<p>O voucher será emitido e encaminhado após a geração do " +
             "documento oficial.</p>") +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
+        "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+        { protocolo: protocolo, badge: "Bolsa aprovada" })
     });
 
   } catch (e) {
@@ -399,24 +661,106 @@ function enviarEmailAprovacaoVoucher_(reg, protocolo) {
   }
 }
 
+/**
+ * A CASCA DE E-MAIL DO MÓDULO, no padrão do SISGEP — 16/09/2026.
+ *
+ * O indeferimento saía em Arial cru, sem o bloco navy com que TODO documento
+ * do sistema abre — o ofício, a declaração, o certificado. "Não pode cada
+ * módulo ter um padrão diferente", e e-mail também é documento.
+ *
+ * @param {string} titulo    o que aparece na faixa
+ * @param {string} corpoHtml o conteúdo, já escapado por quem chama
+ */
+function voucherEmailHtml_(titulo, corpoHtml, opcoes) {
+  /* DELEGA PARA A CASCA ÚNICA — 17/09/2026.
+   *
+   * Este arquivo tinha o seu próprio cabeçalho navy, quase igual ao do
+   * ofício e diferente o bastante para quem recebe os dois notar. A casca
+   * agora é uma só (sisgepEmailHtml_, em EmailOficios.gs), e esta função
+   * vira o atalho de Bolsas para ela.
+   *
+   * A ASSINATURA ANTIGA CONTINUA VALENDO, com `opcoes` no fim: são dez
+   * pontos chamando `voucherEmailHtml_(titulo, corpo)` neste módulo, e
+   * trocar todos de uma vez para ganhar dois campos opcionais seria dez
+   * chances de errar num commit que já mexe no visual de tudo. Quem não
+   * passa `opcoes` continua saindo certo, só sem protocolo e sem badge. */
+  opcoes = opcoes || {};
+  return sisgepEmailHtml_({
+    numero: opcoes.protocolo || "",
+    rotuloNumero: opcoes.protocolo ? "Protocolo" : "",
+    badge: opcoes.badge || titulo || "",
+    corpo: corpoHtml
+  });
+}
+
+/**
+ * Envia pelo caminho que RESPEITA O REMETENTE.
+ *
+ * O `MailApp.sendEmail` IGNORA a opção `from`, em silêncio — foi o defeito que
+ * fez a Declaração de Diretor sair da conta executora mesmo com o alias da
+ * Secretaria configurado (ver enviarComoRascunhoSISGEP_ em EmailOficios.gs).
+ * Todo e-mail deste módulo usava MailApp, então todos saíam da conta errada.
+ * Aqui passam pela mesma porta do ofício e da declaração.
+ */
+/**
+ * ESTE HELPER MANDAVA O CORPO CRU, e foi assim que o indeferimento saiu sem
+ * cabeçalho nem rodapé — texto solto, sem identidade nenhuma.
+ *
+ * Achado em 17/09/2026, ao unificar a casca. O pior não foi o defeito: foi o
+ * teste. A asserção "está na mesma casca visual dos outros" procurava a cor
+ * `#001f4d` no corpo — e ela aparecia numa BORDA do bloco de motivo. O teste
+ * acertava pelo motivo errado, que é o mesmo que não testar.
+ *
+ * Agora quem chama entrega só o MIOLO, e a casca é vestida aqui. Assim não
+ * existe caminho em que alguém esqueça de vesti-la.
+ */
+function voucherEnviarEmail_(para, assunto, corpoHtml, opcoes) {
+  return voucherEnviarMsg_({
+    to: para,
+    subject: assunto,
+    htmlBody: voucherEmailHtml_((opcoes && opcoes.badge) || "", corpoHtml, opcoes || {})
+  });
+}
+
+/**
+ * Substituto direto do antigo MailApp.sendEmail(msg) neste módulo.
+ *
+ * Aceita a MESMA forma de objeto — to, subject, htmlBody, cc, attachments —
+ * para a troca ser mecânica nos sete pontos que usavam MailApp. O que muda é
+ * por onde sai: `GmailApp.createDraft().send()`, que respeita o `from` da
+ * Secretaria quando ele é alias verificado da conta executora.
+ */
+function voucherEnviarMsg_(msg) {
+  msg = msg || {};
+  var opcoes = montarOpcoesEmailSISGEP_(
+    "", msg.htmlBody || "", msg.attachments || [], msg.subject || "", msg.to || "");
+  if (msg.cc) opcoes.cc = msg.cc;
+  return enviarComoRascunhoSISGEP_(opcoes, msg.body || "Mensagem do SindEducação-ES.");
+}
+
 function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
   try {
     const email = valorSeguroVoucher_(reg.EMAIL);
     if (!email) return;
 
-    MailApp.sendEmail({
-      to: email,
-      subject: "Solicitação indeferida — " + protocolo + " · SindEducação-ES",
-      htmlBody:
-        "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>" +
-        "<h2 style='color:#991b1b;'>Solicitação indeferida</h2>" +
-        "<p>Olá <strong>" + escHtmlVoucher_(reg.NOME_SOLICITANTE) + "</strong>,</p>" +
-        "<p>Sua solicitação foi indeferida após análise administrativa.</p>" +
-        "<p><strong>Protocolo:</strong> " + escHtmlVoucher_(protocolo) + "</p>" +
-        "<p><strong>Justificativa:</strong> " + escHtmlVoucher_(obs) + "</p>" +
-        "<p>Atenciosamente,<br>SindEducação-ES</p>" +
-        "</div>"
-    });
+    voucherEnviarEmail_(
+      email,
+      "Sobre sua solicitação de bolsa — " + protocolo,
+      sisgepSaudacaoEmail_(reg.NOME_SOLICITANTE) +
+      "<p>Recebemos sua solicitação de bolsa de estudo e agradecemos a confiança.</p>" +
+      "<p>Após a conferência, <strong>não foi possível conceder o benefício neste caso</strong>. " +
+      "O motivo registrado pela Secretaria foi:</p>" +
+      "<div style='margin:14px 0;padding:12px 16px;background:#f8fafc;border-left:4px solid #001f4d;border-radius:8px;'>" +
+      escHtmlVoucher_(obs) + "</div>" +
+      "<p><strong>Isso não impede novas solicitações.</strong> Se algum dado tiver sido " +
+      "informado por engano, ou se houver outro beneficiário que atenda aos critérios, " +
+      "basta refazer o pedido pelo portal — ou falar com a Secretaria, que ajudamos a conferir.</p>" +
+      /* O protocolo saiu do corpo: agora ele está no cabeçalho, em dourado,
+         onde a pessoa olha primeiro. Repeti-lo aqui seria dizer duas vezes. */
+      "<p>Qualquer dúvida, é só responder a este e-mail.</p>" +
+      "<p>Atenciosamente,<br><strong>Secretaria — SindEducação-ES</strong></p>",
+      { protocolo: protocolo, badge: "Solicitação não deferida" }
+    );
 
   } catch (e) {
     Logger.log("enviarEmailIndeferimentoVoucher_ erro: " + e.message);
@@ -425,16 +769,29 @@ function enviarEmailIndeferimentoVoucher_(reg, protocolo, obs) {
 
 /* ================= ALIASES COMPATIBILIDADE ================= */
 
-function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao) {
-  return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao);
+function solicitarComplementacaoCertBolsa(protocolo, obs, tokenSessao, pedido) {
+  /* O QUARTO ARGUMENTO PRECISA ATRAVESSAR — mesma armadilha do apelido de
+     aprovação logo abaixo: esquecer o repasse aqui faria a lista de
+     documentos sumir no caminho e o e-mail voltar a sair sem dizer o que
+     falta, sem erro nenhum aparecer. */
+  return solicitarComplementacaoVoucher(protocolo, obs, tokenSessao, pedido);
+}
+
+/* A tela de Bolsas chama pelos nomes CertBolsa — mesma convenção dos demais. */
+function confirmarCadastroCertBolsa(protocolo, obs, tokenSessao) {
+  return confirmarCadastroSolicitacaoVoucher(protocolo, obs, tokenSessao);
 }
 
 function aprovarSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
   return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
 }
 
-function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao) {
-  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao);
+function aprovarSolicitacaoCertBolsaComEmail(protocolo, obs, tokenSessao, percentual) {
+  /* O QUARTO ARGUMENTO PRECISA ATRAVESSAR. Este apelido é o que o painel
+   * chama de verdade — esquecer o repasse aqui faria o ajuste de desconto
+   * sumir no caminho, e a aprovação gravaria o percentual antigo sem que
+   * ninguém visse erro nenhum. */
+  return aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual);
 }
 
 function indeferirSolicitacaoCertBolsa(protocolo, obs, tokenSessao) {
@@ -731,5 +1088,212 @@ function voucherRelatorioDuplicidades(tokenSessao) {
   } catch (e) {
     Logger.log("voucherRelatorioDuplicidades: " + e.message + "\n" + (e.stack || ""));
     return { ok: false, mensagem: "Erro ao montar o relatório: " + e.message };
+  }
+}
+
+/* ================= COMUNICADO DE "FORA DA REGRA" =================
+ *
+ * PEDIDO DO USUÁRIO, 16/09/2026, sobre o dependente acima de 24 anos:
+ *
+ *   "Ele pode preencher o cadastro, tudo normalmente. Quando vai chegar para
+ *    a Marcela fazer validação, o sistema automaticamente tem que informar
+ *    [...] Dependente fora da idade. E ela só vai enviar um comunicado, vai
+ *    ter um botão em ações lá, ela vai enviar um comunicado já padrão, uma
+ *    mensagem padrão, em que infelizmente não é possível devido à idade dele."
+ *
+ * E, perguntado se o texto sai fechado: "Pode editar".
+ *
+ * POR QUE NÃO É O INDEFERIMENTO COMUM. O indeferimento pede que alguém
+ * DIGITE a justificativa — e a justificativa aqui é sempre a mesma frase,
+ * sobre um fato que o sistema já conferiu sozinho. Redigitar todo semestre o
+ * que o sistema já sabe é defeito de desenho, não trabalho (REGRA Nº 0.6).
+ * Então o texto nasce pronto, com o motivo medido do cadastro, e ela edita se
+ * o caso pedir.
+ */
+
+/**
+ * O que travou a solicitação, medido do registro — não do que alguém digitou.
+ *
+ * Devolve `null` quando a solicitação NÃO está fora da regra. É isso que
+ * decide se o botão aparece na tela: botão que existe sempre e só funciona às
+ * vezes ensina a pessoa a clicar e receber recusa.
+ */
+function voucherMotivoForaDaRegra_(reg) {
+  if (!reg) return null;
+
+  var status = String(valorSeguroVoucher_(reg.STATUS_SOLICITACAO) || "").toUpperCase();
+  if (status !== "BLOQUEADA_POR_REGRA") return null;
+
+  var tipo  = String(valorSeguroVoucher_(reg.TIPO_BENEFICIARIO) || "").toUpperCase();
+  var idade = String(valorSeguroVoucher_(reg.IDADE_BENEFICIARIO) || "").trim();
+  var obs   = String(valorSeguroVoucher_(reg.OBSERVACOES) || "").trim();
+
+  /* IDADE primeiro, porque é o caso que o usuário descreveu e o único em que
+   * o sistema tem um número para mostrar. "até 24" inclui os 24 — ver o
+   * cabeçalho da regra em Voucher.gs. */
+  if (idade !== "" && !isNaN(Number(idade)) && Number(idade) > 24 &&
+      tipo !== "TITULAR" && tipo !== "") {
+    return {
+      tipo: "IDADE",
+      rotulo: "Beneficiário com " + idade + " anos — o limite da convenção é 24.",
+      origem: "conferido no cadastro, no campo IDADE_BENEFICIÁRIO",
+      idade: idade
+    };
+  }
+
+  /* TETO POR ASSOCIADO. Gravado com esse prefixo em VoucherSolicitacao.gs. */
+  if (obs.indexOf("LIMITE POR ASSOCIADO") > -1) {
+    return {
+      tipo: "LIMITE",
+      rotulo: "O associado já está no teto de três bolsas no período.",
+      origem: "contado pelo sistema entre as bolsas ativas do associado",
+      idade: idade
+    };
+  }
+
+  /* Qualquer outro bloqueio de regra: mostra o que a regra registrou, sem
+   * inventar motivo. Texto vazio aqui seria pior que texto genérico. */
+  return {
+    tipo: "OUTRA",
+    rotulo: obs || "A solicitação não atende a uma regra da convenção.",
+    origem: "registrado pela conferência automática na entrada",
+    idade: idade
+  };
+}
+
+/**
+ * O texto padrão, já preenchido — para a tela mostrar e ela editar.
+ *
+ * Devolve TEXTO CORRIDO, não HTML: é o que vai dentro de um <textarea>. A
+ * casca visual do e-mail entra só no envio, em enviarComunicadoRegraVoucher.
+ */
+function voucherTextoComunicadoRegra_(reg, protocolo, motivo) {
+  var nome  = valorSeguroVoucher_(reg.NOME_SOLICITANTE) || "associado(a)";
+  var benef = valorSeguroVoucher_(reg.NOME_BENEFICIARIO) || "";
+
+  var explicacao;
+  if (motivo && motivo.tipo === "IDADE") {
+    explicacao = "A convenção coletiva prevê o benefício para dependentes de até 24 anos. " +
+      (benef ? "Como " + benef + " já ultrapassou essa idade" : "Como o beneficiário já ultrapassou essa idade") +
+      ", infelizmente não é possível conceder a bolsa neste caso.";
+  } else if (motivo && motivo.tipo === "LIMITE") {
+    explicacao = "A convenção coletiva prevê até três bolsas por associado no mesmo período, " +
+      "e esse limite já está ocupado. Infelizmente não é possível conceder mais uma bolsa agora.";
+  } else {
+    explicacao = "Após a conferência, infelizmente não foi possível conceder a bolsa neste caso. " +
+      ((motivo && motivo.rotulo) ? "Motivo: " + motivo.rotulo : "");
+  }
+
+  return "" +
+    "Olá, " + nome + ",\n\n" +
+    "Recebemos sua solicitação de bolsa de estudo" +
+    (benef ? " para " + benef : "") + " e agradecemos a confiança.\n\n" +
+    explicacao + "\n\n" +
+    "Isso não impede novas solicitações: se houver outro dependente que atenda aos " +
+    "critérios, ou se algum dado tiver sido informado por engano, basta refazer o " +
+    "pedido pelo portal — ou falar com a Secretaria, que ajudamos a conferir.\n\n" +
+    "Protocolo: " + protocolo + "\n\n" +
+    "Qualquer dúvida, é só responder a este e-mail.\n\n" +
+    "Atenciosamente,\n" +
+    "Secretaria — SindEducação-ES";
+}
+
+/**
+ * A tela pede o rascunho ANTES de mostrar o modal — o texto chega pronto.
+ */
+function previewComunicadoRegraVoucher(protocolo, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    var item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    var motivo = voucherMotivoForaDaRegra_(item.registro);
+    if (!motivo) {
+      return { ok: false, mensagem: "Esta solicitação não está bloqueada por regra." };
+    }
+
+    return {
+      ok: true,
+      protocolo: protocolo,
+      email: valorSeguroVoucher_(item.registro.EMAIL) || "",
+      nome: valorSeguroVoucher_(item.registro.NOME_SOLICITANTE) || "",
+      beneficiario: valorSeguroVoucher_(item.registro.NOME_BENEFICIARIO) || "",
+      motivo: motivo,
+      assunto: "Sobre sua solicitação de bolsa — " + protocolo,
+      texto: voucherTextoComunicadoRegra_(item.registro, protocolo, motivo)
+    };
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao montar o comunicado: " + e.message };
+  }
+}
+
+/**
+ * Envia o comunicado — com o texto que ELA aprovou, não com o meu.
+ *
+ * `indeferir` chega marcado da tela, e com a origem à vista: comunicar que
+ * "infelizmente não é possível" e deixar a solicitação na fila faria a fila
+ * crescer com caso já resolvido. Mas quem decide é quem está atendendo, então
+ * é caixa desmarcável, não efeito colateral silencioso (REGRA Nº 0.6).
+ */
+function enviarComunicadoRegraVoucher(protocolo, texto, indeferir, tokenSessao) {
+  exigirModulo_(tokenSessao, "beneficios", false);
+  try {
+    var item = buscarSolicitacaoPorProtocolo_(protocolo);
+    if (!item) return { ok: false, mensagem: "Solicitação não encontrada." };
+
+    var corpo = String(texto || "").trim();
+    if (!corpo) return { ok: false, mensagem: "O comunicado está vazio — escreva a mensagem antes de enviar." };
+
+    var email = valorSeguroVoucher_(item.registro.EMAIL);
+    if (!email) {
+      return { ok: false, mensagem: "Esta solicitação não tem e-mail cadastrado — o comunicado precisa ser dado por telefone." };
+    }
+
+    var motivo  = voucherMotivoForaDaRegra_(item.registro);
+    var usuario = obterUsuarioAtualVoucher_();
+
+    /* O TEXTO VEM DO <textarea>, ENTÃO É ESCAPADO E SÓ DEPOIS QUEBRADO EM
+     * PARÁGRAFOS. Na ordem inversa, um "<" digitado por engano viraria tag e
+     * quebraria o e-mail — ou pior, o que ela digitasse viraria HTML. */
+    var corpoHtml = corpo.split(/\n{2,}/).map(function (par) {
+      return "<p>" + escHtmlVoucher_(par).replace(/\n/g, "<br>") + "</p>";
+    }).join("");
+
+    voucherEnviarEmail_(email, "Sobre sua solicitação de bolsa — " + protocolo,
+      corpoHtml, { protocolo: protocolo, badge: "Comunicado" });
+
+    var resumoMotivo = (motivo && motivo.rotulo) || "fora da regra";
+
+    registrarHistoricoVoucher_(
+      item.registro.ID_SOLICITACAO,
+      item.registro.CPF_SOLICITANTE,
+      "COMUNICADO_REGRA_ENVIADO",
+      usuario,
+      "Comunicado enviado para " + email + " — " + resumoMotivo,
+      protocolo
+    );
+
+    if (indeferir === true || String(indeferir) === "true") {
+      var justificativa = "Comunicado enviado ao associado. " + resumoMotivo;
+      atualizarStatusSolicitacao_(item, "INDEFERIDO", justificativa);
+      atualizarStatusProtocolo_(protocolo, "INDEFERIDO", usuario, justificativa);
+      registrarHistoricoVoucher_(
+        item.registro.ID_SOLICITACAO,
+        item.registro.CPF_SOLICITANTE,
+        "SOLICITACAO_INDEFERIDA",
+        usuario,
+        justificativa,
+        protocolo
+      );
+      /* NÃO dispara enviarEmailIndeferimentoVoucher_: o associado acabou de
+       * receber o comunicado, e dois e-mails sobre a mesma recusa, com textos
+       * diferentes, é o tipo de coisa que gera ligação para o sindicato. */
+      return { ok: true, mensagem: "Comunicado enviado e solicitação indeferida." };
+    }
+
+    return { ok: true, mensagem: "Comunicado enviado para " + email + "." };
+
+  } catch (e) {
+    return { ok: false, mensagem: "Erro ao enviar o comunicado: " + e.message };
   }
 }

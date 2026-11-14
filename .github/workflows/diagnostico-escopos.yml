@@ -1,0 +1,30 @@
+# Diagnóstico de uma vez: quais escopos a credencial do deploy (CLASPRC_JSON)
+# tem. Não imprime token nenhum — só a lista de escopos. Decide por onde o
+# robô de pendentes da KingHost entrega os e-mails ao leitor (Drive ou não).
+name: Diagnostico escopos da credencial
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths: ['.github/workflows/diagnostico-escopos.yml']
+permissions:
+  contents: read
+jobs:
+  escopos:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Escopos
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$CLASPRC_JSON" > /tmp/rc.json
+          node > /tmp/body <<'JS'
+          const rc = JSON.parse(require("fs").readFileSync("/tmp/rc.json","utf8"));
+          const k = rc.tokens ? (rc.tokens.default ? "default" : Object.keys(rc.tokens)[0]) : null;
+          const t = k ? rc.tokens[k] : (rc.token || {});
+          process.stdout.write("client_id="+encodeURIComponent(t.client_id||"")+"&client_secret="+encodeURIComponent(t.client_secret||"")+"&refresh_token="+encodeURIComponent(t.refresh_token||"")+"&grant_type=refresh_token");
+          JS
+          curl -s -o /tmp/n.json -X POST -d @/tmp/body https://oauth2.googleapis.com/token
+          node -e 'const r=JSON.parse(require("fs").readFileSync("/tmp/n.json","utf8")); console.log("ESCOPOS:", r.scope || ("erro: "+r.error));'
+          rm -f /tmp/rc.json /tmp/body /tmp/n.json

@@ -1,0 +1,43 @@
+# LÊ A BASE DE INGRESSOS DO TICKONE PARA O SISGEP (14/11/2026). SÓ LEITURA.
+# Roda quando o arquivo tools/ingressos-robo/PEDIDO-LEITURA muda (push) ou quando
+# alguém manda reexecutar. Grava um JSON numa pasta privada do Drive do Financeiro.
+# Segredos: INGRESSOS_USUARIO, INGRESSOS_SENHA, CLASPRC_JSON. Nada pessoal no log.
+name: Ingressos — ler a base do TickOne
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/ingressos-robo/ler-base.js'
+      - 'tools/ingressos-robo/PEDIDO-LEITURA'
+      - '.github/workflows/ingressos-ler-base.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingressos-ler-base
+  cancel-in-progress: false
+
+jobs:
+  ler:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar o navegador do robô
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Ler a base (sem dados pessoais no log)
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/ler-base.js

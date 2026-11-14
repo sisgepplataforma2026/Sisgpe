@@ -1,0 +1,418 @@
+<!-- INGRESSOS DA FESTA (TickOne) — Compasso da Vida 2026 (14/11/2026) — REFINO DE UX (celular primeiro).
+     Enviar: os ingressos que já estão na base do TickOne, um a um, pelo WhatsApp.
+     Pedir ingresso: cartões de pessoa (como "+ Adicionar trabalhador" do Ofício: dá para montar 3, 4, 5 de
+     uma vez, sem abrir e fechar nada), pesquisa ANTES e só depois pedir a emissão.
+     Desenho aprovado: docs/mock-ingressos-v3-*.png. Backend: CompassoIngressosDados.gs. -->
+<div id="compassoIngressos">
+<style>
+  #compassoIngressos{padding:0 0 90px;font-family:'Plus Jakarta Sans',Arial,sans-serif;color:#111827}
+  #compassoIngressos [hidden]{display:none!important}
+  #compassoIngressos *,#compassoIngressos *::before,#compassoIngressos *::after{box-sizing:border-box}
+  #compassoIngressos .ci-top{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,#001f4d,#002f6c);color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px}
+  #compassoIngressos .ci-top small{display:block;opacity:.8;font-size:12px;margin:2px 0 8px}
+  #compassoIngressos .ci-top input{width:100%;border:0;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px}
+  #compassoIngressos .ci-seg{display:grid;grid-template-columns:1fr 1fr;background:#e8ecf4;border-radius:12px;padding:3px;margin-bottom:10px}
+  #compassoIngressos .ci-aba{border:0;background:transparent;border-radius:10px;padding:11px 8px;font:inherit;font-size:13px;font-weight:800;color:#556;cursor:pointer}
+  #compassoIngressos .ci-aba.on{background:#fff;color:#001f4d;box-shadow:0 1px 4px rgba(0,0,0,.14)}
+  #compassoIngressos .ci-resumo{font-size:13px;color:#475569;margin:0 2px 8px;line-height:1.7}
+  #compassoIngressos .ci-resumo b{color:#001f4d;font-size:15px}
+  #compassoIngressos .ci-chips{display:flex;gap:6px;overflow:auto;padding:2px 0 8px}
+  #compassoIngressos .ci-chip{white-space:nowrap;background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:8px 13px;font:inherit;font-size:12px;font-weight:800;color:#475569;cursor:pointer}
+  #compassoIngressos .ci-chip.on{background:#001f4d;color:#fff;border-color:#001f4d}
+  #compassoIngressos select,#compassoIngressos textarea,#compassoIngressos input[type=text]{border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font:inherit;font-size:14px;max-width:100%;background:#fff}
+  #compassoIngressos textarea{width:100%;min-height:96px}
+  #compassoIngressos .ci-btn{border:0;border-radius:12px;padding:13px 14px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;text-align:center;text-decoration:none;display:inline-block}
+  #compassoIngressos .ci-wa{background:#1fa855;color:#fff}.ci-btn.ci-wa[disabled]{background:#e2e8f0;color:#94a3b8;cursor:not-allowed}
+  #compassoIngressos .ci-nv{background:#001f4d;color:#fff}
+  #compassoIngressos .ci-ol{background:#fff;border:1.5px solid #1565C0;color:#1565C0}
+  #compassoIngressos .ci-ok{background:#0f8a5f;color:#fff}
+  #compassoIngressos .ci-rd{background:#dc2626;color:#fff}
+  #compassoIngressos .ci-box{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:12px;margin-bottom:12px}
+  #compassoIngressos .ci-lista{background:#fff;border:1px solid #d8e0ea;border-radius:14px;overflow:hidden}
+  #compassoIngressos .ci-linha{padding:14px;border-top:1px solid #edf0f6;display:grid;gap:8px}
+  #compassoIngressos .ci-linha:first-child{border-top:0}
+  #compassoIngressos .ci-linha.ci-cab{display:none}
+  #compassoIngressos .ci-nome b{font-size:16px}
+  #compassoIngressos .ci-linha small{display:block;color:#64748b;font-size:12px}
+  #compassoIngressos .ci-meta{font-size:12px;color:#64748b}
+  #compassoIngressos .ci-acoes{display:grid;grid-template-columns:1fr 56px;gap:8px;position:relative}
+  #compassoIngressos .ci-acoes .ci-prim{grid-column:1/-1}
+  #compassoIngressos .ci-acoes .ci-btn{width:100%;padding:13px 6px}
+  #compassoIngressos .ci-menu{grid-column:1/-1;display:grid;gap:8px;background:#f8fafc;border:1px solid #d8e0ea;border-radius:12px;padding:8px}
+  #compassoIngressos .ci-b{display:inline-block;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800;margin:1px 2px 1px 0}
+  #compassoIngressos .ci-b.n{background:#e7f1ff;color:#1565C0}.ci-b.j{background:#e3f6ee;color:#0f8a5f}
+  #compassoIngressos .ci-b.c{background:#fff1dc;color:#d97706}.ci-b.e{background:#eee;color:#555}
+  #compassoIngressos .ci-aviso{background:#fff7e0;border:1px solid #C9A84C;border-radius:12px;padding:10px 14px;font-size:13px;margin:10px 0}
+  #compassoIngressos .ci-erro{background:#fee2e2;border:1px solid #dc2626;border-radius:12px;padding:10px 14px;font-size:13px;margin:10px 0}
+  #compassoIngressos .ci-vazio{padding:24px;text-align:center;color:#64748b}
+  #compassoIngressos .ci-passos{display:flex;gap:6px;margin:2px 0 4px}#compassoIngressos .ci-passos i{flex:1;height:5px;border-radius:3px;background:#d5dbe8}#compassoIngressos .ci-passos i.on{background:#0f8a5f}
+  #compassoIngressos .ci-passos-t{font-size:12px;color:#64748b;margin-bottom:10px}
+  #compassoIngressos .ci-pessoa{background:#fff;border:1px solid #d8e0ea;border-radius:16px;padding:14px;margin-bottom:10px}
+  #compassoIngressos .ci-pessoa-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:800;font-size:13px;color:#475569}
+  #compassoIngressos .ci-pessoa-topo .ci-mini{display:flex;gap:6px}
+  #compassoIngressos .ci-mini button{border:1px solid #d8e0ea;background:#fff;border-radius:10px;width:40px;height:36px;font-size:16px;cursor:pointer}
+  #compassoIngressos .ci-campos{display:grid;grid-template-columns:1fr;gap:8px}
+  #compassoIngressos .ci-campos input,#compassoIngressos .ci-campos select{width:100%}
+  #compassoIngressos .ci-v{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13px}
+  #compassoIngressos .ci-v.j{background:#e3f6ee;border:1.5px solid #86d1b3}.ci-v.n{background:#e7f1ff;border:1.5px solid #9ec3f0}.ci-v.c{background:#fff1dc;border:1.5px solid #f3c98b}
+  #compassoIngressos .ci-v b{font-size:14px}
+  #compassoIngressos .ci-barra{position:sticky;bottom:0;z-index:5;background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;box-shadow:0 -2px 12px rgba(16,24,40,.12);margin-top:10px}
+  #compassoIngressos .ci-barra .ci-qtd{flex:1;font-weight:800;font-size:13px;min-width:120px}
+  #compassoIngressos .ci-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+  #compassoIngressos .ci-cartao{background:#fff;border:1px solid #d8e0ea;border-radius:14px;padding:10px 14px}
+  #compassoIngressos .ci-cartao b{display:block;font-size:22px;color:#001f4d}.ci-cartao span{font-size:12px;color:#64748b}
+  @media(min-width:761px){
+    #compassoIngressos .ci-top{display:flex;gap:16px;align-items:center;justify-content:space-between}
+    #compassoIngressos .ci-top input{width:340px}#compassoIngressos .ci-top small{margin:2px 0 0}
+    #compassoIngressos .ci-seg{display:inline-grid;grid-template-columns:auto auto;min-width:380px}
+    #compassoIngressos .ci-linha{grid-template-columns:2.2fr 1.1fr 1.4fr 1.3fr 340px;align-items:center;gap:8px 12px}
+    #compassoIngressos .ci-linha.ci-cab{display:grid;font-size:12px;font-weight:800;color:#475569;background:#eef2f9}
+    #compassoIngressos .ci-acoes{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
+    #compassoIngressos .ci-acoes .ci-btn{width:100px;min-width:0;padding:10px 6px;font-size:13px}
+    #compassoIngressos .ci-acoes .ci-prim{width:178px;grid-column:auto}
+    #compassoIngressos .ci-acoes button[data-ci=menu]{width:44px}
+    #compassoIngressos .ci-menu .ci-btn{width:100%}
+    #compassoIngressos .ci-menu{position:absolute;right:0;top:44px;z-index:6;min-width:230px;box-shadow:0 8px 24px rgba(16,24,40,.18)}
+    #compassoIngressos .ci-meta-m{display:none}
+    #compassoIngressos .ci-d{display:block}
+    #compassoIngressos .ci-campos{grid-template-columns:2fr 1fr 1fr}
+    #compassoIngressos .ci-cards{grid-template-columns:repeat(4,1fr)}
+  }
+  @media(max-width:760px){ #compassoIngressos .ci-d{display:none} #compassoIngressos .ci-lista{border:0;background:transparent;overflow:visible} #compassoIngressos .ci-linha{background:#fff;border:1px solid #d8e0ea;border-radius:16px;margin-bottom:10px} #compassoIngressos .ci-meta-d{display:none} }
+</style>
+
+<div class="ci-top">
+  <div><b style="font-size:17px">Ingressos — No Compasso da Vida</b><small id="ciBase">Carregando…</small></div>
+  <input type="text" id="ciBusca" placeholder="🔎 Buscar nome, CPF, telefone ou escola">
+</div>
+<div id="ciErro" class="ci-erro" hidden></div>
+<div class="ci-seg">
+  <button class="ci-aba on" data-ci="aba" data-arg="enviar">📱 Enviar ingressos</button>
+  <button class="ci-aba" data-ci="aba" data-arg="solicitar">➕ Pedir ingresso</button>
+</div>
+
+<div id="ciPEnviar">
+  <div class="ci-resumo"><b id="ciTotal">—</b> ingressos na base · <b id="ciEnv" style="color:#0f8a5f">—</b> enviados · <b id="ciFalta" style="color:#d97706">—</b> falta enviar<br><span id="ciCats"></span></div>
+  <div class="ci-chips" id="ciChips">
+    <button class="ci-chip on" data-ci="chip" data-arg="todos">Todos</button>
+    <button class="ci-chip" data-ci="chip" data-arg="falta">Falta enviar</button>
+    <button class="ci-chip" data-ci="chip" data-arg="enviados">Enviados</button>
+    <button class="ci-chip" data-ci="chip" data-arg="fone">Conferir telefone</button>
+    <button class="ci-chip" data-ci="chip" data-arg="excluidos">Exclusões</button>
+    <button class="ci-chip" data-ci="chip" data-arg="falta_dados">Faltam dados do associado</button>
+    <select id="ciCat"><option value="">Todas as categorias</option></select>
+  </div>
+  <div id="ciExcl" class="ci-erro" hidden>
+    <b>Excluir ingresso no TickOne</b>
+    <p id="ciExclQuem" style="margin:6px 0"></p>
+    <p style="margin:6px 0">Isto <b>apaga o ingresso no TickOne e não tem volta</b>: o código deixa de existir e o QR Code do PDF não entra mais. O PDF da pasta do Drive não é apagado. O robô só exclui depois de você confirmar aqui, e confere código e CPF antes.</p>
+    <input type="text" id="ciExclMotivo" placeholder="Motivo (ex.: não vai mais)" style="width:100%;margin-bottom:8px">
+    <label style="display:block;margin-bottom:8px"><input type="checkbox" id="ciExclOk"> Entendo que não tem volta</label>
+    <div style="display:flex;gap:8px"><button class="ci-btn ci-nv" data-ci="exclVoltar">Voltar</button><button class="ci-btn ci-rd" data-ci="exclPedir">🗑 Pedir exclusão</button></div>
+  </div>
+  <div class="ci-lista">
+    <div class="ci-linha ci-cab"><div>Nome</div><div>CPF</div><div>Telefone</div><div>Situação</div><div style="text-align:right">Ações</div></div>
+    <div id="ciLista"><div class="ci-vazio">Carregando…</div></div>
+  </div>
+  <div style="text-align:center;margin-top:10px"><button class="ci-btn ci-ol" id="ciMais" data-ci="mais" hidden>Mostrar mais</button></div>
+  <div class="ci-aviso">O WhatsApp abre com a mensagem pronta; <b>o PDF você abre em "📎 PDF" (pasta INGRESSOS FESTA COMPASSO 2026 do Drive) e anexa</b>; se a pessoa ainda não tem PDF lá, o botão é "🎟️ Ingresso" (TickOne → Salvar / Imprimir PDF). O envio é o seu toque no WhatsApp. Só vira "enviado" depois que você confirmar.</div>
+</div>
+
+<div id="ciPSolicitar" hidden>
+  <div class="ci-passos"><i class="on" id="ciPasso1"></i><i id="ciPasso2"></i><i id="ciPasso3"></i></div>
+  <div class="ci-passos-t" id="ciPassoT"><b>1 Dados</b> · 2 Conferência · 3 Confirmar</div>
+  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> Cada pessoa é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Associado: todos os campos; os demais: só nome e CPF.</div>
+  <div id="ciPessoas"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <button class="ci-btn ci-nv" data-ci="addPessoa">+ Adicionar pessoa</button>
+    <button class="ci-btn ci-ol" data-ci="togPlan">📄 Subir planilha</button>
+  </div>
+  <div class="ci-box" id="ciBoxPlan" hidden>
+    <b>Planilha</b> <span style="font-size:12px;color:#64748b">— salve como CSV (colunas: Nome;Email;CPF;Telefone;Cidade;Escola;Tipo) ou cole aqui</span>
+    <textarea id="ciPlan" placeholder="Nome;Email;CPF;Telefone;Cidade;Escola;Tipo"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center"><input type="file" id="ciArq" accept=".csv,.txt,text/csv"><button class="ci-btn ci-nv" data-ci="lerPlan">Adicionar à lista</button></div>
+  </div>
+  <div id="ciRes"></div>
+  <div id="ciEmis" class="ci-erro" hidden>
+    <b>Pedir a emissão no TickOne</b>
+    <p id="ciEmisQuem" style="margin:6px 0"></p>
+    <p style="margin:6px 0">Isto <b>cria ingresso de verdade no TickOne</b> (um código novo por pessoa). O robô abre um lugar livre, preenche e emite, depois confere na lista. Só vale para quem a pesquisa deu "Novo". Dá para cancelar o pedido enquanto o robô não tiver rodado.</p>
+    <label style="display:block;margin-bottom:8px"><input type="checkbox" id="ciEmisOk"> Entendo que isto cria ingresso de verdade</label>
+    <div style="display:flex;gap:8px"><button class="ci-btn ci-nv" data-ci="emisVoltar">Voltar</button><button class="ci-btn ci-ok" data-ci="emisPedir">🎟️ Pedir emissão</button></div>
+  </div>
+  <div class="ci-box" id="ciEmisBox" hidden><b>Pedidos de emissão</b><div id="ciEmisLista"></div></div>
+  <div class="ci-barra">
+    <div class="ci-qtd" id="ciQtd">0 pessoas na lista</div>
+    <button class="ci-btn ci-ol" data-ci="limpar">Limpar lista</button>
+    <button class="ci-btn ci-ok" data-ci="conferir">🔎 Conferir (pesquisar antes)</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var CATS=[], BASE=[], FILTRO='todos', MOSTRAR=100, LISTA=[{}], ABERTO={}, MENU=null, ULTIMA=null, EXCL=null, RESULT={};
+  function g(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function token(){ return typeof SISGEP_TOKEN_SESSAO!=='undefined' ? SISGEP_TOKEN_SESSAO : ''; }
+  function aviso(t,erro){ if(typeof window.toast==='function') window.toast(t, erro?'err':'ok'); }
+  function rodar(fn,args,ok){
+    var r=google.script.run.withSuccessHandler(function(x){ ok(x||{ok:false,mensagem:'Sem resposta.'}); })
+      .withFailureHandler(function(e){ ok({ok:false,mensagem:(e&&e.message)||String(e)}); });
+    r[fn].apply(r,args.concat([token()]));
+  }
+  function erro(t){ var e=g('ciErro'); e.hidden=!t; e.textContent=t||''; }
+  function rotuloCat(v){ for(var i=0;i<CATS.length;i++) if(CATS[i].valor===v) return CATS[i].rotulo; return v||'—'; }
+  function achar(cod){ for(var i=0;i<BASE.length;i++) if(BASE[i].codigo===cod) return BASE[i]; return null; }
+
+  /* ══ ENVIAR ══ */
+  function estado(){
+    rodar('compassoIngressos_estado',[],function(r){
+      if(!r.ok){ erro('🔒 '+r.mensagem); g('ciBase').textContent='—'; return; }
+      CATS=r.categorias||[];
+      var sel=g('ciCat'); if(sel.options.length<2) CATS.forEach(function(c){ sel.add(new Option(c.rotulo,c.valor)); });
+      if(!r.existe){ erro(r.mensagem); g('ciBase').textContent='Base ainda não lida.'; return; }
+      erro('');
+      var idade=r.idadeMin==null?'':(r.idadeMin<60?r.idadeMin+' min':(Math.round(r.idadeMin/60*10)/10)+' h');
+      g('ciBase').textContent='Base do TickOne lida há '+idade+' pelo robô.';
+      g('ciTotal').textContent=r.total; g('ciEnv').textContent=r.enviados; g('ciFalta').textContent=r.total-r.enviados;
+      g('ciCats').innerHTML=Object.keys(r.porTipo).map(function(k){ return esc(rotuloCat(k))+': <b style="font-size:13px">'+r.porTipo[k]+'</b>'; }).join(' · ');
+      desenharPessoas();
+    });
+  }
+  function carregarLista(){
+    rodar('compassoIngressos_lista',[],function(r){
+      if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
+      BASE=r.linhas||[]; desenhar();
+    });
+  }
+  function passa(l){
+    var q=g('ciBusca').value.trim().toLowerCase(), c=g('ciCat').value;
+    if(c && l.categoria!==c) return false;
+    if(FILTRO==='falta' && (l.enviado||(l.exclusao&&(l.exclusao.status==='PEDIDO'||l.exclusao.status==='EXCLUIDO')))) return false;
+    if(FILTRO==='enviados' && !l.enviado) return false;
+    if(FILTRO==='fone' && l.foneOk) return false;
+    if(FILTRO==='excluidos' && !l.exclusao) return false;
+    if(FILTRO==='falta_dados' && !(l.faltando&&l.faltando.length)) return false;
+    if(q && (l.nome+' '+l.cpf+' '+l.tel+' '+l.escola+' '+l.codigo).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  }
+  function linhaHtml(l){
+    var ex=l.exclusao, sit, exBtn='';
+    sit=l.enviado?'<span class="ci-b j">Enviado '+esc(l.enviado.quando)+' · '+esc(l.enviado.quem)+'</span>'
+      :(!l.foneOk?'<span class="ci-b c">Conferir telefone</span>':'<span class="ci-b n">Falta enviar</span>');
+    if(l.faltando&&l.faltando.length) sit+='<br><span class="ci-b c">Associado: está faltando '+esc(l.faltando.join(', '))+'</span>';
+    if(l.enviadoTick) sit+='<br><small>No TickOne: enviado '+l.enviadoTick+'×</small>';
+    if(ex){
+      var txt={PEDIDO:'Exclusão pedida em '+ex.quando+' por '+ex.quem+' — aguardando o robô',EXCLUIDO:'Excluído no TickOne ('+ex.resultado+')',FALHOU:'Exclusão falhou: '+ex.resultado,JA_ENTROU:'Já passou na portaria: NÃO foi excluído'}[ex.status]||ex.status;
+      sit+='<br><span class="ci-b '+(ex.status==='EXCLUIDO'?'e':'c')+'">🗑 '+esc(txt)+'</span>';
+    }
+    var bloqueado=ex&&(ex.status==='PEDIDO'||ex.status==='EXCLUIDO');
+    var prim;
+    if(ABERTO[l.codigo]) prim='<button class="ci-btn ci-ok ci-prim" data-ci="confirmar" data-arg="'+esc(l.codigo)+'">✔ Confirmar envio</button>';
+    else prim='<button class="ci-btn ci-wa ci-prim" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+((l.foneOk&&!bloqueado)?'':' disabled')+'>📱 '+(l.enviado?'Reenviar no WhatsApp':'Enviar no WhatsApp')+'</button>';
+    var pdf=l.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.pdfDrive)+'">📎 PDF</a>'
+      :(l.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Ingresso</a>':'<span></span>');
+    var itens='';
+    if(l.pdfDrive&&l.urlIngresso) itens+='<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Abrir no TickOne</a>';
+    if(ex&&ex.status==='PEDIDO') itens+='<button class="ci-btn ci-ol" data-ci="cancExcl" data-arg="'+esc(ex.pedido)+'">Cancelar pedido de exclusão</button>';
+    else if(!ex||ex.status==='FALHOU') itens+='<button class="ci-btn ci-ol" style="border-color:#dc2626;color:#dc2626" data-ci="excl" data-arg="'+esc(l.codigo)+'">🗑 Excluir ingresso</button>';
+    var menu='<button class="ci-btn ci-ol" data-ci="menu" data-arg="'+esc(l.codigo)+'" aria-label="Mais opções">⋯</button>';
+    var sub=[l.escola,l.cidade,rotuloCat(l.categoria||l.tipo)].filter(function(x){ return x; }).map(esc).join(' · ');
+    return '<div class="ci-linha"><div class="ci-nome"><b>'+esc(l.nome)+'</b><small>'+sub+'</small><div class="ci-meta ci-meta-m">CPF '+esc(l.cpf)+' · '+esc(l.tel||'sem telefone')+' · '+esc(l.codigo)+'</div></div>'+
+      '<div class="ci-meta ci-d">'+esc(l.cpf)+'</div><div class="ci-meta ci-d">'+esc(l.tel||'—')+' · '+esc(l.codigo)+'</div><div>'+sit+'</div>'+
+      '<div class="ci-acoes">'+prim+pdf+menu+(MENU===l.codigo?'<div class="ci-menu">'+itens+'</div>':'<div class="ci-menu" hidden>'+itens+'</div>')+'</div></div>';
+  }
+  function desenhar(){
+    var vis=BASE.filter(passa), parte=vis.slice(0,MOSTRAR);
+    g('ciLista').innerHTML=parte.length?parte.map(linhaHtml).join(''):'<div class="ci-vazio">Nenhum ingresso com esse filtro.</div>';
+    g('ciMais').hidden=vis.length<=MOSTRAR; g('ciMais').textContent='Mostrar mais ('+(vis.length-MOSTRAR)+')';
+    [].forEach.call(g('ciChips').querySelectorAll('.ci-chip'),function(b){ b.classList.toggle('on',b.getAttribute('data-arg')===FILTRO); });
+  }
+  function zap(cod){
+    rodar('compassoIngressos_mensagem',[cod],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      window.open(r.url,'_blank'); ABERTO[cod]=true; desenhar(); desenharPessoas();
+      aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".');
+    });
+  }
+  function confirmar(cod){
+    rodar('compassoIngressos_registrarEnvio',[cod],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      var l=achar(cod); if(l) l.enviado=r.enviado; delete ABERTO[cod]; desenhar(); desenharPessoas(); estado(); aviso('Envio registrado.');
+    });
+  }
+  function excl(cod){
+    var l=achar(cod); if(!l) return; EXCL=cod;
+    g('ciExclQuem').innerHTML='<b>'+esc(l.nome)+'</b> · '+esc(l.cpf)+' · código '+esc(l.codigo)+' · '+esc(rotuloCat(l.categoria||l.tipo));
+    g('ciExclMotivo').value=''; g('ciExclOk').checked=false; g('ciExcl').hidden=false; g('ciExcl').scrollIntoView({block:'center'});
+  }
+  function exclPedir(){
+    if(!EXCL) return;
+    rodar('compassoIngressos_pedirExclusao',[EXCL,g('ciExclMotivo').value,g('ciExclOk').checked],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      EXCL=null; g('ciExcl').hidden=true; MENU=null; aviso(r.mensagem); carregarLista();
+    });
+  }
+  function cancExcl(ped){
+    rodar('compassoIngressos_cancelarPedidoExclusao',[ped],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; } MENU=null; aviso(r.mensagem); carregarLista();
+    });
+  }
+
+  /* ══ PEDIR INGRESSO: cartões de pessoa (como "+ Adicionar trabalhador" do Ofício) ══ */
+  var CAMPOS=[['nome','Nome completo','text'],['cpf','CPF','text'],['telefone','Telefone com DDD','text'],['email','E-mail','text'],['escola','Escola','text'],['cidade','Cidade','text']];
+  function vazia(p){ return !(p&&(String(p.nome||'').trim()||String(p.cpf||'').trim()||String(p.telefone||'').trim()||String(p.email||'').trim()||String(p.escola||'').trim()||String(p.cidade||'').trim())); }
+  function resHtml(i){
+    var x=RESULT[i]; if(!x) return '';
+    if(x.situacao==='ja_tem'){
+      var pdf=x.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.pdfDrive)+'">📎 Baixar PDF</a>':(x.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.urlIngresso)+'">🎟️ Abrir no TickOne</a>':'');
+      var bt=ABERTO[x.codigo]?'<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(x.codigo)+'">✔ Confirmar envio</button>':'<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(x.codigo)+'"'+(x.telefone?'':' disabled')+'>📱 Enviar no WhatsApp</button>';
+      return '<div class="ci-v j"><b>🎟️ Já tem ingresso · '+esc(x.codigo)+'</b><br>Não precisa emitir de novo: envie ou baixe o que já existe.<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+bt+pdf+'</div></div>';
+    }
+    var av=(x.avisos&&x.avisos.length)?'<br><small style="color:#64748b">ℹ '+x.avisos.map(esc).join('<br>ℹ ')+'</small>':'';
+    if(x.situacao==='conferir') return '<div class="ci-v c"><b>⚠ Conferir</b><br>'+x.motivos.map(esc).join('<br>')+av+'</div>';
+    return '<div class="ci-v n"><b>✅ Nova pessoa — pode emitir</b>'+(x.telefoneOrigem?'<br><small>'+esc(x.telefoneOrigem)+'</small>':'')+av+'</div>';
+  }
+  function pessoaHtml(p,i){
+    var c=CAMPOS.map(function(k){ return '<input type="text" class="ci-f" data-i="'+i+'" data-k="'+k[0]+'" placeholder="'+k[1]+'" value="'+esc(p[k[0]]||'')+'"'+(k[0]==='cpf'?' inputmode="numeric"':(k[0]==='telefone'?' inputmode="tel"':''))+'>'; }).join('');
+    var sel='<select class="ci-f" data-i="'+i+'" data-k="categoria">'+(p.categoria===''?'<option value="" selected>Categoria…</option>':'')+CATS.map(function(t){ return '<option value="'+esc(t.valor)+'"'+(p.categoria===t.valor?' selected':'')+'>'+esc(t.rotulo)+'</option>'; }).join('')+'</select>';
+    return '<div class="ci-pessoa" data-i="'+i+'"><div class="ci-pessoa-topo"><span>Pessoa '+(i+1)+'</span><span class="ci-mini"><button type="button" data-ci="addApos" data-arg="'+i+'" title="Adicionar outra pessoa depois desta" aria-label="Adicionar outra pessoa depois desta">+</button><button type="button" data-ci="delPessoa" data-arg="'+i+'" title="Tirar esta pessoa" aria-label="Tirar esta pessoa">×</button></span></div>'+
+      '<div class="ci-campos">'+c+sel+'</div><div class="ci-res" id="ciRes'+i+'">'+resHtml(i)+'</div></div>';
+  }
+  function desenharPessoas(){
+    if(!LISTA.length) LISTA=[{}];
+    LISTA.forEach(function(p){ if(p.categoria===undefined) p.categoria='associado'; });
+    g('ciPessoas').innerHTML=LISTA.map(pessoaHtml).join('');
+    qtd();
+  }
+  function qtd(){ var n=LISTA.filter(function(p){ return !vazia(p); }).length; g('ciQtd').textContent=n+(n===1?' pessoa':' pessoas')+' na lista'; }
+  function passos(n){
+    ['ciPasso1','ciPasso2','ciPasso3'].forEach(function(id,i){ g(id).classList.toggle('on',i<n); });
+    g('ciPassoT').innerHTML=['<b>1 Dados</b> · 2 Conferência · 3 Confirmar','1 Dados · <b>2 Conferência</b> · 3 Confirmar','1 Dados · 2 Conferência · <b>3 Confirmar</b>'][n-1];
+  }
+  function addPessoa(depoisDe){
+    var nova={categoria:'associado'};
+    if(typeof depoisDe==='number') LISTA.splice(depoisDe+1,0,nova); else LISTA.push(nova);
+    RESULT={}; desenharPessoas();
+    var campos=document.querySelectorAll('#ciPessoas .ci-pessoa');
+    var alvo=campos[typeof depoisDe==='number'?depoisDe+1:LISTA.length-1]; if(alvo){ var f=alvo.querySelector('input'); if(f){ f.focus(); try{ alvo.scrollIntoView({block:'center'}); }catch(e){} } }
+  }
+  function tirarPessoa(i){ LISTA.splice(i,1); RESULT={}; desenharPessoas(); }
+  /* planilha */
+  function partir(linha,sep){
+    var out=[],cur='',asp=false;
+    for(var i=0;i<linha.length;i++){ var c=linha.charAt(i);
+      if(c==='"'){ asp=!asp; } else if(c===sep&&!asp){ out.push(cur); cur=''; } else cur+=c; }
+    out.push(cur); return out.map(function(x){ return x.trim(); });
+  }
+  function lerTexto(txt){
+    var ls=String(txt||'').split(/\r?\n/).filter(function(x){ return x.trim(); });
+    if(!ls.length) return [];
+    var sep=[';','\t',','].sort(function(a,b){ return ls[0].split(b).length-ls[0].split(a).length; })[0];
+    var cab=partir(ls[0],sep).map(function(x){ return x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); });
+    var temCab=cab.indexOf('nome')>=0||cab.indexOf('cpf')>=0;
+    var ordem=temCab?cab:['nome','email','cpf','telefone','cidade','escola','tipo'];
+    var chave={nome:'nome',email:'email','e-mail':'email',cpf:'cpf',telefone:'telefone',celular:'telefone',whatsapp:'telefone',cidade:'cidade',escola:'escola',tipo:'categoria',categoria:'categoria'};
+    return ls.slice(temCab?1:0).map(function(l){
+      var c=partir(l,sep), o={};
+      ordem.forEach(function(k,i){ if(chave[k]) o[chave[k]]=c[i]||''; });
+      return o;
+    });
+  }
+  function catDe(txt){
+    var c=String(txt||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    if(!c) return 'associado';
+    if(c==='convidado'||c==='convidada') return 'convite';
+    if(c==='acompanhante de associado') return 'acompanhante';
+    for(var i=0;i<CATS.length;i++){ if(c===CATS[i].valor||c===CATS[i].rotulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')) return CATS[i].valor; }
+    return '';
+  }
+  function lerPlan(){
+    var arq=g('ciArq').files&&g('ciArq').files[0];
+    function usar(t){
+      var n=lerTexto(t);
+      if(LISTA.length===1&&vazia(LISTA[0])) LISTA=[];
+      n.forEach(function(p){ p.categoria=catDe(p.categoria); });
+      LISTA=LISTA.concat(n); RESULT={}; g('ciPlan').value=''; g('ciArq').value=''; g('ciBoxPlan').hidden=true; desenharPessoas();
+      aviso(n.length+' pessoa(s) adicionada(s). Agora toque em Conferir.');
+    }
+    if(arq){ var fr=new FileReader(); fr.onload=function(){ usar(fr.result); }; fr.readAsText(arq,'utf-8'); }
+    else if(g('ciPlan').value.trim()) usar(g('ciPlan').value);
+    else aviso('Cole a planilha ou escolha o arquivo CSV.',true);
+  }
+  /* conferir (pesquisar antes) */
+  function validas(){ var idx=[],lista=[]; LISTA.forEach(function(p,i){ if(!vazia(p)){ idx.push(i); lista.push(p); } }); return {idx:idx,lista:lista}; }
+  function conferir(){
+    var v=validas();
+    if(!v.lista.length){ aviso('Preencha ao menos uma pessoa.',true); return; }
+    g('ciRes').innerHTML='<div class="ci-vazio">Pesquisando na base do TickOne…</div>';
+    rodar('compassoIngressos_conferir',[v.lista],function(r){
+      if(!r.ok){ g('ciRes').innerHTML='<div class="ci-erro">'+esc(r.mensagem)+'</div>'; return; }
+      ULTIMA=r; RESULT={};
+      r.resultados.forEach(function(x,k){ RESULT[v.idx[k]]=x; });
+      var c=r.contagem, h='<div class="ci-cards"><div class="ci-cartao"><b>'+c.novo+'</b><span>novas (sem ingresso)</span></div><div class="ci-cartao"><b style="color:#0f8a5f">'+c.ja_tem+
+        '</b><span>já têm ingresso</span></div><div class="ci-cartao"><b style="color:#d97706">'+c.conferir+'</b><span>conferir dados</span></div><div class="ci-cartao"><b>'+r.idadeMin+' min</b><span>idade da base</span></div></div>';
+      if(r.faltasAssociado&&r.faltasAssociado.length) h+='<div class="ci-erro"><b>Faltam dados de associado ('+r.faltasAssociado.length+'):</b><br>'+r.faltasAssociado.map(esc).join('<br>')+'</div>';
+      if(r.emissaoLiberada) h+='<div class="ci-box" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div>'+esc(r.emissaoMotivo)+'</div><button class="ci-btn ci-ok" data-ci="emisAbrir">🎟️ Pedir emissão dos '+c.novo+' novos</button></div>';
+      else h+='<div class="ci-aviso">'+esc(r.emissaoMotivo)+'</div>';
+      g('ciRes').innerHTML=h; passos(2); desenharPessoas();
+    });
+  }
+  function emisAbrir(){
+    if(!ULTIMA) return;
+    var nv=ULTIMA.resultados.filter(function(x){ return x.situacao==='novo'; });
+    g('ciEmisQuem').innerHTML=nv.map(function(x){ return '<b>'+esc(x.nome)+'</b> · '+esc(x.cpfMascara)+' · '+esc(rotuloCat(x.categoria)); }).join('<br>');
+    g('ciEmisOk').checked=false; g('ciEmis').hidden=false; passos(3); g('ciEmis').scrollIntoView({block:'center'});
+  }
+  function emisPedir(){
+    rodar('compassoIngressos_pedirEmissao',[validas().lista,g('ciEmisOk').checked],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      g('ciEmis').hidden=true; aviso(r.mensagem); carregarEmissoes();
+    });
+  }
+  function carregarEmissoes(){
+    rodar('compassoIngressos_emissoes',[],function(r){
+      var box=g('ciEmisBox'); if(!r.ok||!r.emissoes.length){ box.hidden=true; return; }
+      box.hidden=false;
+      g('ciEmisLista').innerHTML=r.emissoes.map(function(e){
+        var st={PEDIDO:'aguardando o robô',EMITIDO:'emitido · código '+e.codigo,FALHOU:'falhou: '+e.resultado,CANCELADO:'cancelado'}[e.status]||e.status;
+        return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-top:1px solid #edf0f6"><div><b>'+esc(e.nome)+'</b><br><small style="color:#64748b">'+esc(rotuloCat(e.categoria))+' · pedido por '+esc(e.pedidoPor)+' · '+esc(e.pedidoEm)+'</small></div><div><span class="ci-b '+(e.status==='EMITIDO'?'j':(e.status==='PEDIDO'?'n':'c'))+'">'+esc(st)+'</span>'+(e.status==='PEDIDO'?' <button class="ci-btn ci-ol" data-ci="cancEmis" data-arg="'+esc(e.pedido)+'">Cancelar pedido</button>':'')+'</div></div>';
+      }).join('');
+    });
+  }
+  function cancEmis(ped){ rodar('compassoIngressos_cancelarPedidoEmissao',[ped],function(r){ aviso(r.mensagem,!r.ok); carregarEmissoes(); }); }
+
+  /* ══ eventos ══ */
+  document.getElementById('compassoIngressos').addEventListener('click',function(ev){
+    var t=ev.target.closest('[data-ci]'); if(!t) return; var a=t.getAttribute('data-ci'), arg=t.getAttribute('data-arg');
+    if(a==='aba'){ g('ciPEnviar').hidden=arg!=='enviar'; g('ciPSolicitar').hidden=arg!=='solicitar';
+      [].forEach.call(document.querySelectorAll('#compassoIngressos .ci-aba'),function(b){ b.classList.toggle('on',b===t); }); if(arg==='solicitar') desenharPessoas(); }
+    else if(a==='chip'){ FILTRO=arg; MOSTRAR=100; desenhar(); }
+    else if(a==='mais'){ MOSTRAR+=100; desenhar(); }
+    else if(a==='menu'){ MENU=(MENU===arg?null:arg); desenhar(); }
+    else if(a==='excl') excl(arg); else if(a==='exclVoltar'){ EXCL=null; g('ciExcl').hidden=true; }
+    else if(a==='exclPedir') exclPedir(); else if(a==='cancExcl') cancExcl(arg);
+    else if(a==='zap') zap(arg); else if(a==='confirmar') confirmar(arg);
+    else if(a==='addPessoa') addPessoa(); else if(a==='addApos') addPessoa(Number(arg)); else if(a==='delPessoa') tirarPessoa(Number(arg));
+    else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
+    else if(a==='lerPlan') lerPlan();
+    else if(a==='limpar'){ LISTA=[{}]; RESULT={}; ULTIMA=null; g('ciRes').innerHTML=''; g('ciEmis').hidden=true; passos(1); desenharPessoas(); }
+    else if(a==='conferir') conferir();
+    else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar'){ g('ciEmis').hidden=true; passos(2); }
+    else if(a==='emisPedir') emisPedir(); else if(a==='cancEmis') cancEmis(arg);
+  });
+  document.getElementById('compassoIngressos').addEventListener('input',function(ev){
+    var t=ev.target; if(!t.classList||!t.classList.contains('ci-f')) return;
+    var i=Number(t.getAttribute('data-i')), k=t.getAttribute('data-k'); if(!LISTA[i]) LISTA[i]={};
+    LISTA[i][k]=t.value; qtd();
+  });
+  document.getElementById('compassoIngressos').addEventListener('change',function(ev){
+    var t=ev.target; if(t.classList&&t.classList.contains('ci-f')){ var i=Number(t.getAttribute('data-i')); if(!LISTA[i]) LISTA[i]={}; LISTA[i][t.getAttribute('data-k')]=t.value; qtd(); }
+  });
+  g('ciBusca').addEventListener('input',function(){ MOSTRAR=100; desenhar(); });
+  g('ciCat').addEventListener('change',function(){ MOSTRAR=100; desenhar(); });
+  window.cingCarregar=function(){ estado(); carregarLista(); carregarEmissoes(); };
+})();
+</script>
+</div>

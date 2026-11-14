@@ -193,4 +193,3 @@ b.naoTestavel("Regras de segurança do Firestore",
   "conta de serviço passa por cima delas, por desenho do Firebase");
 
 b.resumo();
-process.exit(0);

@@ -644,5 +644,5 @@ function el(id) { return doc.getElementById(id); }
     (el("certMsgBox").textContent || "").slice(0, 60));
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

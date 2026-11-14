@@ -1,0 +1,44 @@
+# EXCLUI NO TICKONE OS INGRESSOS PEDIDOS NO SISGEP (14/11/2026). IRREVERSÍVEL.
+# O usuário pede a exclusão no SISGEP (com a confirmação "não tem volta"); o pedido vai para
+# exclusoes-fila.json na pasta privada do Drive. Este robô só exclui o que está nessa fila
+# (máx. 5 por execução), confere código e CPF, não exclui quem já passou na portaria e devolve
+# exclusoes-resultado.json. Dispara por push em tools/ingressos-robo/PEDIDO-EXCLUSAO (que o
+# Claude atualiza quando o usuário avisa) ou por reexecução. NÃO dispara sozinho por horário.
+# Segredos: INGRESSOS_USUARIO, INGRESSOS_SENHA, CLASPRC_JSON. Nada pessoal no log.
+name: Ingressos — excluir pedidos no TickOne
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/ingressos-robo/PEDIDO-EXCLUSAO'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingressos-excluir
+  cancel-in-progress: false
+
+jobs:
+  excluir:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar o navegador do robô
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Excluir só o que está na fila (sem dados pessoais no log)
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/excluir.js

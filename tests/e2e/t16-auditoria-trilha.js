@@ -269,4 +269,3 @@ b.naoTestavel("Leitura vinda do Firestore",
   "o emulador não faz rede — o caminho testado aqui é sempre o da reserva");
 
 b.resumo();
-process.exit(0);
