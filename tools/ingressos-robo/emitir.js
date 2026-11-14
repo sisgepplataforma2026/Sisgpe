@@ -2,7 +2,7 @@
  * EMITE NO TICKONE OS INGRESSOS PEDIDOS NO SISGEP (14/11/2026). CRIA INGRESSO DE VERDADE.
  * O usuário: "faz um ingresso de teste". Travas:
  *  - só emite o que está na FILA (emissoes-fila.json, escrita pelo SISGEP depois da confirmação
- *    "cria ingresso de verdade" e da pesquisa "já tem ingresso?"); no máximo 5 por execução;
+ *    "cria ingresso de verdade" e da pesquisa "já tem ingresso?"); no máximo 60 por execução (lote de 20-40 num toque);
  *  - PESQUISA ANTES de novo: se o CPF já tem ingresso na lista do TickOne, não emite (FALHOU);
  *  - abre UM lugar livre da grade, confere que o pop-up está VAZIO (lugar novo), preenche e
  *    clica só em "Emitir Ingresso" (nunca em Salvar Dados, Excluir nem WhatsApp/e-mail);
@@ -16,7 +16,7 @@ const { chromium } = require("playwright");
 const { dig, cpf11, cpfValido, lerJson, gravarJson, entrar, ler } = require("./comum");
 const BASE = process.env.INGRESSOS_URL || "https://ingressos.sindeducacao.com.br/index.php?page=admin&evt_id=17";
 const USUARIO = (process.env.INGRESSOS_USUARIO || "").trim(), SENHA = (process.env.INGRESSOS_SENHA || "").trim();
-const ARQ_FILA = "emissoes-fila.json", ARQ_RES = "emissoes-resultado.json", MAXIMO = 5;
+const ARQ_FILA = "emissoes-fila.json", ARQ_RES = "emissoes-resultado.json", MAXIMO = 60;   // 60 por execução: a lista já foi conferida e confirmada pelo usuário na tela
 const CATEGORIAS = ["pago", "cortesia", "convite", "associado", "acompanhante"];
 const p = (...a) => console.log(...a);
 
@@ -25,7 +25,7 @@ const p = (...a) => console.log(...a);
   const itens = ((fila && fila.itens) || []).slice(0, MAXIMO);
   if (!itens.length) { p("Fila vazia: nada a emitir."); return; }
   if (!USUARIO || !SENHA) { p("Sem INGRESSOS_USUARIO/INGRESSOS_SENHA: nada feito."); return; }
-  p("Pedidos na fila:", itens.length);
+  const t0 = Date.now(); p("Pedidos na fila:", itens.length);
   const br = await chromium.launch(); const ctx = await br.newContext(); const pg = await ctx.newPage();
   const resultado = (await lerJson(ARQ_RES, process.env.RESULTADO_LOCAL)) || { itens: [] };
   const registrar = async (pedido, status, detalhe, codigo) => {
@@ -90,10 +90,10 @@ const p = (...a) => console.log(...a);
           else { p("o CPF ainda não está na lista: tento UMA vez o clique do próprio navegador"); await el.evaluate(b => b.click()); }
         } else p("a página navegou durante o clique (normal depois de emitir): a conferência decide");
       }
-      const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 3000 }).catch(() => null);
+      const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 700 }).catch(() => null);
       if (sim) await sim.click().catch(() => {});
-      await pg.waitForTimeout(3500);
-      await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForTimeout(1500);
+      await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
+      await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForSelector("table tbody tr", { timeout: 8000 }).catch(() => {});
       const depois = await ler(pg);
       const novas = depois ? depois.linhas.filter(l => l.cpf === cpf) : [];
       if (!depois || novas.length !== 1 || depois.linhas.length !== antes.linhas.length + 1) {
@@ -103,5 +103,7 @@ const p = (...a) => console.log(...a);
       await registrar(it.pedido, "EMITIDO", "conferido: apareceu 1 linha nova na lista do TickOne", novas[0].codigo);
     }
   } catch (e) { p("ERRO:", String(e.message).slice(0, 120), "— a execução parou."); process.exitCode = 1; }
+  const feitos = (resultado.itens || []).filter(r => itens.some(i => i.pedido === r.pedido));
+  p("RESUMO: emitidos", feitos.filter(r => r.status === "EMITIDO").length, "· falharam", feitos.filter(r => r.status === "FALHOU").length, "· de", itens.length, "pedido(s) em", Math.round((Date.now() - t0) / 1000), "s");
   await br.close();
 })();

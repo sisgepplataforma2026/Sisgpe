@@ -129,6 +129,8 @@ function cingLerBase_() {
 
 /** nome (sem acento, minúsculo) → link do PDF na pasta do Drive. Sem a pasta, devolve {} e a tela usa o link do TickOne. */
 function cingPdfs_() {
+  var chave = "CING_PDFS_V1";
+  try { var c = CacheService.getScriptCache().get(chave); if (c) return JSON.parse(c); } catch (eC) {}
   var out = {};
   try {
     var it = DriveApp.getFolderById(CING_PASTA_PDF_ID).getFiles();
@@ -139,6 +141,7 @@ function cingPdfs_() {
       if (k) out[k] = "https://drive.google.com/file/d/" + f.getId() + "/view";
     }
   } catch (e) { /* pasta fora do alcance: segue sem os links do Drive */ }
+  try { var txt = JSON.stringify(out); if (txt.length < 90000) CacheService.getScriptCache().put(chave, txt, 300); } catch (eP) {}
   return out;
 }
 
@@ -160,7 +163,7 @@ function cingEnvios_() {
   if (sh.getLastRow() < 2) return out;
   sh.getRange(2, 1, sh.getLastRow() - 1, CING_COLUNAS_ENVIOS.length).getValues().forEach(function (l) {
     var q = l[4] instanceof Date ? Utilities.formatDate(l[4], "America/Sao_Paulo", "dd/MM HH:mm") : String(l[4] || "");
-    out[String(l[0])] = { quando: q, quem: String(l[5] || ""), vezes: ((out[String(l[0])] || {}).vezes || 0) + 1 };
+    out[String(l[0])] = { quando: q, quem: String(l[5] || ""), vezes: ((out[String(l[0])] || {}).vezes || 0) + 1, tempo: (l[4] instanceof Date) ? l[4].getTime() : 0 };
   });
   return out;
 }
@@ -242,6 +245,8 @@ function compassoIngressos_registrarEnvio(codigo, tokenSessao) {
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está registrando agora. Tente de novo." };
     try {
+      var ult = cingEnvios_()[l.codigo];   // toque repetido (2, 3 vezes) NÃO conta como novo envio: janela de 30 s
+      if (ult && ult.tempo && (Date.now() - ult.tempo) < 30000) return { ok: true, repetido: true, enviado: { quando: ult.quando, quem: ult.quem, vezes: ult.vezes } };
       cingAbaEnvios_().appendRow([l.codigo, l.nome, cingFone_(l.tel), "WhatsApp", new Date(), cingQuem_(sessao)]);
     } finally { lock.releaseLock(); }
     var e = cingEnvios_()[l.codigo];
@@ -269,7 +274,8 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       var k = cingNomeChave_(l.nome);
       if (k) (porNome[k] = porNome[k] || []).push(l);
     });
-    var vistos = {}, idade = cingIdadeMin_(base.lidoEm), res = [], pdfs = cingPdfs_();
+    var vistos = {}, idade = cingIdadeMin_(base.lidoEm), res = [], pdfsMemo = null;
+    function pdfsDe() { if (!pdfsMemo) pdfsMemo = cingPdfs_(); return pdfsMemo; }   // só lista a pasta do Drive se ALGUÉM já tem ingresso
     lista.forEach(function (it, i) {
       it = it || {};
       var nome = String(it.nome || "").trim().substring(0, 120), cpf = cingSoDigitos_(it.cpf);
@@ -290,7 +296,7 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       }
       if (achado) {
         o.situacao = "ja_tem"; o.codigo = achado.codigo; o.tipoNaBase = achado.tipo; o.ref = achado.ref;
-        o.nomeNaBase = achado.nome; o.pdfDrive = pdfs[cingNomeChave_(achado.nome)] || "";
+        o.nomeNaBase = achado.nome; o.pdfDrive = pdfsDe()[cingNomeChave_(achado.nome)] || "";
         o.urlIngresso = achado.ref ? CING_URL_TICKET + encodeURIComponent(achado.ref) : "";
         if (!fone && cingFone_(achado.tel)) { o.telefone = cingFone_(achado.tel); foneOrigem = "telefone da base do ingresso"; }
       } else {
@@ -523,17 +529,20 @@ function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
     try {
       var abertos = {};
       cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingCpf11_(o.CPF)] = true; });
-      var sh = cingAbaEmis_(), n = 0, quem = cingQuem_(sessao), agora = new Date();
+      var sh = cingAbaEmis_(), n = 0, quem = cingQuem_(sessao), agora = new Date(), linhas = [];
       cf.resultados.forEach(function (r, i) {
         if (r.situacao !== "novo" || abertos[r.cpf]) return;
         var id = "E" + Utilities.formatDate(agora, "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + (i + 1);
-        var linhaN = sh.getLastRow() + 1;
-        try { sh.getRange(linhaN, 3).setNumberFormat("@"); sh.getRange(linhaN, 5).setNumberFormat("@"); } catch (eF) {}   // CPF e telefone como TEXTO (senão o zero da frente some)
-        sh.appendRow([id, r.nome, r.cpf, r.email, r.telefone || r.telefoneDigitado, r.cidade, r.escola, r.categoria, agora, quem, "PEDIDO", "", "", ""]);
+        linhas.push([id, r.nome, r.cpf, r.email, r.telefone || r.telefoneDigitado, r.cidade, r.escola, r.categoria, agora, quem, "PEDIDO", "", "", ""]);
         n++;
       });
+      if (n) {   // UMA gravação para o lote inteiro (40 pedidos linha a linha levavam dezenas de segundos)
+        var ini = sh.getLastRow() + 1, area = sh.getRange(ini, 1, n, CING_COLUNAS_EMIS.length);
+        try { sh.getRange(ini, 3, n, 1).setNumberFormat("@"); sh.getRange(ini, 5, n, 1).setNumberFormat("@"); } catch (eF) {}   // CPF e telefone como TEXTO
+        area.setValues(linhas);
+      }
       if (!n) return { ok: false, mensagem: "Estes já estão na fila de emissão." };
-      return { ok: true, pedidos: n, naFila: cingPublicarFilaEmissao_(), mensagem: n + " pedido(s) de emissão registrado(s). O robô emite no TickOne quando for acionado." };
+      return { ok: true, pedidos: n, naFila: cingPublicarFilaEmissao_(), emissoes: cingListaEmissoes_(), mensagem: n + " pedido(s) de emissão registrado(s). O robô emite no TickOne quando for acionado." };
     } finally { lock.releaseLock(); }
   } catch (e) {
     return { ok: false, mensagem: e.message };
@@ -554,14 +563,18 @@ function compassoIngressos_cancelarPedidoEmissao(pedido, tokenSessao) {
   }
 }
 
+function cingListaEmissoes_() {
+  return cingEmissoes_().reverse().slice(0, 50).map(function (o) {
+    return { pedido: String(o.PEDIDO), nome: String(o.NOME), categoria: String(o.CATEGORIA), status: String(o.STATUS), codigo: String(o.CODIGO || ""),
+      resultado: String(o.RESULTADO || ""), pedidoEm: cingFmtData_(o.PEDIDO_EM), pedidoPor: String(o.PEDIDO_POR || "") };
+  });
+}
+
 function compassoIngressos_emissoes(tokenSessao) {
   try {
     exigirModulo_(tokenSessao, "eventos", false);
     cingSincronizarEmissoes_();
-    return { ok: true, emissoes: cingEmissoes_().reverse().slice(0, 50).map(function (o) {
-      return { pedido: String(o.PEDIDO), nome: String(o.NOME), categoria: String(o.CATEGORIA), status: String(o.STATUS), codigo: String(o.CODIGO || ""),
-        resultado: String(o.RESULTADO || ""), pedidoEm: cingFmtData_(o.PEDIDO_EM), pedidoPor: String(o.PEDIDO_POR || "") };
-    }) };
+    return { ok: true, emissoes: cingListaEmissoes_() };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
