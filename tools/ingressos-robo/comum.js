@@ -27,10 +27,13 @@ async function pastaId(tk) {
 async function arquivoId(tk, pid, nome) {
   return ((await drive(tk, "GET", "https://www.googleapis.com/drive/v3/files?q=" + q(`name = '${nome}' and '${pid}' in parents and trashed = false`) + "&fields=files(id)")).files[0] || {}).id;
 }
-async function lerJson(nome, local) {
+async function lerJson(nome, local, criarSeAusente) {
   if (local) return fs.existsSync(local) ? JSON.parse(fs.readFileSync(local, "utf8")) : null;
   const tk = await tokenGoogle(), id = await arquivoId(tk, await pastaId(tk), nome);
-  return id ? JSON.parse(await drive(tk, "GET", "https://www.googleapis.com/drive/v3/files/" + id + "?alt=media", null, null, true)) : null;
+  if (id) return JSON.parse(await drive(tk, "GET", "https://www.googleapis.com/drive/v3/files/" + id + "?alt=media", null, null, true));
+  /* O robô só consegue ler arquivo que ELE criou (acesso drive.file). Por isso a FILA nasce aqui, vazia; o SISGEP só atualiza o conteúdo. */
+  if (criarSeAusente) { const vazio = { atualizadoEm: new Date().toISOString(), itens: [] }; await gravarJson(nome, vazio, null); return vazio; }
+  return null;
 }
 async function gravarJson(nome, obj, local) {
   const texto = JSON.stringify(obj);

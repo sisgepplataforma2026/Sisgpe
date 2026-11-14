@@ -35,6 +35,9 @@ lidoEm = new Date(Date.now() - 40 * 60000).toISOString();
 b.ok(/mais de 15 minutos/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem), "base com 40 min: não pede (pesquisar antes precisa ser recente)");
 lidoEm = new Date().toISOString();
 b.ok(Object.keys(arquivos).length === 0, "nada foi escrito para o robô até aqui");
+b.ok(/ainda não foi preparada/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem) && Object.keys(arquivos).length === 0 && g.cingAbaEmis_().getLastRow() < 2,
+  "sem a fila criada pelo robô (ele só lê o que criou), o pedido é recusado e NADA é gravado");
+arquivos["emissoes-fila.json"] = JSON.stringify({ itens: [] });   // o robô cria a fila vazia na 1ª execução
 b.passo("2. Pedido registrado com a fila do robô");
 const pe = g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN);
 b.ok(pe.ok && pe.pedidos === 1 && pe.naFila === 1, "pedido registrado", JSON.stringify(pe));
@@ -57,7 +60,7 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
 (async function () {
   if (dom.jsdomDisponivel()) {
     const sh = g.cingAbaEmis_(); if (sh.getLastRow() > 1) sh.deleteRows(2, sh.getLastRow() - 1);
-    Object.keys(arquivos).forEach(k => delete arquivos[k]);
+    Object.keys(arquivos).forEach(k => delete arquivos[k]); arquivos["emissoes-fila.json"] = JSON.stringify({ itens: [] });
     const t = dom.montar(g, ["CompassoIngressos.html"], { token: TOKEN });
     const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
     b.fluxo("EMISSÃO · tela");

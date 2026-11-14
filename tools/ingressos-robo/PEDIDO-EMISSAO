@@ -1,1 +1,1 @@
-2 - nova tentativa depois do erro 403 do Drive (nenhum ingresso criado antes)
+3 - cria a fila vazia (o robô só lê arquivo que ele criou)

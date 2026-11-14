@@ -150,6 +150,11 @@ celular — CompassoIngressos.html + CompassoIngressosDados.gs, t259). Decisões
   GitHub no SISGEP (decisão do usuário, não feita). Testado só contra um TickOne FALSO (t260); a
   exclusão REAL nunca rodou: o primeiro uso é com um ingresso de TESTE. Nunca excluir sem pedido
   confirmado na tela.
+- **LIÇÃO DO DRIVE (14/11/2026):** o token do robô só acessa arquivo que ELE criou (erro 403
+  "appNotAuthorizedToFile"); arquivo criado por outra ferramenta (conector do Drive, Apps Script) na
+  pasta NÃO é lido por ele. Por isso a FILA (emissoes-fila.json, exclusoes-fila.json) é criada VAZIA pelo
+  robô na 1ª execução, e o SISGEP só ATUALIZA o conteúdo (cingGravarFila_ recusa criar; o pedido é
+  recusado se a fila ainda não existe). Nunca criar a fila por fora.
 - **EMISSÃO PELO ROBÔ (usuário, 14/11/2026: "faz um ingresso de teste"):** depois da conferência, "Pedir
   emissão" (confirmação "cria ingresso de verdade") → fila (Ingressos_Emissoes + emissoes-fila.json) →
   emitir.js abre UM lugar livre da grade (2.500 lugares; sem limite de vagas), preenche o pop-up

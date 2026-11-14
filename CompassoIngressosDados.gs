@@ -358,6 +358,14 @@ function cingPastaRobo_() {
   return it.hasNext() ? it.next() : DriveApp.createFolder(CING_PASTA);
 }
 
+/** A fila só é ATUALIZADA, nunca criada aqui: o robô só lê arquivo que ele mesmo criou (acesso drive.file do Drive). */
+function cingFilaPronta_(nome) { return cingPastaRobo_().getFilesByName(nome).hasNext(); }
+function cingGravarFila_(nome, texto) {
+  var it = cingPastaRobo_().getFilesByName(nome);
+  if (!it.hasNext()) throw new Error("A fila do robô (" + nome + ") ainda não foi preparada. Peça ao Claude para preparar a fila e tente de novo.");
+  it.next().setContent(texto);
+}
+
 function cingGravarArquivo_(pasta, nome, texto) {
   var it = pasta.getFilesByName(nome);
   if (it.hasNext()) it.next().setContent(texto); else pasta.createFile(nome, texto, "application/json");
@@ -368,7 +376,7 @@ function cingPublicarFila_() {
   var fila = cingExclusoes_().filter(function (o) { return o.STATUS === "PEDIDO"; }).map(function (o) {
     return { pedido: String(o.PEDIDO), codigo: String(o.CODIGO), cpf: cingSoDigitos_(o.CPF), nome: String(o.NOME) };
   });
-  cingGravarArquivo_(cingPastaRobo_(), CING_ARQ_FILA, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
+  cingGravarFila_(CING_ARQ_FILA, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
   return fila.length;
 }
 
@@ -404,6 +412,7 @@ function compassoIngressos_pedirExclusao(codigo, motivo, confirmado, tokenSessao
     var base = cingLerBase_();
     var l = base && base.linhas.filter(function (x) { return x.codigo === String(codigo); })[0];
     if (!l) return { ok: false, mensagem: "Ingresso não encontrado na base do TickOne (talvez já tenha sido excluído)." };
+    if (!cingFilaPronta_(CING_ARQ_FILA)) return { ok: false, mensagem: "A fila de exclusão do robô ainda não foi preparada. Peça ao Claude para preparar a fila e tente de novo." };
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está mexendo nas exclusões agora. Tente de novo." };
     try {
@@ -475,7 +484,7 @@ function cingPublicarFilaEmissao_() {
     return { pedido: String(o.PEDIDO), nome: String(o.NOME), cpf: cingSoDigitos_(o.CPF), email: String(o.EMAIL || ""), telefone: String(o.TELEFONE || ""),
              cidade: String(o.CIDADE || ""), escola: String(o.ESCOLA || ""), categoria: String(o.CATEGORIA) };
   });
-  cingGravarArquivo_(cingPastaRobo_(), CING_ARQ_FILA_EMIS, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
+  cingGravarFila_(CING_ARQ_FILA_EMIS, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
   return fila.length;
 }
 
@@ -504,6 +513,7 @@ function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
     var cf = compassoIngressos_conferir(lista, tokenSessao);
     if (!cf.ok) return cf;
     if (!cf.emissaoLiberada) return { ok: false, mensagem: cf.emissaoMotivo };
+    if (!cingFilaPronta_(CING_ARQ_FILA_EMIS)) return { ok: false, mensagem: "A fila de emissão do robô ainda não foi preparada. Peça ao Claude para preparar a fila e tente de novo." };
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está pedindo emissão agora. Tente de novo." };
     try {

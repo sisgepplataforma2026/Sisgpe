@@ -21,7 +21,7 @@ const ARQ_FILA = "exclusoes-fila.json", ARQ_RES = "exclusoes-resultado.json", MA
 const p = (...a) => console.log(...a);
 
 (async () => {
-  const fila = await lerJson(ARQ_FILA, process.env.FILA_LOCAL);
+  const fila = await lerJson(ARQ_FILA, process.env.FILA_LOCAL, true);
   const itens = ((fila && fila.itens) || []).slice(0, MAXIMO);
   if (!itens.length) { p("Fila vazia: nada a excluir."); return; }
   if (!USUARIO || !SENHA) { p("Sem INGRESSOS_USUARIO/INGRESSOS_SENHA: nada feito."); return; }

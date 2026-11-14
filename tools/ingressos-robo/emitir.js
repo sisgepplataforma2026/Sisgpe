@@ -21,7 +21,7 @@ const CATEGORIAS = ["pago", "cortesia", "convite", "associado", "acompanhante"];
 const p = (...a) => console.log(...a);
 
 (async () => {
-  const fila = await lerJson(ARQ_FILA, process.env.FILA_LOCAL);
+  const fila = await lerJson(ARQ_FILA, process.env.FILA_LOCAL, true);
   const itens = ((fila && fila.itens) || []).slice(0, MAXIMO);
   if (!itens.length) { p("Fila vazia: nada a emitir."); return; }
   if (!USUARIO || !SENHA) { p("Sem INGRESSOS_USUARIO/INGRESSOS_SENHA: nada feito."); return; }

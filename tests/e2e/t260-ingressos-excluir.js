@@ -34,6 +34,9 @@ b.ok(g.compassoIngressos_pedirExclusao("AAAA-0001", "não vai", false, TOKEN).ok
 b.ok(g.compassoIngressos_pedirExclusao("AAAA-0001", "não vai", true, "token-invalido").ok === false, "sem sessão válida, não pede");
 b.ok(g.compassoIngressos_pedirExclusao("NAO-EXISTE", "x", true, TOKEN).ok === false, "ingresso que não está na base: recusa");
 b.ok(Object.keys(arquivos).length === 0, "nada foi escrito para o robô até aqui");
+b.ok(/ainda não foi preparada/.test(g.compassoIngressos_pedirExclusao("AAAA-0001", "x", true, TOKEN).mensagem) && Object.keys(arquivos).length === 0 && g.cingAbaExcl_().getLastRow() < 2,
+  "sem a fila criada pelo robô (ele só lê o que criou), o pedido é recusado e NADA é gravado");
+arquivos["exclusoes-fila.json"] = JSON.stringify({ itens: [] });   // o robô cria a fila vazia na 1ª execução
 b.passo("2. Pedido registrado, com cópia dos dados, e a fila do robô");
 const pe = g.compassoIngressos_pedirExclusao("AAAA-0001", "não vai mais", true, TOKEN);
 b.ok(pe.ok && pe.abertos === 1, "pedido registrado", JSON.stringify(pe));
@@ -55,7 +58,7 @@ b.ok(g.compassoIngressos_cancelarPedidoExclusao(pe2.pedido, TOKEN).ok === false,
 b.ok(g.compassoIngressos_pedirExclusao("AAAA-0001", "", true, TOKEN).ok === false, "e não dá para pedir de novo o que já foi excluído");
 
 /* ---------- tela ---------- */
-const sem = { ...arquivos }; Object.keys(arquivos).forEach(k => delete arquivos[k]);
+const sem = { ...arquivos }; Object.keys(arquivos).forEach(k => delete arquivos[k]); arquivos["exclusoes-fila.json"] = JSON.stringify({ itens: [] });
 const abas = g.SpreadsheetApp && null;
 (async function () {
   if (dom.jsdomDisponivel()) {
