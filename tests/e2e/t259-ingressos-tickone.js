@@ -132,6 +132,8 @@ const abertos = []; win.open = u => { abertos.push(u); return null; };
   b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0002']").disabled === true, "telefone sem DDD: botão do WhatsApp travado");
   b.passo("10. Solicitar: planilha, uma pessoa, conferência");
   t.clicar("[data-ci='aba'][data-arg='solicitar']");
+  b.ok(el("ciBoxPlan").hidden === true && !!doc.querySelector("[data-ci='togPlan']"), "a planilha fica escondida atrás do botão 'Subir planilha'; o formulário individual é a entrada principal");
+  t.clicar("[data-ci='togPlan']"); b.ok(el("ciBoxPlan").hidden === false, "o botão abre a planilha");
   el("ciPlan").value = "Nome;Email;CPF;Telefone;Cidade;Escola;Tipo\nMaria Exemplo da Silva;;529.982.247-25;;Vitória;Escola Modelo;Associado\nCarla Nova Exemplo;;168.995.350-09;(27) 97777-0005;Serra;Escola X;Convite";
   t.clicar("[data-ci='lerPlan']"); await t.assentar(20);
   el("ciFNome").value = "Pedro Individual"; el("ciFCpf").value = "453.178.287-91"; el("ciFTel").value = "(27) 97777-0009"; el("ciFCat").value = "acompanhante";

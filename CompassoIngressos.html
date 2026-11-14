@@ -82,18 +82,18 @@
 <div id="ciPSolicitar" hidden>
   <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> A lista é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Nada é emitido nesta etapa.</div>
   <div class="ci-box">
-    <b>1. Planilha</b> <span style="font-size:12px;color:#64748b">— salve como CSV (colunas: Nome;Email;CPF;Telefone;Cidade;Escola;Tipo) ou cole aqui</span>
-    <textarea id="ciPlan" placeholder="Nome;Email;CPF;Telefone;Cidade;Escola;Tipo"></textarea>
-    <div class="ci-filtros" style="margin-top:8px"><input type="file" id="ciArq" accept=".csv,.txt,text/csv"><button class="ci-btn ci-nv" data-ci="lerPlan">Adicionar à lista</button></div>
-  </div>
-  <div class="ci-box">
-    <b>2. Ou uma pessoa por vez</b> <span style="font-size:12px;color:#64748b">— Associado: todos os campos; os demais: só nome e CPF (o resto em branco libera)</span>
+    <div class="ci-topo"><b>Pessoa a pessoa</b><button class="ci-btn ci-ol" data-ci="togPlan">📄 Subir planilha</button></div> <span style="font-size:12px;color:#64748b">— Associado: todos os campos; os demais: só nome e CPF (o resto em branco libera)</span>
     <div class="ci-form">
       <input type="text" id="ciFNome" placeholder="Nome completo"><input type="text" id="ciFCpf" placeholder="CPF" inputmode="numeric">
       <input type="text" id="ciFTel" placeholder="Telefone com DDD" inputmode="tel"><input type="text" id="ciFEsc" placeholder="Escola">
       <input type="text" id="ciFCid" placeholder="Cidade"><input type="text" id="ciFMail" placeholder="E-mail (opcional)">
       <select id="ciFCat"></select><button class="ci-btn ci-nv" data-ci="addUm">Adicionar à lista</button>
     </div>
+  </div>
+  <div class="ci-box" id="ciBoxPlan" hidden>
+    <b>Planilha</b> <span style="font-size:12px;color:#64748b">— salve como CSV (colunas: Nome;Email;CPF;Telefone;Cidade;Escola;Tipo) ou cole aqui</span>
+    <textarea id="ciPlan" placeholder="Nome;Email;CPF;Telefone;Cidade;Escola;Tipo"></textarea>
+    <div class="ci-filtros" style="margin-top:8px"><input type="file" id="ciArq" accept=".csv,.txt,text/csv"><button class="ci-btn ci-nv" data-ci="lerPlan">Adicionar à lista</button></div>
   </div>
   <div class="ci-box ci-topo"><div><b id="ciQtd">0 pessoas na lista</b></div>
     <div class="ci-acoes"><button class="ci-btn ci-ol" data-ci="limpar">Limpar lista</button><button class="ci-btn ci-ok" data-ci="conferir">🔎 Conferir (pesquisar antes)</button></div></div>
@@ -244,6 +244,7 @@
     else if(a==='chip'){ FILTRO=arg; MOSTRAR=100; desenhar(); }
     else if(a==='mais'){ MOSTRAR+=100; desenhar(); }
     else if(a==='zap') zap(arg); else if(a==='confirmar') confirmar(arg);
+    else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
     else if(a==='lerPlan') lerPlan(); else if(a==='addUm') addUm();
     else if(a==='limpar'){ LISTA=[]; qtd(); g('ciRes').innerHTML=''; }
     else if(a==='conferir') conferir();
