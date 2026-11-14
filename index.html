@@ -2960,7 +2960,7 @@ window.esconderOverlayCarregando=function(){
    submódulo. */
 (function () {
   var app = document.getElementById("spApp"); if (!app) return;
-  var mq = window.matchMedia("(max-width: 900px)");
+  var mq = window.matchMedia ? window.matchMedia("(max-width: 900px)") : { matches: false };
   function fechar() { app.classList.remove("sp-menu-aberto"); }
   function ajustar() { if (mq.matches) { app.classList.remove("sp-menu-recolhido"); } else { fechar(); } }
   var h = document.getElementById("spHamb"), o = document.getElementById("spOverlay"), sb = document.getElementById("spSidebar");
