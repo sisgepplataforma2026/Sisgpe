@@ -46,6 +46,17 @@ b.ok(fila.length === 1 && fila[0].cpf === "16899535009" && fila[0].categoria ===
 b.ok(/já estão na fila/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem), "pedir o mesmo CPF duas vezes é recusado");
 const em = g.compassoIngressos_emissoes(TOKEN).emissoes[0];
 b.ok(em.status === "PEDIDO" && em.pedidoPor !== "", "ficou registrado quem pediu e quando");
+b.passo("2b. CPF que começa com ZERO sobrevive à planilha (o Sheets trata como número e come o zero)");
+{
+  const z = g.compassoIngressos_pedirEmissao([{ nome: "Zero Inicial Fictício", cpf: "012.345.678-90", categoria: "Convite" }], true, TOKEN);
+  b.ok(z.ok, "pedido com CPF 012.345.678-90 registrado", z.mensagem);
+  const sh = g.cingAbaEmis_(), ult = sh.getLastRow();
+  sh.getRange(ult, 3).setValue(1234567890);   // o que o Sheets faz com o texto "01234567890": vira número
+  g.cingPublicarFilaEmissao_();
+  const f = JSON.parse(arquivos["emissoes-fila.json"]).itens.find(x => x.nome === "Zero Inicial Fictício");
+  b.ok(f && f.cpf === "01234567890", "mesmo com a célula virando número, a fila leva o CPF com 11 dígitos e o zero da frente", f && f.cpf);
+  sh.getRange(ult, 11).setValue("CANCELADO"); g.cingPublicarFilaEmissao_();
+}
 b.passo("3. Cancelar antes do robô");
 b.ok(g.compassoIngressos_cancelarPedidoEmissao(em.pedido, TOKEN).ok && JSON.parse(arquivos["emissoes-fila.json"]).itens.length === 0, "cancelou e a fila esvaziou");
 const pe2 = g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN);
@@ -126,8 +137,10 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   }
   const P = [
     { pedido: "P1", nome: "Teste Fictício da Silva", cpf: "16899535009", email: "teste@exemplo.com", telefone: "", cidade: "Cariacica", escola: "UVV", categoria: "acompanhante" },
+    { pedido: "P1b", nome: "Zero Inicial Fictício", cpf: "1234567890", categoria: "convite" },
     { pedido: "P2", nome: "Ja Existe Fictícia", cpf: "52998224725", categoria: "associado" },
     { pedido: "P3", nome: "Categoria Errada", cpf: "39053344705", categoria: "vip" },
+    { pedido: "P3b", nome: "Cpf Curto Inválido", cpf: "1111111111", categoria: "convite" },
     { pedido: "P4", nome: "Segundo Teste Fictício", cpf: "45317828791", categoria: "convite", escola: "UVV" },
     { pedido: "P5", nome: "FALHA-SERVIDOR", cpf: "11144477735", categoria: "convite" },
     { pedido: "P6", nome: "Nunca Chega Fictício", cpf: "11122233396", categoria: "convite" }
@@ -136,17 +149,22 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   let r = await rodar([]); b.ok(/Fila vazia/.test(r.saida) && emissoes.length === 0, "fila vazia: não faz nada");
   r = await rodar([P[0]], "senha-errada"); b.ok(r.codigo === 1 && /login não entrou/.test(r.saida) && emissoes.length === 0, "login errado: para e não emite nada");
   b.passo("6. As travas");
-  r = await rodar(P);
+  /* o robô processa no máximo 5 por execução: 1ª rodada com os 5 primeiros, 2ª com o resto (como no mundo real) */
+  const r1 = await rodar(P.slice(0, 5));
+  const r2 = await rodar(P.slice(5));
+  r = { saida: r1.saida + "\n" + r2.saida, codigo: r2.codigo, resultado: r1.resultado.concat(r2.resultado) };
   const st = {}; r.resultado.forEach(x => { st[x.pedido] = x; });
   b.ok(st.P1 && st.P1.status === "EMITIDO" && st.P1.codigo === "TST-0001", "P1: emitido e conferido, com o código lido da lista", JSON.stringify(st.P1));
   const e1 = emissoes[0];
   b.ok(e1.tipo === "acompanhante" && e1.nome === "Teste Fictício da Silva" && e1.cpf === "16899535009" && e1.email === "teste@exemplo.com" && e1.cidade === "Cariacica" && e1.escola === "UVV" && e1.seat === 3, "preencheu categoria, nome, CPF, e-mail, cidade e escola, num lugar LIVRE (o 3; 1 e 2 são ocupados)", JSON.stringify(e1));
+  b.ok(st.P1b && st.P1b.status === "EMITIDO" && emissoes.find(x => x.nome === "Zero Inicial Fictício").cpf === "01234567890", "P1b (CPF veio com 10 dígitos, o zero da frente se perdeu): o robô completa para 01234567890 e emite", JSON.stringify(st.P1b));
   b.ok(st.P2 && st.P2.status === "FALHOU" && /já tem ingresso/.test(st.P2.detalhe) && !emissoes.some(x => x.cpf === "52998224725"), "P2 (CPF já na lista): pesquisa antes, NÃO emitiu de novo");
+  b.ok(st.P3b && st.P3b.status === "FALHOU" && /CPF válido/.test(st.P3b.detalhe) && !emissoes.some(x => /1111111111/.test(x.cpf)), "P3b (CPF que não fecha o dígito verificador, nem completando o zero): NÃO emite");
   b.ok(st.P3 && st.P3.status === "FALHOU" && /categoria/.test(st.P3.detalhe), "P3 (categoria que o TickOne não tem): não emite");
-  b.ok(st.P4 && st.P4.status === "EMITIDO" && st.P4.codigo === "TST-0002" && emissoes.find(x => x.cpf === "45317828791").seat === 4, "P4: emitido no PRÓXIMO lugar livre (4), pois o 3 foi usado");
+  b.ok(st.P4 && st.P4.status === "EMITIDO" && st.P4.codigo === "TST-0003" && emissoes.find(x => x.cpf === "45317828791").seat === 5, "P4: emitido no PRÓXIMO lugar livre (5), pois o 3 e o 4 foram usados");
   b.ok(st.P5 && st.P5.status === "FALHOU" && /NÃO tentei de novo/.test(st.P5.detalhe) && r.codigo === 1, "P5 (TickOne recusou): para e NÃO tenta de novo");
   b.ok(st.P6 === undefined && !emissoes.some(x => x.cpf === "11122233396"), "P6: depois da falha a execução parou");
-  b.ok(emissoes.length === 3 && linhas.length === 3, "o TickOne recebeu 3 pedidos de emissão (P1, P4 e o P5 recusado) e ganhou 2 linhas");
+  b.ok(emissoes.length === 4 && linhas.length === 4, "o TickOne recebeu 4 pedidos de emissão (P1, P1b, P4 e o P5 recusado) e ganhou 3 linhas");
   b.ok(outras.length === 0, "nenhum WhatsApp, e-mail, salvar nem excluir foi tocado", outras.join(","));
   b.ok(!/Teste Fictício|16899535009|168\.995/.test(r.saida), "o log não tem nome nem CPF");
   srv.close(); fs.rmSync(tmp, { recursive: true, force: true });

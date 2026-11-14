@@ -65,6 +65,9 @@ var CING_CATEGORIAS = [
 
 function cingSoDigitos_(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }
 
+/** CPF lido de célula de planilha: o Sheets trata como número e come o zero da frente (085... → 8538104780). Completa até 11. */
+function cingCpf11_(s) { var d = cingSoDigitos_(s); return (d.length >= 9 && d.length < 11) ? ("00000000000" + d).slice(-11) : d; }
+
 function cingCpfValido_(cpf) {
   var d = cingSoDigitos_(cpf);
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -373,7 +376,7 @@ function cingGravarArquivo_(pasta, nome, texto) {
 /** A fila que o robô lê: só os pedidos ainda abertos. */
 function cingPublicarFila_() {
   var fila = cingExclusoes_().filter(function (o) { return o.STATUS === "PEDIDO"; }).map(function (o) {
-    return { pedido: String(o.PEDIDO), codigo: String(o.CODIGO), cpf: cingSoDigitos_(o.CPF), nome: String(o.NOME) };
+    return { pedido: String(o.PEDIDO), codigo: String(o.CODIGO), cpf: cingCpf11_(o.CPF), nome: String(o.NOME) };
   });
   cingGravarFila_(CING_ARQ_FILA, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
   return fila.length;
@@ -418,7 +421,9 @@ function compassoIngressos_pedirExclusao(codigo, motivo, confirmado, tokenSessao
       var atual = cingExclusaoPorCodigo_()[l.codigo];
       if (atual && (atual.STATUS === "PEDIDO" || atual.STATUS === "EXCLUIDO")) return { ok: false, mensagem: "Este ingresso já tem pedido de exclusão (" + String(atual.STATUS).toLowerCase() + ")." };
       var id = "X" + Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + l.codigo;
-      cingAbaExcl_().appendRow([id, l.codigo, l.nome, l.cpf, l.tipo, l.escola, l.cidade, l.tel,
+      var shX = cingAbaExcl_(), linhaX = shX.getLastRow() + 1;
+      try { shX.getRange(linhaX, 4).setNumberFormat("@"); shX.getRange(linhaX, 8).setNumberFormat("@"); } catch (eF) {}   // CPF e telefone como TEXTO
+      shX.appendRow([id, l.codigo, l.nome, l.cpf, l.tipo, l.escola, l.cidade, l.tel,
         String(motivo || "").trim().substring(0, 200), new Date(), cingQuem_(sessao), "PEDIDO", "", ""]);
       var abertos = cingPublicarFila_();
       return { ok: true, pedido: id, abertos: abertos, mensagem: "Pedido de exclusão registrado. O robô exclui no TickOne quando for acionado." };
@@ -480,7 +485,7 @@ function cingEmissoes_() {
 
 function cingPublicarFilaEmissao_() {
   var fila = cingEmissoes_().filter(function (o) { return o.STATUS === "PEDIDO"; }).map(function (o) {
-    return { pedido: String(o.PEDIDO), nome: String(o.NOME), cpf: cingSoDigitos_(o.CPF), email: String(o.EMAIL || ""), telefone: String(o.TELEFONE || ""),
+    return { pedido: String(o.PEDIDO), nome: String(o.NOME), cpf: cingCpf11_(o.CPF), email: String(o.EMAIL || ""), telefone: String(o.TELEFONE || ""),
              cidade: String(o.CIDADE || ""), escola: String(o.ESCOLA || ""), categoria: String(o.CATEGORIA) };
   });
   cingGravarFila_(CING_ARQ_FILA_EMIS, JSON.stringify({ atualizadoEm: new Date().toISOString(), itens: fila }));
@@ -517,11 +522,13 @@ function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está pedindo emissão agora. Tente de novo." };
     try {
       var abertos = {};
-      cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingSoDigitos_(o.CPF)] = true; });
+      cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingCpf11_(o.CPF)] = true; });
       var sh = cingAbaEmis_(), n = 0, quem = cingQuem_(sessao), agora = new Date();
       cf.resultados.forEach(function (r, i) {
         if (r.situacao !== "novo" || abertos[r.cpf]) return;
         var id = "E" + Utilities.formatDate(agora, "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + (i + 1);
+        var linhaN = sh.getLastRow() + 1;
+        try { sh.getRange(linhaN, 3).setNumberFormat("@"); sh.getRange(linhaN, 5).setNumberFormat("@"); } catch (eF) {}   // CPF e telefone como TEXTO (senão o zero da frente some)
         sh.appendRow([id, r.nome, r.cpf, r.email, r.telefone || r.telefoneDigitado, r.cidade, r.escola, r.categoria, agora, quem, "PEDIDO", "", "", ""]);
         n++;
       });

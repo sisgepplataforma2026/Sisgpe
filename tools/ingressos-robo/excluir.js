@@ -14,7 +14,7 @@
  * FILA_LOCAL e RESULTADO_LOCAL apontam para arquivos; INGRESSOS_URL aponta para um TickOne falso.
  */
 const { chromium } = require("playwright");
-const { dig, lerJson, gravarJson, entrar, ler } = require("./comum");
+const { dig, cpf11, lerJson, gravarJson, entrar, ler } = require("./comum");
 const BASE = process.env.INGRESSOS_URL || "https://ingressos.sindeducacao.com.br/index.php?page=admin&evt_id=17";
 const USUARIO = (process.env.INGRESSOS_USUARIO || "").trim(), SENHA = (process.env.INGRESSOS_SENHA || "").trim();
 const ARQ_FILA = "exclusoes-fila.json", ARQ_RES = "exclusoes-resultado.json", MAXIMO = 5;
@@ -36,7 +36,7 @@ const p = (...a) => console.log(...a);
   try {
     if (!(await entrar(pg, BASE, USUARIO, SENHA))) { p("FALHA: o login não entrou. Nada foi excluído."); process.exitCode = 1; return; }
     for (const it of itens) {
-      const cpf = dig(it.cpf), cod = String(it.codigo || "").trim();
+      const cpf = cpf11(it.cpf), cod = String(it.codigo || "").trim();
       if (!cpf || !cod) { await registrar(it.pedido, "FALHOU", "pedido sem código ou CPF"); continue; }
       const est = await ler(pg);
       if (!est) { await registrar(it.pedido, "FALHOU", "não achei a tabela de ingressos"); process.exitCode = 1; break; }

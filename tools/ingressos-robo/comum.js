@@ -77,4 +77,11 @@ async function ler(pg) {
 }
 
 
-module.exports = { fs, dig, lerJson, gravarJson, entrar, ler };
+/** CPF vindo de planilha perde o zero da frente (vira número): 085... vira 8538104780. Completa com zeros até 11 dígitos. */
+function cpf11(s) { let d = String(s || "").replace(/\D/g, ""); if (d.length >= 9 && d.length < 11) d = d.padStart(11, "0"); return d; }
+function cpfValido(c) {
+  const d = String(c || "").replace(/\D/g, ""); if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  for (let t = 9; t < 11; t++) { let s = 0; for (let i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i); if ((s * 10) % 11 % 10 !== Number(d[t])) return false; }
+  return true;
+}
+module.exports = { fs, dig, cpf11, cpfValido, lerJson, gravarJson, entrar, ler };

@@ -13,7 +13,7 @@
  * RESULTADO_LOCAL; INGRESSOS_URL aponta para um TickOne falso.
  */
 const { chromium } = require("playwright");
-const { dig, lerJson, gravarJson, entrar, ler } = require("./comum");
+const { dig, cpf11, cpfValido, lerJson, gravarJson, entrar, ler } = require("./comum");
 const BASE = process.env.INGRESSOS_URL || "https://ingressos.sindeducacao.com.br/index.php?page=admin&evt_id=17";
 const USUARIO = (process.env.INGRESSOS_USUARIO || "").trim(), SENHA = (process.env.INGRESSOS_SENHA || "").trim();
 const ARQ_FILA = "emissoes-fila.json", ARQ_RES = "emissoes-resultado.json", MAXIMO = 5;
@@ -37,8 +37,8 @@ const p = (...a) => console.log(...a);
     if (!(await entrar(pg, BASE, USUARIO, SENHA))) { p("FALHA: o login não entrou. Nada foi emitido."); process.exitCode = 1; return; }
     const jaNaRodada = {};
     for (const it of itens) {
-      const cpf = dig(it.cpf), nome = String(it.nome || "").trim(), cat = String(it.categoria || "");
-      if (!nome || cpf.length !== 11 || CATEGORIAS.indexOf(cat) < 0) { await registrar(it.pedido, "FALHOU", "pedido sem nome, CPF válido ou categoria do TickOne: NÃO emiti"); continue; }
+      const cpf = cpf11(it.cpf), nome = String(it.nome || "").trim(), cat = String(it.categoria || "");
+      if (!nome || !cpfValido(cpf) || CATEGORIAS.indexOf(cat) < 0) { await registrar(it.pedido, "FALHOU", "pedido sem nome, sem CPF válido (11 dígitos com dígito verificador) ou com categoria que o TickOne não tem: NÃO emiti"); continue; }
       if (jaNaRodada[cpf]) { await registrar(it.pedido, "FALHOU", "CPF repetido nesta fila: NÃO emiti"); continue; }
       const antes = await ler(pg);
       if (!antes) { await registrar(it.pedido, "FALHOU", "não achei a tabela de ingressos"); process.exitCode = 1; break; }
