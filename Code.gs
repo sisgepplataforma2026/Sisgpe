@@ -15,7 +15,7 @@ function doPost(e) {
       Logger.log("[DIAGNOSTICO doPost] autenticação concluída: " + !!(autenticacao && autenticacao.ok));
       if (!autenticacao || !autenticacao.ok || autenticacao.primeiroAcesso) {
         return HtmlService.createHtmlOutputFromFile("Login")
-          .setTitle("SISGEP — Login")
+          .setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
           .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
           .setSandboxMode(HtmlService.SandboxMode.IFRAME);
       }
@@ -28,7 +28,7 @@ function doPost(e) {
     var sessao = getSessaoUsuario(token);
     if (!sessao) {
       return HtmlService.createHtmlOutputFromFile("Login")
-        .setTitle("SISGEP — Login")
+        .setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
@@ -36,7 +36,7 @@ function doPost(e) {
     var template = HtmlService.createTemplateFromFile("index");
     template.tokenSessao = sessao.token;
     return template.evaluate()
-      .setTitle("Portal Administrativo — SindEducação-ES")
+      .setTitle("Portal Administrativo — SindEducação-ES").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   } catch (erro) {
@@ -159,7 +159,7 @@ function doGet(e) {
     if (p.painel === "emissao") {
       var tokenEmissao = String(p.sessao || "").trim();
       var sessaoEmissao = getSessaoUsuario(tokenEmissao);
-      if (!sessaoEmissao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoEmissao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       return HtmlService.createHtmlOutputFromFile("EventoPainel")
         .setTitle("Emissão de Ingressos — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
@@ -194,7 +194,7 @@ function doGet(e) {
     if (p.painel === "cartoes") {
       var tokenCartoes = String(p.sessao || "").trim();
       var sessaoCartoes = getSessaoUsuario(tokenCartoes);
-      if (!sessaoCartoes) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoCartoes) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       var tCartoes = HtmlService.createTemplateFromFile("EventosCartaoBlueticket");
       tCartoes.tokenSessao = sessaoCartoes.token;
       return tCartoes.evaluate()
@@ -207,7 +207,7 @@ function doGet(e) {
     if (p.painel === "portaria") {
       var tokenPortaria = String(p.sessao || "").trim();
       var sessaoPortaria = getSessaoUsuario(tokenPortaria);
-      if (!sessaoPortaria) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoPortaria) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       /* O TOKEN VAI INJETADO, NÃO LIDO DA URL — 15/09/2026.
          Ele abriu a portaria no celular e leu "Sem sessão". Não era o link:
          dentro do sandbox do Apps Script a página roda num iframe interno com
@@ -235,7 +235,7 @@ function doGet(e) {
     if (p.painel === "credenciamento") {
       var tokenCred = String(p.sessao || "").trim();
       var sessaoCred = getSessaoUsuario(tokenCred);
-      if (!sessaoCred) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoCred) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenCred, "eventos", false);
       /* Token injetado, pelo mesmo motivo da portaria: location.search dentro
          do sandbox é vazio. Esta tela nasceu hoje com o mesmo defeito, e só
@@ -252,7 +252,7 @@ function doGet(e) {
     if (p.painel === "checkin") {
       var tokenCheckin = String(p.sessao || "").trim();
       var sessaoCheckin = getSessaoUsuario(tokenCheckin);
-      if (!sessaoCheckin) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoCheckin) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       return HtmlService.createHtmlOutputFromFile("EventoCheckin")
         .setTitle("Check-in — Compasso da Vida")
         .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
@@ -267,7 +267,7 @@ function doGet(e) {
     if (p.painel === "compasso") {
       var tokenComp = String(p.sessao || "").trim();
       var sessaoComp = getSessaoUsuario(tokenComp);
-      if (!sessaoComp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoComp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenComp, "eventos", false);
       return HtmlService.createHtmlOutputFromFile("CompassoInscricoes")
         .setTitle("Inscrições — Compasso da Vida 2026")
@@ -284,7 +284,7 @@ function doGet(e) {
     if (p.painel === "compasso-importar") {
       var tokenImp = String(p.sessao || "").trim();
       var sessaoImp = getSessaoUsuario(tokenImp);
-      if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoImp) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenImp, "eventos", true);
       /* O DESIGN SYSTEM ENTRA AQUI, NÃO NO ARQUIVO — 26/08/2026.
          A tela virou FRAGMENTO para poder ser incluída dentro da Central de
@@ -317,7 +317,7 @@ function doGet(e) {
     if (p.painel === "bingo") {
       var tokenBingo = String(p.sessao || "").trim();
       var sessaoBingo = getSessaoUsuario(tokenBingo);
-      if (!sessaoBingo) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoBingo) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenBingo, "eventos", false);
       return HtmlService.createHtmlOutputFromFile("BingoAdmin")
         .setTitle("Bingo Online — SISGEP")
@@ -328,7 +328,7 @@ function doGet(e) {
     if (p.painel === "bingo-telao") {
       var tokenTelao = String(p.sessao || "").trim();
       var sessaoTelao = getSessaoUsuario(tokenTelao);
-      if (!sessaoTelao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      if (!sessaoTelao) return HtmlService.createHtmlOutputFromFile("Login").setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).setSandboxMode(HtmlService.SandboxMode.IFRAME);
       exigirModulo_(tokenTelao, "eventos", false);
       return HtmlService.createHtmlOutputFromFile("BingoTelao")
         .setTitle("Bingo Online — Telão")
@@ -374,7 +374,7 @@ function doGet(e) {
     // ── RECUPERAÇÃO DE SENHA ────────────────────────────────────────────────
     if (p.recuperar) {
       return HtmlService.createHtmlOutputFromFile("Login")
-        .setTitle("SISGEP — Recuperar senha")
+        .setTitle("SISGEP — Recuperar senha").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
@@ -391,7 +391,7 @@ function doGet(e) {
 
     if (!sessao) {
       return HtmlService.createHtmlOutputFromFile("Login")
-        .setTitle("SISGEP — Login")
+        .setTitle("SISGEP — Login").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     }
@@ -399,7 +399,7 @@ function doGet(e) {
     var template = HtmlService.createTemplateFromFile("index");
     template.tokenSessao = sessao.token;
     return template.evaluate()
-      .setTitle("Portal Administrativo — SindEducação-ES")
+      .setTitle("Portal Administrativo — SindEducação-ES").addMetaTag("viewport", "width=device-width, initial-scale=1.0")
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   } catch (erro) {
