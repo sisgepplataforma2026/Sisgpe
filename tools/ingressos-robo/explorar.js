@@ -95,10 +95,21 @@ const p = (...a) => console.log(...a.map(x => (typeof x === "string" ? x : JSON.
       const el = (await linha.$$("a,button"))[idx];
       const antes = pedidos.length;
       try {
-        const [dl] = await Promise.all([pg.waitForEvent("download", { timeout: 20000 }), el.click()]);
-        const caminho = await dl.path(); const fs = require("fs");
-        p("DOWNLOAD:", "nome:", mascarar(dl.suggestedFilename()), "· tamanho:", fs.statSync(caminho).size, "bytes · começa com %PDF:", fs.readFileSync(caminho).slice(0, 4).toString() === "%PDF");
-      } catch (e) { p("sem download direto (", mascarar(e.message).slice(0, 80), ") — olhando as abas e os pedidos"); }
+        /* O "Reemitir" abre OUTRA aba (a página do ingresso); o PDF baixa nela, não na do painel. */
+        const fs = require("fs");
+        const pegaDownload = new Promise(ok => { const t = setTimeout(() => ok(null), 25000); const ouvir = pag => pag.on("download", d => { clearTimeout(t); ok(d); }); ctx.on("page", ouvir); ctx.pages().forEach(ouvir); });
+        const [nova] = await Promise.all([ctx.waitForEvent("page", { timeout: 15000 }).catch(() => null), el.click()]);
+        if (nova) { await nova.waitForLoadState("domcontentloaded").catch(() => {}); p("aba aberta:", mascarar(new URL(nova.url()).pathname + new URL(nova.url()).search), "· título:", mascarar(await nova.title().catch(() => ""))); }
+        const dl = await pegaDownload;
+        if (dl) { const caminho = await dl.path(); p("DOWNLOAD:", "nome:", mascarar(dl.suggestedFilename()), "· tamanho:", fs.statSync(caminho).size, "bytes · começa com %PDF:", fs.readFileSync(caminho).slice(0, 4).toString() === "%PDF"); }
+        else if (nova) {
+          await nova.waitForTimeout(3000);
+          const botoes = await nova.$$eval("a,button", els => els.filter(e => e.offsetParent !== null).map(e => ({ tag: e.tagName.toLowerCase(), txt: (e.innerText || "").trim().slice(0, 40), onclick: (e.getAttribute("onclick") || "").slice(0, 60) })).slice(0, 12)).catch(() => []);
+          p("sem download automático. Botões da página do ingresso:", botoes.map(x => ({ ...x, txt: mascarar(x.txt), onclick: mascarar(x.onclick) })));
+          const pdf = await nova.pdf({ format: "A4", printBackground: true }).catch(e => null);
+          p("imprimir a página em PDF:", pdf ? "ok · " + pdf.length + " bytes · começa com %PDF: " + (pdf.slice(0, 4).toString() === "%PDF") : "falhou");
+        }
+      } catch (e) { p("erro no teste do PDF:", mascarar(e.message).slice(0, 120)); }
       p("pedidos feitos pelo clique:", pedidos.slice(antes).slice(0, 8));
       for (const a of ctx.pages()) if (a !== pg) p("abriu outra aba:", mascarar(new URL(a.url()).pathname + new URL(a.url()).search));
     }
