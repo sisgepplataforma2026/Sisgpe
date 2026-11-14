@@ -175,7 +175,12 @@ function compassoIngressos_lista(tokenSessao) {
     var envios = cingEnvios_(), pdfs = cingPdfs_();
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
-      return { nome: l.nome, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, codigo: l.codigo,
+      var falta = [];
+      if (cingCategoria_(l.tipo) === "associado") {   // a base do TickOne não traz e-mail: só confere o que ela traz
+        if (!l.nome) falta.push("nome"); if (!cingCpfValido_(l.cpf)) falta.push("CPF válido");
+        if (!fone) falta.push("telefone com DDD"); if (!l.escola) falta.push("nome da escola"); if (!l.cidade) falta.push("cidade");
+      }
+      return { nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, codigo: l.codigo,
         categoria: cingCategoria_(l.tipo) || "", tipo: l.tipo, escola: l.escola, cidade: l.cidade,
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
@@ -249,14 +254,10 @@ function compassoIngressos_conferir(lista, tokenSessao) {
                 cidade: String(it.cidade || "").trim().substring(0, 80), categoria: cat, situacao: "novo", motivos: motivos };
       var achado = cingCpfValido_(cpf) ? porCpf[cpf] : null;
       var avisos = o.avisos = [], assoc = (cat === "associado");
-      if (!nome) motivos.push("Falta o nome.");
-      if (!cingCpfValido_(cpf)) motivos.push("CPF inválido ou ausente.");
       if (!cat) motivos.push("Categoria inválida (use: " + CING_CATEGORIAS.map(function (c) { return c.rotulo; }).join(", ") + ").");
-      if (assoc) {   // Associado: todos os campos
-        if (!o.escola) motivos.push("Associado: falta a escola.");
-        if (!o.cidade) motivos.push("Associado: falta a cidade.");
-        if (!o.email) motivos.push("Associado: falta o e-mail.");
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) motivos.push("Associado: e-mail inválido.");
+      if (!assoc) {
+        if (!nome) motivos.push("Falta o nome.");
+        if (!cingCpfValido_(cpf)) motivos.push("CPF inválido ou ausente.");
       }
       if (cingCpfValido_(cpf)) {
         if (vistos[cpf] != null) motivos.push("CPF repetido na lista (linha " + (vistos[cpf] + 1) + ").");
@@ -273,9 +274,19 @@ function compassoIngressos_conferir(lista, tokenSessao) {
           motivos.push("Já existe ingresso com este nome na base (código " + mesmoNome[0].codigo + "), mas com outro CPF. Confira se é a mesma pessoa.");
         }
       }
-      if (!o.telefone && o.situacao !== "ja_tem") {
-        if (assoc) motivos.push("Associado: telefone sem DDD ou inválido (precisa para enviar no WhatsApp).");
-        else avisos.push(o.telefoneDigitado ? "Telefone sem DDD ou inválido: não dá para enviar pelo WhatsApp." : "Sem telefone: não dá para enviar pelo WhatsApp.");
+      if (assoc && o.situacao !== "ja_tem") {
+        // ASSOCIADO: todos os campos. Diz QUEM é e O QUE falta, numa frase só (usuário, 14/11/2026).
+        var falta = [];
+        if (!nome) falta.push("nome");
+        if (!cingCpfValido_(cpf)) falta.push(cpf ? "CPF válido" : "CPF");
+        if (!o.telefone) falta.push(o.telefoneDigitado ? "telefone com DDD (o digitado não serve para o WhatsApp)" : "telefone com DDD");
+        if (!o.email) falta.push("e-mail");
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)) falta.push("e-mail válido");
+        if (!o.escola) falta.push("nome da escola");
+        if (!o.cidade) falta.push("cidade");
+        if (falta.length) { o.faltando = falta; motivos.push("Associado " + (nome || "(sem nome)") + ": está faltando " + falta.join(", ") + "."); }
+      } else if (!o.telefone && o.situacao !== "ja_tem") {
+        avisos.push(o.telefoneDigitado ? "Telefone sem DDD ou inválido: não dá para enviar pelo WhatsApp." : "Sem telefone: não dá para enviar pelo WhatsApp.");
       }
       if (o.situacao === "novo" && motivos.length) o.situacao = "conferir";
       if (foneOrigem) o.telefoneOrigem = foneOrigem;
@@ -283,8 +294,10 @@ function compassoIngressos_conferir(lista, tokenSessao) {
     });
     var cont = { novo: 0, ja_tem: 0, conferir: 0 };
     res.forEach(function (r) { cont[r.situacao]++; });
+    var faltas = res.filter(function (r) { return r.faltando && r.faltando.length; })
+      .map(function (r) { return "Associado " + (r.nome || "(sem nome)") + ": está faltando " + r.faltando.join(", ") + "."; });
     var recente = idade != null && idade <= CING_IDADE_MAX_MIN;
-    return { ok: true, resultados: res, contagem: cont, lidoEm: base.lidoEm, idadeMin: idade, baseRecente: recente,
+    return { ok: true, resultados: res, contagem: cont, faltasAssociado: faltas, lidoEm: base.lidoEm, idadeMin: idade, baseRecente: recente,
       emissaoLiberada: false,
       emissaoMotivo: "A emissão pelo robô ainda não foi ligada (próxima etapa, só com uma pessoa de teste)." +
         (recente ? "" : " Além disso, a base está com mais de " + CING_IDADE_MAX_MIN + " minutos: leia de novo antes de pedir.") };

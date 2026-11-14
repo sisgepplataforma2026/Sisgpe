@@ -70,7 +70,7 @@ b.ok(R[0].telefone === "5527999990001" && R[0].telefoneOrigem === "telefone da b
 b.ok(R[1].situacao === "ja_tem" && R[1].codigo === "AAAA-0001", "mesmo CPF com outro nome também é 'já tem'");
 b.ok(R[2].situacao === "novo" && R[2].categoria === "convite", "novo; 'Convidado' vira Convite");
 b.ok(R[3].situacao === "conferir" && R[3].motivos.some(m => /repetido/.test(m)), "CPF repetido na lista");
-b.ok(R[4].situacao === "conferir" && R[4].motivos.some(m => /CPF inválido/.test(m)) && R[4].motivos.some(m => /nome/i.test(m) && /AAAA-0002/.test(m)), "CPF inválido + nome já existe na base (código)");
+b.ok(R[4].situacao === "conferir" && R[4].motivos.some(m => /CPF válido/.test(m)) && R[4].motivos.some(m => /nome/i.test(m) && /AAAA-0002/.test(m)), "CPF inválido + nome já existe na base (código)");
 b.ok(R[5].situacao === "conferir" && R[5].motivos.some(m => /telefone/i.test(m)), "telefone inválido");
 b.ok(R[6].situacao === "conferir" && R[6].motivos.some(m => /Categoria/.test(m)), "categoria inválida");
 b.ok(cf.contagem.ja_tem === 2 && cf.contagem.novo === 1 && cf.contagem.conferir === 4, "contagem", JSON.stringify(cf.contagem));
@@ -84,6 +84,10 @@ const rc = g.compassoIngressos_conferir([
 b.ok(rc[0].situacao === "novo" && rc[0].motivos.length === 0 && rc[0].avisos.length === 1, "Acompanhante com só nome e CPF: libera (telefone em branco vira aviso)");
 b.ok(rc[1].situacao === "novo" && rc[1].motivos.length === 0, "Convite com só nome e CPF: libera");
 b.ok(rc[2].situacao === "conferir" && rc[2].motivos.some(m => /escola/.test(m)) && rc[2].motivos.some(m => /cidade/.test(m)) && rc[2].motivos.some(m => /e-mail/.test(m)), "Associado: falta escola, cidade e e-mail → trava");
+b.ok(rc[2].motivos.length === 1 && /^Associado Associado Incompleto: está faltando .*nome da escola.*cidade/.test(rc[2].motivos[0]) && /e-mail/.test(rc[2].motivos[0]) && !/telefone/.test(rc[2].motivos[0]), "diz QUEM é e O QUE falta, numa frase só", rc[2].motivos[0]);
+const rf = g.compassoIngressos_conferir([{ nome: "Fulana Sem Nada", cpf: "168.995.350-09", categoria: "Associado" }], TOKEN);
+b.ok(rf.faltasAssociado.length === 1 && /Associado Fulana Sem Nada: está faltando telefone com DDD, e-mail, nome da escola, cidade\./.test(rf.faltasAssociado[0]), "resumo das faltas por associado", rf.faltasAssociado[0]);
+b.ok(g.compassoIngressos_conferir([{ nome: "Ja Tem Maria", cpf: "529.982.247-25", categoria: "Associado" }], TOKEN).resultados[0].faltando === undefined, "quem já tem ingresso não é cobrado por campo faltando");
 b.ok(rc[3].situacao === "ja_tem" || (rc[3].situacao === "novo" && rc[3].motivos.length === 0), "Associado com todos os campos: libera (ou já tem)", rc[3].situacao);
 b.passo("6. Emissão NÃO liberada; base velha avisa");
 b.ok(cf.emissaoLiberada === false && /ainda não foi ligada/.test(cf.emissaoMotivo), "a emissão não está ligada");
@@ -111,6 +115,8 @@ const abertos = []; win.open = u => { abertos.push(u); return null; };
   b.passo("8. Filtros e busca");
   t.clicar("[data-ci='chip'][data-arg='fone']"); await t.assentar(20);
   b.ok(doc.querySelectorAll("#ciLista .ci-linha").length === 1 && /João/.test(el("ciLista").textContent), "só os de telefone para conferir");
+  t.clicar("[data-ci='chip'][data-arg='falta_dados']"); await t.assentar(20);
+  b.ok(doc.querySelectorAll("#ciLista .ci-linha").length === 1 && /Associado: está faltando telefone com DDD/.test(el("ciLista").textContent), "filtro 'Faltam dados do associado' mostra quem e o que falta");
   t.clicar("[data-ci='chip'][data-arg='enviados']"); await t.assentar(20);
   b.ok(doc.querySelectorAll("#ciLista .ci-linha").length === 1 && /Maria/.test(el("ciLista").textContent), "só os enviados");
   t.clicar("[data-ci='chip'][data-arg='todos']"); el("ciBusca").value = "ana demo"; el("ciBusca").dispatchEvent(new win.Event("input", { bubbles: true })); await t.assentar(20);
