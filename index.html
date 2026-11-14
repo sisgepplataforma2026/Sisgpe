@@ -11,6 +11,7 @@
 <body>
 
 <div id="spApp">
+  <div id="spOverlay"></div>
 
   <!-- ══════════════════════════════════════
        SIDEBAR (sem o bloco de usuário)
@@ -251,6 +252,7 @@
   ══════════════════════════════════════ -->
   <main id="spMain">
     <header id="spTopbar">
+      <button id="spHamb" type="button" aria-label="Abrir o menu" title="Menu">☰</button>
       <!-- 10/11/2026, o usuário: tirar a faixa "Início — Painel do sindicato"
            da página inicial (a saudação já diz). Nos módulos ela continua. -->
       <div id="spTitBox" style="visibility:hidden;">
@@ -1355,6 +1357,35 @@ button,input{font-family:inherit;}
 @media(max-width:980px){
   .spHome{overflow:auto}.spHomeMain{height:auto}.spRightRail{display:none}.spHero{min-height:620px}.spSofiaWrap{opacity:.35;width:70%}.spHeroText{max-width:100%}.spSpeech{width:min(420px,100%)}.spAskBox{width:calc(100% - 52px)}.spQuickGrid{grid-template-columns:repeat(2,1fr)}
 }
+/* ══ CASCO RESPONSIVO — CELULAR (14/11/2026) ══════════════════════════════
+   O usuário: "se eu abro o link pelo celular, ela tem que se adaptar à tela do celular. Se eu abro
+   o computador, da mesma forma, e com todas as funções funcionando". Antes o menu lateral
+   (240–260px fixos) comia o celular inteiro e o conteúdo ficava numa faixa de ~150px.
+   Até 900px: o menu vira uma GAVETA (abre pelo ☰, fecha ao tocar no fundo ou numa tela) e o
+   conteúdo usa a largura toda. No computador nada muda. */
+#spHamb,#spOverlay{display:none;}
+@media(max-width:900px){
+  #spApp,#spMain{height:100vh;height:100dvh;}
+  #spSidebar{position:fixed;left:0;top:0;bottom:0;height:100vh;height:100dvh;width:min(86vw,320px)!important;min-width:0!important;transform:translateX(-104%);transition:transform .22s ease;z-index:1001;}
+  #spApp.sp-menu-aberto #spSidebar{transform:none;box-shadow:0 0 44px rgba(0,0,0,.65);}
+  #spOverlay{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:1000;}
+  #spApp.sp-menu-aberto #spOverlay{opacity:1;pointer-events:auto;}
+  #spHamb{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;border-radius:12px;font-size:20px;cursor:pointer;margin-right:10px;}
+  #spTopbar{padding:0 12px;gap:8px;}
+  #spTitBox{min-width:0;flex:1;}
+  #spTit{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #spSub{display:none;}
+  .spClock #spD{display:none;}
+  .spUserInfo{display:none!important;}
+  .spMenuBarra{display:none;}
+  #spMain{width:100%;}
+  .spNavArea{padding:6px 10px 24px;}
+  .spN{padding:14px;}
+}
+@media(max-width:480px){
+  .spClock{display:none;}
+}
+
 #mBeneficios {
   height: 100% !important;
   max-height: 100% !important;
@@ -2920,6 +2951,31 @@ window.esconderOverlayCarregando=function(){
   if(overlay) overlay.classList.remove("spLoadingOverlay-ativo");
 };
 
+})();
+</script>
+
+<script>
+/* Gaveta do menu no celular (14/11/2026). No computador não faz nada. Fecha ao tocar no fundo, em
+   Esc, ou numa tela; NÃO fecha ao só expandir um módulo (acordeão), para dar tempo de escolher o
+   submódulo. */
+(function () {
+  var app = document.getElementById("spApp"); if (!app) return;
+  var mq = window.matchMedia("(max-width: 900px)");
+  function fechar() { app.classList.remove("sp-menu-aberto"); }
+  function ajustar() { if (mq.matches) { app.classList.remove("sp-menu-recolhido"); } else { fechar(); } }
+  var h = document.getElementById("spHamb"), o = document.getElementById("spOverlay"), sb = document.getElementById("spSidebar");
+  if (h) h.addEventListener("click", function () { app.classList.toggle("sp-menu-aberto"); });
+  if (o) o.addEventListener("click", fechar);
+  if (sb) sb.addEventListener("click", function (ev) {
+    if (!mq.matches || !ev.target.closest) return;
+    var alvo = ev.target.closest(".docSubMenuBtn, .spN");
+    if (!alvo) return;
+    if (alvo.classList.contains("spN") && alvo.hasAttribute("data-acordeao")) return;
+    setTimeout(fechar, 80);
+  });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") fechar(); });
+  if (mq.addEventListener) mq.addEventListener("change", ajustar); else if (mq.addListener) mq.addListener(ajustar);
+  ajustar();
 })();
 </script>
 </body>
