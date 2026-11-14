@@ -238,7 +238,7 @@
   function carregarLista(){
     rodar('compassoIngressos_lista',[],function(r){
       if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
-      BASE=r.linhas||[]; desenhar();
+      BASE=r.linhas||[]; MODELO=r.modelo||''; desenhar();
     });
   }
   function passa(l){
@@ -288,13 +288,26 @@
      (alguns décimos de segundo depois), abrimos uma aba em branco JÁ no toque e só depois mandamos ela para o
      WhatsApp. Se o navegador bloquear mesmo assim (celular, Safari), aparece o botão "Abrir WhatsApp": é um link
      comum, que abre no toque seguinte. */
-  var WALINK={};
+  var WALINK={}, MODELO='';
+  function montarZap(l){
+    var p=String(l.nome||'').trim().split(/\s+/)[0]||''; p=p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():'';
+    var t=MODELO.replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo);
+    t=l.urlIngresso?t.replace(/ZZLINKZZ/g,l.urlIngresso):t.replace(/🔗[^\n]*ZZLINKZZ\s*\n*/,'');
+    return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
+  }
   function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }
   function zap(cod){
     var l=achar(cod);
     if(l&&l.exclusao&&(l.exclusao.status==='PEDIDO'||l.exclusao.status==='EXCLUIDO')){ falha('Este ingresso tem pedido de exclusão: não dá para enviar.'); return; }
     if(l&&l.foneOk===false){ falha('Telefone de '+l.nome+' ('+(l.tel||'em branco')+') sem DDD ou com tamanho errado. Corrija no TickOne, toque em 🔄 Atualizar base e tente de novo.'); return; }
     erro('');
+    if(l&&MODELO&&l.fone){   /* caminho rápido: tudo já está na tela, abre o WhatsApp NO MESMO TOQUE (sem servidor, sem bloqueio de janela) */
+      var url=montarZap(l), ab=false; try{ ab=!!window.open(url,'_blank'); }catch(e){}
+      ABERTO[cod]=true;
+      if(ab){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".'); }
+      else { WALINK[cod]=url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); }
+      desenhar(); desenharPessoas(); return;
+    }
     var w=null; try{ w=window.open('about:blank','_blank'); }catch(e){}
     var espera=setTimeout(function(){ falha('O servidor não respondeu em 20 segundos. Tente de novo.'); },20000);
     rodar('compassoIngressos_mensagem',[cod],function(r){

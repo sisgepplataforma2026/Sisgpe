@@ -199,6 +199,11 @@ function compassoIngressos_lista(tokenSessao) {
     if (!base) return { ok: false, mensagem: "A base do TickOne ainda não foi lida pelo robô." };
     cingSincronizarResultado_();
     var envios = cingEnvios_(), pdfs = cingPdfs_(), excl = cingExclusaoPorCodigo_();
+    var modelo = "";   // a mensagem é montada NA TELA (abre o WhatsApp no mesmo toque, sem esperar o servidor)
+    try {
+      modelo = compasso_textoEntrega_({ nome: "ZZNOMEZZ", numero: "ZZCODZZ" }, "");
+      modelo = modelo.indexOf("📎") >= 0 ? modelo.replace("📎", "🔗 *Link do seu ingresso:* ZZLINKZZ\n\n📎") : modelo + "\n\n🔗 Link do seu ingresso: ZZLINKZZ";
+    } catch (eM) { modelo = ""; }
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
       var falta = [];
@@ -208,12 +213,12 @@ function compassoIngressos_lista(tokenSessao) {
       }
       var ex = excl[l.codigo], exOk = ex && (ex.STATUS === "PEDIDO" || ex.STATUS === "EXCLUIDO" || ex.STATUS === "FALHOU" || ex.STATUS === "JA_ENTROU");
       return { exclusao: exOk ? { pedido: String(ex.PEDIDO), status: String(ex.STATUS), quem: String(ex.PEDIDO_POR || ""), quando: cingFmtData_(ex.PEDIDO_EM), resultado: String(ex.RESULTADO || "") } : null,
-        nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, codigo: l.codigo,
+        nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, fone: fone, codigo: l.codigo,
         categoria: cingCategoria_(l.tipo) || "", tipo: l.tipo, escola: l.escola, cidade: l.cidade,
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
     });
-    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), linhas: linhas };
+    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), modelo: modelo, linhas: linhas };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

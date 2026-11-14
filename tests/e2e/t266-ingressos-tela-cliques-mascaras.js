@@ -68,9 +68,9 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   t.clicar("[data-ci='limpar']"); await t.assentar(20);
   t.clicar("[data-ci='aba'][data-arg='enviar']"); await t.assentar(20);
   const cMsg = contar("compassoIngressos_mensagem"), cReg = contar("compassoIngressos_registrarEnvio");
-  for (let i = 0; i < 3; i++) t.clicar("[data-ci='zap'][data-arg='AAAA-0003']");
+  { const bt = doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']"); for (let i = 0; i < 3; i++) bt.click(); }   // 3 toques seguidos no MESMO botão
   await t.assentar(300);
-  b.ok(cMsg.n === 1 && abertos.length === 1, "3 cliques no WhatsApp: pede a mensagem 1 vez e abre 1 conversa", "chamadas " + cMsg.n + ", abas " + abertos.length);
+  b.ok(cMsg.n === 0 && abertos.length === 1 && /^https:\/\/wa\.me\/5527988880003\?text=/.test(abertos[0]) && /AAAA-0003/.test(decodeURIComponent(abertos[0])) && /Ana/.test(decodeURIComponent(abertos[0])) && /ref=REF3/.test(decodeURIComponent(abertos[0])), "3 cliques no WhatsApp: abre 1 conversa NO MESMO TOQUE (mensagem montada na tela, sem esperar o servidor), com nome, código e link", "servidor " + cMsg.n + ", abas " + abertos.length);
   for (let i = 0; i < 3; i++) t.clicar("[data-ci='confirmar'][data-arg='AAAA-0003']");
   await t.assentar(300);
   b.ok(cReg.n === 1 && g.compassoIngressos_estado(TOKEN).enviados === 1, "3 cliques em Confirmar envio: registra 1 envio", "chamadas " + cReg.n);
@@ -84,11 +84,14 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   b.ok(!!doc.querySelector("[data-ci='confirmar'][data-arg='AAAA-0001']"), "e o 'Confirmar envio' continua ao lado");
   win.open = abrirOk;
 
-  b.passo("erro do servidor aparece NA TELA (não só no toast)");
+  b.passo("sem o modelo na tela, cai no servidor — e o erro dele aparece NA TELA");
+  const txtOrig = g.compasso_textoEntrega_; g.compasso_textoEntrega_ = () => { throw new Error("falha simulada do servidor"); };
+  win.cingCarregar(); await t.assentar(300);
   const msgOrig = g.compassoIngressos_mensagem; g.compassoIngressos_mensagem = () => { throw new Error("falha simulada do servidor"); };
   t.clicar("[data-ci='zap'][data-arg='AAAA-0003']"); await t.assentar(300);
   b.ok(el("ciErro").hidden === false && /falha simulada/.test(el("ciErro").textContent), "se o servidor falha, a faixa vermelha mostra o motivo", el("ciErro").textContent);
   b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']") && !doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']").disabled, "e o botão destrava para tentar de novo");
+  g.compasso_textoEntrega_ = txtOrig;
   g.compassoIngressos_mensagem = msgOrig;
 
   b.passo("pedir emissão, 3 cliques");
