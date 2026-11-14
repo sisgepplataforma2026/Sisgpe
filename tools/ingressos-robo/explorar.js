@@ -115,6 +115,15 @@ const p = (...a) => console.log(...a.map(x => (typeof x === "string" ? x : JSON.
     }
   }
 
+  p("━━ 5b. AS OPÇÕES DO SELETOR DE TIPO (só leitura)");
+  try {
+    const ops = await pg.$$eval("#popup-tipo-ingresso option", os => os.map(o => ({ valor: o.value, texto: (o.textContent || "").trim() })));
+    p("opções do tipo de ingresso:", ops);
+    const pagina = await pg.$$eval("th", e => e.map(x => (x.innerText || "").trim()).filter(Boolean).slice(0, 12));
+    const tipos = await pg.$$eval("table tbody tr td:nth-child(6)", e => { const c = {}; e.forEach(x => { const t = (x.innerText || "").trim(); c[t] = (c[t] || 0) + 1; }); return c; }).catch(() => ({}));
+    p("quantos ingressos por tipo na lista:", tipos, "· colunas:", pagina);
+  } catch (e) { p("erro ao ler o seletor:", mascarar(e.message).slice(0, 100)); }
+
   p("━━ 6. A EXPORTAÇÃO CSV (só o cabeçalho)");
   try {
     const csv = await pg.$("button:has-text('CSV'), a:has-text('CSV')");
