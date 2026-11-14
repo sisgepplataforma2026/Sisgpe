@@ -15,7 +15,9 @@ async function tokenGoogle() {
 }
 async function drive(tk, metodo, url, corpo, tipo, bruto) {
   const r = await fetch(url, { method: metodo, headers: { Authorization: "Bearer " + tk, ...(tipo ? { "Content-Type": tipo } : {}) }, body: corpo });
-  const txt = await r.text(); if (!r.ok) throw new Error("Drive " + r.status); return bruto ? txt : (txt ? JSON.parse(txt) : {});
+  const txt = await r.text();
+  if (!r.ok) { let m = ""; try { const j = JSON.parse(txt); m = ((j.error && (j.error.message || "")) + " " + ((j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || "")).trim(); } catch (e) {} throw new Error("Drive " + r.status + (m ? " — " + m.slice(0, 200) : "") + " [" + metodo + " " + String(url).replace(/\?.*$/, "").replace(/[0-9A-Za-z_-]{20,}/g, "<id>") + "]"); }
+  return bruto ? txt : (txt ? JSON.parse(txt) : {});
 }
 const q = s => encodeURIComponent(s);
 async function pastaId(tk) {
