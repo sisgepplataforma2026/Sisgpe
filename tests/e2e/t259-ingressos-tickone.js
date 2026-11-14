@@ -148,6 +148,17 @@ const abertos = []; win.open = u => { abertos.push(u); return null; };
   b.ok(/3 pessoas na lista/.test(el("ciQtd").textContent) && doc.querySelectorAll("#ciPessoas .ci-pessoa").length === 3, "cartão individual (1) + planilha (2) = 3 na lista", el("ciQtd").textContent);
   t.clicar("[data-ci='addPessoa']"); await t.assentar(20);
   b.ok(/3 pessoas na lista/.test(el("ciQtd").textContent), "um cartão em branco não conta como pessoa");
+  /* preenchimento automático / ditado: o campo recebe o texto SEM disparar o evento 'input' */
+  t.clicar("[data-ci='limpar']"); await t.assentar(20);
+  { const c = doc.querySelectorAll("#ciPessoas .ci-pessoa")[0]; c.querySelector("[data-k=nome]").value = "Pedro Individual"; c.querySelector("[data-k=cpf]").value = "453.178.287-91"; c.querySelector("[data-k=telefone]").value = "(27) 97777-0009"; c.querySelector("[data-k=categoria]").value = "acompanhante"; }
+  t.clicar("[data-ci='conferir']"); await t.assentar(400);
+  b.ok(/Nova pessoa/.test(doc.querySelectorAll("#ciPessoas .ci-pessoa")[0].textContent) && /1 novas|>1</.test(el("ciRes").innerHTML.replace(/\s+/g, " ")), "campo preenchido SEM evento (autofill/ditado do celular) também é conferido");
+  t.clicar("[data-ci='limpar']"); t.clicar("[data-ci='conferir']"); await t.assentar(50);
+  b.ok(/Preencha ao menos/.test(el("ciRes").textContent), "conferir sem ninguém preenchido AVISA na tela (não fica mudo)");
+  t.clicar("[data-ci='limpar']"); await t.assentar(20);
+  preencher(0, { nome: "Pedro Individual", cpf: "453.178.287-91", telefone: "(27) 97777-0009", categoria: "acompanhante" });
+  el("ciPlan").value = "Nome;Email;CPF;Telefone;Cidade;Escola;Tipo\nMaria Exemplo da Silva;;529.982.247-25;;Vitória;Escola Modelo;Associado\nCarla Nova Exemplo;;168.995.350-09;(27) 97777-0005;Serra;Escola X;Convite";
+  t.clicar("[data-ci='togPlan']"); t.clicar("[data-ci='lerPlan']"); await t.assentar(20);
   t.clicar("[data-ci='conferir']"); await t.assentar(400);
   const cartoes = [...doc.querySelectorAll("#ciPessoas .ci-pessoa")];
   b.ok(/Já tem ingresso · AAAA-0001/.test(cartoes[1].textContent) && /Nova pessoa/.test(cartoes[0].textContent) && /Nova pessoa/.test(cartoes[2].textContent), "o resultado aparece DENTRO de cada cartão: 'já tem' com o código e as novas");

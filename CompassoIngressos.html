@@ -286,19 +286,29 @@
     g('ciPessoas').innerHTML=LISTA.map(pessoaHtml).join('');
     qtd();
   }
+  /* A fonte da verdade é o que está NA TELA: no celular o preenchimento automático, o ditado por voz e o
+     "colar" pelo menu nem sempre disparam o evento de digitação, e aí a lista ficava vazia. */
+  function lerDom(){
+    [].forEach.call(document.querySelectorAll('#ciPessoas .ci-pessoa'),function(card){
+      var i=Number(card.getAttribute('data-i')); if(!LISTA[i]) LISTA[i]={};
+      [].forEach.call(card.querySelectorAll('.ci-f'),function(f){ LISTA[i][f.getAttribute('data-k')]=f.value; });
+    });
+    qtd();
+  }
   function qtd(){ var n=LISTA.filter(function(p){ return !vazia(p); }).length; g('ciQtd').textContent=n+(n===1?' pessoa':' pessoas')+' na lista'; }
   function passos(n){
     ['ciPasso1','ciPasso2','ciPasso3'].forEach(function(id,i){ g(id).classList.toggle('on',i<n); });
     g('ciPassoT').innerHTML=['<b>1 Dados</b> · 2 Conferência · 3 Confirmar','1 Dados · <b>2 Conferência</b> · 3 Confirmar','1 Dados · 2 Conferência · <b>3 Confirmar</b>'][n-1];
   }
   function addPessoa(depoisDe){
+    lerDom();
     var nova={categoria:'associado'};
     if(typeof depoisDe==='number') LISTA.splice(depoisDe+1,0,nova); else LISTA.push(nova);
     RESULT={}; desenharPessoas();
     var campos=document.querySelectorAll('#ciPessoas .ci-pessoa');
     var alvo=campos[typeof depoisDe==='number'?depoisDe+1:LISTA.length-1]; if(alvo){ var f=alvo.querySelector('input'); if(f){ f.focus(); try{ alvo.scrollIntoView({block:'center'}); }catch(e){} } }
   }
-  function tirarPessoa(i){ LISTA.splice(i,1); RESULT={}; desenharPessoas(); }
+  function tirarPessoa(i){ lerDom(); LISTA.splice(i,1); RESULT={}; desenharPessoas(); }
   /* planilha */
   function partir(linha,sep){
     var out=[],cur='',asp=false;
@@ -331,6 +341,7 @@
   function lerPlan(){
     var arq=g('ciArq').files&&g('ciArq').files[0];
     function usar(t){
+      lerDom();
       var n=lerTexto(t);
       if(LISTA.length===1&&vazia(LISTA[0])) LISTA=[];
       n.forEach(function(p){ p.categoria=catDe(p.categoria); });
@@ -344,8 +355,9 @@
   /* conferir (pesquisar antes) */
   function validas(){ var idx=[],lista=[]; LISTA.forEach(function(p,i){ if(!vazia(p)){ idx.push(i); lista.push(p); } }); return {idx:idx,lista:lista}; }
   function conferir(){
+    lerDom();
     var v=validas();
-    if(!v.lista.length){ aviso('Preencha ao menos uma pessoa.',true); return; }
+    if(!v.lista.length){ g('ciRes').innerHTML='<div class="ci-erro">Preencha ao menos o nome e o CPF de uma pessoa antes de conferir.</div>'; aviso('Preencha ao menos uma pessoa.',true); return; }
     g('ciRes').innerHTML='<div class="ci-vazio">Pesquisando na base do TickOne…</div>';
     rodar('compassoIngressos_conferir',[v.lista],function(r){
       if(!r.ok){ g('ciRes').innerHTML='<div class="ci-erro">'+esc(r.mensagem)+'</div>'; return; }
@@ -366,6 +378,7 @@
     g('ciEmisOk').checked=false; g('ciEmis').hidden=false; passos(3); g('ciEmis').scrollIntoView({block:'center'});
   }
   function emisPedir(){
+    lerDom();
     rodar('compassoIngressos_pedirEmissao',[validas().lista,g('ciEmisOk').checked],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
       g('ciEmis').hidden=true; aviso(r.mensagem); carregarEmissoes();
