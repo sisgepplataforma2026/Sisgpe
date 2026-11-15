@@ -69,8 +69,8 @@ async function ler(pg) {
     const c = tabs.find(x => /Check-in/.test(x.innerText));
     if (!t) return null;
     const cab = [...t.querySelectorAll("thead th, tr:first-child th")].map(h => (h.innerText || "").trim().toLowerCase());
-    const iCpf = cab.indexOf("cpf"), iCod = cab.indexOf("código");
-    const linhas = [...t.querySelectorAll("tbody tr")].map((tr, i) => { const td = [...tr.children].map(x => (x.innerText || "").trim()); const rm = tr.querySelector("a[href*='page=ticket']"); let ref = ""; try { ref = rm ? new URL(rm.href, location.href).searchParams.get("ref") || "" : ""; } catch (e) {} return { i, cpf: dg(td[iCpf]), codigo: (td[iCod] || "").trim(), ref }; });
+    const iCpf = cab.indexOf("cpf"), iCod = cab.indexOf("código"); const iTel = cab.indexOf("telefone"), iTipo = cab.indexOf("tipo");
+    const linhas = [...t.querySelectorAll("tbody tr")].map((tr, i) => { const td = [...tr.children].map(x => (x.innerText || "").trim()); const rm = tr.querySelector("a[href*='page=ticket']"); let ref = ""; try { ref = rm ? new URL(rm.href, location.href).searchParams.get("ref") || "" : ""; } catch (e) {} return { i, cpf: dg(td[iCpf]), codigo: (td[iCod] || "").trim(), ref, tel: iTel >= 0 ? (td[iTel] || "") : "", tipo: iTipo >= 0 ? (td[iTipo] || "") : "" }; });
     const checkins = c ? [...c.querySelectorAll("tbody tr")].map(tr => [...tr.children].map(x => (x.innerText || "").trim())) : [];
     return { linhas, checkins: checkins.map(r => ({ cpf: dg(r[1]), ingresso: (r[2] || "").trim() })) };
   });

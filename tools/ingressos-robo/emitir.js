@@ -54,55 +54,38 @@ const p = (...a) => console.log(...a);
       const vazio = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-cpf"].every(id => { const e = document.getElementById(id); return e && e.offsetParent !== null && !(e.value || "").trim(); }));
       if (!vazio) { await registrar(it.pedido, "FALHOU", "o pop-up do lugar não estava vazio (lugar já usado?): NÃO emiti"); process.exitCode = 1; break; }
       await pg.screenshot({ path: "/tmp/popup-vazio.png" }).catch(() => {});
-      await pg.fill("#popup-buyer-nome", nome);
-      if (it.email) await pg.fill("#popup-buyer-email", String(it.email));
-      await pg.fill("#popup-buyer-cpf", cpf);
-      /* TELEFONE: o campo do TickOne tem máscara de DDD + número (11 dígitos). Digitar com o 55 na frente
-         fazia o "55" virar DDD e cortar o fim ((55) 27999-4510 em vez de (27) 99945-1089) — achado no 1º ingresso real. */
-      let fone = dig(it.telefone || "");
+      /* PREENCHER, CONFERIR E EMITIR NO MESMO PASSO DO NAVEGADOR. Sonda de 15/11/2026: ao preencher o CPF o TickOne busca o
+         cliente e, ~1,5 s depois, a resposta ZERA o formulário (todos os campos e o tipo volta a "Pago"). Por isso nenhuma
+         ordem de preenchimento funcionava (o tipo voltava a Pago; o telefone sumia). Tudo roda dentro de UM evaluate, sem
+         pausa: os valores entram (só o evento "input", que as máscaras usam — nada de blur/change, que disparam a busca),
+         são CONFERIDOS campo a campo e só então o botão Emitir é clicado; o TickOne lê os campos na hora do clique. Se
+         qualquer campo não bater, NÃO clica e nada é emitido. */
+      let fone = dig(it.telefone || "");   // máscara do campo: DDD + número (11 dígitos); o "55" virava DDD e cortava o fim
       if (fone.length >= 12 && fone.slice(0, 2) === "55") fone = fone.slice(2);
-      if (fone) await pg.fill("#popup-buyer-telefone", fone);
-      if (it.cidade) await pg.fill("#popup-buyer-cidade", String(it.cidade));
-      if (it.escola) await pg.fill("#popup-buyer-observacao", String(it.escola));
-      /* A CATEGORIA É ESCOLHIDA POR ÚLTIMO: no TickOne real, preencher o telefone zera o tipo para "Pago"
-         (sonda de 15/11/2026: associado → pago no instante do telefone). Escolher no fim e esperar um instante. */
-      await pg.selectOption("#popup-tipo-ingresso", cat);
-      await pg.waitForTimeout(600);
-      /* CONFERE o que ficou nos campos ANTES de emitir (emitir não tem volta): categoria e telefone */
-      const lido = await pg.evaluate(() => ({ tipo: (document.getElementById("popup-tipo-ingresso") || {}).value || "", fone: ((document.getElementById("popup-buyer-telefone") || {}).value || "").replace(/\D/g, "") }));
-      if (lido.tipo !== cat) { await registrar(it.pedido, "FALHOU", "a categoria no pop-up não ficou como pedida (ficou '" + lido.tipo + "', era '" + cat + "'): NÃO emiti"); process.exitCode = 1; break; }
-      if (fone && lido.fone !== fone) { await registrar(it.pedido, "FALHOU", "o telefone no pop-up ficou diferente do pedido (" + lido.fone.length + " dígitos lidos, " + fone.length + " pedidos): NÃO emiti"); process.exitCode = 1; break; }
-      /* o botão "Emitir Ingresso" DO MESMO pop-up do campo de nome (sobe a árvore a partir do nome) */
-      const emitir = await pg.evaluateHandle(() => {
-        let x = document.getElementById("popup-buyer-nome");
-        while (x && x !== document.body) { x = x.parentElement; if (!x) break;
-          const bs = [...x.querySelectorAll("button")].filter(b => (b.innerText || "").trim() === "Emitir Ingresso");
-          if (bs.length) return bs.find(b => b.offsetParent !== null) || bs[0]; }
-        return null;
-      });
-      const el = emitir.asElement();
-      if (!el) { await registrar(it.pedido, "FALHOU", "não achei o botão Emitir Ingresso: NÃO emiti"); process.exitCode = 1; break; }
       jaNaRodada[cpf] = true;
-      /* A lista do TickOne numa ABA SEPARADA: é a prova de que o CPF já foi emitido (evita emitir em dobro). */
-      const jaTemNaLista = async () => { const aux = await ctx.newPage(); try { await aux.goto(BASE, { waitUntil: "domcontentloaded" }); await aux.waitForTimeout(1200); const e2 = await ler(aux); return !!(e2 && e2.linhas.some(l => l.cpf === cpf)); } finally { await aux.close().catch(() => {}); } };
-      try { await el.scrollIntoViewIfNeeded({ timeout: 5000 }); await el.click({ timeout: 10000 }); }
-      catch (eClique) {
-        /* Se a página recarregou/navegou durante o clique, o elemento se desconecta: isso quer dizer que o clique VALEU; a
-           conferência (exatamente 1 linha nova) decide. Só se o botão continua na tela é que foi falha de clique de verdade. */
-        const conectado = await el.evaluate(b => b.isConnected).catch(() => false);
-        if (conectado) {
-          const diag = await el.evaluate(b => { const out = []; let x = b; for (let i = 0; i < 5 && x; i++, x = x.parentElement) { const s = getComputedStyle(x), r = x.getBoundingClientRect();
-            out.push((x.id ? "#" + x.id : x.tagName.toLowerCase()) + "{d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",pos:" + s.position + ",ov:" + s.overflow + ",z:" + s.zIndex + ",w:" + Math.round(r.width) + ",h:" + Math.round(r.height) + ",x:" + Math.round(r.x) + ",y:" + Math.round(r.y) + "}"); }
-            return out.join(" < "); }).catch(() => "(sem diagnóstico)");
-          p("clique normal falhou:", String(eClique.message).split("\n")[0].slice(0, 90), "· viewport:", JSON.stringify(pg.viewportSize()), "· botão:", diag);
-          await pg.evaluate(() => document.querySelectorAll("input,textarea").forEach(i => { i.value = ""; })).catch(() => {});
-          await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
-          if (await jaTemNaLista()) p("o CPF já está na lista do TickOne: NÃO clico de novo");
-          else { p("o CPF ainda não está na lista: tento UMA vez o clique do próprio navegador"); await el.evaluate(b => b.click()); }
-        } else p("a página navegou durante o clique (normal depois de emitir): a conferência decide");
-      }
-      const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 700 }).catch(() => null);
-      if (sim) await sim.click().catch(() => {});
+      const feito = await pg.evaluate((d) => {
+        const g = id => document.getElementById(id), dg = x => String(x || "").replace(/\D/g, "");
+        const set = (id, v) => { const e = g(id); if (!e) return false; e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); return true; };
+        set("popup-buyer-nome", d.nome); if (d.email) set("popup-buyer-email", d.email); set("popup-buyer-cpf", d.cpf);
+        if (d.fone) set("popup-buyer-telefone", d.fone); if (d.cidade) set("popup-buyer-cidade", d.cidade); if (d.escola) set("popup-buyer-observacao", d.escola);
+        const sel = g("popup-tipo-ingresso"); if (sel) sel.value = d.cat;
+        const falhas = [];
+        if (!g("popup-buyer-nome") || g("popup-buyer-nome").value.trim() !== d.nome) falhas.push("nome");
+        if (d.email && g("popup-buyer-email").value !== d.email) falhas.push("e-mail");
+        if (dg(g("popup-buyer-cpf").value) !== d.cpf) falhas.push("CPF");
+        if (d.fone && dg(g("popup-buyer-telefone").value) !== d.fone) falhas.push("telefone");
+        if (d.cidade && g("popup-buyer-cidade").value !== d.cidade) falhas.push("cidade");
+        if (d.escola && g("popup-buyer-observacao").value !== d.escola) falhas.push("observação");
+        if (!sel || sel.value !== d.cat) falhas.push("categoria");
+        let botao = null, x = g("popup-buyer-nome");
+        while (x && x !== document.body && !botao) { x = x.parentElement; if (!x) break; const bs = [...x.querySelectorAll("button")].filter(b => (b.innerText || "").trim() === "Emitir Ingresso"); if (bs.length) botao = bs.find(b => b.offsetParent !== null) || bs[0]; }
+        if (!botao) falhas.push("botão Emitir Ingresso");
+        if (falhas.length) return { ok: false, falhas };
+        botao.click();   // sem nenhuma pausa entre a conferência e o clique
+        return { ok: true, falhas: [] };
+      }, { nome, email: String(it.email || ""), cpf, fone, cidade: String(it.cidade || ""), escola: String(it.escola || ""), cat });
+      if (!feito.ok) { await registrar(it.pedido, "FALHOU", "o pop-up não ficou como pedido (" + feito.falhas.join(", ") + "): NÃO emiti"); process.exitCode = 1; break; }
+      await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
       await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForSelector("table tbody tr", { timeout: 8000 }).catch(() => {});
       const depois = await ler(pg);
@@ -111,7 +94,10 @@ const p = (...a) => console.log(...a);
         await registrar(it.pedido, "FALHOU", "cliquei em Emitir, mas não apareceu exatamente uma linha nova com este CPF (" + novas.length + " linha(s)): a execução parou e NÃO tentei de novo");
         process.exitCode = 1; break;
       }
-      await registrar(it.pedido, "EMITIDO", "conferido: apareceu 1 linha nova na lista do TickOne", novas[0].codigo);
+      const nv = novas[0], avisos = [];
+      if (nv.tipo && cat && nv.tipo.toLowerCase().indexOf(({ pago: "pago", cortesia: "cortesia", convite: "convite", associado: "associado", acompanhante: "acompanhante" })[cat]) < 0) avisos.push("categoria na lista: " + nv.tipo);
+      if (fone && nv.tel && dig(nv.tel) !== fone && dig(nv.tel) !== "55" + fone) avisos.push("telefone na lista com " + dig(nv.tel).length + " dígitos");
+      await registrar(it.pedido, "EMITIDO", "conferido: apareceu 1 linha nova na lista do TickOne" + (avisos.length ? " · ATENÇÃO: " + avisos.join("; ") : ""), nv.codigo);
     }
   } catch (e) { p("ERRO:", String(e.message).slice(0, 120), "— a execução parou."); process.exitCode = 1; }
   const feitos = (resultado.itens || []).filter(r => itens.some(i => i.pedido === r.pedido));
