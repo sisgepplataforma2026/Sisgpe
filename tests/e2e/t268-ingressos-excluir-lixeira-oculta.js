@@ -1,5 +1,5 @@
 /**
- * EXCLUSÃO COM A LIXEIRA "NÃO VISÍVEL" E O CONFIRMAR ANIMADO (15/11/2026). A 1ª exclusão real parou com "elementHandle.click: Timeout 30000ms"
+ * EXCLUSÃO COM A LIXEIRA "NÃO VISÍVEL" COM O DIÁLOGO NATIVO DE CONFIRMAÇÃO (15/11/2026). A 1ª exclusão real parou com "elementHandle.click: Timeout 30000ms"
  * (o Playwright achou a lixeira, mas não a considerou clicável) e nada foi apagado. O TickOne FALSO esconde a lixeira
  * (visibility:hidden) e o robô REAL (excluir.js) tem que excluir SÓ o pedido — o clique normal falha, o clique por script
  * no mesmo botão vale, a confirmação aparece e a lista é relida. NÃO PROVA: o TickOne de verdade (a causa lá ainda é
@@ -7,7 +7,7 @@
  */
 const fs = require("fs"), os = require("os"), path = require("path"), cp = require("child_process");
 const b = require("./base");
-process.env.TICKONE_LIXEIRA_OCULTA = "1"; process.env.TICKONE_CONFIRMA_TROCA = "1";   // lixeira "invisível" E botão Confirmar que não para quieto (animação)
+process.env.TICKONE_LIXEIRA_OCULTA = "1";   // lixeira "invisível" (o confirm é o diálogo NATIVO do navegador, como no TickOne real)
 const tk = require("./tickone-falso.js");
 (async function () {
   try { require("playwright"); } catch (e) { b.naoTestavel("o robô", "playwright não disponível aqui"); b.resumo(); return; }

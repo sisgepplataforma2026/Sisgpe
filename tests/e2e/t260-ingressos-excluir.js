@@ -106,15 +106,17 @@ const abas = g.SpreadsheetApp && null;
       let d = ""; req.on("data", c => d += c); req.on("end", () => { logins++; const ok = /username=teste/.test(d) && /password=senha-certa/.test(d);
         res.writeHead(302, { Location: "/index.php?page=admin", ...(ok ? { "Set-Cookie": "sid=ok; Path=/" } : {}) }); res.end(); }); return;
     }
-    if (req.method === "POST" && u.searchParams.get("action") === "excluir") { chamadas.push("excluir:" + u.searchParams.get("id")); linhas = linhas.filter(l => String(l.id) !== u.searchParams.get("id")); res.end("ok"); return; }
+    if (req.method === "POST" && u.searchParams.get("action") === "admin_delete_tickets") {   // o endpoint REAL (sonda de 15/11/2026)
+      let d = ""; req.on("data", c => d += c); req.on("end", () => { const ids = (JSON.parse(d).seat_ids || []).map(String); ids.forEach(id => chamadas.push("excluir:" + id)); linhas = linhas.filter(l => ids.indexOf(String(l.id)) < 0); res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ success: true })); }); return;
+    }
     if (u.searchParams.get("action")) { chamadas.push(u.searchParams.get("action")); res.end("ok"); return; }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     if (!logado) { res.end('<form method="post" action="/index.php?action=admin_login"><input name="username"><input type="password" name="password"><button type="submit">Entrar</button></form>'); return; }
     res.end('<h1>Gestão</h1><table><thead><tr><th></th><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Código</th><th>Tipo</th><th>Escola</th><th>Cidade</th><th>Ações</th></tr></thead><tbody>' +
       linhas.map(l => `<tr><td></td><td>${l.nome}</td><td>${l.cpf}</td><td>(27) 90000-0000</td><td>${l.cod}</td><td>Associado</td><td>E</td><td>C</td><td><button title="Enviar o ingresso (PDF) pelo WhatsApp (já enviado 1x)" onclick="fetch('/index.php?action=whats')">w</button><button title="Enviar o ingresso por e-mail" onclick="fetch('/index.php?action=email')">e</button><button title="Editar" onclick="fetch('/index.php?action=editar')">ed</button><button title="Excluir ingresso" onclick="excluirVendaUnica(${l.id})">x</button></td></tr>`).join("") +
       '</tbody></table><table><thead><tr><th>Cliente</th><th>CPF</th><th>Ingresso</th><th>Horário Check-in</th><th>Ação</th></tr></thead><tbody><tr><td>Ja Entrou Fictício</td><td>111.444.777-35</td><td>BBB-0002</td><td>19:40</td><td></td></tr></tbody></table>' +
-      '<div id="m" style="display:none"><button id="custom-confirm-yes-btn" type="submit" onclick="var a=window.alvo;fetch(\'/index.php?action=excluir&id=\'+a,{method:\'POST\'}).then(function(){location.reload()})">Confirmar</button></div>' +
-      '<script>function excluirVendaUnica(id){window.alvo=id;document.getElementById("m").style.display="block"}<\/script>');
+      '<div id="custom-confirm-modal" style="position:fixed;inset:0;opacity:0;pointer-events:none"><div>Você tem certeza?<button>Cancelar</button><button id="custom-confirm-yes-btn" type="submit">Confirmar</button></div></div>' +
+      '<script>function excluirVendaUnica(id){if(!confirm("Excluir este ingresso? Ele voltará a ficar disponível e os dados do titular serão apagados."))return;fetch("index.php?action=admin_delete_tickets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({seat_ids:[id]})}).then(function(r){return r.json()}).then(function(d){if(d.success)location.reload()})}<\/script>');
   });
   await new Promise(r => srv.listen(0, "127.0.0.1", r));
   const url = "http://127.0.0.1:" + srv.address().port + "/index.php?page=admin&evt_id=17";

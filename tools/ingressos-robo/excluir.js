@@ -52,33 +52,33 @@ const p = (...a) => console.log(...a);
       }, achadas[0].i);
       const el = lixeira.asElement();
       if (!el) { await registrar(it.pedido, "FALHOU", "não achei a lixeira desta linha: NÃO excluí"); continue; }
-      /* CLIQUE NA LIXEIRA. No TickOne real o clique normal do Playwright estourou o tempo (botão "não visível" para ele),
-         como já ocorreu na emissão. Tenta o clique normal (rolando até o botão) e, se ele não vier, clica NO MESMO botão
-         por script — o mesmo elemento já conferido (uma única lixeira, na linha de código+CPF). O que protege é a
-         confirmação do pop-up e a releitura da lista, não o tipo de clique. */
-      try { await el.scrollIntoViewIfNeeded({ timeout: 4000 }); await el.click({ timeout: 6000 }); }
-      catch (eClique) {
-        const diag = await el.evaluate(b => { const out = []; let x = b; for (let i = 0; i < 5 && x; i++, x = x.parentElement) { const s = getComputedStyle(x), r = x.getBoundingClientRect();
-          out.push((x.id ? "#" + x.id : x.tagName.toLowerCase()) + "{d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",ov:" + s.overflow + ",w:" + Math.round(r.width) + "}"); }
-          return out.join(" < "); }).catch(() => "(sem diagnóstico)");
-        p("clique normal na lixeira falhou:", String(eClique.message).split("\n")[0].slice(0, 80), "· viewport:", JSON.stringify(pg.viewportSize()), "· botão:", diag);
-        const aindaLa2 = await el.evaluate(b => b.isConnected && /excluir/i.test(b.title || "")).catch(() => false);
-        if (!aindaLa2) { await registrar(it.pedido, "FALHOU", "a lixeira sumiu durante o clique: NÃO sei se excluiu — confira a lista"); process.exitCode = 1; break; }
-        await el.evaluate(b => b.click());
-      }
-      const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 6000 }).catch(() => null);
-      if (!sim) { await registrar(it.pedido, "FALHOU", "a confirmação do TickOne não apareceu: NÃO excluí"); process.exitCode = 1; break; }
-      /* CONFIRMAR: o 1º clique real expirou aqui ("elementHandle.click: Timeout 30000ms", 15/11/2026) — o pop-up do TickOne
-         pode redesenhar o botão e deixar o handle velho. Busca o botão DE NOVO pelo seletor, tenta o clique normal e, se não
-         vier, clica nesse mesmo botão por script. O que protege é a releitura da lista logo abaixo. */
-      try { await pg.locator("#custom-confirm-yes-btn").first().click({ timeout: 6000 }); }
-      catch (eConf) {
-        const d2 = await pg.evaluate(() => { const b = document.getElementById("custom-confirm-yes-btn"); if (!b) return "(botão não existe mais)"; const s = getComputedStyle(b), r = b.getBoundingClientRect(); return "d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",pe:" + s.pointerEvents + ",dis:" + b.disabled + ",w:" + Math.round(r.width) + ",h:" + Math.round(r.height); }).catch(() => "(sem diagnóstico)");
-        p("clique normal em Confirmar falhou:", String(eConf.message).split("\n")[0].slice(0, 80), "· botão:", d2);
-        const clicou = await pg.evaluate(() => { const b = document.getElementById("custom-confirm-yes-btn"); if (!b) return false; b.click(); return true; }).catch(() => false);
-        if (!clicou) { await registrar(it.pedido, "FALHOU", "o botão Confirmar sumiu antes do clique: confira a lista (pode já ter sido excluído)"); process.exitCode = 1; break; }
-      }
-      await pg.waitForTimeout(3000);
+      /* COMO A EXCLUSÃO FUNCIONA NO TICKONE REAL (sonda de 15/11/2026): a lixeira chama excluirVendaUnica(id), que faz
+         `confirm("Excluir este ingresso? ...")` — um DIÁLOGO DO NAVEGADOR, não o pop-up da página — e só então faz o POST
+         admin_delete_tickets e recarrega. O pop-up "Você tem certeza?" da página existe, mas fica escondido e não é usado aqui.
+         O Playwright RECUSA diálogos sozinho; por isso as 3 primeiras tentativas clicavam na lixeira e nada era excluído.
+         Agora: só o diálogo cujo texto é "Excluir este ingresso" é ACEITO, e só durante este clique; qualquer outro é recusado. */
+      let dialogoAceito = false, dialogoOutro = "";
+      const aoDialogo = async d => {
+        if (/Excluir este ingresso/i.test(d.message())) { dialogoAceito = true; await d.accept().catch(() => {}); }
+        else { dialogoOutro = d.message().slice(0, 60); await d.dismiss().catch(() => {}); }
+      };
+      pg.on("dialog", aoDialogo);
+      try {
+        try { await el.scrollIntoViewIfNeeded({ timeout: 4000 }); await el.click({ timeout: 6000 }); }
+        catch (eClique) {
+          const diag = await el.evaluate(b => { const out = []; let x = b; for (let i = 0; i < 5 && x; i++, x = x.parentElement) { const s = getComputedStyle(x), r = x.getBoundingClientRect();
+            out.push((x.id ? "#" + x.id : x.tagName.toLowerCase()) + "{d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",ov:" + s.overflow + ",w:" + Math.round(r.width) + "}"); }
+            return out.join(" < "); }).catch(() => "(sem diagnóstico)");
+          p("clique normal na lixeira falhou:", String(eClique.message).split("\n")[0].slice(0, 80), "· botão:", diag);
+          const aindaLa2 = await el.evaluate(b => b.isConnected && /excluir/i.test(b.title || "")).catch(() => false);
+          if (!aindaLa2) { await registrar(it.pedido, "FALHOU", "a lixeira sumiu durante o clique: NÃO sei se excluiu — confira a lista"); process.exitCode = 1; break; }
+          await el.evaluate(b => b.click());
+        }
+        /* o aceite do diálogo dispara o POST e o recarregamento da página: espera isso assentar */
+        await pg.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+        await pg.waitForTimeout(800);
+      } finally { pg.off("dialog", aoDialogo); }
+      if (!dialogoAceito) { await registrar(it.pedido, "FALHOU", dialogoOutro ? "o TickOne perguntou outra coisa ('" + dialogoOutro + "'): NÃO excluí" : "o TickOne não pediu a confirmação esperada ('Excluir este ingresso'): NÃO excluí"); process.exitCode = 1; break; }
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForTimeout(1500);
       const depois = await ler(pg);
       const aindaLa = depois && depois.linhas.some(l => l.codigo.toLowerCase() === cod.toLowerCase() && l.cpf === cpf);

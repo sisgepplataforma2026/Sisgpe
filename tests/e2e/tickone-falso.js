@@ -29,7 +29,9 @@ async function iniciar(linhasIniciais, checkins) {
         res.end("ok");
       }); return;
     }
-    if (req.method === "POST" && acao === "excluir") { st.chamadas.push("excluir:" + u.searchParams.get("id")); st.linhas = st.linhas.filter(l => String(l.id) !== u.searchParams.get("id")); res.end("ok"); return; }
+    if (req.method === "POST" && acao === "admin_delete_tickets") {
+      corpo(d => { const ids = (JSON.parse(d).seat_ids || []).map(String); ids.forEach(id => st.chamadas.push("excluir:" + id)); st.linhas = st.linhas.filter(l => ids.indexOf(String(l.id)) < 0); res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify({ success: true })); }); return;
+    }
     if (acao) { st.chamadas.push(acao); res.end("ok"); return; }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     if (!logado) { res.end('<form method="post" action="/index.php?action=admin_login"><input name="username"><input type="password" name="password"><button type="submit">Entrar</button></form>'); return; }
@@ -41,8 +43,8 @@ async function iniciar(linhasIniciais, checkins) {
       '<div id="pop" style="display:none"><select id="popup-tipo-ingresso">' + Object.keys(ROTULO).map(k => `<option value="${k}">${ROTULO[k]}</option>`).join("") + '</select>' +
       '<input id="popup-buyer-nome"><input id="popup-buyer-email"><input id="popup-buyer-cpf"><input id="popup-buyer-telefone"><input id="popup-buyer-cidade"><textarea id="popup-buyer-observacao"></textarea>' +
       '<button onclick="fetch(\'/index.php?action=salvar\')">Salvar Dados</button><button onclick="fetch(\'/index.php?action=excluir-popup\')">Excluir</button><button id="emit" onclick="emitir()">Emitir Ingresso</button></div>' +
-      (process.env.TICKONE_CONFIRMA_TROCA ? '<style>#custom-confirm-yes-btn{display:inline-block;animation:mv .15s infinite alternate}@keyframes mv{from{transform:translateX(0)}to{transform:translateX(60px)}}</style>' : '') + '<div id="m" style="display:none"><button id="custom-confirm-yes-btn" type="submit" onclick="var a=window.alvo;fetch(\'/index.php?action=excluir&id=\'+a,{method:\'POST\'}).then(function(){location.reload()})">Confirmar</button></div>' +
-      '<script>var seat=0;function excluirVendaUnica(id){window.alvo=id;document.getElementById("m").style.display="block";}' +
+      '<div id="custom-confirm-modal" style="position:fixed;inset:0;opacity:0;pointer-events:none"><div>Você tem certeza?<button>Cancelar</button><button id="custom-confirm-yes-btn" type="submit">Confirmar</button></div></div>' +
+      '<script>var seat=0;function excluirVendaUnica(id){if(!confirm("Excluir este ingresso? Ele voltará a ficar disponível e os dados do titular serão apagados."))return;fetch("index.php?action=admin_delete_tickets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({seat_ids:[id]})}).then(function(r){return r.json()}).then(function(d){if(d.success)location.reload()})}' +
       'document.getElementById("popup-buyer-telefone").addEventListener("input",function(){var d=this.value.replace(/\\D/g,"").slice(0,11),o="";if(d.length){o="("+d.slice(0,2);if(d.length>2){o+=") ";var r=d.slice(2);o+=r.length>5?r.slice(0,r.length-4)+"-"+r.slice(-4):r}}this.value=o;document.getElementById("popup-tipo-ingresso").value="pago"});' +
       'function abrirPopUpAssentoAdmin(n){seat=n;["popup-buyer-nome","popup-buyer-email","popup-buyer-cpf","popup-buyer-telefone","popup-buyer-cidade","popup-buyer-observacao"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("pop").style.display="block"}' +
       'function emitir(){var v=function(i){return document.getElementById(i).value};fetch("/index.php?action=emitir",{method:"POST",body:JSON.stringify({seat:seat,tipo:v("popup-tipo-ingresso"),nome:v("popup-buyer-nome"),email:v("popup-buyer-email"),cpf:v("popup-buyer-cpf"),telefone:v("popup-buyer-telefone"),cidade:v("popup-buyer-cidade"),escola:v("popup-buyer-observacao")})}).then(function(r){if(r.ok)location.reload()})}<\/script>');
