@@ -683,7 +683,7 @@ function compassoIngressos_sincronizarPdfs(tokenSessao) {
         var f = pasta.getFilesByName(nome);
         if (f.hasNext()) {
           var copia = f.next().makeCopy(nome, destino); n++;
-          try { copia.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eS) { /* conta sem permissão de link aberto: o PDF fica só na pasta da equipe */ }
+          arquivoAplicarExcecao_(copia, "ingresso_festa", nome);   // link aberto SÓ para o PDF do ingresso: exceção nomeada em ArquivoDrive.gs (decisão do usuário, 15/11/2026)
         }
       });
       if (n || existentesAtualizado) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
