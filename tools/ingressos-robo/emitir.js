@@ -54,7 +54,6 @@ const p = (...a) => console.log(...a);
       const vazio = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-cpf"].every(id => { const e = document.getElementById(id); return e && e.offsetParent !== null && !(e.value || "").trim(); }));
       if (!vazio) { await registrar(it.pedido, "FALHOU", "o pop-up do lugar não estava vazio (lugar já usado?): NÃO emiti"); process.exitCode = 1; break; }
       await pg.screenshot({ path: "/tmp/popup-vazio.png" }).catch(() => {});
-      await pg.selectOption("#popup-tipo-ingresso", cat);
       await pg.fill("#popup-buyer-nome", nome);
       if (it.email) await pg.fill("#popup-buyer-email", String(it.email));
       await pg.fill("#popup-buyer-cpf", cpf);
@@ -63,12 +62,16 @@ const p = (...a) => console.log(...a);
       let fone = dig(it.telefone || "");
       if (fone.length >= 12 && fone.slice(0, 2) === "55") fone = fone.slice(2);
       if (fone) await pg.fill("#popup-buyer-telefone", fone);
+      if (it.cidade) await pg.fill("#popup-buyer-cidade", String(it.cidade));
+      if (it.escola) await pg.fill("#popup-buyer-observacao", String(it.escola));
+      /* A CATEGORIA É ESCOLHIDA POR ÚLTIMO: no TickOne real, preencher o telefone zera o tipo para "Pago"
+         (sonda de 15/11/2026: associado → pago no instante do telefone). Escolher no fim e esperar um instante. */
+      await pg.selectOption("#popup-tipo-ingresso", cat);
+      await pg.waitForTimeout(600);
       /* CONFERE o que ficou nos campos ANTES de emitir (emitir não tem volta): categoria e telefone */
       const lido = await pg.evaluate(() => ({ tipo: (document.getElementById("popup-tipo-ingresso") || {}).value || "", fone: ((document.getElementById("popup-buyer-telefone") || {}).value || "").replace(/\D/g, "") }));
       if (lido.tipo !== cat) { await registrar(it.pedido, "FALHOU", "a categoria no pop-up não ficou como pedida (ficou '" + lido.tipo + "', era '" + cat + "'): NÃO emiti"); process.exitCode = 1; break; }
       if (fone && lido.fone !== fone) { await registrar(it.pedido, "FALHOU", "o telefone no pop-up ficou diferente do pedido (" + lido.fone.length + " dígitos lidos, " + fone.length + " pedidos): NÃO emiti"); process.exitCode = 1; break; }
-      if (it.cidade) await pg.fill("#popup-buyer-cidade", String(it.cidade));
-      if (it.escola) await pg.fill("#popup-buyer-observacao", String(it.escola));
       /* o botão "Emitir Ingresso" DO MESMO pop-up do campo de nome (sobe a árvore a partir do nome) */
       const emitir = await pg.evaluateHandle(() => {
         let x = document.getElementById("popup-buyer-nome");
