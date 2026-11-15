@@ -71,9 +71,8 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   { const bt = doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']"); for (let i = 0; i < 3; i++) bt.click(); }   // 3 toques seguidos no MESMO botão
   await t.assentar(300);
   b.ok(cMsg.n === 0 && abertos.length === 1 && /^https:\/\/wa\.me\/5527988880003\?text=/.test(abertos[0]) && /AAAA-0003/.test(decodeURIComponent(abertos[0])) && /Ana/.test(decodeURIComponent(abertos[0])) && /ref=REF3/.test(decodeURIComponent(abertos[0])), "3 cliques no WhatsApp: abre 1 conversa NO MESMO TOQUE (mensagem montada na tela, sem esperar o servidor), com nome, código e link", "servidor " + cMsg.n + ", abas " + abertos.length);
-  for (let i = 0; i < 3; i++) t.clicar("[data-ci='confirmar'][data-arg='AAAA-0003']");
-  await t.assentar(300);
-  b.ok(cReg.n === 1 && g.compassoIngressos_estado(TOKEN).enviados === 1, "3 cliques em Confirmar envio: registra 1 envio", "chamadas " + cReg.n);
+  await t.assentar(400);
+  b.ok(cReg.n === 1 && g.compassoIngressos_estado(TOKEN).enviados === 1, "3 toques em Enviar: registra 1 envio (já marcado, sem Confirmar)", "chamadas " + cReg.n);
   b.ok(g.compassoIngressos_registrarEnvio("AAAA-0003", TOKEN).repetido === true && g.compassoIngressos_estado(TOKEN).enviados === 1, "e se chegar de novo em 30 s, o servidor também não duplica");
 
   b.passo("navegador que BLOQUEIA a janela (celular/Safari): aparece 'Abrir WhatsApp'");
@@ -81,7 +80,8 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   t.clicar("[data-ci='zap'][data-arg='AAAA-0001']"); await t.assentar(300);
   const lk = doc.querySelector("a[data-ci='abriuLink'][data-arg='AAAA-0001']");
   b.ok(!!lk && /^https:\/\/wa\.me\/5527999990001\?text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
-  b.ok(!!doc.querySelector("[data-ci='confirmar'][data-arg='AAAA-0001']"), "e o 'Confirmar envio' continua ao lado");
+  t.clicar("a[data-ci='abriuLink'][data-arg='AAAA-0001']"); await t.assentar(700);
+  b.ok(g.compassoIngressos_estado(TOKEN).enviados === 2, "tocar em 'Abrir WhatsApp' é o que marca como enviado");
   win.open = abrirOk;
 
   b.passo("sem o modelo na tela, cai no servidor — e o erro dele aparece NA TELA");

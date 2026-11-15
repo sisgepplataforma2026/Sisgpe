@@ -12,13 +12,20 @@ const fmtCpf = c => String(c).replace(/\D/g, "").replace(/(\d{3})(\d{3})(\d{3})(
 
 async function iniciar(linhasIniciais, checkins) {
   const st = { linhas: linhasIniciais.map((l, i) => ({ id: i + 1, ...l, cpf: fmtCpf(l.cpf) })), checkins: checkins || [], chamadas: [], seq: linhasIniciais.length, ocupados: new Set(), pedidosEmissao: [] };
-  const TOTAL = 40;
+  const TOTAL = Number(process.env.FALSO_LUGARES || 40);
   st.linhas.forEach((_, i) => st.ocupados.add(i + 1));
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, "http://x"), logado = /sid=ok/.test(req.headers.cookie || ""), acao = u.searchParams.get("action");
     const corpo = cb => { let d = ""; req.on("data", c => d += c); req.on("end", () => cb(d)); };
     if (req.method === "POST" && acao === "admin_login") {
       corpo(d => { const ok = /username=teste/.test(d) && /password=senha-certa/.test(d); res.writeHead(302, { Location: "/index.php?page=admin", ...(ok ? { "Set-Cookie": "sid=ok; Path=/" } : {}) }); res.end(); }); return;
+    }
+    if (u.searchParams.get("page") === "ticket" && logado) {   // o PDF do ingresso (o TickOne real baixa "TickOne - Nome.pdf")
+      const ref = u.searchParams.get("ref") || "", l = st.linhas.find(x => "REF-" + x.cod === ref);
+      if (!l) { res.statusCode = 404; res.end("sem ingresso"); return; }
+      st.chamadas.push("pdf:" + l.cod);
+      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="TickOne - ' + encodeURIComponent(l.nome).replace(/%20/g, " ") + '.pdf"' });
+      res.end(Buffer.from("%PDF-1.4\n" + "x".repeat(1500) + "\n%%EOF")); return;
     }
     if (req.method === "POST" && acao === "emitir") {
       corpo(d => {

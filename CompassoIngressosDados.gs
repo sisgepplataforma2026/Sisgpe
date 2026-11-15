@@ -645,3 +645,33 @@ function compassoIngressos_atualizarBase(tokenSessao) {
     return { ok: true, robo: d, mensagem: d.acionado ? "Lendo o TickOne agora. Em cerca de 1 minuto a contagem atualiza." : d.motivo };
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
+
+
+/* ══ PDFs DOS INGRESSOS: do robô para a pasta INGRESSOS FESTA COMPASSO 2026 (15/11/2026) ══
+ * O robô (baixar-pdfs.js) baixa o PDF de cada ingresso do TickOne para a pasta PRIVADA dele e anota em pdfs-estado.json.
+ * O SISGEP copia os novos para a pasta que a equipe já usa. A tela chama isto ao abrir a lista, em lotes de 20, até acabar. */
+var CING_ARQ_PDFS = "pdfs-estado.json";
+
+function compassoIngressos_sincronizarPdfs(tokenSessao) {
+  try {
+    exigirModulo_(tokenSessao, "eventos", false);
+    var pasta = cingPastaRobo_();
+    var it = pasta.getFilesByName(CING_ARQ_PDFS);
+    if (!it.hasNext()) return { ok: true, copiados: 0, faltam: 0, total: 0, mensagem: "O robô ainda não baixou PDFs." };
+    var lock = LockService.getScriptLock();
+    if (!lock.tryLock(20000)) return { ok: true, copiados: 0, faltam: 0, total: 0, ocupado: true };
+    try {
+      var est = JSON.parse(it.next().getBlob().getDataAsString()), feitos = est.feitos || {};
+      var destino = DriveApp.getFolderById(CING_PASTA_PDF_ID), jaTem = {}, fi = destino.getFiles();
+      while (fi.hasNext()) jaTem[fi.next().getName()] = true;
+      var nomes = Object.keys(feitos).map(function (k) { return feitos[k].arquivo; });
+      var pend = nomes.filter(function (n) { return !jaTem[n]; }), n = 0;
+      pend.slice(0, 20).forEach(function (nome) {
+        var f = pasta.getFilesByName(nome);
+        if (f.hasNext()) { f.next().makeCopy(nome, destino); n++; }
+      });
+      if (n) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
+      return { ok: true, copiados: n, faltam: Math.max(0, pend.length - n), total: nomes.length };
+    } finally { lock.releaseLock(); }
+  } catch (e) { return { ok: false, mensagem: e.message }; }
+}

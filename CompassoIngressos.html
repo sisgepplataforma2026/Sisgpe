@@ -127,7 +127,7 @@
     <div id="ciLista"><div class="ci-vazio">Carregando…</div></div>
   </div>
   <div style="text-align:center;margin-top:10px"><button class="ci-btn ci-ol" id="ciMais" data-ci="mais" hidden>Mostrar mais</button></div>
-  <div class="ci-aviso">O WhatsApp abre com a mensagem pronta; <b>o PDF você abre em "📎 PDF" (pasta INGRESSOS FESTA COMPASSO 2026 do Drive) e anexa</b>; se a pessoa ainda não tem PDF lá, o botão é "🎟️ Ingresso" (TickOne → Salvar / Imprimir PDF). O envio é o seu toque no WhatsApp. Só vira "enviado" depois que você confirmar.</div>
+  <div class="ci-aviso">O WhatsApp abre com a mensagem pronta; <b>o PDF você abre em "📎 PDF" (pasta INGRESSOS FESTA COMPASSO 2026 do Drive) e anexa</b>; se a pessoa ainda não tem PDF lá, o botão é "🎟️ Ingresso" (TickOne → Salvar / Imprimir PDF). O toque em Enviar já marca como enviado.</div>
 </div>
 
 <div id="ciPSolicitar" hidden>
@@ -235,6 +235,15 @@
       aviso(r.mensagem,!r.ok); if(r.ok){ g('ciRoboChave').value=''; roboEstado(); }
     });
   }
+  /* PDFs que o robô baixou do TickOne: o servidor copia para a pasta da equipe (lotes de 20) e a lista se atualiza */
+  var SINC=false;
+  function sincPdfs(){
+    if(SINC) return; SINC=true;
+    rodar('compassoIngressos_sincronizarPdfs',[],function(r){
+      SINC=false; if(!r||!r.ok) return;
+      if(r.copiados>0){ carregarLista(); if(r.faltam>0) sincPdfs(); }
+    });
+  }
   function carregarLista(){
     rodar('compassoIngressos_lista',[],function(r){
       if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
@@ -264,7 +273,7 @@
     }
     var bloqueado=ex&&(ex.status==='PEDIDO'||ex.status==='EXCLUIDO');
     var prim;
-    if(ABERTO[l.codigo]) prim=linkZap(l.codigo)+'<button class="ci-btn ci-ok ci-prim" data-ci="confirmar" data-arg="'+esc(l.codigo)+'">✔ Confirmar envio</button>';
+    if(WALINK[l.codigo]) prim=linkZap(l.codigo);
     else prim='<button class="ci-btn ci-wa ci-prim" data-ci="zap" data-arg="'+esc(l.codigo)+'"'+((l.foneOk&&!bloqueado)?'':' data-off="1" style="opacity:.5"')+'>📱 '+(l.enviado?'Reenviar no WhatsApp':'Enviar no WhatsApp')+'</button>';
     var pdf=l.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.pdfDrive)+'">📎 PDF</a>'
       :(l.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(l.urlIngresso)+'">🎟️ Ingresso</a>':'<span></span>');
@@ -296,17 +305,26 @@
     return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
   }
   function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }
+  /* ENVIAR: o toque em "Enviar no WhatsApp" abre a conversa e JÁ marca como enviado (sem "Confirmar envio"). Se o navegador
+     bloquear a abertura, aparece "Abrir WhatsApp" e é o toque nele que marca. */
+  function marcarEnviado(cod){
+    rodar('compassoIngressos_registrarEnvio',[cod],function(r){
+      if(!r.ok){ aviso(r.mensagem,true); return; }
+      var l=achar(cod); if(l) l.enviado=r.enviado; desenhar(); desenharPessoas(); estado();
+    });
+  }
+  function abriuZap(cod,abriu,url){
+    if(abriu){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF e envie.'); marcarEnviado(cod); }
+    else { WALINK[cod]=url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); desenhar(); desenharPessoas(); }
+  }
   function zap(cod){
     var l=achar(cod);
     if(l&&l.exclusao&&(l.exclusao.status==='PEDIDO'||l.exclusao.status==='EXCLUIDO')){ falha('Este ingresso tem pedido de exclusão: não dá para enviar.'); return; }
     if(l&&l.foneOk===false){ falha('Telefone de '+l.nome+' ('+(l.tel||'em branco')+') sem DDD ou com tamanho errado. Corrija no TickOne, toque em 🔄 Atualizar base e tente de novo.'); return; }
     erro('');
-    if(l&&MODELO&&l.fone){   /* caminho rápido: tudo já está na tela, abre o WhatsApp NO MESMO TOQUE (sem servidor, sem bloqueio de janela) */
+    if(l&&MODELO&&l.fone){   /* caminho rápido: tudo já está na tela, abre o WhatsApp NO MESMO TOQUE */
       var url=montarZap(l), ab=false; try{ ab=!!window.open(url,'_blank'); }catch(e){}
-      ABERTO[cod]=true;
-      if(ab){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".'); }
-      else { WALINK[cod]=url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); }
-      desenhar(); desenharPessoas(); return;
+      abriuZap(cod,ab,url); return;
     }
     var w=null; try{ w=window.open('about:blank','_blank'); }catch(e){}
     var espera=setTimeout(function(){ falha('O servidor não respondeu em 20 segundos. Tente de novo.'); },20000);
@@ -316,10 +334,7 @@
         if(!r.ok){ try{ if(w) w.close(); }catch(e){} falha(r.mensagem||'Não consegui montar a mensagem.'); return; }
         var abriu=false;
         try{ if(w&&!w.closed){ w.location.href=r.url; abriu=true; } else { abriu=!!window.open(r.url,'_blank'); } }catch(e){}
-        ABERTO[cod]=true;
-        if(abriu){ delete WALINK[cod]; aviso('WhatsApp aberto. Anexe o PDF, envie e depois toque em "Confirmar envio".'); }
-        else { WALINK[cod]=r.url; aviso('O navegador bloqueou a abertura. Toque em "Abrir WhatsApp".',true); }
-        desenhar(); desenharPessoas();
+        abriuZap(cod,abriu,r.url);
       }catch(e){ falha('Erro na tela ao abrir o WhatsApp: '+((e&&e.message)||e)); }
     });
   }
@@ -356,7 +371,7 @@
     var x=RESULT[i]; if(!x) return '';
     if(x.situacao==='ja_tem'){
       var pdf=x.pdfDrive?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.pdfDrive)+'">📎 Baixar PDF</a>':(x.urlIngresso?'<a class="ci-btn ci-ol" target="_blank" rel="noopener" href="'+esc(x.urlIngresso)+'">🎟️ Abrir no TickOne</a>':'');
-      var bt=ABERTO[x.codigo]?linkZap(x.codigo)+'<button class="ci-btn ci-ok" data-ci="confirmar" data-arg="'+esc(x.codigo)+'">✔ Confirmar envio</button>':'<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(x.codigo)+'"'+(x.telefone?'':' data-off="1" style="opacity:.5"')+'>📱 Enviar no WhatsApp</button>';
+      var bt=WALINK[x.codigo]?linkZap(x.codigo):'<button class="ci-btn ci-wa" data-ci="zap" data-arg="'+esc(x.codigo)+'"'+(x.telefone?'':' data-off="1" style="opacity:.5"')+'>📱 Enviar no WhatsApp</button>';
       return '<div class="ci-v j"><b>🎟️ Já tem ingresso · '+esc(x.codigo)+'</b><br>Não precisa emitir de novo: envie ou baixe o que já existe.<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'+bt+pdf+'</div></div>';
     }
     var av=(x.avisos&&x.avisos.length)?'<br><small style="color:#64748b">ℹ '+x.avisos.map(esc).join('<br>ℹ ')+'</small>':'';
@@ -520,7 +535,7 @@
     else if(a==='excl') excl(arg); else if(a==='exclVoltar'){ EXCL=null; g('ciExcl').hidden=true; }
     else if(a==='exclPedir') exclPedir(); else if(a==='cancExcl') cancExcl(arg);
     else if(a==='zap') zap(arg); else if(a==='confirmar') confirmar(arg);
-    else if(a==='abriuLink'){ setTimeout(function(){ delete WALINK[arg]; desenhar(); desenharPessoas(); },400); }
+    else if(a==='abriuLink'){ setTimeout(function(){ delete WALINK[arg]; marcarEnviado(arg); },400); }
     else if(a==='addPessoa') addPessoa(); else if(a==='addApos') addPessoa(Number(arg)); else if(a==='delPessoa') tirarPessoa(Number(arg));
     else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
     else if(a==='lerPlan') lerPlan();
@@ -541,7 +556,7 @@
   });
   g('ciBusca').addEventListener('input',function(){ MOSTRAR=100; desenhar(); });
   g('ciCat').addEventListener('change',function(){ MOSTRAR=100; desenhar(); });
-  window.cingCarregar=function(){ estado(); carregarLista(); carregarEmissoes(); };
+  window.cingCarregar=function(){ estado(); carregarLista(); carregarEmissoes(); sincPdfs(); };
 })();
 </script>
 </div>

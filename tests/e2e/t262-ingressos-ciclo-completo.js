@@ -90,7 +90,7 @@ g.compasso_dataPorExtenso_ = () => "sábado, 19 de dezembro de 2026";
   if (dom.jsdomDisponivel()) {
     const t = dom.montar(g, ["CompassoIngressos.html"], { token: TOKEN });
     const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
-    const abertos = []; win.open = u => { abertos.push(u); return null; };
+    const abertos = []; win.open = u => { const w = { closed: false, close() { this.closed = true; } }; Object.defineProperty(w, "location", { value: { set href(v) { abertos.push(v); } } }); if (u && u !== "about:blank") abertos.push(u); return w; };
     win.cingCarregar(); await t.assentar(300);
     t.clicar("[data-ci='aba'][data-arg='solicitar']");
     const card = doc.querySelectorAll("#ciPessoas .ci-pessoa")[0];
@@ -100,9 +100,7 @@ g.compasso_dataPorExtenso_ = () => "sábado, 19 de dezembro de 2026";
     b.ok(/Já tem ingresso · TK-0003/.test(c0.textContent) && !!c0.querySelector("[data-ci='zap'][data-arg='TK-0003']") && !!c0.querySelector("a[href*='ref=REF-TK-0003']"), "o cartão diz 'já tem ingresso' e oferece 📱 Enviar no WhatsApp e 🎟️ abrir/baixar");
     t.clicar("#ciPessoas [data-ci='zap'][data-arg='TK-0003']"); await t.assentar(400);
     b.ok(abertos.length === 1 && /^https:\/\/wa\.me\/5527977770099\?text=/.test(abertos[0]) && /TK-0003/.test(decodeURIComponent(abertos[0])), "o WhatsApp abre no número certo, com a mensagem e o código");
-    b.ok(g.compassoIngressos_estado(TOKEN).enviados === 0, "abrir o WhatsApp ainda NÃO marca enviado");
-    t.clicar("#ciPessoas [data-ci='confirmar'][data-arg='TK-0003']"); await t.assentar(400);
-    b.ok(g.compassoIngressos_estado(TOKEN).enviados === 1 && g.compassoIngressos_lista(TOKEN).linhas.find(l => l.codigo === "TK-0003").enviado.quem !== "", "depois do 'Confirmar envio': registrado, com quem enviou");
+    b.ok(g.compassoIngressos_estado(TOKEN).enviados === 1 && g.compassoIngressos_lista(TOKEN).linhas.find(l => l.codigo === "TK-0003").enviado.quem !== "", "o toque em Enviar já registrou o envio, com quem enviou (sem 'Confirmar envio')");
   } else b.naoTestavel("a tela do ciclo", "jsdom não instalado");
 
   b.fluxo("CICLO · 5. pedir a exclusão e o robô excluir");

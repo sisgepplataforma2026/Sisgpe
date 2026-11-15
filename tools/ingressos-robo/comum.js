@@ -46,6 +46,18 @@ async function gravarJson(nome, obj, local) {
     "multipart/related; boundary=" + lim);
 }
 
+/** Grava um arquivo BINÁRIO (PDF) na pasta privada do robô. Teste: `dirLocal` grava numa pasta do disco. */
+async function gravarBinario(nome, buf, dirLocal, mime) {
+  mime = mime || "application/pdf";
+  if (dirLocal) { fs.mkdirSync(dirLocal, { recursive: true }); fs.writeFileSync(require("path").join(dirLocal, nome), buf); return; }
+  const tk = await tokenGoogle(), pid = await pastaId(tk), id = await arquivoId(tk, pid, nome);
+  if (id) { await drive(tk, "PATCH", "https://www.googleapis.com/upload/drive/v3/files/" + id + "?uploadType=media", buf, mime); return; }
+  const lim = "x" + Date.now();
+  const corpo = Buffer.concat([
+    Buffer.from(`--${lim}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: nome, parents: [pid], mimeType: mime })}\r\n--${lim}\r\nContent-Type: ${mime}\r\n\r\n`), buf, Buffer.from(`\r\n--${lim}--`)]);
+  await drive(tk, "POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", corpo, "multipart/related; boundary=" + lim);
+}
+
 /** Entra no TickOne com o login dos Secrets. Devolve true se entrou. */
 async function entrar(pg, base, usuario, senha) {
   await pg.goto(base, { waitUntil: "domcontentloaded", timeout: 45000 });
@@ -69,8 +81,8 @@ async function ler(pg) {
     const c = tabs.find(x => /Check-in/.test(x.innerText));
     if (!t) return null;
     const cab = [...t.querySelectorAll("thead th, tr:first-child th")].map(h => (h.innerText || "").trim().toLowerCase());
-    const iCpf = cab.indexOf("cpf"), iCod = cab.indexOf("código"); const iTel = cab.indexOf("telefone"), iTipo = cab.indexOf("tipo");
-    const linhas = [...t.querySelectorAll("tbody tr")].map((tr, i) => { const td = [...tr.children].map(x => (x.innerText || "").trim()); const rm = tr.querySelector("a[href*='page=ticket']"); let ref = ""; try { ref = rm ? new URL(rm.href, location.href).searchParams.get("ref") || "" : ""; } catch (e) {} return { i, cpf: dg(td[iCpf]), codigo: (td[iCod] || "").trim(), ref, tel: iTel >= 0 ? (td[iTel] || "") : "", tipo: iTipo >= 0 ? (td[iTipo] || "") : "" }; });
+    const iCpf = cab.indexOf("cpf"), iCod = cab.indexOf("código"); const iNome = cab.indexOf("cliente"); const iTel = cab.indexOf("telefone"), iTipo = cab.indexOf("tipo");
+    const linhas = [...t.querySelectorAll("tbody tr")].map((tr, i) => { const td = [...tr.children].map(x => (x.innerText || "").trim()); const rm = tr.querySelector("a[href*='page=ticket']"); let ref = ""; try { ref = rm ? new URL(rm.href, location.href).searchParams.get("ref") || "" : ""; } catch (e) {} return { i, nome: iNome >= 0 ? (td[iNome] || "") : "", cpf: dg(td[iCpf]), codigo: (td[iCod] || "").trim(), ref, tel: iTel >= 0 ? (td[iTel] || "") : "", tipo: iTipo >= 0 ? (td[iTipo] || "") : "" }; });
     const checkins = c ? [...c.querySelectorAll("tbody tr")].map(tr => [...tr.children].map(x => (x.innerText || "").trim())) : [];
     return { linhas, checkins: checkins.map(r => ({ cpf: dg(r[1]), ingresso: (r[2] || "").trim() })) };
   });
@@ -84,4 +96,4 @@ function cpfValido(c) {
   for (let t = 9; t < 11; t++) { let s = 0; for (let i = 0; i < t; i++) s += Number(d[i]) * (t + 1 - i); if ((s * 10) % 11 % 10 !== Number(d[t])) return false; }
   return true;
 }
-module.exports = { fs, dig, cpf11, cpfValido, lerJson, gravarJson, entrar, ler };
+module.exports = { fs, dig, cpf11, cpfValido, lerJson, gravarJson, gravarBinario, entrar, ler };
