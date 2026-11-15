@@ -24,8 +24,8 @@ async function iniciar(linhasIniciais, checkins) {
       const ref = u.searchParams.get("ref") || "", l = st.linhas.find(x => "REF-" + x.cod === ref);
       if (!l) { res.statusCode = 404; res.end("sem ingresso"); return; }
       st.chamadas.push("pdf:" + l.cod);
-      res.writeHead(200, { "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="TickOne - ' + encodeURIComponent(l.nome).replace(/%20/g, " ") + '.pdf"' });
-      res.end(Buffer.from("%PDF-1.4\n" + "x".repeat(1500) + "\n%%EOF")); return;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");   // como o real: página HTML com o botão que chama window.print()
+      res.end("<!doctype html><title>TickOne - " + l.nome + "</title><body><h1>TickOne</h1><p>Seu ingresso em um clique</p><div style='height:200px'>QR " + l.cod + "</div><button onclick='window.print()'>Salvar / Imprimir PDF</button></body>"); return;
     }
     if (req.method === "POST" && acao === "emitir") {
       corpo(d => {
