@@ -199,12 +199,10 @@ function compassoIngressos_lista(tokenSessao) {
     if (!base) return { ok: false, mensagem: "A base do TickOne ainda não foi lida pelo robô." };
     cingSincronizarResultado_();
     var envios = cingEnvios_(), pdfs = cingPdfs_(), excl = cingExclusaoPorCodigo_();
-    var modelo = "";   // a mensagem é montada NA TELA (abre o WhatsApp no mesmo toque, sem esperar o servidor)
-    try {
-      modelo = compasso_textoEntrega_({ nome: "ZZNOMEZZ", numero: "ZZCODZZ" }, "");
-      modelo = modelo.indexOf("📎") >= 0 ? modelo.replace("📎", "🔗 *Link do seu ingresso:* ZZLINKZZ\n\n📎") : modelo + "\n\n🔗 Link do seu ingresso: ZZLINKZZ";
-    } catch (eM) { modelo = ""; }
-    var modeloPdf = modelo ? modelo.replace(/📎[^\n]*/, "📎 *Baixe o seu ingresso em PDF (com o QR Code):* ZZPDFZZ") : "";   // quando o PDF já está na pasta, o link vai na mensagem
+    var modelo = "";   // O TEXTO PADRÃO de Eventos (compasso_textoEntrega_), sem mudar uma palavra; montado NA TELA para abrir o WhatsApp no mesmo toque
+    try { modelo = compasso_textoEntrega_({ nome: "ZZNOMEZZ", numero: "ZZCODZZ" }, ""); } catch (eM) { modelo = ""; }
+    // quando o PDF já está na pasta, o link para BAIXAR/SALVAR vai logo abaixo da linha do PDF (o resto do texto fica igual)
+    var modeloPdf = modelo ? modelo.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* ZZPDFZZ") : "";
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
       var falta = [];
@@ -234,10 +232,10 @@ function compassoIngressos_mensagem(codigo, tokenSessao) {
     if (!l) return { ok: false, mensagem: "Ingresso não encontrado na base." };
     var fone = cingFone_(l.tel);
     if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado. Corrija no TickOne e leia a base de novo." };
-    var link = l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "";   // o mesmo link que o TickOne usa no botão dele
-    var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, link);
-    if (link) texto = texto.indexOf("📎") >= 0 ? texto.replace("📎", "🔗 *Link do seu ingresso:* " + link + "\n\n📎") : texto + "\n\n🔗 Link do seu ingresso: " + link;   // o texto-padrão não leva o link; o PDF vai anexo pelo operador
-    return { ok: true, fone: fone, texto: texto, link: link, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
+    var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, "");
+    var pdf = ""; try { pdf = cingPdfs_()[cingNomeChave_(l.nome)] || ""; } catch (eP) { pdf = ""; }
+    if (pdf) texto = texto.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* " + pdf);
+    return { ok: true, fone: fone, texto: texto, link: pdf, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

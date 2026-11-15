@@ -313,7 +313,6 @@
   function montarZap(l){
     var p=String(l.nome||'').trim().split(/\s+/)[0]||''; p=p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():'';
     var t=((l.pdfDrive&&MODELO_PDF)?MODELO_PDF.replace(/ZZPDFZZ/g,l.pdfDrive):MODELO).replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo);
-    t=l.urlIngresso?t.replace(/ZZLINKZZ/g,l.urlIngresso):t.replace(/🔗[^\n]*ZZLINKZZ\s*\n*/,'');
     return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
   }
   function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }
