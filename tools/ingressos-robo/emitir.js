@@ -58,7 +58,15 @@ const p = (...a) => console.log(...a);
       await pg.fill("#popup-buyer-nome", nome);
       if (it.email) await pg.fill("#popup-buyer-email", String(it.email));
       await pg.fill("#popup-buyer-cpf", cpf);
-      if (it.telefone) await pg.fill("#popup-buyer-telefone", String(it.telefone));
+      /* TELEFONE: o campo do TickOne tem máscara de DDD + número (11 dígitos). Digitar com o 55 na frente
+         fazia o "55" virar DDD e cortar o fim ((55) 27999-4510 em vez de (27) 99945-1089) — achado no 1º ingresso real. */
+      let fone = dig(it.telefone || "");
+      if (fone.length >= 12 && fone.slice(0, 2) === "55") fone = fone.slice(2);
+      if (fone) await pg.fill("#popup-buyer-telefone", fone);
+      /* CONFERE o que ficou nos campos ANTES de emitir (emitir não tem volta): categoria e telefone */
+      const lido = await pg.evaluate(() => ({ tipo: (document.getElementById("popup-tipo-ingresso") || {}).value || "", fone: ((document.getElementById("popup-buyer-telefone") || {}).value || "").replace(/\D/g, "") }));
+      if (lido.tipo !== cat) { await registrar(it.pedido, "FALHOU", "a categoria no pop-up não ficou como pedida (ficou '" + lido.tipo + "', era '" + cat + "'): NÃO emiti"); process.exitCode = 1; break; }
+      if (fone && lido.fone !== fone) { await registrar(it.pedido, "FALHOU", "o telefone no pop-up ficou diferente do pedido (" + lido.fone.length + " dígitos lidos, " + fone.length + " pedidos): NÃO emiti"); process.exitCode = 1; break; }
       if (it.cidade) await pg.fill("#popup-buyer-cidade", String(it.cidade));
       if (it.escola) await pg.fill("#popup-buyer-observacao", String(it.escola));
       /* o botão "Emitir Ingresso" DO MESMO pop-up do campo de nome (sobe a árvore a partir do nome) */
