@@ -78,7 +78,7 @@ const abas = g.SpreadsheetApp && null;
     b.ok(g.compassoIngressos_exclusoes(TOKEN).exclusoes.length === 1 && el("ciExcl").hidden === true, "marcando, o pedido é registrado e a caixa fecha");
     const linha = [...doc.querySelectorAll("#ciLista .ci-linha")].find(x => /João Teste/.test(x.textContent));
     b.ok(/Exclusão pedida/.test(linha.textContent) && /Cancelar pedido/.test(linha.textContent), "a linha mostra 'Exclusão pedida' e 'Cancelar pedido'");
-    b.ok(linha.querySelector("[data-ci='zap']").disabled === true && !linha.querySelector("[data-ci='excl']"), "o WhatsApp trava e o Excluir some enquanto o pedido está aberto");
+    b.ok(linha.querySelector("[data-ci='zap']").getAttribute("data-off") === "1" && !linha.querySelector("[data-ci='excl']"), "o WhatsApp fica apagado (e explica ao tocar) e o Excluir some enquanto o pedido está aberto");
     t.clicar("[data-ci='cancExcl']"); await t.assentar(400);
     b.ok(g.compassoIngressos_exclusoes(TOKEN).exclusoes[0].status === "CANCELADO" && !!doc.querySelector("[data-ci='excl'][data-arg='AAAA-0002']"), "cancelar devolve o botão Excluir");
   } else b.naoTestavel("a tela de exclusão", "jsdom não instalado");
