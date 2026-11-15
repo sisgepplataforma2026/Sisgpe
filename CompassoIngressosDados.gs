@@ -204,6 +204,7 @@ function compassoIngressos_lista(tokenSessao) {
       modelo = compasso_textoEntrega_({ nome: "ZZNOMEZZ", numero: "ZZCODZZ" }, "");
       modelo = modelo.indexOf("📎") >= 0 ? modelo.replace("📎", "🔗 *Link do seu ingresso:* ZZLINKZZ\n\n📎") : modelo + "\n\n🔗 Link do seu ingresso: ZZLINKZZ";
     } catch (eM) { modelo = ""; }
+    var modeloPdf = modelo ? modelo.replace(/📎[^\n]*/, "📎 *Baixe o seu ingresso em PDF (com o QR Code):* ZZPDFZZ") : "";   // quando o PDF já está na pasta, o link vai na mensagem
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
       var falta = [];
@@ -218,7 +219,7 @@ function compassoIngressos_lista(tokenSessao) {
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
     });
-    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), modelo: modelo, linhas: linhas };
+    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), modelo: modelo, modeloPdf: modeloPdf, linhas: linhas };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
@@ -668,7 +669,10 @@ function compassoIngressos_sincronizarPdfs(tokenSessao) {
       var pend = nomes.filter(function (n) { return !jaTem[n]; }), n = 0;
       pend.slice(0, 20).forEach(function (nome) {
         var f = pasta.getFilesByName(nome);
-        if (f.hasNext()) { f.next().makeCopy(nome, destino); n++; }
+        if (f.hasNext()) {
+          var copia = f.next().makeCopy(nome, destino); n++;
+          try { copia.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eS) { /* conta sem permissão de link aberto: o PDF fica só na pasta da equipe */ }
+        }
       });
       if (n) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
       return { ok: true, copiados: n, faltam: Math.max(0, pend.length - n), total: nomes.length };

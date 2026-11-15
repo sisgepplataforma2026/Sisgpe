@@ -80,6 +80,7 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   t.clicar("[data-ci='zap'][data-arg='AAAA-0001']"); await t.assentar(300);
   const lk = doc.querySelector("a[data-ci='abriuLink'][data-arg='AAAA-0001']");
   b.ok(!!lk && /^https:\/\/wa\.me\/5527999990001\?text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
+  b.ok(decodeURIComponent(lk.getAttribute("href")).indexOf("https://drive.example/maria.pdf") > 0 && /Baixe o seu ingresso em PDF/.test(decodeURIComponent(lk.getAttribute("href"))), "quem já tem PDF na pasta recebe o LINK DO PDF na mensagem do WhatsApp");
   t.clicar("a[data-ci='abriuLink'][data-arg='AAAA-0001']"); await t.assentar(700);
   b.ok(g.compassoIngressos_estado(TOKEN).enviados === 2, "tocar em 'Abrir WhatsApp' é o que marca como enviado");
   win.open = abrirOk;
@@ -115,6 +116,12 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   b.ok(el("ciAtu").disabled === true && /Lendo/.test(el("ciAtu").textContent), "o botão fica 'Lendo o TickOne…' enquanto espera");
   t.clicar("[data-ci='robo']"); await t.assentar(100);
   b.ok(el("ciRobo").hidden === false && /Ligado/.test(el("ciRoboEst").textContent) && !/ghp_/.test(doc.body.innerHTML), "painel do robô mostra 'Ligado' e nunca a chave");
+  b.passo("ao abrir a tela com a base velha, o robô é acionado sozinho (e com base recente, não)");
+  const d0 = disparos.length; win.cingCarregar(); await t.assentar(500);
+  b.ok(disparos.length === d0, "base de poucos minutos: não aciona o robô à toa");
+  BASE = base(new Date(Date.now() - 40 * 60000).toISOString());
+  win.cingCarregar(); await t.assentar(800);
+  b.ok(disparos.length === d0 + 1 && /ler-base/.test(disparos[disparos.length - 1]), "base com 40 minutos: ao abrir, aciona a leitura (e o download dos PDFs novos) sozinho", disparos.slice(d0).join(","));
   b.resumo();
   process.exit(process.exitCode || 0);
 })();

@@ -210,6 +210,7 @@
       erro('');
       var idade=r.idadeMin==null?'':(r.idadeMin<60?r.idadeMin+' min':(Math.round(r.idadeMin/60*10)/10)+' h');
       g('ciBase').textContent='Base do TickOne lida há '+idade+' pelo robô.';
+      if(r.idadeMin!=null&&r.idadeMin>2) buscarNovos();
       g('ciTotal').textContent=r.total; g('ciEnv').textContent=r.enviados; g('ciFalta').textContent=r.total-r.enviados;
       g('ciCats').innerHTML=Object.keys(r.porTipo).map(function(k){ return esc(rotuloCat(k))+': <b style="font-size:13px">'+r.porTipo[k]+'</b>'; }).join(' · ');
       desenharPessoas();
@@ -236,6 +237,17 @@
     });
   }
   /* PDFs que o robô baixou do TickOne: o servidor copia para a pasta da equipe (lotes de 20) e a lista se atualiza */
+  /* AO ABRIR a tela: se a base tem mais de 2 minutos, pede ao robô que leia o TickOne e baixe os PDFs novos (se o disparo
+     automático estiver ligado), e confere o resultado a cada 30 s por até 2 minutos. Assim o que foi emitido direto no TickOne aparece sem ninguém apertar nada. */
+  var BUSCANDO=false;
+  function buscarNovos(){
+    if(BUSCANDO) return; BUSCANDO=true;
+    rodar('compassoIngressos_atualizarBase',[],function(r){
+      if(!r||!r.ok||!r.robo||!r.robo.acionado){ BUSCANDO=false; return; }
+      aviso('Buscando ingressos novos no TickOne…');
+      var n=0, t=setInterval(function(){ n++; estado(); carregarLista(); sincPdfs(); if(n>=4){ clearInterval(t); BUSCANDO=false; } },30000);
+    });
+  }
   var SINC=false;
   function sincPdfs(){
     if(SINC) return; SINC=true;
@@ -247,7 +259,7 @@
   function carregarLista(){
     rodar('compassoIngressos_lista',[],function(r){
       if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
-      BASE=r.linhas||[]; MODELO=r.modelo||''; desenhar();
+      BASE=r.linhas||[]; MODELO=r.modelo||''; MODELO_PDF=r.modeloPdf||''; desenhar();
     });
   }
   function passa(l){
@@ -297,10 +309,10 @@
      (alguns décimos de segundo depois), abrimos uma aba em branco JÁ no toque e só depois mandamos ela para o
      WhatsApp. Se o navegador bloquear mesmo assim (celular, Safari), aparece o botão "Abrir WhatsApp": é um link
      comum, que abre no toque seguinte. */
-  var WALINK={}, MODELO='';
+  var WALINK={}, MODELO='', MODELO_PDF='';
   function montarZap(l){
     var p=String(l.nome||'').trim().split(/\s+/)[0]||''; p=p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():'';
-    var t=MODELO.replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo);
+    var t=((l.pdfDrive&&MODELO_PDF)?MODELO_PDF.replace(/ZZPDFZZ/g,l.pdfDrive):MODELO).replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo);
     t=l.urlIngresso?t.replace(/ZZLINKZZ/g,l.urlIngresso):t.replace(/🔗[^\n]*ZZLINKZZ\s*\n*/,'');
     return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
   }
