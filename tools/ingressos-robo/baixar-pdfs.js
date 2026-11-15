@@ -12,7 +12,7 @@ const fs = require("fs");
 const { lerJson, gravarJson, gravarBinario, entrar, ler } = require("./comum");
 const BASE = process.env.INGRESSOS_URL || "https://ingressos.sindeducacao.com.br/index.php?page=admin&evt_id=17";
 const USUARIO = (process.env.INGRESSOS_USUARIO || "").trim(), SENHA = (process.env.INGRESSOS_SENHA || "").trim();
-const PARALELO = Number(process.env.PDF_PARALELO || 5), ARQ_EST = "pdfs-estado.json", MAXIMO = Number(process.env.PDF_MAXIMO || 150), LIMITE_MS = Number(process.env.PDF_LIMITE_MS || 11 * 60 * 1000);
+const PARALELO = Number(process.env.PDF_PARALELO || 5), ARQ_EXI = "pdfs-existentes.json", ARQ_EST = "pdfs-estado.json", MAXIMO = Number(process.env.PDF_MAXIMO || 150), LIMITE_MS = Number(process.env.PDF_LIMITE_MS || 11 * 60 * 1000);
 const p = (...a) => console.log(...a);
 const limpar = s => String(s || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/\s+/g, " ").trim();
 
@@ -26,9 +26,19 @@ const limpar = s => String(s || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/
     if (!(await entrar(pg, BASE, USUARIO, SENHA))) { p("FALHA: o login não entrou."); process.exitCode = 1; return; }
     const lista = await ler(pg);
     if (!lista) { p("FALHA: não achei a tabela de ingressos."); process.exitCode = 1; return; }
+    /* O QUE A EQUIPE JÁ TEM: o SISGEP escreve em pdfs-existentes.json os nomes que estão na pasta INGRESSOS FESTA COMPASSO 2026
+       (o robô só lê arquivo que ele mesmo criou; por isso o arquivo nasce aqui, vazio, e o SISGEP só atualiza o conteúdo).
+       Esses ingressos NÃO são baixados de novo: gastaria tempo e o espaço do mesmo Drive. */
+    const ex = (await lerJson(ARQ_EXI, process.env.EXISTENTES_LOCAL, true)) || {};
+    const norm = x => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const jaTem = new Set((ex.nomes || []).map(norm));
+    let pulados = 0;
+    lista.linhas.forEach(l => { if (l.ref && !est.feitos[l.codigo] && l.nome && jaTem.has(norm("TickOne - " + l.nome + ".pdf"))) { est.feitos[l.codigo] = { arquivo: "TickOne - " + l.nome + ".pdf", existente: true, em: new Date().toISOString() }; pulados++; } });
+    /* Enquanto o SISGEP ainda não informou o que a pasta tem (arquivo nunca atualizado), baixa no máximo 5: é a 1ª rodada, de prova. */
+    const maximo = ex.atualizadoEm ? MAXIMO : Math.min(MAXIMO, 5);
     const usados = new Set(Object.values(est.feitos).map(x => x.arquivo));
     const faltam = lista.linhas.filter(l => l.ref && !est.feitos[l.codigo]);
-    p("Ingressos na lista:", lista.linhas.length, "· já com PDF:", Object.keys(est.feitos).length, "· faltam:", faltam.length);
+    p("Ingressos na lista:", lista.linhas.length, "· já com PDF:", Object.keys(est.feitos).length, "(" + pulados + " já estavam na pasta da equipe)", "· faltam:", faltam.length, ex.atualizadoEm ? "" : "· SISGEP ainda não informou a pasta: máximo 5");
     let ok = 0, falhou = 0;
     const um = async (l) => {
       if (Date.now() - t0 > LIMITE_MS) return "tempo";
@@ -60,7 +70,7 @@ const limpar = s => String(s || "").replace(/[\\/:*?"<>|\r\n]+/g, " ").replace(/
       } finally { await aba.close().catch(() => {}); }
     };
     /* 5 ingressos por vez: 100 ingressos em ~1 minuto em vez de ~8 */
-    const fila = faltam.slice(0, MAXIMO); let parouPorTempo = false;
+    const fila = faltam.slice(0, maximo); let parouPorTempo = false;
     await Promise.all(Array.from({ length: Math.min(PARALELO, fila.length) }, async () => { while (fila.length && !parouPorTempo) { const l = fila.shift(); if ((await um(l)) === "tempo") { parouPorTempo = true; p("Limite de tempo da execução: o resto fica para a próxima."); } } }));
     await salvarEstado();
     p("RESUMO: PDFs baixados", ok, "· falharam", falhou, "· ainda faltam", Math.max(0, faltam.length - ok - falhou), "· em", Math.round((Date.now() - t0) / 1000), "s");

@@ -70,7 +70,6 @@ jobs:
           INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           NODE_PATH: /tmp/robo/node_modules
-          PDF_MAXIMO: "5"   # 1ª rodada real: só 5 PDFs, para conferir o arquivo antes de baixar todos
         run: node tools/ingressos-robo/baixar-pdfs.js
       - name: "Guardar as capturas de tela (sem dado pessoal, campos limpos)"
         if: always()

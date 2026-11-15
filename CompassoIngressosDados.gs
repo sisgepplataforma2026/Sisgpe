@@ -651,18 +651,32 @@ function compassoIngressos_atualizarBase(tokenSessao) {
  * O SISGEP copia os novos para a pasta que a equipe já usa. A tela chama isto ao abrir a lista, em lotes de 20, até acabar. */
 var CING_ARQ_PDFS = "pdfs-estado.json";
 
+/** Diz ao robô quais PDFs a equipe JÁ TEM na pasta (para ele não baixar de novo). O arquivo nasce no robô; aqui só se atualiza o conteúdo. */
+function cingAtualizarExistentes_(pasta, nomes) {
+  var f = pasta.getFilesByName("pdfs-existentes.json");
+  if (!f.hasNext()) return false;
+  var arq = f.next(), atual = {};
+  try { atual = JSON.parse(arq.getBlob().getDataAsString()); } catch (e) { atual = {}; }
+  var novos = nomes.slice().sort();
+  if (atual.atualizadoEm && JSON.stringify((atual.nomes || []).slice().sort()) === JSON.stringify(novos)) return false;
+  arq.setContent(JSON.stringify({ atualizadoEm: new Date().toISOString(), nomes: novos }));
+  return true;
+}
+
 function compassoIngressos_sincronizarPdfs(tokenSessao) {
   try {
     exigirModulo_(tokenSessao, "eventos", false);
     var pasta = cingPastaRobo_();
-    var it = pasta.getFilesByName(CING_ARQ_PDFS);
-    if (!it.hasNext()) return { ok: true, copiados: 0, faltam: 0, total: 0, mensagem: "O robô ainda não baixou PDFs." };
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(20000)) return { ok: true, copiados: 0, faltam: 0, total: 0, ocupado: true };
     try {
-      var est = JSON.parse(it.next().getBlob().getDataAsString()), feitos = est.feitos || {};
       var destino = DriveApp.getFolderById(CING_PASTA_PDF_ID), jaTem = {}, fi = destino.getFiles();
-      while (fi.hasNext()) jaTem[fi.next().getName()] = true;
+      while (fi.hasNext()) { var nm = fi.next().getName(); if (/\.pdf$/i.test(nm)) jaTem[nm] = true; }
+      var existentesAtualizado = false;
+      try { existentesAtualizado = cingAtualizarExistentes_(pasta, Object.keys(jaTem)); } catch (eE) { /* sem o arquivo do robô ainda: segue */ }
+      var it = pasta.getFilesByName(CING_ARQ_PDFS);
+      if (!it.hasNext()) return { ok: true, copiados: 0, faltam: 0, total: 0, existentesAtualizado: existentesAtualizado, mensagem: "O robô ainda não baixou PDFs." };
+      var est = JSON.parse(it.next().getBlob().getDataAsString()), feitos = est.feitos || {};
       var nomes = Object.keys(feitos).map(function (k) { return feitos[k].arquivo; });
       var pend = nomes.filter(function (n) { return !jaTem[n]; }), n = 0;
       pend.slice(0, 20).forEach(function (nome) {
@@ -672,8 +686,8 @@ function compassoIngressos_sincronizarPdfs(tokenSessao) {
           try { copia.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eS) { /* conta sem permissão de link aberto: o PDF fica só na pasta da equipe */ }
         }
       });
-      if (n) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
-      return { ok: true, copiados: n, faltam: Math.max(0, pend.length - n), total: nomes.length };
+      if (n || existentesAtualizado) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
+      return { ok: true, copiados: n, faltam: Math.max(0, pend.length - n), total: nomes.length, existentesAtualizado: existentesAtualizado };
     } finally { lock.releaseLock(); }
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
