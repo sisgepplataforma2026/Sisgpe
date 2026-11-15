@@ -68,7 +68,17 @@ const p = (...a) => console.log(...a);
       }
       const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 6000 }).catch(() => null);
       if (!sim) { await registrar(it.pedido, "FALHOU", "a confirmação do TickOne não apareceu: NÃO excluí"); process.exitCode = 1; break; }
-      await sim.click(); await pg.waitForTimeout(3000);
+      /* CONFIRMAR: o 1º clique real expirou aqui ("elementHandle.click: Timeout 30000ms", 15/11/2026) — o pop-up do TickOne
+         pode redesenhar o botão e deixar o handle velho. Busca o botão DE NOVO pelo seletor, tenta o clique normal e, se não
+         vier, clica nesse mesmo botão por script. O que protege é a releitura da lista logo abaixo. */
+      try { await pg.locator("#custom-confirm-yes-btn").first().click({ timeout: 6000 }); }
+      catch (eConf) {
+        const d2 = await pg.evaluate(() => { const b = document.getElementById("custom-confirm-yes-btn"); if (!b) return "(botão não existe mais)"; const s = getComputedStyle(b), r = b.getBoundingClientRect(); return "d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",pe:" + s.pointerEvents + ",dis:" + b.disabled + ",w:" + Math.round(r.width) + ",h:" + Math.round(r.height); }).catch(() => "(sem diagnóstico)");
+        p("clique normal em Confirmar falhou:", String(eConf.message).split("\n")[0].slice(0, 80), "· botão:", d2);
+        const clicou = await pg.evaluate(() => { const b = document.getElementById("custom-confirm-yes-btn"); if (!b) return false; b.click(); return true; }).catch(() => false);
+        if (!clicou) { await registrar(it.pedido, "FALHOU", "o botão Confirmar sumiu antes do clique: confira a lista (pode já ter sido excluído)"); process.exitCode = 1; break; }
+      }
+      await pg.waitForTimeout(3000);
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForTimeout(1500);
       const depois = await ler(pg);
       const aindaLa = depois && depois.linhas.some(l => l.codigo.toLowerCase() === cod.toLowerCase() && l.cpf === cpf);
