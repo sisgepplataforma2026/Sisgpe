@@ -52,7 +52,20 @@ const p = (...a) => console.log(...a);
       }, achadas[0].i);
       const el = lixeira.asElement();
       if (!el) { await registrar(it.pedido, "FALHOU", "não achei a lixeira desta linha: NÃO excluí"); continue; }
-      await el.click();
+      /* CLIQUE NA LIXEIRA. No TickOne real o clique normal do Playwright estourou o tempo (botão "não visível" para ele),
+         como já ocorreu na emissão. Tenta o clique normal (rolando até o botão) e, se ele não vier, clica NO MESMO botão
+         por script — o mesmo elemento já conferido (uma única lixeira, na linha de código+CPF). O que protege é a
+         confirmação do pop-up e a releitura da lista, não o tipo de clique. */
+      try { await el.scrollIntoViewIfNeeded({ timeout: 4000 }); await el.click({ timeout: 6000 }); }
+      catch (eClique) {
+        const diag = await el.evaluate(b => { const out = []; let x = b; for (let i = 0; i < 5 && x; i++, x = x.parentElement) { const s = getComputedStyle(x), r = x.getBoundingClientRect();
+          out.push((x.id ? "#" + x.id : x.tagName.toLowerCase()) + "{d:" + s.display + ",v:" + s.visibility + ",o:" + s.opacity + ",ov:" + s.overflow + ",w:" + Math.round(r.width) + "}"); }
+          return out.join(" < "); }).catch(() => "(sem diagnóstico)");
+        p("clique normal na lixeira falhou:", String(eClique.message).split("\n")[0].slice(0, 80), "· viewport:", JSON.stringify(pg.viewportSize()), "· botão:", diag);
+        const aindaLa2 = await el.evaluate(b => b.isConnected && /excluir/i.test(b.title || "")).catch(() => false);
+        if (!aindaLa2) { await registrar(it.pedido, "FALHOU", "a lixeira sumiu durante o clique: NÃO sei se excluiu — confira a lista"); process.exitCode = 1; break; }
+        await el.evaluate(b => b.click());
+      }
       const sim = await pg.waitForSelector("#custom-confirm-yes-btn", { state: "visible", timeout: 6000 }).catch(() => null);
       if (!sim) { await registrar(it.pedido, "FALHOU", "a confirmação do TickOne não apareceu: NÃO excluí"); process.exitCode = 1; break; }
       await sim.click(); await pg.waitForTimeout(3000);
