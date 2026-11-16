@@ -119,6 +119,39 @@ function cingFoneAssumido_(tel, cidade) {
   return ddd ? { fone: "55" + ddd + d, ddd: ddd } : null;
 }
 
+/** O TEXTO DO WHATSAPP DO INGRESSO (16/11/2026). O usuário colou o texto padrão que quer: título "Festa No Compasso da Vida 2026",
+ *  bloco "Na entrada, apresente", data/horário/portões/local em linhas próprias, "Acesse ou baixe seu ingresso" com o link do PDF,
+ *  "Importante" e o fecho. Data, horários, local, endereço e referência vêm do CADASTRO da festa (compasso_dadosDaFesta_); a
+ *  linha sem dado não aparece. Sem PDF na pasta, a seção do link não entra (a pessoa anexa o PDF). O texto antigo
+ *  (compasso_textoEntrega_) fica só para o e-mail. */
+function cingTextoWhats_(nome, pdf) {
+  var f = {}; try { f = compasso_dadosDaFesta_() || {}; } catch (e) { f = {}; }
+  var quando = ""; try { quando = compasso_dataPorExtenso_(f.data); } catch (e) { quando = ""; }
+  quando = quando ? quando.charAt(0).toUpperCase() + quando.slice(1) : "";
+  var n = String(nome || "").trim().split(/\s+/)[0] || ""; n = n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : "";
+  var l = [];
+  l.push("Olá" + (n ? ", *" + n + "*" : "") + "! 🎉"); l.push("");
+  l.push("Sua inscrição na *Festa No Compasso da Vida 2026* foi confirmada, e seu ingresso já está pronto! 🎟️"); l.push("");
+  l.push("*Na entrada, apresente:*");
+  l.push("✅ O QR Code do ingresso em PDF (na tela do celular ou impresso);");
+  l.push("✅ Um *documento oficial com foto* (RG, CNH ou outro), para conferência."); l.push("");
+  if (quando) { l.push("📅 *Data:* " + quando); l.push(""); }
+  if (f.horaInicio) { l.push("🕗 *Horário:* " + f.horaInicio); l.push(""); }
+  if (f.horaAbertura) { l.push("🚪 *Abertura dos portões:* " + f.horaAbertura); l.push(""); }
+  if (f.local) {
+    l.push("📍 *Local:* " + f.local);
+    if (f.endereco) l.push(f.endereco);
+    if (f.referencia) l.push("(" + String(f.referencia).replace(/\.$/, "") + ")");
+    l.push("");
+  }
+  l.push("📄 *Seu ingresso com QR Code está disponível em PDF.* Guarde o arquivo no celular para apresentar na entrada."); l.push("");
+  if (pdf) { l.push("🔗 *Acesse ou baixe seu ingresso:*"); l.push(pdf); l.push(""); }
+  l.push("⚠️ *Importante:* O ingresso é pessoal e válido para apenas uma entrada. Não compartilhe o arquivo com outras pessoas."); l.push("");
+  l.push("Esperamos você para uma noite especial de celebração! 🎶🥳"); l.push("");
+  l.push("*SindEducação-ES*");
+  return l.join("\n");
+}
+
 function cingNomeChave_(s) {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -223,10 +256,8 @@ function compassoIngressos_lista(tokenSessao) {
     if (!base) return { ok: false, mensagem: "A base do TickOne ainda não foi lida pelo robô." };
     cingSincronizarResultado_();
     var envios = cingEnvios_(), pdfs = cingPdfs_(), excl = cingExclusaoPorCodigo_();
-    var modelo = "";   // O TEXTO PADRÃO de Eventos (compasso_textoEntrega_), sem mudar uma palavra; montado NA TELA para abrir o WhatsApp no mesmo toque
-    try { modelo = compasso_textoEntrega_({ nome: "ZZNOMEZZ", numero: "ZZCODZZ" }, ""); } catch (eM) { modelo = ""; }
-    // quando o PDF já está na pasta, o link para BAIXAR/SALVAR vai logo abaixo da linha do PDF (o resto do texto fica igual)
-    var modeloPdf = modelo ? modelo.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* ZZPDFZZ") : "";
+    var modelo = "", modeloPdf = "";   // O TEXTO PADRÃO do WhatsApp (cingTextoWhats_), montado NA TELA para abrir a conversa no mesmo toque
+    try { modelo = cingTextoWhats_("ZZNOMEZZ", ""); modeloPdf = cingTextoWhats_("ZZNOMEZZ", "ZZPDFZZ"); } catch (eM) { modelo = ""; modeloPdf = ""; }
     var linhas = base.linhas.map(function (l) {
       var fone = cingFone_(l.tel), e = envios[l.codigo] || null, assumido = null;
       if (!fone) { assumido = cingFoneAssumido_(l.tel, l.cidade); if (assumido) fone = assumido.fone; }
@@ -258,9 +289,8 @@ function compassoIngressos_mensagem(codigo, tokenSessao) {
     var fone = cingFone_(l.tel);
     if (!fone) { var as2 = cingFoneAssumido_(l.tel, l.cidade); if (as2) fone = as2.fone; }
     if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado" + (cingSoDigitos_(l.tel).length === 9 ? " e a cidade (" + (l.cidade || "em branco") + ") não permite deduzir o DDD" : "") + ". Corrija no TickOne e leia a base de novo." };
-    var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, "");
     var pdf = ""; try { pdf = cingPdfs_()[cingNomeChave_(l.nome)] || ""; } catch (eP) { pdf = ""; }
-    if (pdf) texto = texto.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* " + pdf);
+    var texto = cingTextoWhats_(l.nome, pdf);
     return { ok: true, fone: fone, texto: texto, link: pdf, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
   } catch (e) {
     return { ok: false, mensagem: e.message };

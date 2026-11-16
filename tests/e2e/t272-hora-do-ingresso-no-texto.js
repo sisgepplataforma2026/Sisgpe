@@ -18,4 +18,32 @@ b.ok(f.horaInicio === "20h" && f.horaAbertura === "19h30", "os dados da festa j�
 const txt = g.compasso_textoEntrega_({ nome: "Adna Fictícia", numero: "ABC-0001" }, "");
 b.ok(/às 20h/.test(txt) && /a partir das 19h30/.test(txt) && !/1899|GMT|Horário Padrão/.test(txt), "o WhatsApp diz 'às 20h' e 'a partir das 19h30', sem 1899 nem GMT", txt.split("\n").filter(l => /Quando|Portões/.test(l)).join(" | "));
 b.ok(/Na entrada, apresente/.test(txt) && /QR Code do PDF/.test(txt) && /documento oficial com foto/.test(txt) && /segue em PDF nesta conversa/.test(txt), "e o texto padrão continua inteiro (incluindo 'Na entrada, apresente')");
+b.fluxo("TEXTO DO WHATSAPP · igual ao que o usuário colou (16/11/2026)");
+const DATA = g.compasso_dadosDaFesta_().data;   // a data como o sistema a guarda
+g.compasso_dadosDaFesta_ = () => ({ data: DATA, horaInicio: "20h", horaAbertura: "19h30", local: "Espaço Patrick Ribeiro", endereco: "Av. Roza Helena Schorling Albuquerque, S/N – Goiabeiras, Vitória/ES, 29109-350.", referencia: "Ao lado do Aeroporto de Vitória" });
+const OURO = [
+  "Olá, *Adna*! 🎉", "",
+  "Sua inscrição na *Festa No Compasso da Vida 2026* foi confirmada, e seu ingresso já está pronto! 🎟️", "",
+  "*Na entrada, apresente:*",
+  "✅ O QR Code do ingresso em PDF (na tela do celular ou impresso);",
+  "✅ Um *documento oficial com foto* (RG, CNH ou outro), para conferência.", "",
+  "📅 *Data:* Sábado, 19 de dezembro de 2026", "",
+  "🕗 *Horário:* 20h", "",
+  "🚪 *Abertura dos portões:* 19h30", "",
+  "📍 *Local:* Espaço Patrick Ribeiro",
+  "Av. Roza Helena Schorling Albuquerque, S/N – Goiabeiras, Vitória/ES, 29109-350.",
+  "(Ao lado do Aeroporto de Vitória)", "",
+  "📄 *Seu ingresso com QR Code está disponível em PDF.* Guarde o arquivo no celular para apresentar na entrada.", "",
+  "🔗 *Acesse ou baixe seu ingresso:*",
+  "https://drive.google.com/file/d/1VkuX-g-NzsOJ4JXBHadmN-S4g0fx9P30/view", "",
+  "⚠️ *Importante:* O ingresso é pessoal e válido para apenas uma entrada. Não compartilhe o arquivo com outras pessoas.", "",
+  "Esperamos você para uma noite especial de celebração! 🎶🥳", "",
+  "*SindEducação-ES*"].join("\n");
+const gerado = g.cingTextoWhats_("ADNA DE JESUS VIEIRA SILVA", "https://drive.google.com/file/d/1VkuX-g-NzsOJ4JXBHadmN-S4g0fx9P30/view");
+b.ok(gerado === OURO, "com PDF: a mensagem é IGUAL, caractere por caractere, à que o usuário colou", gerado === OURO ? "" : gerado.split("\n").map((l, i) => l === OURO.split("\n")[i] ? null : "linha " + (i + 1) + ": " + l).filter(Boolean).slice(0, 3).join(" | "));
+const semPdf = g.cingTextoWhats_("Adna", "");
+b.ok(semPdf === OURO.replace("🔗 *Acesse ou baixe seu ingresso:*\nhttps://drive.google.com/file/d/1VkuX-g-NzsOJ4JXBHadmN-S4g0fx9P30/view\n\n", ""), "sem PDF na pasta: a mesma mensagem, só sem a seção do link");
+g.compasso_dadosDaFesta_ = () => ({ data: DATA, horaInicio: "", horaAbertura: "", local: "", endereco: "", referencia: "" });
+const so = g.cingTextoWhats_("Ana", "");
+b.ok(/📅 \*Data:\* Sábado, 19 de dezembro de 2026/.test(so) && !/Horário:|Abertura dos portões|📍/.test(so) && !/\n\n\n/.test(so), "campo sem dado não aparece e não deixa linha em branco sobrando");
 b.resumo();

@@ -43,7 +43,7 @@ b.ok(li.ok && li.linhas.length === 3 && li.linhas[0].cpf === "529.***.***-25" &&
 b.ok(li.linhas[0].pdfDrive === "https://drive.example/maria.pdf" && li.linhas[1].foneOk === false && li.linhas[1].urlIngresso.indexOf("ref=REF2") > 0, "PDF do Drive quando existe; sem DDD marca 'conferir telefone'; link do ingresso no TickOne");
 b.passo("3. Mensagem do WhatsApp (não envia nada)");
 const ms = g.compassoIngressos_mensagem("AAAA-0001", TOKEN);
-b.ok(ms.ok && /^https:\/\/wa\.me\/5527999990001\?text=/.test(ms.url) && /AAAA-0001/.test(ms.texto) && /Ol%C3%A1/.test(ms.url), "link do WhatsApp com a mensagem e o código");
+b.ok(ms.ok && /^https:\/\/wa\.me\/5527999990001\?text=/.test(ms.url) && /Ol%C3%A1/.test(ms.url) && /Festa No Compasso da Vida 2026/.test(ms.texto), "link do WhatsApp com a mensagem padrão");
 b.ok(g.compassoIngressos_mensagem("AAAA-0002", TOKEN).ok === false, "telefone sem DDD: não monta o link");
 b.passo("4. Só vira 'enviado' depois da confirmação");
 b.ok(g.compassoIngressos_estado(TOKEN).enviados === 0, "pedir a mensagem não marca enviado");
