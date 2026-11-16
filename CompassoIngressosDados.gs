@@ -188,18 +188,34 @@ function cingLerBase_() {
 }
 
 /** nome (sem acento, minúsculo) → link do PDF na pasta do Drive. Sem a pasta, devolve {} e a tela usa o link do TickOne. */
+/** Subpastas da pasta INGRESSOS FESTA COMPASSO 2026, por categoria do ingresso (a equipe as criou em 16/11/2026: "cada pasta com seu
+ *  ingresso"). Pago não tem subpasta: fica na raiz. */
+var CING_SUBPASTAS = { associado: "INGRESSOS ASSOCIADOS", acompanhante: "INGRESSOS ACOMPANHANTES", convite: "INGRESSOS CONVIDADOS", cortesia: "INGRESSOS CONVIDADOS" };
+
+/** Todos os PDFs da pasta dos ingressos E das subpastas (até 2 níveis): { "TickOne - Nome.pdf": idDoArquivo }. */
+function cingPdfsDaPasta_() {
+  var out = {};
+  function varrer(pasta, nivel) {
+    var it = pasta.getFiles();
+    while (it.hasNext()) { var f = it.next(), nm = f.getName(); if (/\.pdf$/i.test(nm) && !out[nm]) out[nm] = f.getId(); }
+    if (nivel >= 2) return;
+    var sub = pasta.getFolders();
+    while (sub.hasNext()) varrer(sub.next(), nivel + 1);
+  }
+  varrer(DriveApp.getFolderById(CING_PASTA_PDF_ID), 0);
+  return out;
+}
+
 function cingPdfs_() {
-  var chave = "CING_PDFS_V1";
+  var chave = "CING_PDFS_V2";
   try { var c = CacheService.getScriptCache().get(chave); if (c) return JSON.parse(c); } catch (eC) {}
   var out = {};
   try {
-    var it = DriveApp.getFolderById(CING_PASTA_PDF_ID).getFiles();
-    while (it.hasNext()) {
-      var f = it.next(), nome = f.getName();
-      if (!/\.pdf$/i.test(nome)) continue;
+    var todos = cingPdfsDaPasta_();
+    Object.keys(todos).forEach(function (nome) {
       var k = cingNomeChave_(nome.replace(/\.pdf$/i, "").replace(/^TickOne\s*-\s*/i, ""));
-      if (k) out[k] = "https://drive.google.com/file/d/" + f.getId() + "/view";
-    }
+      if (k) out[k] = "https://drive.google.com/file/d/" + todos[nome] + "/view";
+    });
   } catch (e) { /* pasta fora do alcance: segue sem os links do Drive */ }
   try { var txt = JSON.stringify(out); if (txt.length < 90000) CacheService.getScriptCache().put(chave, txt, 300); } catch (eP) {}
   return out;
@@ -733,27 +749,34 @@ function compassoIngressos_sincronizarPdfs(tokenSessao) {
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(20000)) return { ok: true, copiados: 0, faltam: 0, total: 0, ocupado: true };
     try {
-      var destino = DriveApp.getFolderById(CING_PASTA_PDF_ID), jaTem = {}, fi = destino.getFiles();
-      while (fi.hasNext()) { var nm = fi.next().getName(); if (/\.pdf$/i.test(nm)) jaTem[nm] = true; }
+      var destino = DriveApp.getFolderById(CING_PASTA_PDF_ID), jaTem = cingPdfsDaPasta_();   // raiz + subpastas por categoria
       var existentesAtualizado = false;
-      try { existentesAtualizado = cingAtualizarExistentes_(pasta, Object.keys(jaTem)); } catch (eE) { /* sem o arquivo do robô ainda: segue */ }
+      try { existentesAtualizado = cingAtualizarExistentes_(pasta, Object.keys(jaTem)); /* nomes de toda a árvore de pastas */ } catch (eE) { /* sem o arquivo do robô ainda: segue */ }
       var it = pasta.getFilesByName(CING_ARQ_PDFS);
       if (!it.hasNext()) return { ok: true, copiados: 0, faltam: 0, total: 0, existentesAtualizado: existentesAtualizado, mensagem: "O robô ainda não baixou PDFs." };
       var est = JSON.parse(it.next().getBlob().getDataAsString()), feitos = est.feitos || {};
       /* SÓ os PDFs que o ROBÔ baixou (têm arquivo na pasta dele). Os marcados "existente" são ingressos que a equipe já tinha
          (o robô os achou pelo nome, sem acento/maiúscula): não há o que copiar. Antes, eles ocupavam as 20 vagas de cada lote
          e travavam a cópia dos novos (achado em 16/11/2026: nada era copiado desde as 09:27). */
-      var nomes = [];
-      Object.keys(feitos).forEach(function (k) { if (!feitos[k].existente) nomes.push(feitos[k].arquivo); });
+      var nomes = [], codDoNome = {};
+      Object.keys(feitos).forEach(function (k) { if (!feitos[k].existente) { nomes.push(feitos[k].arquivo); codDoNome[feitos[k].arquivo] = k; } });
+      var tipoDe = {}; try { var bs = cingLerBase_(); if (bs) bs.linhas.forEach(function (l2) { tipoDe[l2.codigo] = l2.tipo; }); } catch (eB) {}
+      var subCache = {};
+      var pastaDaCategoria = function (codigo) {   // subpasta da categoria do ingresso; sem subpasta (ou Pago): a raiz
+        var nomeSub = CING_SUBPASTAS[cingCategoria_(tipoDe[codigo] || "")] || "";
+        if (!nomeSub) return destino;
+        if (!(nomeSub in subCache)) { var sf = destino.getFoldersByName(nomeSub); subCache[nomeSub] = sf.hasNext() ? sf.next() : destino; }
+        return subCache[nomeSub];
+      };
       var pend = nomes.filter(function (nm2) { return !jaTem[nm2]; }), n = 0, semArquivo = 0, vistos = 0;
       for (var i = 0; i < pend.length && n < 20; i++) {
         vistos++;
         var f = pasta.getFilesByName(pend[i]);
         if (!f.hasNext()) { semArquivo++; continue; }   // não trava o lote: segue para o próximo
-        var copia = f.next().makeCopy(pend[i], destino); n++;
+        var copia = f.next().makeCopy(pend[i], pastaDaCategoria(codDoNome[pend[i]])); n++;
         arquivoAplicarExcecao_(copia, "ingresso_festa", pend[i]);   // link aberto SÓ para o PDF do ingresso: exceção nomeada em ArquivoDrive.gs (decisão do usuário, 15/11/2026)
       }
-      if (n || existentesAtualizado) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
+      if (n || existentesAtualizado) { try { CacheService.getScriptCache().remove("CING_PDFS_V2"); } catch (e) {} }
       return { ok: true, copiados: n, faltam: Math.max(0, pend.length - vistos), semArquivo: semArquivo, total: nomes.length, existentesAtualizado: existentesAtualizado };
     } finally { lock.releaseLock(); }
   } catch (e) { return { ok: false, mensagem: e.message }; }
