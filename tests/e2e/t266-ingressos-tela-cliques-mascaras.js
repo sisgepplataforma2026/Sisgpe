@@ -72,7 +72,7 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   { const bt = doc.querySelector("[data-ci='zap'][data-arg='AAAA-0003']"); for (let i = 0; i < 3; i++) bt.click(); }   // 3 toques seguidos no MESMO botão
   await t.assentar(300);
   { const t0 = decodeURIComponent(abertos[0]);
-    b.ok(cMsg.n === 0 && abertos.length === 1 && /^https:\/\/wa\.me\/5527988880003\?text=/.test(abertos[0]) && /Olá, \*Ana\*! 🎉/.test(t0), "3 cliques no WhatsApp: abre 1 conversa NO MESMO TOQUE (mensagem montada na tela, sem esperar o servidor), com o nome", "servidor " + cMsg.n + ", abas " + abertos.length);
+    b.ok(cMsg.n === 0 && abertos.length === 1 && /^https:\/\/web\.whatsapp\.com\/send\?phone=5527988880003&text=/.test(abertos[0]) && /Olá, \*Ana\*! 🎉/.test(t0), "3 cliques no WhatsApp: abre 1 conversa NO MESMO TOQUE (mensagem montada na tela, sem esperar o servidor), com o nome", "servidor " + cMsg.n + ", abas " + abertos.length);
     b.ok(/Seu ingresso como acompanhante na \*Festa No Compasso da Vida 2026\* já está pronto! 🎟️/.test(t0) && !/ZZABERTURAZZ|inscrição/.test(t0) && /\*Na entrada, apresente:\*\n✅ O QR Code do ingresso em PDF/.test(t0) && /✅ Um \*documento oficial com foto\*/.test(t0) && /📄 \*Seu ingresso com QR Code está disponível em PDF\.\*/.test(t0) && /⚠️ \*Importante:\* O ingresso é pessoal e válido para apenas uma entrada/.test(t0) && /Esperamos você para uma noite especial de celebração! 🎶🥳\n\n\*SindEducação-ES\*$/.test(t0), "é o TEXTO PADRÃO que o usuário colou (16/11/2026), do título ao fecho, com a frase de ACOMPANHANTE (a Ana é acompanhante)");
     b.ok(!/Acesse ou baixe seu ingresso|drive\.google|ZZ|ingressos\.sindeducacao|page=ticket/i.test(t0), "sem PDF na pasta, a seção do link NÃO entra e não sobra marcador"); }
   await t.assentar(400);
@@ -83,7 +83,7 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   const abrirOk = win.open; win.open = () => null;
   t.clicar("[data-ci='zap'][data-arg='AAAA-0001']"); await t.assentar(300);
   const lk = doc.querySelector("a[data-ci='abriuLink'][data-arg='AAAA-0001']");
-  b.ok(!!lk && /^https:\/\/wa\.me\/5527999990001\?text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
+  b.ok(!!lk && /^https:\/\/web\.whatsapp\.com\/send\?phone=5527999990001&text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
   { const tm = decodeURIComponent(lk.getAttribute("href"));
     b.ok(/🔗 \*Acesse ou baixe seu ingresso:\*\nhttps:\/\/script\.google\.com\/macros\/s\/ABC123\/exec\?page=ingresso-festa&c=AAAA-0001\n\n⚠️ \*Importante:\*/.test(tm) && /📄 \*Seu ingresso com QR Code está disponível em PDF\.\*/.test(tm), "quem já tem PDF na pasta: entra '🔗 Acesse ou baixe seu ingresso:' com o link do CARTÃO (a página do sindicato, não o Drive), entre o aviso do PDF e o 'Importante'"); }
   t.clicar("a[data-ci='abriuLink'][data-arg='AAAA-0001']"); await t.assentar(700);

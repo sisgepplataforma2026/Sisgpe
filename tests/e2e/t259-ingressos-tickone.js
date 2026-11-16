@@ -126,7 +126,7 @@ const abertos = []; win.open = u => { const w = { closed: false, close() { this.
   b.passo("9. WhatsApp: o toque em Enviar abre a conversa e JÁ marca como enviado (sem 'Confirmar envio')");
   const antes = g.compassoIngressos_estado(TOKEN).enviados;
   t.clicar("[data-ci='zap'][data-arg='AAAA-0003']"); await t.assentar(400);
-  b.ok(abertos.length === 1 && /^https:\/\/wa\.me\/5527988880003\?text=/.test(abertos[0]), "abriu o WhatsApp certo com a mensagem");
+  b.ok(abertos.length === 1 && /^https:\/\/web\.whatsapp\.com\/send\?phone=5527988880003&text=/.test(abertos[0]), "abriu o WhatsApp certo com a mensagem");
   b.ok(g.compassoIngressos_estado(TOKEN).enviados === antes + 1 && /Enviado \d\d\/\d\d \d\d:\d\d · /.test(el("ciLista").textContent) && !doc.querySelector("[data-ci='confirmar']"), "já marcou como enviado, com a linha mostrando 'Enviado', e NÃO existe botão 'Confirmar envio'");
   { const nA = abertos.length; t.clicar("[data-ci='zap'][data-arg='AAAA-0002']"); await t.assentar(50);
   b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0002']").getAttribute("data-off") === "1" && abertos.length === nA && el("ciErro").hidden === false && /sem DDD/.test(el("ciErro").textContent), "telefone sem DDD: o botão fica apagado e, ao tocar, a tela EXPLICA o motivo (não fica mudo) e não abre WhatsApp"); }

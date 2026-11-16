@@ -314,7 +314,14 @@
   function montarZap(l){
     var p=String(l.nome||'').trim().split(/\s+/)[0]||''; p=p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():'';
     var t=((l.pdfDrive&&MODELO_PDF)?MODELO_PDF.replace(/ZZPDFZZ/g,CARTAO_BASE?CARTAO_BASE+'?page=ingresso-festa&c='+encodeURIComponent(l.codigo):l.pdfDrive):MODELO).replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo).replace(/ZZABERTURAZZ/g,ABERT[l.categoria]||ABERT.associado||'');
-    return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
+    return urlZap('https://wa.me/'+l.fone+'?text='+encodeURIComponent(t));
+  }
+  /* No COMPUTADOR o link abre o WhatsApp WEB: o aplicativo do Windows estraga os emojis (aparece "�") quando o link vem do navegador.
+     No celular continua o wa.me, que abre o aplicativo certo. */
+  function urlZap(u){
+    var m=/^https:\/\/wa\.me\/(\d+)\?text=(.*)$/.exec(String(u||''));
+    var cel=/Android|iPhone|iPad|iPod|Mobile/i.test((window.navigator&&navigator.userAgent)||'');
+    return (m&&!cel)?'https://web.whatsapp.com/send?phone='+m[1]+'&text='+m[2]:u;
   }
   function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }
   /* ENVIAR: o toque em "Enviar no WhatsApp" abre a conversa e JÁ marca como enviado (sem "Confirmar envio"). Se o navegador
@@ -345,8 +352,8 @@
       try{
         if(!r.ok){ try{ if(w) w.close(); }catch(e){} falha(r.mensagem||'Não consegui montar a mensagem.'); return; }
         var abriu=false;
-        try{ if(w&&!w.closed){ w.location.href=r.url; abriu=true; } else { abriu=!!window.open(r.url,'_blank'); } }catch(e){}
-        abriuZap(cod,abriu,r.url);
+        var ur=urlZap(r.url); try{ if(w&&!w.closed){ w.location.href=ur; abriu=true; } else { abriu=!!window.open(ur,'_blank'); } }catch(e){}
+        abriuZap(cod,abriu,ur);
       }catch(e){ falha('Erro na tela ao abrir o WhatsApp: '+((e&&e.message)||e)); }
     });
   }

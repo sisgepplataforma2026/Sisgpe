@@ -99,7 +99,7 @@ g.compasso_dataPorExtenso_ = () => "sábado, 19 de dezembro de 2026";
     const c0 = doc.querySelectorAll("#ciPessoas .ci-pessoa")[0];
     b.ok(/Já tem ingresso · TK-0003/.test(c0.textContent) && !!c0.querySelector("[data-ci='zap'][data-arg='TK-0003']") && !!c0.querySelector("a[href*='ref=REF-TK-0003']"), "o cartão diz 'já tem ingresso' e oferece 📱 Enviar no WhatsApp e 🎟️ abrir/baixar");
     t.clicar("#ciPessoas [data-ci='zap'][data-arg='TK-0003']"); await t.assentar(400);
-    b.ok(abertos.length === 1 && /^https:\/\/wa\.me\/5527977770099\?text=/.test(abertos[0]) && /Festa No Compasso da Vida 2026/.test(decodeURIComponent(abertos[0])), "o WhatsApp abre no número certo, com a mensagem padrão");
+    b.ok(abertos.length === 1 && /^https:\/\/web\.whatsapp\.com\/send\?phone=5527977770099&text=/.test(abertos[0]) && /Festa No Compasso da Vida 2026/.test(decodeURIComponent(abertos[0])), "o WhatsApp abre no número certo, com a mensagem padrão");
     b.ok(g.compassoIngressos_estado(TOKEN).enviados === 1 && g.compassoIngressos_lista(TOKEN).linhas.find(l => l.codigo === "TK-0003").enviado.quem !== "", "o toque em Enviar já registrou o envio, com quem enviou (sem 'Confirmar envio')");
   } else b.naoTestavel("a tela do ciclo", "jsdom não instalado");
 
