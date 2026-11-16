@@ -95,6 +95,30 @@ function cingFone_(s) {
   return "55" + d;
 }
 
+/* DDD PELA CIDADE (16/11/2026). O telefone de alguns ingressos veio do TickOne sem DDD (ex.: 99606-9084). O usuário: "tem que
+   verificar a cidade". Só se deduz o DDD quando a CIDADE é do Espírito Santo e o DDD dela é certo: 27 (Grande Vitória, centro e
+   norte) ou 28 (sul do estado). Cidade fora dessa lista, ou de DDD duvidoso, NÃO é deduzida: o botão continua travado e a tela
+   diz por quê. A dedução é SUGESTÃO com a origem à vista ("DDD 27 assumido pela cidade"), nunca em silêncio. */
+var CING_DDD_27 = "vitoria|vila velha|serra|cariacica|viana|guarapari|fundao|santa leopoldina|santa maria de jetiba|santa teresa|domingos martins|marechal floriano|aracruz|ibiracu|joao neiva|linhares|colatina|sao mateus|nova venecia|barra de sao francisco|sao gabriel da palha|baixo guandu|afonso claudio|itaguacu|itarana|laranja da terra|conceicao da barra|pedro canario|pinheiros|jaguare|sooretama|rio bananal|marilandia|pancas|governador lindenberg|vila valerio|vila pavao|boa esperanca|montanha|mucurici|ponto belo|ecoporanga|agua doce do norte|aguia branca|alto rio novo|mantenopolis|sao domingos do norte|sao roque do canaa";
+var CING_DDD_28 = "cachoeiro de itapemirim|itapemirim|marataizes|piuma|anchieta|iconha|rio novo do sul|mimoso do sul|muqui|castelo|alegre|guacui|jeronimo monteiro|presidente kennedy|atilio vivacqua|apiaca|bom jesus do norte|sao jose do calcado";
+
+/** "27", "28" ou "" (cidade desconhecida, de outro estado ou de DDD duvidoso). */
+function cingDddPorCidade_(cidade) {
+  var k = cingNomeChave_(cidade).replace(/\s*[-\/,]\s*(es|espirito santo)\s*$/, "").replace(/\s+/g, " ").trim();
+  if (!k) return "";
+  if (("|" + CING_DDD_27 + "|").indexOf("|" + k + "|") >= 0) return "27";
+  if (("|" + CING_DDD_28 + "|").indexOf("|" + k + "|") >= 0) return "28";
+  return "";
+}
+
+/** Telefone de 9 dígitos (celular sem DDD) + cidade conhecida → { fone: "55DDDnúmero", ddd }. Senão null. */
+function cingFoneAssumido_(tel, cidade) {
+  var d = cingSoDigitos_(tel);
+  if (d.length !== 9 || d.charAt(0) !== "9") return null;
+  var ddd = cingDddPorCidade_(cidade);
+  return ddd ? { fone: "55" + ddd + d, ddd: ddd } : null;
+}
+
 function cingNomeChave_(s) {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -204,15 +228,16 @@ function compassoIngressos_lista(tokenSessao) {
     // quando o PDF já está na pasta, o link para BAIXAR/SALVAR vai logo abaixo da linha do PDF (o resto do texto fica igual)
     var modeloPdf = modelo ? modelo.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* ZZPDFZZ") : "";
     var linhas = base.linhas.map(function (l) {
-      var fone = cingFone_(l.tel), e = envios[l.codigo] || null;
+      var fone = cingFone_(l.tel), e = envios[l.codigo] || null, assumido = null;
+      if (!fone) { assumido = cingFoneAssumido_(l.tel, l.cidade); if (assumido) fone = assumido.fone; }
       var falta = [];
       if (cingCategoria_(l.tipo) === "associado") {   // a base do TickOne não traz e-mail: só confere o que ela traz
         if (!l.nome) falta.push("nome"); if (!cingCpfValido_(l.cpf)) falta.push("CPF válido");
-        if (!fone) falta.push("telefone com DDD"); if (!l.escola) falta.push("nome da escola"); if (!l.cidade) falta.push("cidade");
+        if (!fone) falta.push("telefone com DDD");   // com DDD deduzido pela cidade, o telefone passa a servir (aparece o aviso "DDD assumido") if (!l.escola) falta.push("nome da escola"); if (!l.cidade) falta.push("cidade");
       }
       var ex = excl[l.codigo], exOk = ex && (ex.STATUS === "PEDIDO" || ex.STATUS === "EXCLUIDO" || ex.STATUS === "FALHOU" || ex.STATUS === "JA_ENTROU");
       return { exclusao: exOk ? { pedido: String(ex.PEDIDO), status: String(ex.STATUS), quem: String(ex.PEDIDO_POR || ""), quando: cingFmtData_(ex.PEDIDO_EM), resultado: String(ex.RESULTADO || "") } : null,
-        nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, fone: fone, codigo: l.codigo,
+        nome: l.nome, faltando: falta, cpf: cingCpfMascara_(l.cpf), tel: l.tel, foneOk: !!fone, fone: fone, foneAssumido: assumido ? assumido.ddd : "", codigo: l.codigo,
         categoria: cingCategoria_(l.tipo) || "", tipo: l.tipo, escola: l.escola, cidade: l.cidade,
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
@@ -231,7 +256,8 @@ function compassoIngressos_mensagem(codigo, tokenSessao) {
     var l = base && base.linhas.filter(function (x) { return x.codigo === String(codigo); })[0];
     if (!l) return { ok: false, mensagem: "Ingresso não encontrado na base." };
     var fone = cingFone_(l.tel);
-    if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado. Corrija no TickOne e leia a base de novo." };
+    if (!fone) { var as2 = cingFoneAssumido_(l.tel, l.cidade); if (as2) fone = as2.fone; }
+    if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado" + (cingSoDigitos_(l.tel).length === 9 ? " e a cidade (" + (l.cidade || "em branco") + ") não permite deduzir o DDD" : "") + ". Corrija no TickOne e leia a base de novo." };
     var texto = compasso_textoEntrega_({ nome: l.nome, numero: l.codigo }, "");
     var pdf = ""; try { pdf = cingPdfs_()[cingNomeChave_(l.nome)] || ""; } catch (eP) { pdf = ""; }
     if (pdf) texto = texto.replace(/(📎[^\n]*)/, "$1\n⬇️ *Baixe ou salve o PDF do ingresso:* " + pdf);
