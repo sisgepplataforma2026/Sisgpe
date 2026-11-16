@@ -44,7 +44,7 @@ if (dom.jsdomDisponivel()) {
     const txt = el("ciLista").textContent;
     b.ok(/DDD 27 assumido pela cidade \(Vitória\)/.test(txt) && /DDD 28 assumido pela cidade \(Cachoeiro/.test(txt) && !/DDD \d+ assumido pela cidade \(Belo/.test(txt), "a linha mostra de onde veio o DDD (e só nas que foram deduzidas)");
     t.clicar("[data-ci='zap'][data-arg='ELI-0001']"); await t.assentar(500);
-    b.ok(abertos.length === 1 && /^https:\/\/wa\.me\/5527996069084\?text=/.test(abertos[0]), "tocar em Enviar abre o WhatsApp no número com DDD deduzido");
+    b.ok(abertos.length === 1 && /^https:\/\/web\.whatsapp\.com\/send\?phone=5527996069084&text=/.test(abertos[0]), "tocar em Enviar abre o WhatsApp no número com DDD deduzido");
     t.clicar("[data-ci='zap'][data-arg='MG-0003']"); await t.assentar(100);
     b.ok(abertos.length === 1 && /não permite deduzir o DDD/.test(el("ciErro").textContent), "Belo Horizonte: não abre nada e explica o motivo na faixa vermelha");
     b.resumo(); process.exit(process.exitCode || 0);
