@@ -260,7 +260,7 @@
   function carregarLista(){
     rodar('compassoIngressos_lista',[],function(r){
       if(!r.ok){ g('ciLista').innerHTML='<div class="ci-vazio">🔒 '+esc(r.mensagem)+'</div>'; return; }
-      BASE=r.linhas||[]; MODELO=r.modelo||''; MODELO_PDF=r.modeloPdf||''; CARTAO_BASE=r.cartaoBase||''; desenhar();
+      BASE=r.linhas||[]; MODELO=r.modelo||''; MODELO_PDF=r.modeloPdf||''; ABERT=r.aberturas||{}; CARTAO_BASE=r.cartaoBase||''; desenhar();
     });
   }
   function passa(l){
@@ -310,10 +310,10 @@
      (alguns décimos de segundo depois), abrimos uma aba em branco JÁ no toque e só depois mandamos ela para o
      WhatsApp. Se o navegador bloquear mesmo assim (celular, Safari), aparece o botão "Abrir WhatsApp": é um link
      comum, que abre no toque seguinte. */
-  var WALINK={}, MODELO='', MODELO_PDF='', CARTAO_BASE='';
+  var WALINK={}, MODELO='', MODELO_PDF='', CARTAO_BASE='', ABERT={};
   function montarZap(l){
     var p=String(l.nome||'').trim().split(/\s+/)[0]||''; p=p?p.charAt(0).toUpperCase()+p.slice(1).toLowerCase():'';
-    var t=((l.pdfDrive&&MODELO_PDF)?MODELO_PDF.replace(/ZZPDFZZ/g,CARTAO_BASE?CARTAO_BASE+'?page=ingresso-festa&c='+encodeURIComponent(l.codigo):l.pdfDrive):MODELO).replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo);
+    var t=((l.pdfDrive&&MODELO_PDF)?MODELO_PDF.replace(/ZZPDFZZ/g,CARTAO_BASE?CARTAO_BASE+'?page=ingresso-festa&c='+encodeURIComponent(l.codigo):l.pdfDrive):MODELO).replace(/zznomezz/ig,p).replace(/ZZCODZZ/g,l.codigo).replace(/ZZABERTURAZZ/g,ABERT[l.categoria]||ABERT.associado||'');
     return 'https://wa.me/'+l.fone+'?text='+encodeURIComponent(t);
   }
   function falha(msg){ erro('⚠ '+msg); aviso(msg,true); try{ g('ciErro').scrollIntoView({block:'center'}); }catch(e){} }

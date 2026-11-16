@@ -46,4 +46,17 @@ b.ok(semPdf === OURO.replace("🔗 *Acesse ou baixe seu ingresso:*\nhttps://driv
 g.compasso_dadosDaFesta_ = () => ({ data: DATA, horaInicio: "", horaAbertura: "", local: "", endereco: "", referencia: "" });
 const so = g.cingTextoWhats_("Ana", "");
 b.ok(/📅 \*Data:\* Sábado, 19 de dezembro de 2026/.test(so) && !/Horário:|Abertura dos portões|📍/.test(so) && !/\n\n\n/.test(so), "campo sem dado não aparece e não deixa linha em branco sobrando");
+// Categorias (decisão de 16/11/2026): só a frase de abertura muda; o resto da mensagem é idêntico para todos.
+const fraseAssoc = "Sua inscrição na *Festa No Compasso da Vida 2026* foi confirmada, e seu ingresso já está pronto! 🎟️";
+const fraseAcomp = "Seu ingresso como acompanhante na *Festa No Compasso da Vida 2026* já está pronto! 🎟️";
+const fraseConv = "Você é nosso convidado na *Festa No Compasso da Vida 2026*, e seu ingresso já está pronto! 🎟️";
+const PDFX = "https://drive.google.com/file/d/1VkuX-g-NzsOJ4JXBHadmN-S4g0fx9P30/view";
+g.compasso_dadosDaFesta_ = () => ({ data: DATA, horaInicio: "20h", horaAbertura: "19h", local: "Clube", endereco: "Rua A", referencia: "perto" });
+const tAssoc = g.cingTextoWhats_("Adna", PDFX, "associado"), tAcomp = g.cingTextoWhats_("Adna", PDFX, "acompanhante"), tConv = g.cingTextoWhats_("Adna", PDFX, "convite"), tCort = g.cingTextoWhats_("Adna", PDFX, "cortesia"), tPago = g.cingTextoWhats_("Adna", PDFX, "pago"), tSem = g.cingTextoWhats_("Adna", PDFX);
+b.ok(tAssoc.includes(fraseAssoc) && tPago.includes(fraseAssoc) && tSem.includes(fraseAssoc), "associado, pago e sem categoria: 'inscrição confirmada'");
+b.ok(tAcomp.includes(fraseAcomp) && !tAcomp.includes("inscrição"), "acompanhante: frase própria");
+b.ok(tConv.includes(fraseConv) && tCort.includes(fraseConv) && !tConv.includes("inscrição"), "convidado (convite e cortesia): frase própria");
+b.ok(tAcomp.replace(fraseAcomp, fraseAssoc) === tAssoc && tConv.replace(fraseConv, fraseAssoc) === tAssoc, "o resto da mensagem é idêntico entre as categorias");
+const modelo = g.cingTextoWhats_("ZZNOMEZZ", "ZZPDFZZ", "ZZ");
+b.ok(modelo.includes("ZZABERTURAZZ") && !modelo.includes("inscrição"), "modelo da tela leva a marca no lugar da frase (a tela troca por categoria)");
 b.resumo();
