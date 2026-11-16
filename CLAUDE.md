@@ -165,6 +165,15 @@ celular — CompassoIngressos.html + CompassoIngressosDados.gs, t259). Decisões
   TickOne FALSO (t261); a emissão REAL nunca rodou — o 1º uso é UM ingresso de TESTE (do próprio usuário,
   dados digitados por ele na tela; nunca no código nem no git). TickOne não tem campo de data de nascimento.
 
+- **DECISÕES DE 16/11/2026 (usuário):** sem "Confirmar envio" e sem caixas de confirmação ("eu pedi para gerar, ele vai
+  gerar"); um botão só, **Gerar ingresso**. O robô baixa o PDF de cada ingresso ("TickOne - Nome.pdf") e o SISGEP copia para a
+  subpasta da categoria (ASSOCIADOS / ACOMPANHANTES / CONVIDADOS = convite+cortesia; pago na raiz). O PDF abre para qualquer
+  pessoa com o link (exceção NOMEADA em ArquivoDrive.gs, só `ingresso_festa`). Texto do WhatsApp = o modelo que ele colou, com a
+  frase de abertura por categoria (cingAbertura_). A mensagem leva o **link direto do PDF**; o cartão lilás (CompassoIngressoCartao.gs)
+  está DESLIGADO (CING_USAR_CARTAO) porque o endereço do app abriu erro do Drive — religar só com prova em janela anônima. DDD
+  deduzido pela cidade quando o telefone vem sem DDD (27 ou 28). Disparo automático do robô pelo botão precisa da chave do GitHub
+  (Script Property INGRESSOS_GH_TOKEN, colada por ele em 🤖 Robô, uma por ambiente; Actions: Read and write só no Sisgpe).
+
 ## 🚨 REGRA Nº -1 — LER CÓDIGO NÃO É TESTAR. NADA É "PRONTO" SEM EXECUÇÃO
 
 Vale para toda resposta, todo relatório, toda auditoria e todo commit. Vem antes de qualquer outra regra porque é a que decide se as outras respostas são confiáveis.

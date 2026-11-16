@@ -6986,3 +6986,15 @@ com UM ingresso de teste: (1) o Claude lê a base de novo (<15 min); (2) você d
 Solicitar novos › Conferir › Pedir emissão; (3) o Claude roda o robô; (4) conferir no TickOne que o ingresso
 apareceu, com a categoria/escola/cidade certas, e que o pop-up real não pediu nada a mais. Se o TickOne real
 mostrar um aviso ou confirmação diferente, o robô PARA e diz o que viu.
+
+## 🎟️ Ingressos — publicado em PRODUÇÃO em 16/11/2026 (commit d7f75f4), o que NÃO foi testado
+
+Testado por você: o texto do WhatsApp (produção, associado) chegou certo, com o link direto do PDF.
+Falta: (1) **acompanhante e convidado** — abrir o WhatsApp de UMA pessoa de cada categoria e conferir a frase de
+abertura própria (só testado no emulador, t272); (2) **chave do GitHub na PRODUÇÃO** (🤖 Robô) — só foi colada na
+homologação; sem ela o botão não dispara o robô lá; (3) **Gerar ingresso** na produção com UM ingresso de teste;
+(4) **cartão lilás** (CING_USAR_CARTAO = false): o endereço do app mostrou a tela de erro do Drive ("Não foi
+possível abrir o arquivo") na homologação; só religar depois de abrir o link do cartão numa janela anônima e ver a
+página; (5) **subpastas por categoria**: acompanhante e convidado novos devem cair em INGRESSOS ACOMPANHANTES /
+CONVIDADOS (testado só no emulador, t270); os 494 atuais estão todos em INGRESSOS ASSOCIADOS (conferido em 16/11).
+
