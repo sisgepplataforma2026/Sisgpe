@@ -278,7 +278,6 @@
     sit=l.enviado?'<span class="ci-b j">Enviado '+esc(l.enviado.quando)+' · '+esc(l.enviado.quem)+'</span>'
       :(!l.foneOk?'<span class="ci-b c">Conferir telefone</span>':'<span class="ci-b n">Falta enviar</span>');
     if(l.faltando&&l.faltando.length) sit+='<br><span class="ci-b c">Associado: está faltando '+esc(l.faltando.join(', '))+'</span>';
-    if(l.enviadoTick) sit+='<br><small>No TickOne: enviado '+l.enviadoTick+'×</small>';
     if(ex){
       var txt={PEDIDO:'Exclusão pedida em '+ex.quando+' por '+ex.quem+' — aguardando o robô',EXCLUIDO:'Excluído no TickOne ('+ex.resultado+')',FALHOU:'Exclusão falhou: '+ex.resultado,JA_ENTROU:'Já passou na portaria: NÃO foi excluído'}[ex.status]||ex.status;
       sit+='<br><span class="ci-b '+(ex.status==='EXCLUIDO'?'e':'c')+'">🗑 '+esc(txt)+'</span>';

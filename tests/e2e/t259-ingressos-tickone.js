@@ -122,11 +122,12 @@ const abertos = []; win.open = u => { const w = { closed: false, close() { this.
   t.clicar("[data-ci='chip'][data-arg='todos']"); el("ciBusca").value = "ana demo"; el("ciBusca").dispatchEvent(new win.Event("input", { bubbles: true })); await t.assentar(20);
   b.ok(doc.querySelectorAll("#ciLista .ci-linha").length === 1 && /Ana/.test(el("ciLista").textContent), "busca por nome");
   el("ciBusca").value = ""; el("ciBusca").dispatchEvent(new win.Event("input", { bubbles: true })); await t.assentar(20);
+  b.ok(!/No TickOne:|enviado \d+×/i.test(el("ciLista").textContent), "a lista NÃO mostra o contador de envios do TickOne (decisão do usuário, 16/11/2026: só importa se o SISGEP enviou e quando)");
   b.passo("9. WhatsApp: o toque em Enviar abre a conversa e JÁ marca como enviado (sem 'Confirmar envio')");
   const antes = g.compassoIngressos_estado(TOKEN).enviados;
   t.clicar("[data-ci='zap'][data-arg='AAAA-0003']"); await t.assentar(400);
   b.ok(abertos.length === 1 && /^https:\/\/wa\.me\/5527988880003\?text=/.test(abertos[0]), "abriu o WhatsApp certo com a mensagem");
-  b.ok(g.compassoIngressos_estado(TOKEN).enviados === antes + 1 && /Enviado/.test(el("ciLista").textContent) && !doc.querySelector("[data-ci='confirmar']"), "já marcou como enviado, com a linha mostrando 'Enviado', e NÃO existe botão 'Confirmar envio'");
+  b.ok(g.compassoIngressos_estado(TOKEN).enviados === antes + 1 && /Enviado \d\d\/\d\d \d\d:\d\d · /.test(el("ciLista").textContent) && !doc.querySelector("[data-ci='confirmar']"), "já marcou como enviado, com a linha mostrando 'Enviado', e NÃO existe botão 'Confirmar envio'");
   { const nA = abertos.length; t.clicar("[data-ci='zap'][data-arg='AAAA-0002']"); await t.assentar(50);
   b.ok(doc.querySelector("[data-ci='zap'][data-arg='AAAA-0002']").getAttribute("data-off") === "1" && abertos.length === nA && el("ciErro").hidden === false && /sem DDD/.test(el("ciErro").textContent), "telefone sem DDD: o botão fica apagado e, ao tocar, a tela EXPLICA o motivo (não fica mudo) e não abre WhatsApp"); }
   b.passo("10. Pedir ingresso: cartões de pessoa (como o '+ Adicionar' do Ofício), planilha, conferência");
