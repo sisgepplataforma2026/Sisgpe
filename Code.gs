@@ -125,6 +125,13 @@ function doGet(e) {
     //
     // Toda a validação está em EventosEntrega.gs
     // (compasso_validarQrTokenPublico_). Esta rota só entrega a página.
+    // ── INGRESSO DO TICKONE (cartão, 16/11/2026): ?page=ingresso-festa&c=<código> ───────
+    // O link da mensagem de WhatsApp do ingresso. Sem login: o código sorteado pelo TickOne é a credencial; a página mostra só o
+    // PRIMEIRO NOME, os dados da festa e o botão do PDF. Tudo em CompassoIngressoCartao.gs. Não faz check-in.
+    if (p.page === "ingresso-festa") {
+      return compassoIngressoCartao_pagina_(String(p.c || ""));
+    }
+
     if (p.page === "ingresso") {
       Logger.log("[COMPASSO] Ingresso publico por token");
       return compasso_paginaIngressoPublica_(String(p.t || ""));

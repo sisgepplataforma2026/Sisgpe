@@ -39,6 +39,7 @@ const disparos = []; g.UrlFetchApp = { fetch(url, o) { disparos.push(url); retur
 g.PropertiesService.getScriptProperties().setProperty("INGRESSOS_GH_TOKEN", "ghp_FICTICIA0123456789abcdefghijklmn");
 
 if (!dom.jsdomDisponivel()) { b.naoTestavel("a tela", "jsdom não instalado"); b.resumo(); process.exit(process.exitCode || 0); }
+g.cingCartaoBase_ = () => "https://script.google.com/macros/s/ABC123/exec";   // o endereço do app publicado, onde mora o cartão do ingresso
 const t = dom.montar(g, ["CompassoIngressos.html"], { token: TOKEN });
 const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
 const abertos = []; win.open = u => { const w = { closed: false, close() { this.closed = true; }, _h: "" }; Object.defineProperty(w, "location", { value: { set href(v) { abertos.push(v); } } }); if (u && u !== "about:blank") abertos.push(u); return w; };
@@ -84,7 +85,7 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   const lk = doc.querySelector("a[data-ci='abriuLink'][data-arg='AAAA-0001']");
   b.ok(!!lk && /^https:\/\/wa\.me\/5527999990001\?text=/.test(lk.getAttribute("href")) && lk.getAttribute("target") === "_blank", "bloqueado: surge o link 'Abrir WhatsApp' (âncora comum, abre no toque seguinte) com a mensagem pronta");
   { const tm = decodeURIComponent(lk.getAttribute("href"));
-    b.ok(/🔗 \*Acesse ou baixe seu ingresso:\*\nhttps:\/\/drive\.example\/maria\.pdf\n\n⚠️ \*Importante:\*/.test(tm) && /📄 \*Seu ingresso com QR Code está disponível em PDF\.\*/.test(tm), "quem já tem PDF na pasta: entra '🔗 Acesse ou baixe seu ingresso:' com o link, entre o aviso do PDF e o 'Importante'"); }
+    b.ok(/🔗 \*Acesse ou baixe seu ingresso:\*\nhttps:\/\/script\.google\.com\/macros\/s\/ABC123\/exec\?page=ingresso-festa&c=AAAA-0001\n\n⚠️ \*Importante:\*/.test(tm) && /📄 \*Seu ingresso com QR Code está disponível em PDF\.\*/.test(tm), "quem já tem PDF na pasta: entra '🔗 Acesse ou baixe seu ingresso:' com o link do CARTÃO (a página do sindicato, não o Drive), entre o aviso do PDF e o 'Importante'"); }
   t.clicar("a[data-ci='abriuLink'][data-arg='AAAA-0001']"); await t.assentar(700);
   b.ok(g.compassoIngressos_estado(TOKEN).enviados === 2, "tocar em 'Abrir WhatsApp' é o que marca como enviado");
   win.open = abrirOk;

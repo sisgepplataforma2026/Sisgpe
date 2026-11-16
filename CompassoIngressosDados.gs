@@ -152,6 +152,9 @@ function cingTextoWhats_(nome, pdf) {
   return l.join("\n");
 }
 
+/** Endereço do app publicado (…/exec) — onde mora a página do cartão do ingresso. Vazio fora do app publicado. */
+function cingCartaoBase_() { try { return String(ScriptApp.getService().getUrl() || ""); } catch (e) { return ""; } }
+
 function cingNomeChave_(s) {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -273,7 +276,7 @@ function compassoIngressos_lista(tokenSessao) {
         ref: l.ref, pdfDrive: pdfs[cingNomeChave_(l.nome)] || "", urlIngresso: l.ref ? CING_URL_TICKET + encodeURIComponent(l.ref) : "",
         enviadoTick: l.zap, enviado: e ? { quando: e.quando, quem: e.quem, vezes: e.vezes } : null };
     });
-    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), modelo: modelo, modeloPdf: modeloPdf, linhas: linhas };
+    return { ok: true, lidoEm: base.lidoEm, idadeMin: cingIdadeMin_(base.lidoEm), modelo: modelo, modeloPdf: modeloPdf, cartaoBase: cingCartaoBase_(), linhas: linhas };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }
@@ -290,7 +293,8 @@ function compassoIngressos_mensagem(codigo, tokenSessao) {
     if (!fone) { var as2 = cingFoneAssumido_(l.tel, l.cidade); if (as2) fone = as2.fone; }
     if (!fone) return { ok: false, mensagem: "Telefone de " + l.nome + " sem DDD ou com tamanho errado" + (cingSoDigitos_(l.tel).length === 9 ? " e a cidade (" + (l.cidade || "em branco") + ") não permite deduzir o DDD" : "") + ". Corrija no TickOne e leia a base de novo." };
     var pdf = ""; try { pdf = cingPdfs_()[cingNomeChave_(l.nome)] || ""; } catch (eP) { pdf = ""; }
-    var texto = cingTextoWhats_(l.nome, pdf);
+    var cb = cingCartaoBase_();
+    var texto = cingTextoWhats_(l.nome, pdf ? (cb ? cb + "?page=ingresso-festa&c=" + encodeURIComponent(l.codigo) : pdf) : "");
     return { ok: true, fone: fone, texto: texto, link: pdf, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(texto) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
