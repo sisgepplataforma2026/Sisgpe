@@ -252,7 +252,7 @@
   function sincPdfs(){
     if(SINC) return; SINC=true;
     rodar('compassoIngressos_sincronizarPdfs',[],function(r){
-      SINC=false; if(!r||!r.ok) return;
+      SINC=false; if(!r) return; if(!r.ok){ aviso('Não consegui copiar os PDFs para a pasta: '+(r.mensagem||'erro'),true); return; }
       if(r.copiados>0){ carregarLista(); if(r.faltam>0) sincPdfs(); }
     });
   }

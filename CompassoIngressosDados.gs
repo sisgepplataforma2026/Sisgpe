@@ -677,17 +677,21 @@ function compassoIngressos_sincronizarPdfs(tokenSessao) {
       var it = pasta.getFilesByName(CING_ARQ_PDFS);
       if (!it.hasNext()) return { ok: true, copiados: 0, faltam: 0, total: 0, existentesAtualizado: existentesAtualizado, mensagem: "O robô ainda não baixou PDFs." };
       var est = JSON.parse(it.next().getBlob().getDataAsString()), feitos = est.feitos || {};
-      var nomes = Object.keys(feitos).map(function (k) { return feitos[k].arquivo; });
-      var pend = nomes.filter(function (n) { return !jaTem[n]; }), n = 0;
-      pend.slice(0, 20).forEach(function (nome) {
-        var f = pasta.getFilesByName(nome);
-        if (f.hasNext()) {
-          var copia = f.next().makeCopy(nome, destino); n++;
-          arquivoAplicarExcecao_(copia, "ingresso_festa", nome);   // link aberto SÓ para o PDF do ingresso: exceção nomeada em ArquivoDrive.gs (decisão do usuário, 15/11/2026)
-        }
-      });
+      /* SÓ os PDFs que o ROBÔ baixou (têm arquivo na pasta dele). Os marcados "existente" são ingressos que a equipe já tinha
+         (o robô os achou pelo nome, sem acento/maiúscula): não há o que copiar. Antes, eles ocupavam as 20 vagas de cada lote
+         e travavam a cópia dos novos (achado em 16/11/2026: nada era copiado desde as 09:27). */
+      var nomes = [];
+      Object.keys(feitos).forEach(function (k) { if (!feitos[k].existente) nomes.push(feitos[k].arquivo); });
+      var pend = nomes.filter(function (nm2) { return !jaTem[nm2]; }), n = 0, semArquivo = 0, vistos = 0;
+      for (var i = 0; i < pend.length && n < 20; i++) {
+        vistos++;
+        var f = pasta.getFilesByName(pend[i]);
+        if (!f.hasNext()) { semArquivo++; continue; }   // não trava o lote: segue para o próximo
+        var copia = f.next().makeCopy(pend[i], destino); n++;
+        arquivoAplicarExcecao_(copia, "ingresso_festa", pend[i]);   // link aberto SÓ para o PDF do ingresso: exceção nomeada em ArquivoDrive.gs (decisão do usuário, 15/11/2026)
+      }
       if (n || existentesAtualizado) { try { CacheService.getScriptCache().remove("CING_PDFS_V1"); } catch (e) {} }
-      return { ok: true, copiados: n, faltam: Math.max(0, pend.length - n), total: nomes.length, existentesAtualizado: existentesAtualizado };
+      return { ok: true, copiados: n, faltam: Math.max(0, pend.length - vistos), semArquivo: semArquivo, total: nomes.length, existentesAtualizado: existentesAtualizado };
     } finally { lock.releaseLock(); }
   } catch (e) { return { ok: false, mensagem: e.message }; }
 }
