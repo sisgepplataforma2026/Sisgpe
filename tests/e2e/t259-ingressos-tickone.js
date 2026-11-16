@@ -18,7 +18,7 @@ const agora = new Date().toISOString();
 function base(lidoEm) {
   return { lidoEm: lidoEm || agora, evento: "No Compasso da Vida", total: 3, linhas: [
     { nome: "Maria Exemplo da Silva", cpf: "52998224725", tel: "(27) 99999-0001", codigo: "AAAA-0001", tipo: "Associado", escola: "Escola Modelo", cidade: "Vitória", ref: "REF1", zap: 1 },
-    { nome: "João Teste Souza", cpf: "11144477735", tel: "99999-0002", codigo: "AAAA-0002", tipo: "Associado", escola: "Colégio Fictício", cidade: "Serra", ref: "REF2", zap: 0 },
+    { nome: "João Teste Souza", cpf: "11144477735", tel: "99999-0002", codigo: "AAAA-0002", tipo: "Associado", escola: "Colégio Fictício", cidade: "Belo Horizonte", ref: "REF2", zap: 0 },
     { nome: "Ana Demonstração", cpf: "39053344705", tel: "(27) 98888-0003", codigo: "AAAA-0003", tipo: "Acompanhante Associado", escola: "Escola Modelo", cidade: "Vila Velha", ref: "REF3", zap: 0 }] };
 }
 let BASE = base();
