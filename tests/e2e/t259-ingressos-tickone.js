@@ -92,8 +92,8 @@ b.ok(rc[3].situacao === "ja_tem" || (rc[3].situacao === "novo" && rc[3].motivos.
 b.passo("6. Base velha avisa");
 b.ok(cf.emissaoLiberada === false && /Corrija as linhas/.test(cf.emissaoMotivo), "com linhas em 'Conferir', a emissão NÃO é liberada");
 BASE = base(new Date(Date.now() - 40 * 60000).toISOString());
-const cfVelho = g.compassoIngressos_conferir(lista.slice(0, 1), TOKEN);
-b.ok(cfVelho.baseRecente === false && /mais de 15 minutos/.test(cfVelho.emissaoMotivo), "base com 40 min: pede para ler de novo antes de pedir");
+const cfVelho = g.compassoIngressos_conferir([{ nome: "Carla Nova Exemplo", cpf: "168.995.350-09", telefone: "(27) 97777-0005", categoria: "Convite" }], TOKEN);
+b.ok(cfVelho.baseRecente === false && cfVelho.emissaoLiberada === true && /robô confere de novo, ao vivo/.test(cfVelho.emissaoMotivo), "base com 40 min: NÃO bloqueia mais (é só aviso) — quem confere ao vivo, na hora de emitir, é o robô");
 BASE = base();
 const sb = g.cingLerBase_; g.cingLerBase_ = () => null;
 b.ok(g.compassoIngressos_conferir(lista, TOKEN).ok === false && g.compassoIngressos_estado(TOKEN).existe === false, "sem base lida: não confere e diz por quê");
@@ -163,7 +163,7 @@ const abertos = []; win.open = u => { const w = { closed: false, close() { this.
   const cartoes = [...doc.querySelectorAll("#ciPessoas .ci-pessoa")];
   b.ok(/Já tem ingresso · AAAA-0001/.test(cartoes[1].textContent) && /Nova pessoa/.test(cartoes[0].textContent) && /Nova pessoa/.test(cartoes[2].textContent), "o resultado aparece DENTRO de cada cartão: 'já tem' com o código e as novas");
   b.ok(!!cartoes[1].querySelector("[data-ci='zap']") && (!!cartoes[1].querySelector("a[href*='drive.example']") || !!cartoes[1].querySelector("a[href*='ref=REF1']")), "quem já tem ingresso ganha 📱 Enviar no WhatsApp e o PDF/ingresso (antes faltavam)");
-  b.ok(/Pedir emissão dos 2 novos/.test(el("ciRes").textContent), "sem pendência e com a base recente, aparece 'Pedir emissão dos 2 novos' (o pedido em si é testado no t261)");
+  b.ok(/Gerar os 2 ingressos/.test(el("ciRes").textContent), "sem pendência, aparece 'Gerar os 2 ingressos' (o pedido em si é testado no t261)");
   b.ok(el("ciPasso2").classList.contains("on") && !el("ciPasso3").classList.contains("on"), "o indicador de passos foi para o 2 (Conferência)");
   b.resumo();
 })();

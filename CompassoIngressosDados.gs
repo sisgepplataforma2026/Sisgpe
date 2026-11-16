@@ -326,7 +326,7 @@ function compassoIngressos_registrarEnvio(codigo, tokenSessao) {
  * PESQUISAR ANTES DE SOLICITAR. Recebe a lista (planilha ou pessoa a pessoa) e,
  * para cada linha, diz se é NOVO, se JÁ TEM ingresso (com o código) ou se precisa
  * de CONFERÊNCIA (CPF inválido, telefone sem DDD, categoria inválida, nome ou CPF
- * repetido). Não emite nada. emissaoLiberada só fica true se a base for recente.
+ * repetido). Não emite nada. emissaoLiberada só depende de a lista estar sem pendência (a idade da base é só aviso; o robô confere ao vivo).
  */
 function compassoIngressos_conferir(lista, tokenSessao) {
   try {
@@ -396,10 +396,13 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       .map(function (r) { return "Associado " + (r.nome || "(sem nome)") + ": está faltando " + r.faltando.join(", ") + "."; });
     var recente = idade != null && idade <= CING_IDADE_MAX_MIN;
     return { ok: true, resultados: res, contagem: cont, faltasAssociado: faltas, lidoEm: base.lidoEm, idadeMin: idade, baseRecente: recente,
-      emissaoLiberada: recente && cont.conferir === 0 && cont.novo > 0,
-      emissaoMotivo: !recente ? "A base do TickOne está com mais de " + CING_IDADE_MAX_MIN + " minutos: leia de novo antes de pedir (a pesquisa antes de pedir precisa ser recente)."
-        : (cont.conferir > 0 ? "Corrija as linhas em 'Conferir' antes de pedir a emissão."
-        : (cont.novo === 0 ? "Ninguém novo para emitir: todos já têm ingresso." : "Pronto: " + cont.novo + " novo(s) podem ser pedidos. Isto cria ingresso de verdade no TickOne.")) };
+      /* A IDADE DA BASE NÃO BLOQUEIA MAIS (16/11/2026, "tem que ser mais prático"): quem confere ao vivo se o CPF já tem ingresso é
+         o ROBÔ, no TickOne, na hora de emitir (emitir.js: CPF que já tem ingresso NÃO é emitido). A base serve para avisar aqui;
+         não é a trava. Base velha só aparece como aviso. */
+      emissaoLiberada: cont.conferir === 0 && cont.novo > 0,
+      emissaoMotivo: cont.conferir > 0 ? "Corrija as linhas em 'Conferir' antes de gerar."
+        : (cont.novo === 0 ? "Ninguém novo para gerar: todos já têm ingresso."
+        : cont.novo + " novo(s) podem ser gerados." + (recente ? "" : " A base do TickOne tem " + idade + " min; o robô confere de novo, ao vivo, antes de emitir.")) };
   } catch (e) {
     return { ok: false, mensagem: e.message };
   }

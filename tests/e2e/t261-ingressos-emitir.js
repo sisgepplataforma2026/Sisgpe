@@ -32,7 +32,7 @@ b.ok(/Ninguém novo/.test(g.compassoIngressos_pedirEmissao([{ nome: "Maria Exist
 b.ok(/Corrija/.test(g.compassoIngressos_pedirEmissao([NOVO, { nome: "Sem CPF", cpf: "", categoria: "Convite" }], true, TOKEN).mensagem), "com uma linha em 'Conferir', nada é pedido");
 b.ok(/Corrija/.test(g.compassoIngressos_pedirEmissao([{ nome: "Assoc Incompleto", cpf: "390.533.447-05", categoria: "Associado" }], true, TOKEN).mensagem), "Associado com campo faltando não passa");
 lidoEm = new Date(Date.now() - 40 * 60000).toISOString();
-b.ok(/mais de 15 minutos/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem), "base com 40 min: não pede (pesquisar antes precisa ser recente)");
+b.ok(!/mais de 15 minutos/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem), "base com 40 min: NÃO barra mais o pedido (o robô confere ao vivo na hora de emitir)");
 lidoEm = new Date().toISOString();
 b.ok(Object.keys(arquivos).length === 0, "nada foi escrito para o robô até aqui");
 b.ok(/ainda não foi preparada/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem) && Object.keys(arquivos).length === 0 && g.cingAbaEmis_().getLastRow() < 2,
@@ -80,13 +80,9 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
     const card = doc.querySelectorAll("#ciPessoas .ci-pessoa")[0];
     [["nome", "Teste Fictício da Silva"], ["cpf", "168.995.350-09"], ["escola", "UVV"], ["cidade", "Cariacica"], ["categoria", "acompanhante"]].forEach(([k, v]) => { const f = card.querySelector("[data-k=" + k + "]"); f.value = v; f.dispatchEvent(new win.Event(f.tagName === "SELECT" ? "change" : "input", { bubbles: true })); });
     t.clicar("[data-ci='conferir']"); await t.assentar(400);
-    b.ok(!!doc.querySelector("[data-ci='emisAbrir']") && /Pedir emissão dos 1 novos/.test(el("ciRes").textContent), "pesquisa limpa: aparece 'Pedir emissão'");
-    t.clicar("[data-ci='emisAbrir']"); await t.assentar(20);
-    b.ok(el("ciEmis").hidden === false && /Teste Fictício da Silva/.test(el("ciEmisQuem").textContent) && /cria ingresso de verdade/.test(el("ciEmis").textContent), "abre a confirmação com quem vai ser emitido e o aviso");
-    t.clicar("[data-ci='emisPedir']"); await t.assentar(300);
-    b.ok(g.compassoIngressos_emissoes(TOKEN).emissoes.length === 0, "sem marcar 'entendo', não pede");
-    el("ciEmisOk").checked = true; t.clicar("[data-ci='emisPedir']"); await t.assentar(400);
-    b.ok(g.compassoIngressos_emissoes(TOKEN).emissoes.length === 1 && el("ciEmis").hidden === true, "marcando, o pedido é registrado");
+    b.ok(!!doc.querySelector("[data-ci='emisPedir']") && /Gerar o ingresso/.test(el("ciRes").textContent), "pesquisa limpa: aparece o botão 'Gerar o ingresso' (sem passo de confirmação)");
+    t.clicar("[data-ci='emisPedir']"); await t.assentar(500);
+    b.ok(g.compassoIngressos_emissoes(TOKEN).emissoes.length === 1 && el("ciEmis").hidden === true, "um toque em Gerar: o pedido é registrado (sem caixa 'entendo que cria ingresso')");
     b.ok(/aguardando o robô/.test(el("ciEmisLista").textContent) && !!doc.querySelector("[data-ci='cancEmis']"), "a lista de pedidos mostra 'aguardando o robô' e 'Cancelar pedido'");
   } else b.naoTestavel("a tela de emissão", "jsdom não instalado");
 
@@ -169,4 +165,5 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.ok(!/Teste Fictício|16899535009|168\.995/.test(r.saida), "o log não tem nome nem CPF");
   srv.close(); fs.rmSync(tmp, { recursive: true, force: true });
   b.resumo();
+  process.exit(process.exitCode || 0);   // a tela acompanha o pedido por timer; o teste termina por aqui
 })();

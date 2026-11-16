@@ -156,7 +156,8 @@
   <div class="ci-barra">
     <div class="ci-qtd" id="ciQtd">0 pessoas na lista</div>
     <button class="ci-btn ci-ol" data-ci="limpar">Limpar lista</button>
-    <button class="ci-btn ci-ok" data-ci="conferir">🔎 Conferir (pesquisar antes)</button>
+    <button class="ci-btn ci-ol" data-ci="conferir" title="Só pesquisa na base, sem gerar nada">🔎 Só pesquisar</button>
+    <button class="ci-btn ci-ok" data-ci="gerar">🎟️ Gerar ingresso</button>
   </div>
 </div>
 
@@ -470,7 +471,7 @@
   }
   /* conferir (pesquisar antes) */
   function validas(){ var idx=[],lista=[]; LISTA.forEach(function(p,i){ if(!vazia(p)){ idx.push(i); lista.push(p); } }); return {idx:idx,lista:lista}; }
-  function conferir(){
+  function conferir(auto){
     lerDom();
     var v=validas();
     if(!v.lista.length){ g('ciRes').innerHTML='<div class="ci-erro">Preencha ao menos o nome e o CPF de uma pessoa antes de conferir.</div>'; aviso('Preencha ao menos uma pessoa.',true); return; }
@@ -482,9 +483,10 @@
       var c=r.contagem, h='<div class="ci-cards"><div class="ci-cartao"><b>'+c.novo+'</b><span>novas (sem ingresso)</span></div><div class="ci-cartao"><b style="color:#0f8a5f">'+c.ja_tem+
         '</b><span>já têm ingresso</span></div><div class="ci-cartao"><b style="color:#d97706">'+c.conferir+'</b><span>conferir dados</span></div><div class="ci-cartao"><b>'+r.idadeMin+' min</b><span>idade da base</span></div></div>';
       if(r.faltasAssociado&&r.faltasAssociado.length) h+='<div class="ci-erro"><b>Faltam dados de associado ('+r.faltasAssociado.length+'):</b><br>'+r.faltasAssociado.map(esc).join('<br>')+'</div>';
-      if(r.emissaoLiberada) h+='<div class="ci-box" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div>'+esc(r.emissaoMotivo)+'</div><button class="ci-btn ci-ok" data-ci="emisAbrir">🎟️ Pedir emissão dos '+c.novo+' novos</button></div>';
+      if(r.emissaoLiberada) h+='<div class="ci-box" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div>'+esc(r.emissaoMotivo)+'</div><button class="ci-btn ci-ok" data-ci="emisPedir">🎟️ Gerar '+(c.novo===1?'o ingresso':'os '+c.novo+' ingressos')+'</button></div>';
       else h+='<div class="ci-aviso">'+esc(r.emissaoMotivo)+'</div>';
       g('ciRes').innerHTML=h; passos(2); desenharPessoas();
+      if(auto===true&&r.emissaoLiberada) emisPedir();   /* "Gerar ingresso": pesquisou, é novo e está tudo certo → já pede, sem caixa de confirmação */
     });
   }
   function emisAbrir(){
@@ -495,7 +497,7 @@
   }
   function emisPedir(){
     lerDom();
-    rodar('compassoIngressos_pedirEmissao',[validas().lista,g('ciEmisOk').checked],function(r){
+    rodar('compassoIngressos_pedirEmissao',[validas().lista,true],function(r){
       if(!r.ok){ aviso(r.mensagem,true); return; }
       g('ciEmis').hidden=true; aviso(r.robo&&r.robo.acionado?'Pedido registrado — robô acionado, emitindo no TickOne…':(r.mensagem||'Pedido registrado — aguardando o robô.')); passos(3);
       if(r.emissoes) mostrarEmissoes(r.emissoes); else carregarEmissoes();
@@ -508,7 +510,13 @@
       mostrarEmissoes(r.emissoes);
     });
   }
+  var ACOMP=false, VIUPED=false, ACOMPN=0;
   function mostrarEmissoes(emissoes){
+    var pend=emissoes.some(function(e){ return e.status==='PEDIDO'; });
+    if(pend&&!ACOMP&&ACOMPN<40){ ACOMP=true; ACOMPN++; setTimeout(function(){ ACOMP=false; carregarEmissoes(); },8000); }   /* acompanha até 40 vezes (~5 min) */
+    if(!pend) ACOMPN=0;
+    if(!pend&&VIUPED){ VIUPED=false; carregarLista(); estado(); sincPdfs(); }   /* o que estava pedido saiu: a lista mostra o ingresso novo, com o botão de enviar */
+    if(pend) VIUPED=true;
     (function(r){
       var box=g('ciEmisBox'); if(!r.emissoes.length){ box.hidden=true; return; }
       box.hidden=false;
@@ -523,7 +531,7 @@
   /* ══ eventos ══ */
   /* AÇÕES QUE FALAM COM O SERVIDOR: o botão trava no 1º toque, mostra "⏳ …" na hora e ignora toques repetidos
      (antes, tocar 2 ou 3 vezes parecia gerar 2 ou 3 pedidos). Destrava quando a resposta chega, certa ou errada. */
-  var OCUPADAS={emisPedir:'Pedindo…',exclPedir:'Pedindo…',conferir:'Pesquisando…',zap:'Abrindo…',confirmar:'Registrando…',cancEmis:'Cancelando…',cancExcl:'Cancelando…',lerPlan:'Lendo…'};
+  var OCUPADAS={emisPedir:'Pedindo…',exclPedir:'Pedindo…',conferir:'Pesquisando…',gerar:'Gerando…',zap:'Abrindo…',confirmar:'Registrando…',cancEmis:'Cancelando…',cancExcl:'Cancelando…',lerPlan:'Lendo…'};
   document.getElementById('compassoIngressos').addEventListener('click',function(ev){
     var t=ev.target.closest('[data-ci]'); if(!t) return; var a=t.getAttribute('data-ci'), arg=t.getAttribute('data-arg');
     if(t.disabled) return;
@@ -551,7 +559,7 @@
     else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
     else if(a==='lerPlan') lerPlan();
     else if(a==='limpar'){ LISTA=[{}]; RESULT={}; ULTIMA=null; g('ciRes').innerHTML=''; g('ciEmis').hidden=true; passos(1); desenharPessoas(); }
-    else if(a==='conferir') conferir();
+    else if(a==='conferir') conferir(false); else if(a==='gerar') conferir(true);
     else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar'){ g('ciEmis').hidden=true; passos(2); }
     else if(a==='atualizarBase') atualizarBase(); else if(a==='robo') roboAbrir(); else if(a==='roboSalvar') roboSalvar();
     else if(a==='emisPedir') emisPedir(); else if(a==='cancEmis') cancEmis(arg);

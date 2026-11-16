@@ -120,4 +120,5 @@ g.compasso_dataPorExtenso_ = () => "sábado, 19 de dezembro de 2026";
   b.ok(T.linhas.length === 2 && T.linhas.every(l => ["TK-0001", "TK-0002"].indexOf(l.cod) >= 0), "os 2 ingressos que já existiam continuam intactos");
   T.fechar(); fs.rmSync(tmp, { recursive: true, force: true });
   b.resumo();
+  process.exit(process.exitCode || 0);   // a tela acompanha o pedido por timer; o teste termina por aqui
 })();

@@ -103,13 +103,11 @@ const digitar = (i, k, v) => { const f = doc.querySelectorAll("#ciPessoas .ci-pe
   b.passo("pedir emissão, 3 cliques");
   t.clicar("[data-ci='aba'][data-arg='solicitar']"); await t.assentar(20);
   digitar(0, "nome", "Pedro Individual"); digitar(0, "cpf", "453.178.287-91"); digitar(0, "telefone", "27977770009"); digitar(0, "categoria", "acompanhante");
-  t.clicar("[data-ci='conferir']"); await t.assentar(400);
-  t.clicar("[data-ci='emisAbrir']"); await t.assentar(50);
-  const cEmis = contar("compassoIngressos_pedirEmissao"); el("ciEmisOk").checked = true;
-  for (let i = 0; i < 3; i++) t.clicar("[data-ci='emisPedir']");
-  await t.assentar(500);
+  const cEmis = contar("compassoIngressos_pedirEmissao");
+  { const bt = doc.querySelector("[data-ci='gerar']"); for (let i = 0; i < 3; i++) bt.click(); }   // UM botão: pesquisa e já pede, 3 toques seguidos
+  await t.assentar(900);
   const fila = JSON.parse(arquivos["emissoes-fila.json"]);
-  b.ok(cEmis.n === 1 && fila.itens.length === 1, "3 cliques em Pedir emissão: UM pedido na fila", "chamadas " + cEmis.n + ", fila " + fila.itens.length);
+  b.ok(cEmis.n === 1 && fila.itens.length === 1, "3 toques em 'Gerar ingresso': pesquisa e UM pedido na fila (sem passo nem caixa de confirmação)", "chamadas " + cEmis.n + ", fila " + fila.itens.length);
   b.ok(disparos.length === 1 && /ingressos-emitir\.yml\/dispatches/.test(disparos[0]), "o robô de emissão foi acionado UMA vez", disparos.join(","));
   b.ok(doc.querySelectorAll("#ciEmisBox .ci-linha, #ciEmisBox li, #ciEmisBox div").length > 0 && /Pedro/.test(el("ciEmisBox").textContent), "o pedido aparece na lista de emissões na hora, sem recarregar");
 
