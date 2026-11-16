@@ -683,6 +683,20 @@ var COMPASSO_FESTA_PADRAO = {
   horaInicio: '20h'
 };
 
+/** HORA PARA TEXTO (16/11/2026). A planilha guarda "20:00" como valor de tempo (um Date de 30/12/1899); virar texto com String()
+ *  dava "Sat Dec 30 1899 20:00:00 GMT-0306 (Horário Padrão de Brasília)" no WhatsApp do ingresso. Aqui vira "20h" / "19h30". */
+function compasso_horaTexto_(v) {
+  if (v instanceof Date) {
+    var h = v.getHours(), m = v.getMinutes();
+    if (isNaN(h)) return '';
+    return h + 'h' + (m ? ('0' + m).slice(-2) : '');
+  }
+  var s = String(v == null ? '' : v).trim();
+  var mm = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);   // "20:00" -> "20h"; "19:30" -> "19h30"
+  if (mm) return Number(mm[1]) + 'h' + (mm[2] !== '00' ? mm[2] : '');
+  return s;
+}
+
 function compasso_dadosDaFesta_() {
   var out = { data: null, horaAbertura: '', horaInicio: '', local: '',
               endereco: '', referencia: '' };
@@ -702,8 +716,8 @@ function compasso_dadosDaFesta_() {
       var ev = lista[i] || {};
       if (String(ev.tipo || '').toUpperCase() !== 'FESTA') continue;
       if (Number(ev.ano) !== 2026) continue;
-      out.horaAbertura = String(ev.horaAbertura || '');
-      out.horaInicio   = String(ev.horaInicio || '');
+      out.horaAbertura = compasso_horaTexto_(ev.horaAbertura);
+      out.horaInicio   = compasso_horaTexto_(ev.horaInicio);
       out.local        = String(ev.localNome || '');
       out.endereco     = String(ev.endereco || '');
       break;
@@ -714,8 +728,8 @@ function compasso_dadosDaFesta_() {
         não sobrescrevem o que a tela já respondeu. */
   try {
     var p = PropertiesService.getScriptProperties();
-    out.horaAbertura = out.horaAbertura || String(p.getProperty('COMPASSO_HORA_ABERTURA') || '');
-    out.horaInicio   = out.horaInicio   || String(p.getProperty('COMPASSO_HORA_INICIO') || '');
+    out.horaAbertura = out.horaAbertura || compasso_horaTexto_(p.getProperty('COMPASSO_HORA_ABERTURA'));
+    out.horaInicio   = out.horaInicio   || compasso_horaTexto_(p.getProperty('COMPASSO_HORA_INICIO'));
     out.local        = out.local        || String(p.getProperty('COMPASSO_LOCAL') || '');
     out.endereco     = out.endereco     || String(p.getProperty('COMPASSO_ENDERECO') || '');
     out.referencia   = out.referencia   || String(p.getProperty('COMPASSO_REFERENCIA') || '');
