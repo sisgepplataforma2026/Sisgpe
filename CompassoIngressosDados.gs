@@ -163,7 +163,12 @@ function cingTextoWhats_(nome, pdf, categoria) {
 }
 
 /** Endereço do app publicado (…/exec) — onde mora a página do cartão do ingresso. Vazio fora do app publicado. */
-function cingCartaoBase_() { try { return String(ScriptApp.getService().getUrl() || ""); } catch (e) { return ""; } }
+/** DESLIGADO em 16/11/2026: o endereço do aplicativo (script.google.com/macros/s/…/exec) abriu a tela de erro do Drive ("Não foi possível
+ *  abrir o arquivo") para quem clicou, então a mensagem leva o link DIRETO do PDF (aberto a qualquer pessoa, ArquivoDrive.gs). A página
+ *  do cartão (CompassoIngressoCartao.gs) continua no ar; para voltar a usá-la no WhatsApp, troque para true DEPOIS de abrir o link do
+ *  cartão numa janela anônima e ver a página (não a tela de erro). */
+var CING_USAR_CARTAO = false;
+function cingCartaoBase_() { if (!CING_USAR_CARTAO) return ""; try { return String(ScriptApp.getService().getUrl() || ""); } catch (e) { return ""; } }
 
 function cingNomeChave_(s) {
   return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();

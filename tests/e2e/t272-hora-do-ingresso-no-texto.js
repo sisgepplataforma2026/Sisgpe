@@ -59,4 +59,8 @@ b.ok(tConv.includes(fraseConv) && tCort.includes(fraseConv) && !tConv.includes("
 b.ok(tAcomp.replace(fraseAcomp, fraseAssoc) === tAssoc && tConv.replace(fraseConv, fraseAssoc) === tAssoc, "o resto da mensagem é idêntico entre as categorias");
 const modelo = g.cingTextoWhats_("ZZNOMEZZ", "ZZPDFZZ", "ZZ");
 b.ok(modelo.includes("ZZABERTURAZZ") && !modelo.includes("inscrição"), "modelo da tela leva a marca no lugar da frase (a tela troca por categoria)");
+// 16/11/2026: o endereço do app abriu a tela de erro do Drive para quem clicou → a mensagem leva o link DIRETO do PDF; o cartão fica desligado.
+b.ok(g.CING_USAR_CARTAO === false && g.cingCartaoBase_() === "", "link do cartão DESLIGADO: sem endereço do app na mensagem (a tela usa o link direto do PDF)");
+g.ScriptApp.getService = () => ({ getUrl: () => "https://script.google.com/macros/s/XYZ/exec" });
+b.ok(g.cingCartaoBase_() === "", "mesmo com o app publicado, enquanto desligado, não monta link do cartão");
 b.resumo();
