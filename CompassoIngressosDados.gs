@@ -178,7 +178,9 @@ function cingCategoria_(s) {
   var c = cingNomeChave_(s);
   if (!c) return "";
   if (c === "convidado" || c === "convidada") return "convite";
-  if (c === "acompanhante de associado" || c === "acompanhante associado") return "acompanhante";
+  /* A TickOne escreve "Acompanhante do Associado" (visto na tela em 18/11/2026): qualquer rótulo que COMECE por "acompanhante" é acompanhante.
+     Sem isso o ingresso ficava sem categoria: o PDF ia para a pasta principal e a mensagem saía com a frase de associado. */
+  if (/^acompanhante/.test(c)) return "acompanhante";
   for (var i = 0; i < CING_CATEGORIAS.length; i++) {
     if (c === CING_CATEGORIAS[i].valor || c === cingNomeChave_(CING_CATEGORIAS[i].rotulo)) return CING_CATEGORIAS[i].valor;
   }
