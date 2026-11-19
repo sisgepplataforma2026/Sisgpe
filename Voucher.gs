@@ -132,10 +132,62 @@ function gerarIdPadrao_(prefixo) {
   return prefixo + "_" + data + "_" + aleatorio;
 }
 
-function gerarNumeroProtocolo_() {
-  const ano = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy");
-  const aleatorio = Math.floor(Math.random() * 900000 + 100000);
-  return "BOLSA-" + ano + "-" + aleatorio;
+/* PROTOCOLO SEQUENCIAL A PARTIR DE 01/2027 — decisão do usuário, 19/11/2026: "Protocolo sequencial - 01/2027 em diante".
+ *
+ * ATÉ 31/12/2026 O NÚMERO CONTINUA SORTEADO, como sempre foi (6 dígitos entre 100000 e 999999). O sorteio não confere se o número já
+ * existe: com 300 pedidos no ano a chance de dois iguais é de ~5%, com 1.000 passa de 40% — e o sistema acha a solicitação PELO protocolo e
+ * pega a primeira, então um repetido emitiria ou enviaria para a pessoa errada. É por isso que vira sequencial.
+ *
+ * DE 01/01/2027 EM DIANTE: BOLSA-2027-000001, 000002, 000003…, recomeçando em cada ano. Os protocolos antigos NÃO mudam (estão em PDFs e
+ * e-mails já enviados); os novos têm 6 dígitos com zero à esquerda, que nunca colidem com os antigos (todos de 100000 para cima).
+ *
+ * COMO NÃO REPETIR: o próximo número = o maior entre (o contador guardado) e (o maior sequencial JÁ GRAVADO na planilha) + 1, tudo sob a
+ * trava do script. Se o contador se perder, a planilha segura; se dois pedidos chegarem juntos, a trava os separa. Se um pedido falhar
+ * depois de pegar o número, fica um BURACO na sequência (000041 → 000043): é o preço de nunca repetir, e o buraco não confunde nada.
+ *
+ * `jaTrancado`: quem já segura a trava do script (VoucherNovaSolicitacao) passa true, para não travar duas vezes.
+ * `agora`: só para teste (data simulada). */
+const PROTOCOLO_SEQUENCIAL_A_PARTIR_DE_ = 2027;
+
+function gerarNumeroProtocolo_(jaTrancado, agora) {
+  const ano = Number(Utilities.formatDate(agora || new Date(), Session.getScriptTimeZone(), "yyyy"));
+  if (ano < PROTOCOLO_SEQUENCIAL_A_PARTIR_DE_) {
+    const aleatorio = Math.floor(Math.random() * 900000 + 100000);
+    return "BOLSA-" + ano + "-" + aleatorio;
+  }
+  return "BOLSA-" + ano + "-" + proximoSequencialProtocolo_(ano, !!jaTrancado);
+}
+
+function proximoSequencialProtocolo_(ano, jaTrancado) {
+  var lock = null;
+  if (!jaTrancado) {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);   // não consegue a trava em 20 s: levanta erro e NÃO devolve número (melhor falhar que repetir)
+  }
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var chave = "VOUCHER_PROTOCOLO_SEQ_" + ano;
+    var guardado = parseInt(props.getProperty(chave) || "0", 10) || 0;
+    var proximo = Math.max(guardado, maiorSequencialProtocoloNaPlanilha_(ano)) + 1;
+    props.setProperty(chave, String(proximo));
+    return String(proximo).padStart(6, "0");
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+/** O maior número sequencial JÁ gravado na planilha para aquele ano (0 se não houver). Só olha BOLSA-<ano>-<dígitos>. */
+function maiorSequencialProtocoloNaPlanilha_(ano) {
+  try {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName("Voucher_Solicitacoes");
+    if (!sh || sh.getLastRow() < 2) return 0;
+    var idx = obterHeaders_(sh).indexOf("NUMERO_PROTOCOLO");
+    if (idx < 0) return 0;
+    var vals = sh.getRange(2, idx + 1, sh.getLastRow() - 1, 1).getValues();
+    var re = new RegExp("^BOLSA-" + ano + "-(\\d{1,6})$"), maior = 0;
+    vals.forEach(function (v) { var m = re.exec(String(v[0] || "").trim()); if (m) { var n = parseInt(m[1], 10); if (n > maior) maior = n; } });
+    return maior;
+  } catch (e) { return 0; }
 }
 
 function gerarCodigoValidacaoVoucher_() {

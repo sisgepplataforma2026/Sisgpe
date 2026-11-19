@@ -147,7 +147,7 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * secretaria, e inventar um limite para trás esconderia justamente o
      * caso que a medição de prazo existe para mostrar. */
     var dataPedido = voucherDataPedido_(dados.dataPedido, agora);
-    var protocolo = gerarNumeroProtocolo_();
+    var protocolo = gerarNumeroProtocolo_(true);   // este fluxo já segura a trava do script (linha 47)
     var quem = (sessao && (sessao.email || sessao.usuario || sessao.nome)) || "";
 
     /* Escrito POR NOME DE COLUNA, nunca por posição.
