@@ -369,7 +369,7 @@
            esperando uma conferência que a tela não oferecia onde fazer. -->
       <div class="cert-mcard" id="certMcardCadastro" onclick="certFiltrarPorStatus('AGUARDANDO_VALIDACAO_CADASTRAL')">
         <div class="cert-mac mac-amber"></div>
-        <div class="cert-mcard-top"><span class="cert-mlbl">Validação cadastral</span><div class="cert-mico mico-amber">🪪</div></div>
+        <div class="cert-mcard-top"><span class="cert-mlbl">Validação cadastral</span><div class="cert-mico mico-amber">🆔</div></div>
         <div class="cert-mval" id="certStatCadastro">—</div>
         <div class="cert-msub">CPF não localizado na base</div>
       </div>
@@ -654,7 +654,7 @@
 
       <!-- Campo RG — visível apenas para aprovadas/emitidas -->
       <div id="certRgArea" style="display:none;margin-top:14px;">
-        <div class="cert-section-title">🪪 RG do Associado</div>
+        <div class="cert-section-title">🆔 RG do Associado</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <input type="text" id="certModalRg" placeholder="Ex.: 1234567"
             style="height:38px;border-radius:10px;border:1.5px solid #cbd5e1;padding:0 13px;
@@ -720,7 +720,7 @@
              duas faria a conferência cadastral conceder benefício sem ninguém
              olhar a regra da convenção. Daqui a solicitação vai para PENDENTE,
              a fila de análise normal. -->
-        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certBtnConfirmarCadastro" style="display:none;">🪪 Confirmar cadastro</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certBtnConfirmarCadastro" style="display:none;">🆔 Confirmar cadastro</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certBtnComplementar">📄 Solicitar Complementação</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm"   id="certBtnIndeferir">❌ Indeferir</button>
         <button type="button" class="cert-btn cert-btn-success cert-btn-sm"  id="certBtnAprovar">✅ Aprovar</button>
@@ -2243,7 +2243,7 @@ function set(id,val){var el=g(id);if(el)el.textContent=val||'—';}
     /* O DOCUMENTO PESSOAL É DE QUEM RECEBE — na solicitação do dependente, é o
        da criança, e é por ele que se confere a idade e a ordem do filho. */
     if(s.linkDocPessoal)
-      dh += chipDoc(s.linkDocPessoal, '🪪',
+      dh += chipDoc(s.linkDocPessoal, '🆔',
                     ehOutro ? 'Documento do dependente' : 'Documento com CPF',
                     ehOutro ? nomeBen : '');
     if(!dh) dh='<span style="font-size:13px;color:#94a3b8;">Nenhum anexo.</span>';

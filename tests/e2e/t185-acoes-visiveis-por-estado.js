@@ -63,7 +63,7 @@ b.passo("AGUARDANDO_VALIDACAO_CADASTRAL — o estado da solicitação real");
 abrirCom("AGUARDANDO_VALIDACAO_CADASTRAL");
 
 b.ok(visivel("certBtnConfirmarCadastro"),
-  "🪪 Confirmar cadastro aparece — era ele que estava morto dentro do pai escondido");
+  "🆔 Confirmar cadastro aparece — era ele que estava morto dentro do pai escondido");
 b.ok(visivel("certBtnIndeferir"),
   "❌ Indeferir aparece — 'ou rejeito?' precisava de resposta na tela");
 b.ok(visivel("certBtnComplementar"),
@@ -84,7 +84,7 @@ b.ok(visivel("certBtnAprovar"), "✅ Aprovar aparece");
 b.ok(visivel("certBtnIndeferir"), "❌ Indeferir aparece");
 b.ok(visivel("cmi-pctEditar"), "e o campo de ajustar o desconto aparece");
 b.ok(!visivel("certBtnConfirmarCadastro"),
-  "🪪 Confirmar cadastro NÃO aparece — já foi feito, e repetir desfaria a decisão");
+  "🆔 Confirmar cadastro NÃO aparece — já foi feito, e repetir desfaria a decisão");
 
 /* ── FORA DA REGRA ───────────────────────────────────────────────────────── */
 b.passo("BLOQUEADA_POR_REGRA — a fileira do comunicado");
@@ -184,5 +184,5 @@ b.ok(!/labelBtn === 'certBtnIndeferir'/.test(semCom),
 b.naoTestavel("o botão aparecendo no navegador",
   "jsdom não aplica CSS — este teste cobre display inline em cadeia, que é o " +
   "mecanismo deste modal. Roteiro manual: abrir BOLSA-2026-495017 em produção " +
-  "e conferir que 🪪 Confirmar cadastro está lá");
+  "e conferir que 🆔 Confirmar cadastro está lá");
 b.resumo();

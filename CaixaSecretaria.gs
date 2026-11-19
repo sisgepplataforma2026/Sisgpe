@@ -33,7 +33,7 @@ var CXS_COLUNAS = ["THREAD_ID", "ESTADO", "ULTIMA_VISTA", "TIPO_CORRIGIDO", "NOT
    (cxsMeuPapel_). As chaves antigas seguem valendo (CXS_TIPO_ALIAS). */
 var CXS_TIPOS = {
   VOUCHER: { rotulo: "Voucher / Bolsa", curto: "Voucher", icone: "🎓", modulo: "beneficios" },
-  FILIACAO: { rotulo: "Filiação e associados", curto: "Filiação", icone: "🪪", modulo: "sindicalizacao" },
+  FILIACAO: { rotulo: "Filiação e associados", curto: "Filiação", icone: "🆔", modulo: "sindicalizacao" },
   FINANCEIRO: { rotulo: "Escolas: contribuições — taxa negocial, mensalidade, guia, desconto em folha", curto: "Contribuições", icone: "🏫", modulo: "financeiro" },
   NOTA_FISCAL: { rotulo: "Notas fiscais", curto: "Notas fiscais", icone: "🧾", modulo: "financeiro" },
   CONTAS: { rotulo: "Contas do sindicato — boletos e faturas a pagar", curto: "Contas", icone: "💳", modulo: "financeiro" },
