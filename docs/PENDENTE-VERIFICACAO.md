@@ -6998,3 +6998,11 @@ possível abrir o arquivo") na homologação; só religar depois de abrir o link
 página; (5) **subpastas por categoria**: acompanhante e convidado novos devem cair em INGRESSOS ACOMPANHANTES /
 CONVIDADOS (testado só no emulador, t270); os 494 atuais estão todos em INGRESSOS ASSOCIADOS (conferido em 16/11).
 
+## 🎫 Protocolo sequencial do Voucher — publicado em produção em 19/11/2026, vale a partir de 01/01/2027, NÃO TESTADO no ar
+
+Decisão do usuário: "Protocolo sequencial - 01/2027 em diante". Até 31/12/2026 o número continua SORTEADO (BOLSA-2026-NNNNNN). De 01/01/2027:
+BOLSA-2027-000001, 000002… recomeçando a cada ano (Voucher.gs: gerarNumeroProtocolo_, contador VOUCHER_PROTOCOLO_SEQ_<ano> sob trava, conferido contra
+a planilha). Testado só no emulador (t277). Falta, em JANEIRO/2027: (1) o 1º pedido do ano sai como BOLSA-2027-000001; (2) o 2º como 000002; (3) um pedido
+pelo formulário público E um pela "Nova solicitação" (manual) seguidos não repetem número; (4) conferir que nada que busca por protocolo quebrou. Um pedido
+que falhe depois de pegar o número deixa um buraco na sequência (esperado). Cobrar em janeiro.
+
