@@ -82,10 +82,14 @@
       </button>
       <div id="beneficiosSubMenuSidebar" class="docSubMenuSidebar" data-subs="beneficios" style="display:none;">
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:parqueChina" data-benef-sub="parqueChina" onclick="spIr('beneficios',null,{sub:'parqueChina'})">🏨 China Park Eco Resort</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:guririBeach" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:assefaz" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
+        <!-- 19/11/2026 (usuário: "É necessária? ... Pode"): Guriri Beach, Pousada Club Assefaz e Central de solicitações abriam área em branco,
+             porque os painéis benefSubGuririBeach, benefSubAssefaz e benefSubHistorico nunca receberam conteúdo (vazios desde 01/09/2026).
+             Os botões do menu e os dois cartões da página inicial de Benefícios ficam escondidos; nada foi apagado. Para voltar,
+             tire o atributo hidden e o display:none e construa o conteúdo do painel antes. -->
+        <button type="button" hidden style="display:none" class="docSubMenuBtn" data-sub-mod="beneficios:guririBeach" data-benef-sub="guririBeach" onclick="spIr('beneficios',null,{sub:'guririBeach'})">🏖 Guriri Beach Acqua Park</button>
+        <button type="button" hidden style="display:none" class="docSubMenuBtn" data-sub-mod="beneficios:assefaz" data-benef-sub="assefaz" onclick="spIr('beneficios',null,{sub:'assefaz'})">🏥 Pousada Club Assefaz</button>
         <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:vouchers" data-benef-sub="vouchers" onclick="spIr('beneficios',null,{sub:'vouchers'})">🎫 Vouchers</button>
-        <button type="button" class="docSubMenuBtn" data-sub-mod="beneficios:historico" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
+        <button type="button" hidden style="display:none" class="docSubMenuBtn" data-sub-mod="beneficios:historico" data-benef-sub="historico" onclick="spIr('beneficios',null,{sub:'historico'})">📋 Central de solicitações</button>
       </div>
 
       <button class="spN" data-mod="documentos" data-acordeao="docSubMenuSidebar" onclick="spAcordeao(this)">
@@ -527,8 +531,8 @@
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🏨</div><h4>China Park Eco Resort</h4></div><div class="badmin-card-meta" id="bacChina">Carregando indicadores…</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('parqueChina')">Abrir operação</button><button onclick="benefAdminNovaSolicitacao()">Nova solicitação</button></div></article>
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🪪</div><h4>Carteirinhas e cadastros</h4></div><div class="badmin-card-meta" id="bacCarteirinhas">Carregando indicadores…</div><div class="badmin-card-actions"><button onclick="spIr('aprovacoesPortal')">Analisar</button><button onclick="spIr('carteirinhas')">Abrir módulo</button></div></article>
       <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🎫</div><h4>Vouchers</h4></div><div class="badmin-card-meta"><b>Gestão de vouchers</b><br>Emissão e acompanhamento centralizados.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('vouchers')">Gerenciar</button></div></article>
-      <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🏖</div><h4>Guriri Beach</h4></div><div class="badmin-card-meta"><b>Módulo operacional</b><br>Solicitações e disponibilidade.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('guririBeach')">Abrir gestão</button></div></article>
-      <article class="badmin-card"><div class="badmin-card-top"><div class="badmin-icon">🏥</div><h4>Pousada Club Assefaz</h4></div><div class="badmin-card-meta"><b>Módulo operacional</b><br>Reservas e acompanhamento.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('assefaz')">Abrir gestão</button></div></article>
+      <article class="badmin-card" hidden style="display:none"><div class="badmin-card-top"><div class="badmin-icon">🏖</div><h4>Guriri Beach</h4></div><div class="badmin-card-meta"><b>Módulo operacional</b><br>Solicitações e disponibilidade.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('guririBeach')">Abrir gestão</button></div></article>
+      <article class="badmin-card" hidden style="display:none"><div class="badmin-card-top"><div class="badmin-icon">🏥</div><h4>Pousada Club Assefaz</h4></div><div class="badmin-card-meta"><b>Módulo operacional</b><br>Reservas e acompanhamento.</div><div class="badmin-card-actions"><button onclick="benefAdminAbrir('assefaz')">Abrir gestão</button></div></article>
     </div></section>
   </div>
 </div>
