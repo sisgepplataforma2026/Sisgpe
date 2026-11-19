@@ -91,6 +91,15 @@ de 321 KB embutido em CompassoCanhotosArte.html (poderia morar no Drive), os
 .gs de teste/legado (EventosImportacaoTeste.gs 32 KB, RHSeedColaboradores.gs
 17 KB…) ou arquivos de módulos não usados. REGRA 1: nada é apagado sem ele pedir.
 
+**ATUALIZADO EM 19/11/2026 — A FOLGA É DE ~1,8 KB E O USUÁRIO ESCOLHEU NÃO LIBERAR ESPAÇO (opção 3).** A Central de Voucher refinada estourou o limite
+em 437 bytes; enxuguei o MEU código (CSS compactado, comentários curtos) e o projeto ficou em 9.874.149 bytes (folga de 1.851 contra o teto do t45). Antes de
+propor remover arquivo "de teste/legado", rodei a REGRA 1: **EventosImportacaoTeste.gs está EM USO** (compasso_normalizarTexto_/importarMapear_/importarLinha_
+são chamadas por CompassoCanhotosDados.gs e EventosImportacaoTela.gs; compasso_emitirLoteTeste/importarLimpar por CompassoImportacao.html) e
+**RHSeedColaboradores.gs está EM USO** (5 funções _publico chamadas por botões de RHAdmin.html). NÃO propor apagar nenhum dos dois. O espaço de verdade está
+nas imagens embutidas de CompassoCanhotosArte.html (banner JPEG de ~318 KB + arte de ~42 KB; a folha é montada no navegador e impressa): oferecido mover o banner
+para o Drive (opção 1, lido no servidor e entregue embutido; só a impressão real prova) ou recomprimir (opção 2); o usuário respondeu **opção 3: deixar como
+está**. Só voltar ao assunto se ele pedir, ou quando uma mudança não couber. Mudança nova grande: medir no t45 ANTES e enxugar o próprio código primeiro.
+
 ## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
 
 O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo
