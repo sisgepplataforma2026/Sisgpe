@@ -75,7 +75,7 @@
 #secCertificadoAdmin .cert-busca { width: 260px; }
 
 #secCertificadoAdmin .cert-tabela-wrap { overflow-x: auto; }
-#secCertificadoAdmin .cert-tabela { width: 100%; min-width: 1000px; border-collapse: collapse; }
+#secCertificadoAdmin .cert-tabela { width: 100%; min-width: 0; border-collapse: collapse; }
 #secCertificadoAdmin .cert-tabela thead { background: var(--g50); }
 #secCertificadoAdmin .cert-tabela th { padding: 11px 13px; text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); white-space: nowrap; }
 #secCertificadoAdmin .cert-tabela td { padding: 11px 13px; font-size: 12.5px; color: var(--g700); border-bottom: 1px solid var(--g100); vertical-align: middle; }
@@ -316,6 +316,52 @@
   #secCertificadoAdmin .cert-metrics-grid { grid-template-columns: repeat(2, 1fr); }
   #secCertificadoAdmin .cert-hero { padding: 26px 16px 86px; }
 }
+
+/* LINHA REFINADA 19/11/2026 (desenho aprovado): 7 colunas, nada à direita escondido, botão da próxima ação à vista; no celular vira cartão. */
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{cursor:pointer}
+#secCertificadoAdmin .cert-sol-prot{font-size:12.5px;font-weight:800;color:#002f6c}
+#secCertificadoAdmin .cert-sol-data{font-size:11px;color:#94a3b8;margin-top:2px}
+#secCertificadoAdmin .cert-tabela td.c-benef{position:relative;padding-left:62px;min-width:240px}
+#secCertificadoAdmin .cert-tabela td.c-benef::before{content:attr(data-ini);position:absolute;left:14px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+#secCertificadoAdmin .cert-tabela td.c-benef.dep::before{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
+#secCertificadoAdmin .cert-benef-nome{font-weight:700;font-size:12.5px;color:#0f172a}
+#secCertificadoAdmin .cert-tag-proprio{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#e3edff;color:#1d4ed8;margin-left:6px;vertical-align:1px}
+#secCertificadoAdmin .cert-tag-parentesco{background:#f1e9ff;color:#6d28d9;border-color:#e1d1fb}
+#secCertificadoAdmin .cert-escola-nome{font-size:12.5px;font-weight:700;color:#1e293b;max-width:260px}
+#secCertificadoAdmin .cert-curso-sub{font-size:11.5px;color:#94a3b8;margin-top:2px;max-width:260px}
+#secCertificadoAdmin .cert-chip{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#475569;margin:0 5px 3px 0}
+#secCertificadoAdmin .cert-chip.per{background:#fff6dc;color:#8a6d1f}
+#secCertificadoAdmin .cert-env{font-size:11px;margin-top:5px;line-height:1.35}
+#secCertificadoAdmin .cert-acoes{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+@media (min-width:761px){#secCertificadoAdmin .cert-tabela td.c-acao{min-width:215px}
+#secCertificadoAdmin .cert-acoes{flex-wrap:nowrap}}
+
+#secCertificadoAdmin .cert-acao-prim{border:0;border-radius:10px;padding:8px 16px;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer;color:#fff;background:linear-gradient(135deg,var(--navy),var(--navy2));box-shadow:0 3px 8px rgba(0,31,77,.22)}
+#secCertificadoAdmin .cert-btn-enviar.cert-acao-prim{color:#1565C0;background:#fff;border:1.5px solid #bcd3f5;box-shadow:none;padding:7px 15px}
+#secCertificadoAdmin .cert-btn-enviar.cert-acao-prim.reenv{color:#475569;border-color:#dbe3ee;font-weight:700}
+#secCertificadoAdmin .cert-tabela tbody tr.cert-irmao td{background:#faf7ff}
+#secCertificadoAdmin .cert-tabela tbody tr.cert-irmao td:first-child{box-shadow:inset 4px 0 0 #8b5cf6}
+#secCertificadoAdmin .cert-tabela tbody tr.cert-irmao:hover td{background:#f4edff}
+#secCertificadoAdmin .cert-linha-filtros th{vertical-align:top}
+#secCertificadoAdmin .cert-linha-filtros th .cert-filtro-col{display:block;width:100%}
+#secCertificadoAdmin .cert-linha-filtros th .cert-filtro-col + .cert-filtro-col{margin-top:4px}
+@media (max-width:760px){#secCertificadoAdmin .cert-tabela,#secCertificadoAdmin .cert-tabela thead,#secCertificadoAdmin .cert-tabela tbody{display:block;width:100%}
+#secCertificadoAdmin .cert-tabela thead tr:first-child{display:none}
+#secCertificadoAdmin .cert-tabela .cert-linha-filtros{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:#f8fafc}
+#secCertificadoAdmin .cert-tabela .cert-linha-filtros th{display:block;padding:0 !important;border:0;background:transparent}
+#secCertificadoAdmin .cert-tabela .cert-linha-filtros th.f-chk,#secCertificadoAdmin .cert-tabela .cert-linha-filtros th.f-aca{display:none}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"chk sol sit" "ben ben ben" "esc esc esc" "niv niv niv" "aca aca aca";gap:4px 8px;background:#fff;border:1px solid #e8edf4;border-radius:14px;margin:10px 8px;padding:12px;box-shadow:0 2px 10px rgba(15,35,80,.07)}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td{display:block;border:0;padding:0;background:transparent !important;box-shadow:none !important}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td:nth-child(1){grid-area:chk}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-sol{grid-area:sol}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-sit{grid-area:sit;text-align:right}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-benef{grid-area:ben;min-width:0;padding-left:48px;margin-top:6px}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-benef::before{left:0;width:38px;height:38px}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-escola{grid-area:esc}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-nivel{grid-area:niv}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-acao{grid-area:aca;margin-top:6px}
+#secCertificadoAdmin .cert-acao-prim{padding:11px 24px;font-size:13px}
+#secCertificadoAdmin .cert-tabela tbody tr.cert-irmao{border-left:4px solid #8b5cf6}}
 </style>
 
 <div id="secCertificadoAdmin">
@@ -461,9 +507,8 @@
           <thead>
             <tr>
               <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
-              <th>Protocolo</th><th>Beneficiário</th><th>Escola</th>
-              <th>Modalidade</th><th>Curso</th><th>Período</th>
-              <th>Status</th><th>Enviado em / por</th><th>Data</th><th style="text-align:center;">Ações</th>
+              <th>Solicitação</th><th>Beneficiário</th><th>Escola e curso</th>
+              <th>Nível e período</th><th>Situação e envio</th><th style="text-align:right;">Ação</th>
             </tr>
             <!-- FILTRO POR COLUNA, embaixo do titulo dela.
                  Pedido do usuario em 13/08/2026 apontando a propria linha de
@@ -471,12 +516,14 @@
                  o que decifrar, e some a duvida de "qual campo filtra o que"
                  que uma faixa generica sempre deixa. -->
             <tr class="cert-linha-filtros">
-              <th></th>
-              <th><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="filtrar"></th>
-              <th><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="beneficiário, titular ou CPF"></th>
-              <th><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="filtrar"></th>
-              <th>
-                <select class="cert-filtro-col" id="certFiltroModalidade">
+              <th class="f-chk"></th>
+              <th class="f-sol"><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="protocolo"></th>
+              <th class="f-ben"><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="beneficiário, titular ou CPF"></th>
+              <th class="f-esc"><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="escola"><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="curso"></th>
+              <!-- O periodo e montado a partir do que EXISTE na lista, nunca
+                   de uma lista fixa de anos: assim nao oferece periodo vazio
+                   nem esconde um que existe. -->
+              <th class="f-niv"><select class="cert-filtro-col" id="certFiltroModalidade">
                   <option value="">todas</option>
                   <option value="CRECHE">Creche</option>
                   <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
@@ -487,15 +534,8 @@
                   <option value="POS_GRADUACAO">Pós-Graduação</option>
                   <option value="MESTRADO">Mestrado</option>
                   <option value="DOUTORADO">Doutorado</option>
-                </select>
-              </th>
-              <th><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="filtrar"></th>
-              <!-- O periodo e montado a partir do que EXISTE na lista, nunca
-                   de uma lista fixa de anos: assim nao oferece periodo vazio
-                   nem esconde um que existe. -->
-              <th><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">todos</option></select></th>
-              <th>
-                <select class="cert-filtro-col" id="certFiltroStatus">
+                </select><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">todos</option></select></th>
+              <th class="f-sit"><select class="cert-filtro-col" id="certFiltroStatus">
                   <option value="">todos</option>
                   <option value="AGUARDANDO_VALIDACAO_CADASTRAL">Validação cadastral</option>
                   <!-- NENHUM ESTADO PODE FICAR INVISÍVEL — 16/09/2026.
@@ -515,25 +555,18 @@
                   <option value="INDEFERIDO">Indeferido</option>
                   <option value="EMITIDO">Emitido</option>
                   <option value="CANCELADO">Cancelado</option>
-                </select>
-              </th>
-              <th>
-                <!-- Envio (31/10/2026): situação e quem enviou. -->
-                <select class="cert-filtro-col" id="certFiltroEnvio">
+                </select><select class="cert-filtro-col" id="certFiltroEnvio">
                   <option value="">todos</option>
                   <option value="ENVIADO">✔ Enviados</option>
                   <option value="NA_FILA">⏳ Na fila</option>
                   <option value="ERRO">✖ Erro no envio</option>
                   <option value="NAO">— Não enviados</option>
-                </select>
-                <select class="cert-filtro-col" id="certFiltroEnviadoPor" style="margin-top:3px;"><option value="">enviado por: todos</option></select>
-              </th>
-              <th></th>
-              <th></th>
+                </select><select class="cert-filtro-col" id="certFiltroEnviadoPor"><option value="">enviado por: todos</option></select></th>
+              <th class="f-aca"></th>
             </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="11"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="7"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1915,7 +1948,46 @@ function certBeneficiarioEtiqueta(s){
   var texto = rot[tipo];
   if(texto === undefined) texto = 'dependente';   /* tipo novo que ainda não conheço */
   if(!texto) texto = 'dependente';                /* diz TITULAR mas o nome é outro */
+  /* Ordem do filho (a do cálculo): só quando o dado existe; linha antiga continua "filho(a)". */
+  var ordem = parseInt(String((s && s.ordemFilho) || ''), 10);
+  if(tipo === 'FILHO' && ordem >= 1 && ordem <= 3) texto = ordem + 'º filho(a)';
   return '<span class="cert-tag-parentesco">'+cert_escHtml(texto)+'</span>';
+}
+
+/* Nível legível (mesmo nome do filtro de Modalidade); código desconhecido aparece como veio; o código cru fica no title. */
+function certNivelRotulo(v){
+  var m = {CRECHE:'Creche', EDUCACAO_INFANTIL:'Ed. Infantil', ENSINO_FUNDAMENTAL:'Ens. Fundamental', ENSINO_MEDIO:'Ens. Médio', TECNICO:'Técnico',
+           GRADUACAO:'Graduação', POS_GRADUACAO:'Pós-Graduação', MESTRADO:'Mestrado', DOUTORADO:'Doutorado'};
+  var k = String(v||'').trim().toUpperCase();
+  return m[k] || String(v||'—');
+}
+
+/* Iniciais do avatar: vão em atributo e o CSS as desenha, para não entrarem no texto da célula (o nome é a 1ª coisa lida). */
+function certIniciais(nome){
+  var ign = {de:1,da:1,do:1,das:1,dos:1,e:1};
+  var p = String(nome||'').trim().split(/\s+/).filter(function(x){ return x && !ign[x.toLowerCase()]; });
+  if(!p.length) return '?';
+  var a = p[0].charAt(0), b = p.length > 1 ? p[p.length-1].charAt(0) : '';
+  return (a + b).toUpperCase();
+}
+
+/* Irmãos juntos (19/11/2026): dependentes do MESMO titular na página ficam lado a lado, em ordem de filho. Cada linha continua com titular e
+   CPF (filtrando por um filho sobra uma só). Só reordena a página atual. */
+function certAgruparIrmaos(lista){
+  var chave = function(s){ return String(s.cpf||'').replace(/\D/g,'') || String(s.nome||'').toUpperCase(); };
+  var grupos = {}, irmaos = {};
+  lista.forEach(function(s){ if(certEhOutroBeneficiario(s)){ var k = chave(s); if(k){ (grupos[k] = grupos[k] || []).push(s); } } });
+  var saida = [], posto = {};
+  lista.forEach(function(s){
+    var k = certEhOutroBeneficiario(s) ? chave(s) : '';
+    if(k && grupos[k] && grupos[k].length > 1){
+      if(posto[k]) return;
+      posto[k] = true;
+      grupos[k].slice().sort(function(a,b){ return (parseInt(a.ordemFilho,10)||99) - (parseInt(b.ordemFilho,10)||99); })
+        .forEach(function(x){ irmaos[x.protocolo] = true; saida.push(x); });
+    } else saida.push(s);
+  });
+  return { lista: saida, irmaos: irmaos };
 }
 
 // ── Tabela
@@ -1937,7 +2009,7 @@ function cert_renderTabela(){
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="11"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="7"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -1947,17 +2019,20 @@ function cert_renderTabela(){
   if(sub) sub.textContent=total+' solicitação(ões) encontrada(s)';
   var icoEdit='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
   var html='';
+  var _agr = certAgruparIrmaos(pag); pag = _agr.lista; var _irm = _agr.irmaos;
   pag.forEach(function(s){
     var bs='width:28px;height:28px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e2e8f0;background:#fff;color:#475569;';
     var podeEmitir=s.status==='APROVADO'||s.status==='EMITIDO';
     var marcado = !!_selecionados[s.protocolo];
-    html+='<tr'+(marcado?' style="background:#eff6ff;"':'')+'>'
+    var ehDep = certEhOutroBeneficiario(s);
+    html+='<tr data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(_irm[s.protocolo]?' class="cert-irmao"':'')+(marcado?' style="background:#eff6ff;"':'')+'>'
       /* A CAIXA DE SELEÇÃO FICA NA PRIMEIRA COLUNA, e não dentro de Ações.
          Decisão do usuário em 13/08/2026. A coluna de ações já carrega três
          botões e é a mais apertada da tabela; uma caixa ali seria clicada por
          engano no lugar do botão vizinho — e o vizinho emite documento. */
       +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
-      +'<td><strong style="font-size:12px;color:#002f6c;">'+cert_escHtml(s.protocolo||'—')+'</strong></td>'
+      +'<td class="c-sol"><div class="cert-sol-prot">'+cert_escHtml(s.protocolo||'—')+'</div>'
+        +'<div class="cert-sol-data">'+cert_escHtml(certData(s.data))+'</div></td>'
       /* QUEM ESTUDA VEM PRIMEIRO; O TITULAR VEM LOGO ABAIXO — 22/09/2026.
          Seu print mostrou duas linhas iguais, "WANDERSON NASCIMENTO CASTELO"
          nas duas, com o mesmo CPF: dava a impressão de dois vouchers para o
@@ -1968,9 +2043,10 @@ function cert_renderTabela(){
          ao lado, e o titular aparece em cinza embaixo, junto do CPF. A conta
          de "um por CPF" continua sendo do titular; o que muda é que dá para
          ver de quem é cada bolsa sem abrir a solicitação. */
-      +'<td><div style="font-weight:700;font-size:12.5px;color:#0f172a;">'
+      +'<td class="c-benef'+(ehDep?' dep':'')+'" data-ini="'+cert_escHtml(certIniciais(certBeneficiarioNome(s)))+'"><div class="cert-benef-nome">'
         +cert_escHtml(certBeneficiarioNome(s))
         +certBeneficiarioEtiqueta(s)
+        +(ehDep?'':'<span class="cert-tag-proprio" title="O próprio associado">associado</span>')
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
            antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
            omissão — dizer isso de uma bolsa já renovada seria inventar. */
@@ -1991,37 +2067,44 @@ function cert_renderTabela(){
               ? 'Titular: ' + cert_escHtml(s.nome||'—') + (s.cpf ? ' · ' + cert_escHtml(s.cpf) : '')
               : cert_escHtml(s.cpf||''))
           +'</div></td>'
-      +'<td style="font-size:11.5px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.escola||'—')+'</td>'
-      +'<td style="font-size:11.5px;">'+cert_escHtml(s.nivel||s.modalidade||'—')+'</td>'
-      +'<td style="font-size:11.5px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cert_escHtml(s.curso||'—')+'</td>'
+      +'<td class="c-escola"><div class="cert-escola-nome" title="'+cert_escHtml(s.escola||'')+'">'+cert_escHtml(s.escola||'—')+'</div>'
+        +'<div class="cert-curso-sub" title="'+cert_escHtml(s.curso||'')+'">'+cert_escHtml(s.curso||'—')+'</div></td>'
       /* PERÍODO VAZIO NÃO É TRAÇO, É AVISO — pedido do usuário em 13/08/2026:
          "deveria avisar quando não estiver".
          Duas linhas da produção estão assim, gravadas antes de o período
          virar obrigatório. Um "—" discreto some no meio da tabela; o que a
          pessoa precisa saber é que aquela linha NÃO EMITE, e por quê. A cor
          é a de alerta do design system, não o dourado institucional. */
-      +'<td style="font-size:11.5px;">'
+      +'<td class="c-nivel"><span class="cert-chip" title="'+cert_escHtml(s.nivel||s.modalidade||'')+'">'+cert_escHtml(certNivelRotulo(s.nivel||s.modalidade))+'</span>'
         + ((s.periodoReferencia||s.periodo)
-            ? cert_escHtml(s.periodoReferencia||s.periodo)
+            ? '<span class="cert-chip per">'+cert_escHtml(s.periodoReferencia||s.periodo)+'</span>'
             : '<span title="Sem período não dá para emitir: ele sai impresso no '
               + 'certificado e é o que impede o mesmo voucher sair duas vezes." '
               + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
       +'</td>'
-      +'<td>'+badgeStatus(s.status)+'</td>'
-      +'<td style="font-size:11px;white-space:nowrap;">'+certEnvioCelula(s)+'</td>'
-      +'<td style="font-size:11px;color:#64748b;white-space:nowrap;">'+cert_escHtml(certData(s.data))+'</td>'
-      +'<td style="text-align:center;"><div style="display:inline-flex;gap:5px;align-items:center;">'
+      +'<td class="c-sit">'+badgeStatus(s.status)+'<div class="cert-env">'+certEnvioCelula(s)+'</div></td>'
+      +'<td class="c-acao"><div class="cert-acoes">'
         /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
          O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
          coluna existir. Com o id vazio, o botão procurava a linha por um
          valor em branco e podia não achar nada — e aí o clique não fazia
          absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
          é o pior defeito possível, porque não deixa nem por onde começar. */
-      +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
-        +(podeEmitir?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Emitir certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
-        /* Enviar só aparece em EMITIDO: antes de existir documento não há o
-           que mandar, e um botão que sempre recusa é pior que botão nenhum. */
-        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-enviar" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado" style="'+bs+'background:#eff6ff;border-color:#93c5fd;color:#1565C0;">📨</button>':'')
+      +(s.status==='APROVADO'
+          ? '<button type="button" class="cert-btn-emitir-rapido cert-acao-prim" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Abre a prévia do certificado; emitir é uma segunda decisão">Emitir</button>'
+          : '')
+        /* Enviar só em EMITIDO (antes não há o que mandar); já enviado, diz "Reenviar". */
+        +(s.status==='EMITIDO'
+          ? '<button type="button" class="cert-btn-enviar cert-acao-prim'+(certSituacaoEnvio(s)==='ENVIADO'?' reenv':'')+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado">'+(certSituacaoEnvio(s)==='ENVIADO'?'Reenviar':'Enviar')+'</button>'
+          : '')
+        /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
+         O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
+         coluna existir. Com o id vazio, o botão procurava a linha por um
+         valor em branco e podia não achar nada — e aí o clique não fazia
+         absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
+         é o pior defeito possível, porque não deixa nem por onde começar. */
+        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Reemitir / ver a prévia do certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
       +'</div></td>'
       +'</tr>';
   });
@@ -2047,6 +2130,14 @@ function cert_renderTabela(){
     btn.addEventListener('click',function(){
       var s=linhaDoBotao(this);
       if(s) cert_abrirModal(s);
+    });
+  });
+  /* Tocar na linha abre os detalhes (mesmo caminho do lápis); caixa, botões e links fazem o que é seu. */
+  tbody.querySelectorAll('tr[data-prot]').forEach(function(tr){
+    tr.addEventListener('click',function(ev){
+      if(ev.target.closest && ev.target.closest('input,button,a,select,label')) return;
+      var b=tr.querySelector('.cert-btn-abrir-modal'); if(!b) return;
+      var s=linhaDoBotao(b); if(s) cert_abrirModal(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
@@ -4444,7 +4535,7 @@ function certDocEnviar(){
 // ── Carregar
 function cert_carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="11"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="7"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];

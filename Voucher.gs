@@ -132,21 +132,11 @@ function gerarIdPadrao_(prefixo) {
   return prefixo + "_" + data + "_" + aleatorio;
 }
 
-/* PROTOCOLO SEQUENCIAL A PARTIR DE 01/2027 — decisão do usuário, 19/11/2026: "Protocolo sequencial - 01/2027 em diante".
- *
- * ATÉ 31/12/2026 O NÚMERO CONTINUA SORTEADO, como sempre foi (6 dígitos entre 100000 e 999999). O sorteio não confere se o número já
- * existe: com 300 pedidos no ano a chance de dois iguais é de ~5%, com 1.000 passa de 40% — e o sistema acha a solicitação PELO protocolo e
- * pega a primeira, então um repetido emitiria ou enviaria para a pessoa errada. É por isso que vira sequencial.
- *
- * DE 01/01/2027 EM DIANTE: BOLSA-2027-000001, 000002, 000003…, recomeçando em cada ano. Os protocolos antigos NÃO mudam (estão em PDFs e
- * e-mails já enviados); os novos têm 6 dígitos com zero à esquerda, que nunca colidem com os antigos (todos de 100000 para cima).
- *
- * COMO NÃO REPETIR: o próximo número = o maior entre (o contador guardado) e (o maior sequencial JÁ GRAVADO na planilha) + 1, tudo sob a
- * trava do script. Se o contador se perder, a planilha segura; se dois pedidos chegarem juntos, a trava os separa. Se um pedido falhar
- * depois de pegar o número, fica um BURACO na sequência (000041 → 000043): é o preço de nunca repetir, e o buraco não confunde nada.
- *
- * `jaTrancado`: quem já segura a trava do script (VoucherNovaSolicitacao) passa true, para não travar duas vezes.
- * `agora`: só para teste (data simulada). */
+/* PROTOCOLO SEQUENCIAL A PARTIR DE 01/2027 (usuário, 19/11/2026). Até 31/12/2026 segue sorteado (6 dígitos, sem conferir repetição: ~5% de
+ * chance de repetir com 300 pedidos, e o sistema acha a solicitação pelo protocolo, então repetido = pessoa errada). De 2027: BOLSA-2027-000001,
+ * 000002…, recomeçando a cada ano; os antigos não mudam e nunca colidem (todos ≥ 100000). Próximo = maior entre o contador guardado e o maior
+ * sequencial já gravado na planilha, + 1, sob a trava do script. Pedido que falha depois de pegar o número deixa um buraco (esperado).
+ * `jaTrancado`: quem já segura a trava (VoucherNovaSolicitacao) passa true. `agora`: só para teste. */
 const PROTOCOLO_SEQUENCIAL_A_PARTIR_DE_ = 2027;
 
 function gerarNumeroProtocolo_(jaTrancado, agora) {

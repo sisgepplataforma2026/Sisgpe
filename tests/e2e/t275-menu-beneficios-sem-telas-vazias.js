@@ -12,7 +12,7 @@ const botao = (sub) => { const m = html.match(new RegExp('<button[^>]*data-sub-m
 ["guririBeach", "assefaz", "historico"].forEach((s) => b.ok(/\bhidden\b/.test(botao(s)) && /display:none/.test(botao(s)), "menu: '" + s + "' está escondido"));
 ["parqueChina", "vouchers"].forEach((s) => b.ok(botao(s) && !/\bhidden\b/.test(botao(s)) && !/display:none/.test(botao(s)), "menu: '" + s + "' continua visível"));
 const cartao = (nome) => { const i = html.indexOf("<h4>" + nome + "</h4>"); const j = html.lastIndexOf("<article", i); return html.slice(j, html.indexOf(">", j) + 1); };
-["Guriri Beach", "Pousada Club Assefaz"].forEach((n) => b.ok(/\bhidden\b/.test(cartao(n)) && /display:none/.test(cartao(n)), "cartão da página inicial: '" + n + "' escondido"));
+["Guriri Beach", "Pousada Club Assefaz", "Carteirinhas e cadastros"].forEach((n) => b.ok(/\bhidden\b/.test(cartao(n)) && /display:none/.test(cartao(n)), "cartão da página inicial: '" + n + "' escondido"));
 ["China Park Eco Resort", "Vouchers"].forEach((n) => b.ok(!/\bhidden\b/.test(cartao(n)), "cartão da página inicial: '" + n + "' continua visível"));
 b.ok(/id="benefSubGuririBeach"/.test(html) && /id="benefSubAssefaz"/.test(html) && /id="benefSubHistorico"/.test(html) && /historico: \["Central de solicitações"/.test(html), "nada foi apagado: painéis e títulos continuam no arquivo");
 b.resumo();
