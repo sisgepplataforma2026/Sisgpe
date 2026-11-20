@@ -19,7 +19,7 @@ const dom = require("./dom");
 if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Tela de nova solicitação");
   b.naoTestavel("tela de nova solicitação", "jsdom não instalado");
-  b.resumo(); process.exit(0);
+  b.resumo(); process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -538,10 +538,22 @@ function el(id) { return doc.getElementById(id); }
 
     t.clicar("#certBtnAprovar");
     await t.assentar(700);
-    b.ok(el("certModalOverlay").classList.contains("ativo"),
-      "continua aberto depois de aprovar");
-    b.ok(el("certModalEmissaoArea").style.display !== "none",
-      "e a área de emissão apareceu, pronta para gerar o certificado");
+    /* FECHA DEPOIS DE APROVAR — decisão revista pelo usuário em 16/09/2026:
+       "quando aprovar tem que fechar essa tela".
+
+       Esta asserção exigia o CONTRÁRIO, e por uma razão que não era boba:
+       aprovar e emitir vêm colados, a área de emissão está neste mesmo modal,
+       e o modal se reabria sozinho para emendar os dois passos. A trava
+       cumpriu o papel — reprovou e me obrigou a reconhecer que eu estava
+       desfazendo uma escolha anterior, em vez de a mudança passar batida.
+
+       Quem analisa trinta solicitações seguidas fecharia a mesma janela trinta
+       vezes. A aprovação continua gravada e a lista se recarrega; quem quiser
+       emitir abre a linha, que agora está APROVADO. */
+    b.ok(!el("certModalOverlay").classList.contains("ativo"),
+      "o modal FECHA depois de aprovar");
+    b.igual(el("certModalOverlay").style.display, "none",
+      "e sai da tela de verdade, não só perde a classe");
   } else {
     b.aviso("lista vazia no teste", "passo 27 não pôde rodar");
   }
@@ -625,10 +637,17 @@ function el(id) { return doc.getElementById(id); }
     ["ESC-000002", "COLEGIO SAO JOSE", "SAO JOSE", "98765432000188", "Vitoria", "ES"],
     ["ESC-000003", "COLEGIO ANCHIETA", "ANCHIETA", "11222333000144", "Serra", "ES"]
   ]);
-  /* O cadastro de escolas fica 5 min em CacheService — sem limpar, a busca
-   * responderia com a lista de antes desta linha e o teste mediria o cache,
-   * não o código. */
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  /* O cadastro de escolas fica 6 HORAS em CacheService, em fatias — sem
+   * limpar, a busca responderia com a lista de antes desta linha e o teste
+   * mediria o cache, não o código.
+   *
+   * Aqui se limpava a chave pelo nome (`CACHE_KEY_ESCOLAS_CADASTRO_`). Em
+   * 24/09/2026 a lista passou a ser gravada em várias chaves, e remover uma
+   * só deixou de limpar coisa alguma: estes cinco passos reprovaram com dado
+   * da semeadura anterior. Chamar a função de invalidação de verdade é o
+   * certo de qualquer forma — ela é quem sabe onde o cache mora, e é a mesma
+   * que a produção chama ao salvar uma escola. */
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
   try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_); } catch (e) {}
 
@@ -700,5 +719,5 @@ function el(id) { return doc.getElementById(id); }
   b.igual(quantosAvisos, 1, "e só naquela linha");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

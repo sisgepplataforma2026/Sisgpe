@@ -505,4 +505,3 @@ b.naoTestavel("O período gravado como texto na planilha real",
   "o apóstrofo protetor só se confere no Sheets; o emulador não converte nada");
 
 b.resumo();
-process.exit(0);

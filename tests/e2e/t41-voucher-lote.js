@@ -252,4 +252,3 @@ b.naoTestavel("A tela de renovação em lote",
   "o bloco repetível ainda não existe — este arquivo cobre só o backend");
 
 b.resumo();
-process.exit(0);

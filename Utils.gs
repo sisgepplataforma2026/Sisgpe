@@ -18,6 +18,45 @@ function dataPorExtenso() {
   return dia + " de " + meses[mes] + " de " + ano;
 }
 
+/* 10/11/2026: Recibo.gs e ReciboDiversos.gs chamavam formatarDataExtensoBR,
+   que NUNCA existiu no projeto — gerar recibo dava "formatarDataExtensoBR is
+   not defined" (achado ao ligar o recibo diverso à Caixa de E-mails). Mesmo
+   formato de dataPorExtenso, para qualquer data: "10 de novembro de 2026". */
+function formatarDataExtensoBR(data) {
+  var meses = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  var d = data instanceof Date ? data : new Date(data);
+  if (isNaN(d.getTime())) return "";
+  var tz = Session.getScriptTimeZone();
+  return parseInt(Utilities.formatDate(d, tz, "d"), 10) + " de " + meses[parseInt(Utilities.formatDate(d, tz, "M"), 10) - 1] +
+    " de " + Utilities.formatDate(d, tz, "yyyy");
+}
+
+/* 10/11/2026 (auditoria "toda função chamada existe?"): Recibo.gs chamava
+   formatarCPF e formatarPix, que também nunca existiram — gerar recibo
+   quebrava logo depois da data. */
+function formatarCPF(cpf) {
+  var d = String(cpf || "").replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return String(cpf || "").trim();
+}
+/** A chave PIX como deve aparecer no recibo, pelo tipo (CPF, TELEFONE, EMAIL, ALEATORIA). */
+function formatarPix(chave, tipo) {
+  chave = String(chave || "").trim();
+  tipo = String(tipo || "").toUpperCase();
+  if (!chave) return "";
+  if (tipo === "CPF" || tipo === "CNPJ") return formatarCPF(chave);
+  if (tipo === "TELEFONE") {
+    var t = chave.replace(/\D/g, "");
+    if (t.length === 11) return t.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    if (t.length === 10) return t.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return chave;
+  }
+  if (tipo === "EMAIL") return chave.toLowerCase();
+  return chave;
+}
+
 /* ================= VALIDAÇÃO DE E-MAIL ================= */
 function emailValido(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
@@ -304,10 +343,57 @@ function formatarCnpj_(cnpj) {
   return c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 }
 
-// CORREÇÃO: exportar buscarFichasDrive para compatibilidade com o frontend
-function obterArquivoDriveBase64(fileId) {
+function pastasRaizDocumentosPermitidas_() {
+  var ids = [];
+  ["FILIACAO", "DESFILIACAO", "TAXA_NEGOCIAL", "TAXA_ASSISTENCIAL", "OFICIO_LIVRE"]
+    .forEach(function(tipo) {
+      try {
+        var id = String(getPastaOficiosDestinoId_(tipo) || "").trim();
+        if (id && ids.indexOf(id) === -1) ids.push(id);
+      } catch (e) {}
+    });
+  try {
+    var recibosId = String(getRecursoId_("RECIBOS") || "").trim();
+    if (recibosId && ids.indexOf(recibosId) === -1) ids.push(recibosId);
+  } catch (e2) {}
+  return ids;
+}
+
+function arquivoPertencePastasDocumentos_(arquivo, pastasPermitidas) {
+  var fila = [];
+  var visitadas = {};
+  var profundidadeMaxima = 4;
+
+  try {
+    var pais = arquivo.getParents();
+    while (pais.hasNext()) fila.push({ pasta: pais.next(), nivel: 0 });
+  } catch (e) {
+    return false;
+  }
+
+  while (fila.length) {
+    var atual = fila.shift();
+    var id = String(atual.pasta.getId() || "").trim();
+    if (!id || visitadas[id]) continue;
+    visitadas[id] = true;
+    if (pastasPermitidas.indexOf(id) !== -1) return true;
+    if (atual.nivel >= profundidadeMaxima) continue;
+    try {
+      var avos = atual.pasta.getParents();
+      while (avos.hasNext()) fila.push({ pasta: avos.next(), nivel: atual.nivel + 1 });
+    } catch (e2) {}
+  }
+  return false;
+}
+
+// Exportada para o frontend, mas limitada à sessão e às pastas de Documentos.
+function obterArquivoDriveBase64(fileId, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     const arquivo = DriveApp.getFileById(String(fileId).trim());
+    if (!arquivoPertencePastasDocumentos_(arquivo, pastasRaizDocumentosPermitidas_())) {
+      throw new Error("O arquivo não pertence às pastas autorizadas do módulo Documentos.");
+    }
     const blob    = arquivo.getBlob();
     return {
       nome:   arquivo.getName(),
@@ -319,16 +405,13 @@ function obterArquivoDriveBase64(fileId) {
   }
 }
 
-function buscarFichasDrive(termo) {
+function buscarFichasDrive(termo, tokenSessao) {
+  exigirModulo_(tokenSessao, "documentos", false);
   try {
     termo = String(termo || "").trim();
     if (!termo || termo.length < 3) return [];
     const termoNorm = normalizarTexto_(termo);
-    const PASTA_IDS = [
-      typeof PASTA_OFICIOS_ID            !== "undefined" ? PASTA_OFICIOS_ID            : null,
-      typeof PASTA_OFICIOS_DESFILIACAO_ID !== "undefined" ? PASTA_OFICIOS_DESFILIACAO_ID : null,
-      typeof PASTA_RECIBO_ID             !== "undefined" ? PASTA_RECIBO_ID             : null
-    ].filter(Boolean);
+    const PASTA_IDS = pastasRaizDocumentosPermitidas_();
 
     const resultados = [];
     const vistos     = {};

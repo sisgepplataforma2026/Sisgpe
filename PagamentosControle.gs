@@ -441,7 +441,7 @@ function pagAnexarComprovante(payload, tokenSessao) {
 
     var pasta = obterPastaDesp_();
     var arquivo = pasta.createFile(Utilities.newBlob(bytes, mime, nomeFinal));
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    arquivoAplicarPolitica_(arquivo, "PagamentosControle.gs");
 
     var comprovanteAnterior = pag_(despInfo, "FILE_ID_COMPROVANTE");
     var quem = sessao.nome || sessao.usuario || sessao.email || "SISGEP";

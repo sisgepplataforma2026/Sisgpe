@@ -10,7 +10,7 @@
  * tela. Endereço de contato muda — e quando mudar, tem que mudar nos três
  * ao mesmo tempo, senão sobra um mandando gente para uma caixa que ninguém
  * lê. O mesmo endereço já aparecia solto no rodapé do certificado
- * (VoucherPdf.gs) e em AgendOftalm.gs; unificar aqueles é outra tarefa, e
+ * (VoucherPdf.gs) e na antiga agenda do Oftalmo (apagada em 13/11/2026); unificar aqueles é outra tarefa, e
  * não se mistura com esta. */
 var VOUCHER_EMAIL_SECRETARIA_ = "secretaria@sindeducacao.com";
 
