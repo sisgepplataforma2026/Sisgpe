@@ -14,7 +14,7 @@
 
 **Evidência executada hoje (MEDIDO):**
 - Suíte completa (`tests/run-suite.js`): **274 arquivos, 9.595 asserções, 0 falha** — sobre o emulador de Apps Script em Node.
-- `t6-exposicao`: das **1.113 funções públicas**, **826 recusam sem sessão**, **199 respondem sem sessão** (77 delas gravam), 88 inconclusivas. Teto aceito: 204.
+- `t6-exposicao`: das **1.113 funções públicas**, **826 recusam sem sessão**, **199 respondem sem sessão** (77 com nome de ação que grava; a classificação é por nome), 88 inconclusivas. Teto aceito: 204.
 - Repositório: 209 `.gs` + 106 `.html`, ~109 mil linhas de `.gs`, ~80 mil de `.html`, 3.144 funções; projeto com 9.556.758 bytes.
 
 **O que o emulador NÃO prova** (continua **NÃO TESTADO**): PDF impresso, entrega de e-mail, tela no navegador de verdade, gatilhos agendados, Drive real, TickOne real, Gmail/KingHost real. A lista viva está em `docs/PENDENTE-VERIFICACAO.md` (7.015 linhas).
@@ -23,7 +23,7 @@
 
 ## 1. Resumo para decisão (leia só isto se tiver 2 minutos)
 
-1. **🔴 Segurança — a maior pendência.** 199 funções do servidor respondem a quem chama sem login, e 77 delas **gravam ou apagam** (ex.: `excluirPrestador`, `excluirReceita`, `cadastrarReceita`, `aprovarAtualizacaoCadastro`, `enviarCobracasMensalidade`, `excluirSolicitacaoVoucher`, `resetarMemoriaEvolutiva`, `gerarHashInicialUsuarios123456`, `salvarGuiaPagamento`, `marcarGuiaComoPaga`). No Apps Script toda função global é endpoint de `google.script.run` para **qualquer página do projeto**, e o `appsscript.json` publica o app como `ANYONE_ANONYMOUS` executando como o dono. Medido no emulador; **não confirmado no ar**. Prioridade 1 do roadmap.
+1. **🔴 Segurança — a maior pendência.** 199 funções do servidor respondem a quem chama sem login, e 77 delas **têm nome de ação que grava ou apaga** (o `t6` classifica pelo nome, não provou a gravação; ex.: `excluirPrestador`, `excluirReceita`, `cadastrarReceita`, `aprovarAtualizacaoCadastro`, `enviarCobracasMensalidade`, `excluirSolicitacaoVoucher`, `resetarMemoriaEvolutiva`, `gerarHashInicialUsuarios123456`, `salvarGuiaPagamento`, `marcarGuiaComoPaga`). No Apps Script toda função global é endpoint de `google.script.run` para **qualquer página do projeto**, e o `appsscript.json` publica o app como `ANYONE_ANONYMOUS` executando como o dono. Medido no emulador; **não confirmado no ar**. Prioridade 1 do roadmap.
 2. **🟠 Patrimônio não guarda dado no servidor.** `PatrimonioAdmin.html` não tem `.gs` e só usa `localStorage`: o que se cadastra fica no navegador de quem digitou e some se limpar o cache. Está dentro de Financeiro, onde não pertence.
 3. **🟠 Módulos mal posicionados e áreas ausentes** (seção 3): Negociação, Assembleias, Patrimônio, Mensalidade e Taxas estão fora do lugar que o PROMPT-MESTRE define; Sindicalização, Comunicação e Relatórios/BI cobrem menos da metade da estrutura pedida.
 4. **🟠 Dashboards:** existem e são de ação em Início, Financeiro, Eventos, Auditoria, Benefícios, Escolas, Ofícios e Voucher; **faltam** em Jurídico, Governança, Patrimônio, Sindicalização e Comunicação (seção 4).
@@ -218,3 +218,47 @@ Um módulo só é dado como **Completo** quando: (1) teste executável do fluxo 
 - **Implantação:** cada rodada de P0 passa por homologação, a suíte, e só então produção, com o modo `conferir` mostrando o diff antes (como já é feito).
 - **Migração:** não há migração de dados proposta nesta rodada. Se Patrimônio ganhar backend, o `localStorage` existente é descartável (sem dado real conhecido — **confirmar com quem digitou**).
 - **Reversão:** o deploy de produção já guarda cópia do estado anterior em artefato do GitHub; qualquer rodada de P0 pode voltar para a versão anterior.
+
+---
+
+## 15. As funções entregam o que foi proposto? (adendo de 20/11/2026)
+
+Duas medições novas, executadas hoje. **Não substituem o teste do fluxo no ar.**
+
+### 15.1 Chamada de cada função que a tela usa, com sessão de administrador — MEDIDO
+Script: chama no emulador, com token de administrador e sem outros argumentos, as 489 funções do servidor que alguma tela chama (43 de efeito colateral foram puladas: excluir, enviar, instalar, importar…).
+
+| Resultado | Qtde | Leitura |
+|---|---|---|
+| Devolveu dado (`ok`) | 159 | respondem |
+| Devolveu `ok:false` | 199 | normal sem argumento (falta o parâmetro); **não prova defeito nem prova entrega** |
+| Recusou por permissão | 62 | barreira funcionando |
+| Falhou por entrada vazia ou ambiente | 26 | ver abaixo |
+| **Quebrada (nome/constante inexistente em tempo de execução)** | **0** | nenhuma função chamada pela tela cai em `ReferenceError` |
+
+Das 26 que falharam: **18 dependem de Firebase configurado** (Bingo e painéis de Eventos: `bingo_*`, `compasso_executivoResumo`, `compasso_validacaoResumo`, `painelEmissao_status`) e 2 de Eventos V2 bloqueado por desenho — **o emulador não tem Firebase; essas funções ficam NÃO TESTADAS aqui.** As demais pedem aba/dado que o emulador sem semente não tem (Recibo, Sindicalização, Escolas) ou validam entrada (`identificarSolicitanteVoucher`: "Informe um CPF válido"). Uma única é fragilidade real de entrada vazia: `painelEmissao_emitirGrupo` estoura com `Cannot read properties of undefined (reading 'length')` quando chamada sem lista.
+
+### 15.2 Quanto do que a tela oferece tem teste que a exercita — HEURÍSTICA
+Cruzei as funções do servidor chamadas por cada tela com os nomes citados nos 274 arquivos de teste: **509 funções chamadas por 86 telas; 221 (43%) aparecem em algum teste.** Citar o nome é o piso — a função pode ser exercitada por outra, ou o teste só mencionar. Onde a cobertura é mais fraca:
+
+| Tela / módulo | Funções que a tela chama | Citadas em teste | Sem teste |
+|---|---|---|---|
+| `RHAdmin.html` (RH) | 35 | 2 | **33** |
+| `JuridicoAdmin.html` (Jurídico) | 28 | 1 | **27** |
+| `Parquechinaadmin.html` (China Park, admin) | 31 | 6 | **25** |
+| `CentralemailIA.html` (Central de e-mail IA, legado) | 20 | 0 | **20** |
+| `ComprovantesNF.html` (Comprovantes / NF) | 16 | 0 | **16** |
+| `Scripts_Despesas.html` (Despesas) | 22 | 11 | 11 |
+| `Scripts_Recibos.html` (Recibos) | 13 | 3 | 10 |
+| `CobrancaAdmin.html` (Cobrança de relação nominal) | 11 | 1 | 10 |
+| `VisitasAdmin.html` / `VisitasCampo.html` (Visitas) | 9 / 7 | 0 / 0 | 9 / 7 |
+| `VerbasAdmin.html`, `TaxasAdmin.html` | 6 / 5 | 0 / 0 | 6 / 5 |
+
+Em contraste, `OficiosScripts.html` (Ofícios) tem 32 de 40 citadas — o módulo vivo é o mais coberto.
+
+### 15.3 Conclusão sobre "entregam o que foi proposto"
+- **Entregam, com evidência executada:** Ofícios, Voucher, Escolas, Eventos/Compasso, Caixa de e-mails, Taxas e Sindicalização — as regras passam na suíte; e nenhuma função chamada pela tela está quebrada por nome inexistente.
+- **Não dá para afirmar (módulo construído, sem teste do que a tela oferece):** RH, Jurídico, China Park (parte administrativa), Comprovantes/NF, Cobrança, Visitas, Verbas, Taxas (tela). Veredito: **NÃO TESTADO**.
+- **Não dá para provar neste ambiente:** Bingo e painéis de Eventos que dependem de Firebase, PDF, e-mail, impressão, gatilhos.
+- **Quebrado de fato (conceitual):** Patrimônio (só `localStorage`).
+- **Para fechar a pergunta de verdade** é preciso, módulo a módulo, o fluxo completo do prompt — começando por RH, Jurídico e China Park admin, que têm mais função sem teste que com teste.
