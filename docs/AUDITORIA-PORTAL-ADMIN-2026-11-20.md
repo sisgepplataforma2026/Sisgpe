@@ -262,3 +262,14 @@ Em contraste, `OficiosScripts.html` (Ofícios) tem 32 de 40 citadas — o módul
 - **Não dá para provar neste ambiente:** Bingo e painéis de Eventos que dependem de Firebase, PDF, e-mail, impressão, gatilhos.
 - **Quebrado de fato (conceitual):** Patrimônio (só `localStorage`).
 - **Para fechar a pergunta de verdade** é preciso, módulo a módulo, o fluxo completo do prompt — começando por RH, Jurídico e China Park admin, que têm mais função sem teste que com teste.
+
+### 15.4 Fluxos completos executados em 20/11/2026 (RH, Jurídico, China Park admin)
+Três testes novos, ponta a ponta, no emulador (suíte: 277 arquivos, 9.726 asserções, 0 falha):
+
+| Módulo | Teste | Asserções | Resultado | Achados |
+|---|---|---|---|---|
+| RH | `t279-rh-fluxo-completo` | 54 | **Parcial** (regra provada; holerite PDF/e-mail e gatilhos NÃO TESTÁVEIS aqui) | Permissão por módulo e por administrador, pró-rata, regerar sem duplicar, reajuste (desligado fora), 13º/férias com duplicidade e estorno com motivo — tudo conforme. Observação: o estorno de evento **não cancela a despesa já criada no Financeiro** (avisa na mensagem; é manual); as ações do RH não usam a trilha única `auditar_` |
+| Jurídico | `t280-juridico-fluxo-completo` | 44 (+1 atenção) | **Parcial** (IA, DataJud, Drive e Agenda reais NÃO TESTÁVEIS) | **Achado real, latente:** `jurSalvarPrazo` com `id` **reabre** um prazo já cumprido se `cumprido` não for enviado. Nenhuma tela chama essa edição hoje (a tela só cria prazo), por isso fica como ATENÇÃO, não falha. Correção de uma linha quando for editar. "Excluir processo" só desativa (`ATIVO=NAO`), não apaga |
+| China Park (admin) | `t281-chinapark-admin-fluxo` | 33 | **Parcial** (ofício/PDF/e-mail NÃO TESTÁVEIS; check-in e check-out não puderam ser exercitados sem o ofício) | Módulo benefícios **e** administrador exigidos; suíte obrigatória e específica na aprovação; conflito de suíte barrado tanto na aprovação quanto no agendamento manual; pagamento parcial/total/acima do total; recusa, cancelamento e no-show exigem motivo; duplo clique tratado; suíte liberada pelo cancelamento volta a ficar disponível |
+
+Cobertura de função-citada-em-teste para essas três telas: antes 2/35, 1/28 e 6/31; agora cobrem o fluxo principal de cada uma. Restam sem teste de fluxo: Cobrança, Visitas, Verbas, Comprovantes/NF, Central de e-mail IA (legado), Recibos e Despesas (parte).
