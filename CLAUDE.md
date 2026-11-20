@@ -100,6 +100,11 @@ nas imagens embutidas de CompassoCanhotosArte.html (banner JPEG de ~318 KB + art
 para o Drive (opção 1, lido no servidor e entregue embutido; só a impressão real prova) ou recomprimir (opção 2); o usuário respondeu **opção 3: deixar como
 está**. Só voltar ao assunto se ele pedir, ou quando uma mudança não couber. Mudança nova grande: medir no t45 ANTES e enxugar o próprio código primeiro.
 
+**ATUALIZADO EM 20/11/2026 — A PRODUÇÃO RECUSOU A CENTRAL DE VOUCHER ("too large to save") COM O PROJETO EM 9.874.149 BYTES (a produção estava em 9.866.462).** O teto da produção é MENOR que o da
+homologação (9.874.654); não se sabe o valor. Por isso o usuário autorizou ("Então faça") **mover o banner do canhoto para o Drive**: o JPEG saiu de CompassoCanhotosArte.html
+(−318 KB; projeto em 9.556.758, folga de ~319 KB contra o teto da HML). A folha busca o arquivo "SISGEP - Banner dos canhotos.jpg" pelo nome (compassoCanhotos_arte); sem ele sai sem
+banner e avisa. Item aberto em docs/PENDENTE-VERIFICACAO.md. A regra "folga de ~1,8 KB" acima ficou superada.
+
 ## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
 
 O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo

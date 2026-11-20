@@ -7006,3 +7006,10 @@ a planilha). Testado só no emulador (t277). Falta, em JANEIRO/2027: (1) o 1º p
 pelo formulário público E um pela "Nova solicitação" (manual) seguidos não repetem número; (4) conferir que nada que busca por protocolo quebrou. Um pedido
 que falhe depois de pegar o número deixa um buraco na sequência (esperado). Cobrar em janeiro.
 
+
+## 🖼️ Banner dos canhotos saiu do código para o Drive (20/11/2026) — NÃO TESTADO no ar
+
+O banner (238 KB de JPEG, 318 KB em base64) saiu de CompassoCanhotosArte.html para abrir espaço (a produção recusou a Central de Voucher: "project too large").
+A folha busca no Drive, pelo NOME, o arquivo **"SISGEP - Banner dos canhotos.jpg"** (CompassoCanhotosDados.gs, compassoCanhotos_arte). Sem o arquivo, a folha sai SEM
+banner e a tela avisa. **Antes de publicar em produção:** o arquivo precisa estar no Drive da conta que roda o SISGEP. Depois de publicado: gerar uma prévia e uma
+folha IMPRESSA de canhotos (Eventos › Festa › Canhotos) e conferir o banner igual ao de antes. Testado só no emulador (t205: byte a byte, sem arquivo, erro do Drive).

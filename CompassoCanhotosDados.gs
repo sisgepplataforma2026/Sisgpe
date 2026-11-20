@@ -189,12 +189,24 @@ function compassoCanhotos_escola_(s) {
   }).join(' ');
 }
 
+/** Arquivo do banner no Drive da conta do SISGEP (saiu do código: limite de tamanho do projeto). */
+var CANH_BANNER_NOME = 'SISGEP - Banner dos canhotos.jpg';
+
 /**
- * A arte (banner e canhoto do modelo aprovado) e as fontes, como CSS.
- * Mora num .html à parte e só é lida quando a pessoa manda gerar: ~470 KB
- * não podem viajar em toda abertura do SISGEP.
+ * A arte do canhoto e as fontes, como CSS; o banner vem do Drive pelo nome.
+ * Sem o arquivo a folha sai sem banner e o CSS traz a marca SEM_BANNER (a tela avisa).
  */
 function compassoCanhotos_arte(tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — arte dos canhotos', false);
-  return HtmlService.createHtmlOutputFromFile('CompassoCanhotosArte').getContent();
+  var css = HtmlService.createHtmlOutputFromFile('CompassoCanhotosArte').getContent();
+  var url = 'none', marca = '/*SEM_BANNER*/';
+  try {
+    var it = DriveApp.getFilesByName(CANH_BANNER_NOME);
+    if (it.hasNext()) {
+      var b = it.next().getBlob();
+      url = 'url(data:image/jpeg;base64,' + Utilities.base64Encode(b.getBytes()) + ')';
+      marca = '';
+    }
+  } catch (e) { /* sem acesso ao Drive: sai sem banner */ }
+  return marca + css.replace('url(__BANNER__)', url);
 }

@@ -556,7 +556,8 @@
         }
       });
       w.document.open(); w.document.write(documento(paginas, !soPrevia, G)); w.document.close();
-      msg(soPrevia ? 'Prévia aberta.' : paginas.length+' folha(s) prontas para imprimir.');
+      var semB=ARTE.indexOf('/*SEM_BANNER*/')===0;
+      msg((soPrevia ? 'Prévia aberta.' : paginas.length+' folha(s) prontas para imprimir.')+(semB?' ATENÇÃO: sem banner — o arquivo do banner não está no Drive.':''), semB);
     };
     if(ARTE){ montar(); return; }
     google.script.run

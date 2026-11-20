@@ -118,11 +118,28 @@ const lido = g.compassoCanhotos_ler({ base64: "x", nome: "a.xlsx" }, "", TOKEN);
 b.ok(lido.ok && lido.participantes.length === 6 && lido.aba === "Respostas ao formulário 1",
   "com o módulo, lê e diz de que aba leu");
 b.bloqueia(() => g.compassoCanhotos_arte(TOKEN_SEM_EVENTOS), "a arte também exige o módulo");
-b.ok(/CompassoCanhotosArte/.test(g.compassoCanhotos_arte(TOKEN)), "a arte vem do arquivo CompassoCanhotosArte");
 const arte = fs.readFileSync(path.join(dom.RAIZ, "CompassoCanhotosArte.html"), "utf8");
-b.ok(/\.canh-banner\{background-image:url\(data:image\/jpeg;base64,/.test(arte) &&
+b.ok(/\.canh-banner\{background-image:url\(__BANNER__\)\}/.test(arte) &&
      /\.canh-arte\{background-image:url\(data:image\/jpeg;base64,/.test(arte),
-  "o arquivo de arte traz o banner e o canhoto do modelo embutidos");
+  "o arquivo de arte traz o canhoto embutido e o banner como marcador (a imagem mora no Drive)");
+b.ok(!/data:image\/jpeg;base64,\/9j[^)]{200000,}/.test(arte), "o banner de 318 KB não está mais embutido no código");
+/* Com o banner no Drive: o CSS sai com a imagem idêntica; sem ele, sai sem banner e com a marca. */
+const htmlOrig = g.HtmlService;
+g.HtmlService = { createHtmlOutputFromFile: (n) => ({ getContent: () => fs.readFileSync(path.join(dom.RAIZ, n + ".html"), "utf8") }) };
+const JPG = Buffer.from("/9j/4AAQSkZJRgABAQAA", "base64");
+g.DriveApp = { getFilesByName: (n) => { b.igual(n, "SISGEP - Banner dos canhotos.jpg", "procura o banner pelo nome combinado");
+  let u = false; return { hasNext: () => !u, next: () => { u = true; return { getBlob: () => ({ getBytes: () => Array.from(JPG) }) }; } }; } };
+const comB = g.compassoCanhotos_arte(TOKEN);
+b.ok(comB.indexOf("SEM_BANNER") < 0 && comB.indexOf("__BANNER__") < 0 &&
+     comB.indexOf(".canh-banner{background-image:url(data:image/jpeg;base64," + JPG.toString("base64") + ")}") >= 0,
+  "com o arquivo no Drive, o banner entra byte a byte igual");
+g.DriveApp = { getFilesByName: () => ({ hasNext: () => false }) };
+const semB = g.compassoCanhotos_arte(TOKEN);
+b.ok(semB.indexOf("/*SEM_BANNER*/") === 0 && semB.indexOf("__BANNER__") < 0 && semB.indexOf(".canh-banner{background-image:none}") >= 0,
+  "sem o arquivo, a folha sai sem banner e a tela é avisada");
+g.DriveApp = { getFilesByName: () => { throw new Error("sem acesso"); } };
+b.ok(g.compassoCanhotos_arte(TOKEN).indexOf("/*SEM_BANNER*/") === 0, "erro do Drive também não derruba a folha");
+g.HtmlService = htmlOrig;
 b.ok(!/<\?/.test(arte), "e nenhum scriptlet (é lido como conteúdo, mas não pode virar template por engano)");
 
 /* ─────────────────────────────────────────────────────────────────────── */
