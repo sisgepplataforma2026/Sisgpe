@@ -1,6 +1,6 @@
 {
-  "teto": 204,
-  "medidoEm": "2026-09-01",
+  "teto": 185,
+  "medidoEm": "2026-11-20",
   "observacao": "Teto aceito conscientemente. Baixa a cada modulo fechado; nunca sobe sem decisao registrada. Historico: 219 (medicao inicial) -> 215 (fechamento do Parque do China) -> 224 (21/08/2026, ver decisao abaixo) -> 216 -> 212 -> 208 -> 204 (01/09/2026, quatro rodadas da frente A do Modulo 03).",
   "decisao_2026_08_21": {
     "motivo": "O teto estava estourado desde 06/08 e ninguem foi avisado: o t6-exposicao.js terminava com process.exit(0) na marra, que passava por cima do process.exitCode=1 marcado pelo resumo(). O teste imprimia a falha na tela e devolvia 0 ao sistema, entao o run-suite.js dizia VERDE. Medicoes reais no periodo cego: 215 -> 217 -> 220 -> 229 -> 230 -> 221 -> 224. Corrigido o exit, o teto foi reconciliado com a medicao atual DEPOIS de conferir uma a uma as 9 funcoes acima de 215.",
@@ -29,5 +29,10 @@
     "o_que_se_ganharia_fechando": "Pouco. As tres devolvem contadores e mensagens curtas — nenhuma devolve nome de escola ou e-mail. O maximo que um anonimo consegue com a fila e adiantar o envio de oficio que JA foi legitimamente enfileirado (enfileirar exige o gerarOficioWeb, que tem porta), e a propria funcao ja protege a cota diaria de e-mail.",
     "quando_reabrir": "Se aparecer jeito confiavel de identificar contexto de gatilho, as tres ganham porta. O t127 registra isso como 'nao testavel' de proposito: o emulador nao reproduz contexto de gatilho do Apps Script, entao a premissa so se prova la."
   },
-  "nota_2026_09_11_porta_que_nao_custou_teto": "A Comunicacao da Taxa Negocial ganhou uma funcao global (comunicacaoTaxaNegocial) e o teto NAO subiu — continua 204. Registrado porque eu quase subi por engano: pedi autorizacao ao usuario achando que toda funcao global conta. Nao conta. Este teste CHAMA cada global sem token e conta so as que devolvem dado real; a porta nova tem exigirModulo_ na primeira linha e entra como protegida. A licao para a proxima vez: medir antes de pedir para subir o teto."
+  "nota_2026_09_11_porta_que_nao_custou_teto": "A Comunicacao da Taxa Negocial ganhou uma funcao global (comunicacaoTaxaNegocial) e o teto NAO subiu — continua 204. Registrado porque eu quase subi por engano: pedi autorizacao ao usuario achando que toda funcao global conta. Nao conta. Este teste CHAMA cada global sem token e conta so as que devolvem dado real; a porta nova tem exigirModulo_ na primeira linha e entra como protegida. A licao para a proxima vez: medir antes de pedir para subir o teto.",
+  "rodada_2026_11_20": {
+    "de": 199,
+    "para": 185,
+    "motivo": "4 falsos positivos do medidor (Receita.gs recusa com {erro:true}, que o t6 não reconhecia) e 10 funções de prestadores (GuiasPagamento.gs) que agora exigem sessão e módulo financeiro (t282). Próximas famílias: Mensalidade, Guias, Voucher, Config."
+  }
 }
