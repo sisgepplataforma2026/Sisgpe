@@ -254,16 +254,31 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
       }
     }
 
-    var msg = {
-      to: para,
-      subject: "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
+    /* REMETENTE: secretaria@sindeducacao.com (pedido do usuário, 23/11/2026).
+     *
+     * MailApp não aceita `from`; GmailApp aceita, mas só para a conta
+     * executora ou um alias cadastrado nela. Reaproveita a mesma checagem dos
+     * ofícios (validarRemetenteInstitucionalOficios_): devolve a secretaria
+     * quando dá para usá-la como remetente e "" quando não dá. Sem alias o
+     * e-mail sai pela conta executora — não deixa de sair — mas com replyTo da
+     * secretaria, e a falta do alias fica no log de sistema. */
+    var remetente = validarRemetenteInstitucionalOficios_();
+    var opGmail = {
       htmlBody: voucherCorpoEmail_(pronto, anexos.length > 0),
-      name: "SindEducação-ES"
+      name: "SindEducação-ES",
+      replyTo: OFICIOS_EMAIL_INSTITUCIONAL
     };
-    if (copia) msg.cc = copia;
-    if (anexos.length) msg.attachments = anexos;
+    if (remetente) opGmail.from = remetente;
+    if (copia) opGmail.cc = copia;
+    if (anexos.length) opGmail.attachments = anexos;
 
-    MailApp.sendEmail(msg);
+    GmailApp.sendEmail(
+      para,
+      "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
+      "Seu Certificado de Bolsa de Estudo foi emitido pelo SindEducação-ES. " +
+        "Para visualizar esta mensagem, use um leitor de e-mail com suporte a HTML.",
+      opGmail
+    );
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
       para + (copia ? " (cc " + copia + ")" : ""), sessao);
 
@@ -289,6 +304,7 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     }
 
     return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + "." +
+               (remetente ? "" : " Remetente: a secretaria não está como alias da conta executora; as respostas vão para a secretaria, mas o e-mail saiu pela conta do sistema.") +
                (anexos.length ? "" : " ATENÇÃO: o PDF NÃO foi anexado — o associado ficou sem o documento. Reenvie com o anexo ou entregue na sede."),
              para: para, copia: copia, comAnexo: anexos.length > 0 };
   } catch (e) {
