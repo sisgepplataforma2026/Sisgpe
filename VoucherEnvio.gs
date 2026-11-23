@@ -257,7 +257,7 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     var msg = {
       to: para,
       subject: "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
-      htmlBody: voucherCorpoEmail_(pronto),
+      htmlBody: voucherCorpoEmail_(pronto, anexos.length > 0),
       name: "SindEducação-ES"
     };
     if (copia) msg.cc = copia;
@@ -288,7 +288,8 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
       });
     }
 
-    return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + ".",
+    return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + "." +
+               (anexos.length ? "" : " ATENÇÃO: o PDF NÃO foi anexado — o associado ficou sem o documento. Reenvie com o anexo ou entregue na sede."),
              para: para, copia: copia, comAnexo: anexos.length > 0 };
   } catch (e) {
     Logger.log("voucherEnviarPorEmail: " + e.message);
@@ -429,7 +430,7 @@ function voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link) {
  * Tudo em style inline e sem imagem externa: cliente de e-mail ignora
  * <style> em <head> e bloqueia imagem remota por padrão.
  */
-function voucherCorpoEmail_(d) {
+function voucherCorpoEmail_(d, comAnexo) {
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
@@ -488,7 +489,9 @@ function voucherCorpoEmail_(d) {
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
         "Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo SindEducação-ES, " +
         "nos termos da Convenção Coletiva de Trabalho vigente, e segue " +
-        (d.linkPdf ? "<strong>anexo a este e-mail</strong>" : "em anexo") + "." +
+        (comAnexo
+          ? "<strong>anexo a este e-mail</strong>."
+          : "está disponível para retirada na sede do sindicato.") +
       "</div>" +
 
       "<table role='presentation' cellpadding='0' cellspacing='0' " +
@@ -500,14 +503,10 @@ function voucherCorpoEmail_(d) {
         linha("Código de validação", d.codigo, true) +
       "</table>" +
 
-      (d.linkPdf
-        ? "<div style='text-align:center;margin:24px 0 20px;'>" +
-            "<a href='" + esc(d.linkPdf) + "' style='background:#001f4d;color:#fff;" +
-            "text-decoration:none;padding:13px 30px;border-radius:8px;font-weight:800;" +
-            "font-size:14px;display:inline-block;'>Abrir o certificado</a>" +
-          "</div>"
-        : "") +
-
+      /* SEM BOTÃO COM LINK DO DRIVE (23/11/2026). O arquivo é privado de
+         propósito (ArquivoDrive.gs) e o link só abre para a conta dona dele:
+         para o associado virava tela de "solicitar acesso" e e-mail de pedido
+         para o sindicato. O certificado vai anexado. */
       "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;" +
         "border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;" +
         "font-size:13px;color:#1e3a8a;line-height:1.65;'>" +
