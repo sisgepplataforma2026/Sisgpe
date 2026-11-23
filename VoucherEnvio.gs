@@ -487,16 +487,19 @@ function voucherCorpoEmail_(d, comAnexo) {
       "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + " Tudo bem?</p>" +
 
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
-        "Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo SindEducação-ES, " +
-        "nos termos da Convenção Coletiva de Trabalho vigente, e segue " +
+        "Informamos que seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo " +
+        "<strong>SindEducação-ES</strong>, conforme as disposições da Convenção Coletiva de " +
+        "Trabalho vigente, e " +
         (comAnexo
-          ? "<strong>anexo a este e-mail</strong>."
+          ? "segue anexo a este e-mail."
           : "está disponível para retirada na sede do sindicato.") +
       "</div>" +
 
+      "<p style='margin:20px 0 6px;font-size:13.5px;font-weight:800;color:#0f172a;'>" +
+        "Dados do certificado:</p>" +
       "<table role='presentation' cellpadding='0' cellspacing='0' " +
         "style='width:100%;background:#f8fafc;border:1px solid #cbd5e1;" +
-        "border-radius:10px;padding:6px 16px;margin:20px 0;border-collapse:separate;'>" +
+        "border-radius:10px;padding:6px 16px;margin:0 0 20px;border-collapse:separate;'>" +
         linha("Curso", d.curso) +
         linha("Período", d.periodo) +
         linha("Desconto", d.percentual ? d.percentual + "%" : "") +
@@ -506,11 +509,20 @@ function voucherCorpoEmail_(d, comAnexo) {
          propósito (ArquivoDrive.gs) e o link só abre para a conta dona dele:
          para o associado virava tela de "solicitar acesso" e e-mail de pedido
          para o sindicato. O certificado vai anexado. */
-      "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;" +
-        "border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;" +
-        "font-size:13px;color:#1e3a8a;line-height:1.65;'>" +
-        "<strong>Apresente o certificado à instituição de ensino</strong> para que o desconto " +
-        "seja aplicado na matrícula, rematrícula e mensalidades." +
+      "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+        "<p style='margin:0 0 14px;'>Solicitamos que apresente o certificado à instituição de " +
+        "ensino para que o desconto seja aplicado à matrícula, rematrícula e mensalidades, " +
+        "conforme as condições previstas na Convenção Coletiva de Trabalho.</p>" +
+        "<p style='margin:0 0 14px;'>Pedimos, por gentileza, que confirme o recebimento deste " +
+        "e-mail" + (comAnexo ? " e do certificado anexo" : "") + ".</p>" +
+        "<p style='margin:0 0 14px;'>Permanecemos à disposição para quaisquer esclarecimentos.</p>" +
+        "<p style='margin:0 0 14px;'>Desejamos um excelente e abençoado dia!</p>" +
+        "<p style='margin:0 0 4px;'>Atenciosamente,</p>" +
+        "<p style='margin:0;line-height:1.55;'><strong>Wanderson N Castelo</strong><br>" +
+          "Financeiro &amp; Cobrança<br>SindEducação<br>" +
+          "📞 27 99813-5965 | 27 3222-2706</p>" +
+        "<p style='margin:14px 0 0;font-size:12px;color:#64748b;'><em>Provérbios 16:3 — " +
+          "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.</em></p>" +
       "</div>" +
     "</div>" +
 
@@ -519,10 +531,7 @@ function voucherCorpoEmail_(d, comAnexo) {
       "border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
       "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
         "margin-bottom:18px;'></div>" +
-      "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
-      "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
-        "Administrativo &amp; Secretaria — SindEducação-ES</div>" +
-      "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);" +
+      "<div style='padding-top:2px;" +
         "font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
         "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
         "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
