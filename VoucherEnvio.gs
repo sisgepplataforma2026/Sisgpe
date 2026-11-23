@@ -508,8 +508,14 @@ function voucherCorpoEmail_(d, comAnexo) {
       "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + " Tudo bem?</p>" +
 
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
-        "Informamos que seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo " +
-        "<strong>SindEducação-ES</strong>, conforme as disposições da Convenção Coletiva de " +
+        "Informamos que seu <strong>Certificado de Bolsa de Estudo</strong>" +
+        /* O texto acompanha o REGIME, como o certificado em PDF: bolsa anual é
+           "ano letivo", não "semestre letivo". */
+        (d.periodo
+          ? ", referente ao " + (d.periodoRotulo === "Ano letivo" ? "ano letivo de " : "semestre letivo de ") +
+            "<strong>" + esc(d.periodo) + "</strong>,"
+          : "") +
+        " foi emitido pelo <strong>SindEducação-ES</strong>, conforme as disposições da Convenção Coletiva de " +
         "Trabalho vigente, e " +
         (comAnexo
           ? "segue anexo a este e-mail."
