@@ -518,9 +518,6 @@ function voucherCorpoEmail_(d, comAnexo) {
         "<p style='margin:0 0 14px;'>Permanecemos à disposição para quaisquer esclarecimentos.</p>" +
         "<p style='margin:0 0 14px;'>Desejamos um excelente e abençoado dia!</p>" +
         "<p style='margin:0 0 4px;'>Atenciosamente,</p>" +
-        "<p style='margin:0;line-height:1.55;'><strong>Wanderson N Castelo</strong><br>" +
-          "Financeiro &amp; Cobrança<br>SindEducação<br>" +
-          "📞 27 99813-5965 | 27 3222-2706</p>" +
         "<p style='margin:14px 0 0;font-size:12px;color:#64748b;'><em>Provérbios 16:3 — " +
           "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.</em></p>" +
       "</div>" +
@@ -531,7 +528,10 @@ function voucherCorpoEmail_(d, comAnexo) {
       "border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
       "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
         "margin-bottom:18px;'></div>" +
-      "<div style='padding-top:2px;" +
+      "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
+      "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
+        "Administrativo &amp; Secretaria — SindEducação-ES</div>" +
+      "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);" +
         "font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
         "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
         "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
