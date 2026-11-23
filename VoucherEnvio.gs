@@ -148,6 +148,11 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
       percentual: percentual,
       curso: curso,
       periodo: periodo,
+      /* "Semestre" ou "Ano letivo" — mesma regra do certificado em PDF
+       * (VoucherPdf.gs: REGIME anual não tem semestre). Rotular tudo como
+       * "Período" deixava o associado sem saber se 2026/2 é semestre. */
+      periodoRotulo: (String(solic.REGIME || "").toUpperCase().indexOf("ANUAL") > -1)
+        ? "Ano letivo" : "Semestre",
       instituicao: String(solic.INSTITUICAO_ENSINO || "").trim(),
       linkPdf: link,
       temPdf: !!link,
@@ -517,7 +522,7 @@ function voucherCorpoEmail_(d, comAnexo) {
         "style='width:100%;background:#f8fafc;border:1px solid #cbd5e1;" +
         "border-radius:10px;padding:6px 16px;margin:0 0 20px;border-collapse:separate;'>" +
         linha("Curso", d.curso) +
-        linha("Período", d.periodo) +
+        linha(d.periodoRotulo || "Período", d.periodo) +
         linha("Desconto", d.percentual ? d.percentual + "%" : "") +
       "</table>" +
 
