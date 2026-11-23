@@ -423,7 +423,7 @@ function voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link) {
  *   do e-mail de ofício. São papéis diferentes: o documento é ato do
  *   sindicato, o e-mail é quem atende. Quem responder a mensagem cai em
  *   quem sabe resolver, e não na presidência.
- * - O bloco de dados é rotulado (curso, período, desconto, validação) em
+ * - O bloco de dados é rotulado (curso, período, desconto) em
  *   vez de diluído na frase. O associado leva esse e-mail para a
  *   secretaria da faculdade, e lá o que se procura é campo, não prosa.
  *
@@ -500,7 +500,6 @@ function voucherCorpoEmail_(d, comAnexo) {
         linha("Curso", d.curso) +
         linha("Período", d.periodo) +
         linha("Desconto", d.percentual ? d.percentual + "%" : "") +
-        linha("Código de validação", d.codigo, true) +
       "</table>" +
 
       /* SEM BOTÃO COM LINK DO DRIVE (23/11/2026). O arquivo é privado de
