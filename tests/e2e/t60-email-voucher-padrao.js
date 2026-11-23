@@ -38,10 +38,11 @@ const dados = {
   codigo: "VAL-20260818202726-3635",
   curso: "MARKETING",
   periodo: "2027/2",
+  periodoRotulo: "Semestre",
   percentual: "70",
   linkPdf: "https://drive.google.com/file/d/1AbCd/view"
 };
-const html = g.voucherCorpoEmail_(dados);
+const html = g.voucherCorpoEmail_(dados, true);
 
 /* ═══════════════════════════════════════════════════════════
    1. Quem assina o e-mail é a Marcelha
@@ -89,18 +90,19 @@ b.ok(html.indexOf("linear-gradient(135deg,#001228") > -1,
    procura campo, não frase.
    ═══════════════════════════════════════════════════════════ */
 b.passo("5");
-["Curso", "Período", "Desconto", "Código de validação"].forEach(function (rot) {
+["Curso", "Semestre", "Desconto"].forEach(function (rot) {
   b.ok(html.indexOf(rot) > -1, "o bloco de dados tem o rótulo " + rot);
 });
 b.ok(html.indexOf("MARKETING") > -1, "e o curso preenchido");
 b.ok(html.indexOf("2027/2") > -1, "o período");
 b.ok(html.indexOf("70%") > -1, "o percentual com o símbolo");
-b.ok(html.indexOf("VAL-20260818202726-3635") > -1, "e o código de validação");
+b.ok(html.indexOf("VAL-20260818202726-3635") === -1, "o código de validação NÃO vai no corpo (fica no PDF anexado)");
 
 b.passo("6");
 b.ok(html.indexOf("BOLSA-2026-920837") > -1,
   "o protocolo aparece no cabeçalho, como o número do ofício aparece");
-b.ok(html.indexOf(dados.linkPdf) > -1, "e o botão leva ao documento");
+b.ok(html.indexOf(dados.linkPdf) === -1 && html.indexOf("Abrir o certificado") === -1,
+  "e NÃO há botão com link do Drive: o arquivo é privado e o link só gera pedido de acesso");
 
 /* ═══════════════════════════════════════════════════════════
    4. Campo que não existe não deixa rótulo órfão
