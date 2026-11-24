@@ -7060,4 +7060,4 @@ Testado no emulador e em jsdom (t280–t284). **Falta:** HML, abrir a tela de ve
 |---|---|---|
 | 1 | Dependente puxa a escola do titular (servidor); opção "Escola diferente da do titular" (motivo; aviso se a raiz do CNPJ difere); sem escola do titular → digita com aviso; histórico `ESCOLA_DEPENDENTE`; lista de leitura dos já emitidos | Ver na tela: o campo de troca é texto livre (nome e CNPJ), sem busca nas 679 escolas |
 | 2 | E-mail único do certificado (modal "incluir os outros certificados prontos" e lote); cópia à instituição opcional, e-mail à parte por instituição quando diferentes (LGPD) | Testar o envio real e o visual no Gmail |
-| 3 | E-mail único de aprovação: `aprovarSolicitacoesCertBolsaEmLote` (servidor) | **A tela não tem botão** "aprovar a família" — desenho pendente |
+| 3 | E-mail único de aprovação: `aprovarSolicitacoesCertBolsaEmLote` + botão "Aprovar selecionadas" na Central (t285) | Ver a janela e o e-mail de verdade; a troca de escola agora é busca no cadastro (t284) |
