@@ -59,6 +59,17 @@ b.ok(r.ok, "ok", r.mensagem);
 b.igual(caixa().length, 1, "UM e-mail");
 b.igual((caixa()[0].attachments || []).length, 2, "com os dois PDFs");
 
+b.passo("2b. DEPOIS do envio, a coluna 'Enviado em / por' mostra data, quem e para onde, em CADA irmão");
+const env = g.voucherUltimosEnvios_();
+["VCH-A1", "VCH-A2"].forEach(p => {
+  const e = env[p];
+  b.ok(e && e.situacao === "ENVIADO", p + ": situação ENVIADO", JSON.stringify(e));
+  b.ok(e && /^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(e.em), p + ": com data e hora", e && e.em);
+  b.ok(e && /gabriela@exemplo.com/.test(e.para), p + ": e o destinatário", e && e.para);
+  b.ok(e && e.por, p + ": e quem enviou", e && e.por);
+});
+b.ok(!env["VCH-B1"], "quem não foi enviado continua sem envio (mostra '— não enviado')");
+
 b.passo("3. FILA do dia seguinte (cota estourada): a família continua junta");
 criar("VCH-C1", "39053344705", "IRMA UM", "fam@exemplo.com");
 criar("VCH-C2", "39053344705", "IRMA DOIS", "fam@exemplo.com");
