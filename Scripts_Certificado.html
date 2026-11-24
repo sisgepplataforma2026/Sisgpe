@@ -498,6 +498,7 @@
       <div class="cert-barra-sel" id="certBarraSel">
         <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelAprovar">✔ Aprovar selecionadas</button>
         <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelEmitir">📄 Emitir selecionadas</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelEnviar">📧 Enviar selecionadas</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
@@ -1046,6 +1047,33 @@
       <span class="cert-lote-peq" id="certLoteEnvCota" style="margin-right:auto;"></span>
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteEnvCancelar">Cancelar</button>
       <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteEnvConfirmar">📧 Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div id="certLoteAprOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div style="width:min(820px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">✔</div>
+        <div>
+          <div class="cert-modal-title">Aprovar solicitações</div>
+          <div class="cert-modal-sub" id="certLoteAprSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certLoteAprFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" style="overflow:auto;">
+      <div id="certLoteAprLista"></div>
+      <div class="cert-env-campo" style="margin-top:12px;">
+        <label class="cert-env-lbl" for="certLoteAprObs">Observação (opcional)</label>
+        <input type="text" class="cert-env-input" id="certLoteAprObs" placeholder="fica no histórico de cada solicitação">
+      </div>
+      <div class="cert-lote-aviso" id="certLoteAprResumo" style="margin-top:12px;display:none;"></div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteAprCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteAprConfirmar">✔ Aprovar</button>
     </div>
   </div>
 </div>
@@ -1659,6 +1687,7 @@ function atualizarBarraSelecao(){
     g('certBarraSelTxt').textContent = n === 1 ? '1 selecionada' : n + ' selecionadas';
   }
   if(g('certSelExcluir')) g('certSelExcluir').innerHTML = '🗑 Excluir' + (n ? ' ('+n+')' : '');
+  if(g('certSelAprovar')) g('certSelAprovar').innerHTML = '✔ Aprovar selecionadas' + (n ? ' ('+n+')' : '');
   if(g('certSelEmitir')) g('certSelEmitir').innerHTML = '📄 Emitir selecionadas' + (n ? ' ('+n+')' : '');
   if(g('certSelEnviar')) g('certSelEnviar').innerHTML = '📧 Enviar selecionadas' + (n ? ' ('+n+')' : '');
   /* O "marcar todos" reflete a página, não a base: marcar 8.000 registros com
@@ -1808,6 +1837,100 @@ function loteEmitirParaEnvio_(){
 }
 
 function loteEnviarSelecionadas(){ loteEnviarConferir(selecionadosLista()); }
+
+/* APROVAR VÁRIAS (24/11/2026): a mesma aprovação de sempre, protocolo a
+   protocolo, mas quem tem mais de um dependente recebe UM e-mail só. A janela
+   mostra o desconto de cada um, editável — nada é aprovado sem conferência. */
+var _loteApr = null;
+var LOTE_APR_STATUS_OK = ['ANALISE','PENDENTE','AGUARDANDO_VALIDACAO_CADASTRAL'];
+
+function loteAprovarSelecionadas(){
+  var protos = selecionadosLista();
+  if(!protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
+  var porProt = {};
+  _lista.forEach(function(s){ porProt[s.protocolo] = s; });
+  var elegiveis = [], fora = [];
+  protos.forEach(function(p){
+    var s = porProt[p];
+    if(!s){ fora.push({ protocolo:p, motivo:'não está na lista carregada' }); return; }
+    var st = String(s.status||'').toUpperCase();
+    if(LOTE_APR_STATUS_OK.indexOf(st) === -1){ fora.push({ protocolo:p, nome:certBeneficiarioNome(s), motivo:'não está em análise (situação: '+(s.status||'—')+')' }); return; }
+    elegiveis.push(s);
+  });
+  _loteApr = { elegiveis: elegiveis };
+
+  var grupos = {}, ordem = [];
+  elegiveis.forEach(function(s){
+    var k = (String(s.cpf||'').replace(/\D/g,'') || String(s.nome||'').toUpperCase()) + '|' + String(s.email||'').toLowerCase();
+    if(!grupos[k]){ grupos[k] = []; ordem.push(k); }
+    grupos[k].push(s);
+  });
+  var html = '';
+  ordem.forEach(function(k){
+    var g0 = grupos[k][0];
+    html += '<div class="cert-lote-grupo" style="margin:0 0 12px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;">'
+         + '<div><strong>'+cert_escHtml(g0.nome||'')+'</strong> <span class="cert-lote-peq">'+cert_escHtml(g0.email||'sem e-mail')+'</span></div>'
+         + '<div class="cert-lote-peq" style="margin:2px 0 6px;">'
+         + (grupos[k].length > 1 ? '→ 1 e-mail com os '+grupos[k].length+' protocolos' : '→ 1 e-mail')+'</div>';
+    grupos[k].forEach(function(s){
+      html += '<div style="display:flex;gap:8px;align-items:center;margin:3px 0;">'
+           + '<span style="flex:1;"><strong>'+cert_escHtml(certBeneficiarioNome(s))+'</strong> — '+cert_escHtml(s.curso||'')+' <span class="cert-lote-peq">'+cert_escHtml(s.protocolo)+'</span></span>'
+           + '<label class="cert-lote-peq">desconto <input type="text" class="cert-env-input cert-lote-apr-pct" data-prot="'+cert_escHtml(s.protocolo)+'" value="'+cert_escHtml(String(s.percentual||'').replace('%','').trim())+'" inputmode="numeric" style="width:64px;display:inline-block;"> %</label>'
+           + '</div>';
+    });
+    html += '</div>';
+  });
+  fora.forEach(function(f){
+    html += '<div class="cert-lote-aviso alerta" style="margin:0 0 6px;">✕ '+cert_escHtml(f.nome||f.protocolo)+' <span class="cert-lote-peq">('+cert_escHtml(f.protocolo)+')</span> fica de fora: '+cert_escHtml(f.motivo)+'</div>';
+  });
+  if(!elegiveis.length) html = '<div class="cert-lote-aviso alerta">Nenhuma das selecionadas está em análise.</div>' + html;
+  g('certLoteAprLista').innerHTML = html;
+  g('certLoteAprSub').textContent = elegiveis.length + (elegiveis.length === 1 ? ' solicitação' : ' solicitações') + ' · ' + ordem.length + (ordem.length === 1 ? ' e-mail' : ' e-mails');
+  g('certLoteAprResumo').style.display = 'none';
+  g('certLoteAprObs').value = '';
+  g('certLoteAprConfirmar').disabled = !elegiveis.length;
+  g('certLoteAprConfirmar').textContent = '✔ Aprovar' + (ordem.length ? ' e enviar '+ordem.length+(ordem.length===1?' e-mail':' e-mails') : '');
+  loteAbrir_('certLoteAprOverlay');
+}
+
+function loteAprovarConfirmar(){
+  if(!_loteApr || !_loteApr.elegiveis.length) return;
+  var protos = _loteApr.elegiveis.map(function(s){ return s.protocolo; });
+  var pct = {};
+  var campos = document.querySelectorAll('#certLoteAprLista .cert-lote-apr-pct');
+  for(var i=0;i<campos.length;i++){
+    var v = String(campos[i].value||'').replace('%','').trim();
+    var n = Number(v);
+    if(v === '' || isNaN(n) || n <= 0 || n > 100){
+      campos[i].style.borderColor = '#dc2626'; campos[i].focus();
+      cert_msg('O desconto precisa ser um número entre 1 e 100.','warn'); return;
+    }
+    campos[i].style.borderColor = '';
+    pct[campos[i].getAttribute('data-prot')] = String(Math.round(n));
+  }
+  var btn = g('certLoteAprConfirmar');
+  setBtnLoad(btn, 'Aprovando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r){ cert_msg('O servidor não respondeu nada ao aprovar.','erro'); return; }
+      var resumo = g('certLoteAprResumo');
+      var linhas = (r.resultados||[]).map(function(x){
+        return (x.ok ? '✓ ' : '✕ ')+cert_escHtml(x.protocolo)+(x.ok ? '' : ' — '+cert_escHtml(x.mensagem||'não aprovada'));
+      }).join('<br>');
+      resumo.innerHTML = '<strong>'+cert_escHtml(r.mensagem||'')+'</strong><br>'+linhas;
+      resumo.style.display = 'block';
+      if(r.ok){
+        selecionadosLista().forEach(function(p){ if(protos.indexOf(p) > -1) delete _selecionados[p]; });
+        atualizarBarraSelecao();
+        cert_carregarLista();
+        g('certLoteAprConfirmar').disabled = true;
+        cert_msg((r.aprovados === protos.length ? '✅ ' : '⚠ ')+r.mensagem, r.aprovados === protos.length ? 'ok' : 'warn');
+      } else cert_msg(r.mensagem || 'Nada foi aprovado.','erro');
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .aprovarSolicitacoesCertBolsaEmLote(protos, String(g('certLoteAprObs').value||'').trim(), certToken(), pct);
+}
 
 function loteEnviarConferir(protos){
   if(!protos || !protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
@@ -4855,6 +4978,11 @@ function initInterno(){
   // ── lote: emitir e enviar as selecionadas
   if(g('certSelEmitir')) g('certSelEmitir').addEventListener('click', loteEmitirSelecionadas);
   if(g('certSelEnviar')) g('certSelEnviar').addEventListener('click', loteEnviarSelecionadas);
+  if(g('certSelAprovar')) g('certSelAprovar').addEventListener('click', loteAprovarSelecionadas);
+  ['certLoteAprFechar','certLoteAprCancelar'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteAprOverlay'); });
+  });
+  if(g('certLoteAprConfirmar')) g('certLoteAprConfirmar').addEventListener('click', loteAprovarConfirmar);
   ['certLoteEmiFechar','certLoteEmiFechar2'].forEach(function(id){
     if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteEmiOverlay'); });
   });
