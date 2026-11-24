@@ -287,7 +287,11 @@ function marcarNaoAssociadoVoucher(protocolo, obs, tokenSessao) {
  * valor de antes e o de depois, e a observação registra a mudança.
  * Sugerir com origem à vista, nunca impor em silêncio — REGRA Nº 0.6.
  */
-function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual) {
+/* `opcoes.semEmail` (24/11/2026): quem aprova VÁRIOS dependentes de uma vez manda
+ * UM e-mail só (VoucherAprovacaoFamilia.gs) e por isso desliga o individual. Sem
+ * `opcoes`, nada muda. Com `opcoes.devolverRegistro`, a resposta traz o registro
+ * em memória (uso interno do lote; a porta pública nunca passa isto). */
+function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual, opcoes) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     const item = buscarSolicitacaoPorProtocolo_(protocolo);
@@ -396,10 +400,11 @@ function aprovarSolicitacaoVoucher(protocolo, obs, tokenSessao, percentual) {
       item.registro.PERCENTUAL_APLICADO = pctNovo;
     }
 
-    enviarEmailAprovacaoVoucher_(item.registro, protocolo);
+    if (!(opcoes && opcoes.semEmail)) enviarEmailAprovacaoVoucher_(item.registro, protocolo);
 
     return {
       ok: true,
+      registro: (opcoes && opcoes.devolverRegistro) ? item.registro : undefined,
       percentual: mudouPct ? pctNovo : pctAntes,
       mensagem: mudouPct
         ? "Solicitação aprovada com o desconto ajustado para " + pctNovo + "%."
