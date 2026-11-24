@@ -2170,13 +2170,15 @@ function certAgruparIrmaos(lista){
 /* "Enviado em / por" — do histórico permanente (31/10/2026). */
 function certEnvioCelula(s){
   var e=s.envio;
-  if(!e) return '<span style="color:#94a3b8;">— não enviado</span>';
+  /* Primeiro QUANDO FOI EMITIDO (só quando houve emissão), depois o envio — cada data com o seu rótulo. */
+  var emi = s.emitidoEm ? '<span style="color:#475569;">Emitido: '+cert_escHtml(s.emitidoEm)+'</span><br>' : '';
+  if(!e) return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span>';
   var quem=String(e.por||'').split('@')[0];
-  if(e.situacao==='NA_FILA') return '<span style="color:#92400e;">⏳ na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
-  if(e.situacao==='ERRO') return '<span style="color:#991b1b;" title="'+cert_escHtml(e.erro||'')+'">✖ erro no envio</span><br><span style="color:#64748b;">'+cert_escHtml(e.em)+'</span>';
-  if(e.situacao==='WHATSAPP') return '💬 WhatsApp '+cert_escHtml(e.em)+'<br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
-  return '<span style="color:#065f46;font-weight:700;">✔ '+cert_escHtml(e.em)+'</span> · '+cert_escHtml(quem)
-    +(e.para?'<br><span style="color:#64748b;">para '+cert_escHtml(e.para)+'</span>':'');
+  if(e.situacao==='NA_FILA') return emi+'<span style="color:#92400e;">⏳ Na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
+  if(e.situacao==='ERRO') return emi+'<span style="color:#991b1b;" title="'+cert_escHtml(e.erro||'')+'">✖ Erro no envio em '+cert_escHtml(e.em)+'</span>';
+  if(e.situacao==='WHATSAPP') return emi+'💬 WhatsApp aberto em '+cert_escHtml(e.em)+'<br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
+  return emi+'<span style="color:#065f46;font-weight:700;">✔ Enviado: '+cert_escHtml(e.em)+'</span>'
+    +'<br><span style="color:#64748b;">por '+cert_escHtml(quem)+(e.para?' · para '+cert_escHtml(e.para):'')+'</span>';
 }
 function certSituacaoEnvio(s){ return s.envio ? s.envio.situacao : 'NAO'; }
 
@@ -2208,7 +2210,7 @@ function cert_renderTabela(){
          engano no lugar do botão vizinho — e o vizinho emite documento. */
       +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
       +'<td class="c-sol"><div class="cert-sol-prot">'+cert_escHtml(s.protocolo||'—')+'</div>'
-        +'<div class="cert-sol-data">'+cert_escHtml(certData(s.data))+'</div></td>'
+        +'<div class="cert-sol-data">Solicitado: '+cert_escHtml(certData(s.data))+'</div></td>'
       /* QUEM ESTUDA VEM PRIMEIRO; O TITULAR VEM LOGO ABAIXO — 22/09/2026.
          Seu print mostrou duas linhas iguais, "WANDERSON NASCIMENTO CASTELO"
          nas duas, com o mesmo CPF: dava a impressão de dois vouchers para o
@@ -4978,14 +4980,14 @@ function certCopiar(texto, aviso){
 
 function cert_exportarCsv(){
   if(!_filtrada.length){cert_msg('Nenhum dado para exportar.','warn');return;}
-  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data',
+  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Solicitado em','Emitido em',
                 'Situação do envio','Enviado em','Enviado por','Enviado para'];
   var rows=[headers].concat(_filtrada.map(function(s){
     var e=s.envio||{};
     return [s.protocolo||'',s.nome||'',s.cpf||'',s.email||'',s.escola||'',
             s.nivel||s.modalidade||'',s.curso||'',s.tipoBeneficiario||s.beneficiario||'',
-            s.periodoReferencia||s.periodo||'',s.status||'',s.data||'',
-            ({ENVIADO:'Enviado',NA_FILA:'Na fila',ERRO:'Erro',WHATSAPP:'WhatsApp'})[e.situacao]||'Não enviado',
+            s.periodoReferencia||s.periodo||'',s.status||'',s.data||'',s.emitidoEm||'',
+            ({ENVIADO:'Enviado',NA_FILA:'Na fila',ERRO:'Erro',WHATSAPP:'WhatsApp'})[e.situacao]||'Ainda não enviado',
             e.em||'',e.por||'',e.para||''];
   }));
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');

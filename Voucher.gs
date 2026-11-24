@@ -2010,6 +2010,10 @@ function listarSolicitacoesVoucher() {
         dataAprovacao: String(formatarDataBrVoucher_(val(l, "DATA_VALIDACAO")) || ""),
         emitidoPor: String((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).usuario || ""),
         dataEmissao: String(formatarDataBrVoucher_(val(l, "DATA_EMISSAO")) || ""),
+        /* QUANDO FOI EMITIDO (24/11/2026), com hora, da aba de emissões — a da última emissão, que é a que vale.
+         * Vazio quando o voucher nunca foi emitido: a tela não afirma uma emissão que não houve. */
+        emitidoEm: (typeof voucherDataTexto_ === "function")
+          ? voucherDataTexto_((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).data) : "",
 
         linkContracheque: String(val(l, "LINK_CONTRACHEQUE", "CONTRACHEQUE", "LINK DOCUMENTO VINCULO") || ""),
         linkDocPessoal: String(val(l, "LINK_DOC_PESSOAL", "DOC_PESSOAL", "DOCUMENTO_PESSOAL") || ""),
