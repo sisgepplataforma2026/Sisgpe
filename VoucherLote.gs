@@ -80,7 +80,7 @@ function voucherLinhaEmitido_(protocolo) {
  * data e a linha da solicitação — então o documento refeito é o mesmo papel
  * com outra data, não uma emissão nova.
  */
-function voucherRedatarDocumento_(protocolo, quando, motivo, usuario) {
+function voucherRedatarDocumento_(protocolo, quando, motivo, usuario, forcar) {
   protocolo = String(protocolo || "").trim();
   var emi = voucherLinhaEmitido_(protocolo);
   if (!emi) return { ok: false, mensagem: "O protocolo " + protocolo + " ainda não foi emitido." };
@@ -106,7 +106,8 @@ function voucherRedatarDocumento_(protocolo, quando, motivo, usuario) {
   var html = gerarHtmlDocumentoVoucher_(dadosDoc);
 
   var dataNoPapel = emi.reg.DATA_DOCUMENTO || emi.reg.DATA_EMISSAO;
-  if (voucherDiaDe_(dataNoPapel) === voucherDiaDe_(quando)) {
+  /* `forcar` (edição de dados, 24/11/2026): o papel precisa refletir a solicitação corrigida mesmo sendo do mesmo dia. */
+  if (!forcar && voucherDiaDe_(dataNoPapel) === voucherDiaDe_(quando)) {
     return { ok: true, redatado: false, linkPdf: String(emi.reg.LINK_ARQUIVO || ""), html: html };
   }
 

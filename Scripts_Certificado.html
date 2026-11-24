@@ -258,23 +258,23 @@
 #certEnvioOverlay.ativo { display: flex; }
 #certEnvioBox { width: min(640px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
 #certEnvioBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-#certLoteAprBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#certLoteAprBox .cert-env-campo , #certEditBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 #certEnvioBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
-#certLoteAprBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certLoteAprBox .cert-env-lbl , #certEditBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certEnvioBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
-#certLoteAprBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
+#certLoteAprBox .cert-env-input , #certEditBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
 #certEnvioBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
-#certLoteAprBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+#certLoteAprBox .cert-env-input:focus , #certEditBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 #certEnvioBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
-#certLoteAprBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
+#certLoteAprBox .cert-env-input:disabled , #certEditBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
 #certEnvioBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
-#certLoteAprBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certLoteAprBox .cert-env-check , #certEditBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
 #certNovaBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
 #certEnvioBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
-#certLoteAprBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certLoteAprBox .cert-env-check input , #certEditBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
 #certNovaBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
 #certEnvioBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
-#certLoteAprBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+#certLoteAprBox .cert-env-dica , #certEditBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
 #certNovaBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
 /* A origem do e-mail sugerido. "CADASTRO" pode estar velho e quem envia
    precisa saber que está usando um palpite, não algo conferido. */
@@ -288,15 +288,15 @@
 #certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
 #certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
 #certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
-#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head, #certLoteAprBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certLoteAprBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certLoteAprBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certLoteAprBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certLoteAprBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certLoteAprBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certLoteAprBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certLoteAprBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certLoteAprBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head, #certLoteAprBox .cert-modal-head , #certEditBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certLoteAprBox .cert-modal-head-l, #certEditBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certLoteAprBox .cert-modal-ico, #certEditBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certLoteAprBox .cert-modal-title, #certEditBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certLoteAprBox .cert-modal-sub, #certEditBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certLoteAprBox .cert-modal-body, #certEditBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certLoteAprBox .cert-modal-foot, #certEditBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certLoteAprBox .cert-modal-close, #certEditBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certLoteAprBox .cert-modal-close:hover, #certEditBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
 #certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid, #certNovaBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
@@ -1085,6 +1085,32 @@
     <div class="cert-modal-foot">
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteAprCancelar">Cancelar</button>
       <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteAprConfirmar">✔ Aprovar</button>
+    </div>
+  </div>
+</div>
+
+<div id="certEditOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certEditBox" style="width:min(860px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">✎</div>
+        <div>
+          <div class="cert-modal-title">Editar solicitação</div>
+          <div class="cert-modal-sub" id="certEditSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certEditFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" style="overflow:auto;">
+      <div id="certEditCampos"><div class="cert-env-dica">Carregando…</div></div>
+      <div class="cert-lote-aviso alerta" id="certEditAviso" style="display:none;margin-top:12px;"></div>
+      <label class="cert-env-check" id="certEditRefazerBox" style="display:none;margin-top:8px;"><input type="checkbox" id="certEditRefazer" checked> Refazer o certificado depois de salvar (mesmo protocolo e mesmo código; nada é enviado)</label>
+      <div class="cert-env-dica" style="margin-top:8px;">Cada mudança fica no histórico: campo, valor antigo → novo, quem e quando. Protocolo e código não se editam.</div>
+      <div class="cert-lote-aviso alerta" id="certEditErro" style="display:none;margin-top:8px;"></div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certEditCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certEditSalvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -1943,6 +1969,85 @@ function loteAprovarConfirmar(){
     .aprovarSolicitacoesCertBolsaEmLote(protos, String(g('certLoteAprObs').value||'').trim(), certToken(), pct);
 }
 
+/* EDITAR SOLICITAÇÃO (24/11/2026) — todos os campos da Nova solicitação. O servidor valida de novo e grava o histórico campo a campo. */
+var _certEdit = null;
+var CERT_EDIT_GRUPOS = [
+  ['Titular', [['nome','Nome'],['cpf','CPF'],['email','E-mail'],['telefone','Telefone'],
+    ['situacaoSindical','Situação sindical',[['ASSOCIADO','Associado'],['NAO_ASSOCIADO','Não associado'],['','— não informado —']]]]],
+  ['Escola onde o titular trabalha', [['escola','Escola (razão social)'],['cnpjEscola','CNPJ'],['cidadeEscola','Cidade'],['escolaFantasia','Nome fantasia'],['unidadeEscola','Unidade']]],
+  ['Beneficiário', [['tipoBeneficiario','Quem é',[['TITULAR','Titular'],['FILHO','Filho(a)'],['CONJUGE','Cônjuge'],['ENTEADO','Enteado(a)']]],
+    ['beneficiario','Nome do beneficiário'],['ordemFilho','Ordem do filho',[['','—'],['1','1º filho'],['2','2º filho'],['3','3º filho']]],
+    ['parentesco','Parentesco'],['dataNascimento','Data de nascimento'],['idadeBeneficiario','Idade'],['enteadoDeclaradoIR','Enteado declarado no IR']]],
+  ['Instituição de ensino', [['instituicao','Instituição'],['cnpjInstituicao','CNPJ da instituição'],['emailInstituicao','E-mail da instituição']]],
+  ['Curso e desconto', [['modalidade','Modalidade',[['','—'],['CRECHE','Creche'],['EDUCACAO_INFANTIL','Educação Infantil'],['ENSINO_FUNDAMENTAL','Ensino Fundamental'],
+      ['ENSINO_MEDIO','Ensino Médio'],['TECNICO','Técnico'],['GRADUACAO','Graduação'],['POS_GRADUACAO','Pós-Graduação']]],
+    ['area','Área'],['curso','Curso'],['regime','Regime',[['','—'],['ANUAL','Anual'],['SEMESTRAL','Semestral']]],['periodo','Período (ex.: 2027 ou 2027/1)'],['percentual','Percentual (%)']]]
+];
+function certEditDesenhar_(valores){
+  var html = '';
+  CERT_EDIT_GRUPOS.forEach(function(gr){
+    html += '<div class="cert-section-title" style="margin-top:12px;">' + cert_escHtml(gr[0]) + '</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">';
+    gr[1].forEach(function(f){
+      var v = valores[f[0]] == null ? '' : String(valores[f[0]]);
+      html += '<div class="cert-env-campo"><label class="cert-env-lbl" for="certEd_' + f[0] + '">' + cert_escHtml(f[1]) + '</label>';
+      if(f[2]){
+        html += '<select class="cert-env-input" id="certEd_' + f[0] + '" data-orig="' + cert_escHtml(v) + '">'
+          + f[2].map(function(o){ return '<option value="' + cert_escHtml(o[0]) + '"' + (String(o[0]) === v ? ' selected' : '') + '>' + cert_escHtml(o[1]) + '</option>'; }).join('')
+          + '</select>';
+      } else {
+        html += '<input type="text" class="cert-env-input" id="certEd_' + f[0] + '" data-orig="' + cert_escHtml(v) + '" value="' + cert_escHtml(v) + '">';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  g('certEditCampos').innerHTML = html;
+}
+function certEditAbrir(s){
+  _certEdit = { protocolo: s.protocolo, emitido: false };
+  g('certEditSub').textContent = (s.protocolo || '') + (s.beneficiario || s.nome ? ' · ' + (s.beneficiario || s.nome) : '');
+  g('certEditCampos').innerHTML = '<div class="cert-env-dica">Carregando…</div>';
+  g('certEditAviso').style.display = 'none'; g('certEditErro').style.display = 'none'; g('certEditRefazerBox').style.display = 'none';
+  g('certEditSalvar').disabled = true;
+  loteAbrir_('certEditOverlay');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){ g('certEditCampos').innerHTML = '<div class="cert-lote-aviso alerta">' + cert_escHtml((r && r.mensagem) || 'Erro ao abrir a edição.') + '</div>'; return; }
+      _certEdit.emitido = !!r.emitido;
+      certEditDesenhar_(r.valores || {});
+      if(r.emitido){
+        g('certEditAviso').innerHTML = '⚠ Este voucher já foi <strong>emitido</strong>' + (r.emitidoEm ? ' em ' + cert_escHtml(r.emitidoEm) : '')
+          + '. Mudar nome, escola, instituição, curso, período ou percentual muda o que está impresso no certificado — refaça-o antes de enviar.';
+        g('certEditAviso').style.display = 'block';
+        g('certEditRefazerBox').style.display = 'flex'; g('certEditRefazer').checked = true;
+      }
+      g('certEditSalvar').disabled = false;
+    })
+    .withFailureHandler(function(err){ g('certEditCampos').innerHTML = '<div class="cert-lote-aviso alerta">Erro: ' + cert_escHtml((err && err.message) || '') + '</div>'; })
+    .voucherCarregarParaEdicao(s.protocolo, certToken());
+}
+function certEditSalvar(){
+  if(!_certEdit) return;
+  var mudou = {}, n = 0;
+  CERT_EDIT_GRUPOS.forEach(function(gr){ gr[1].forEach(function(f){
+    var el = g('certEd_' + f[0]); if(!el) return;
+    if(String(el.value).trim() !== String(el.getAttribute('data-orig') || '').trim()){ mudou[f[0]] = el.value; n++; }
+  }); });
+  if(!n){ cert_msg('Nada foi alterado.', 'warn'); return; }
+  var btn = g('certEditSalvar'); setBtnLoad(btn, 'Salvando...');
+  g('certEditErro').style.display = 'none';
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r || !r.ok){ g('certEditErro').textContent = (r && r.mensagem) || 'Não salvou.'; g('certEditErro').style.display = 'block'; return; }
+      loteFechar_('certEditOverlay');
+      cert_msg('✅ ' + r.mensagem + ((r.avisos && r.avisos.length) ? ' ⚠ ' + r.avisos.join(' ') : ''), (r.certificadoDesatualizado || (r.avisos && r.avisos.length)) ? 'warn' : 'ok');
+      cert_carregarLista();
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); g('certEditErro').textContent = 'Erro: ' + ((err && err.message) || ''); g('certEditErro').style.display = 'block'; })
+    .voucherEditarSolicitacao(_certEdit.protocolo, mudou, { refazerCertificado: !!(_certEdit.emitido && g('certEditRefazer').checked) }, certToken());
+}
+
 function loteEnviarConferir(protos){
   if(!protos || !protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
   _loteEnv = null;
@@ -2195,6 +2300,7 @@ function cert_renderTabela(){
   if(_paginaAtual>totalPag) _paginaAtual=totalPag;
   var ini=(_paginaAtual-1)*_porPagina, pag=_filtrada.slice(ini,ini+_porPagina);
   if(sub) sub.textContent=total+' solicitação(ões) encontrada(s)';
+  var icoVer='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   var icoEdit='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
   var html='';
   var _agr = certAgruparIrmaos(pag); pag = _agr.lista; var _irm = _agr.irmaos;
@@ -2281,7 +2387,8 @@ function cert_renderTabela(){
          valor em branco e podia não achar nada — e aí o clique não fazia
          absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
          é o pior defeito possível, porque não deixa nem por onde começar. */
-        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoVer+'</button>'
+        +'<button type="button" class="cert-btn-editar" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Editar dados da solicitação" style="'+bs+'">'+icoEdit+'</button>'
         +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Reemitir / ver a prévia do certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
       +'</div></td>'
       +'</tr>';
@@ -2316,6 +2423,12 @@ function cert_renderTabela(){
       if(ev.target.closest && ev.target.closest('input,button,a,select,label')) return;
       var b=tr.querySelector('.cert-btn-abrir-modal'); if(!b) return;
       var s=linhaDoBotao(b); if(s) cert_abrirModal(s);
+    });
+  });
+  tbody.querySelectorAll('.cert-btn-editar').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var s=linhaDoBotao(this);
+      if(s) certEditAbrir(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
@@ -5050,6 +5163,10 @@ function initInterno(){
   if(g('certSelEmitir')) g('certSelEmitir').addEventListener('click', loteEmitirSelecionadas);
   if(g('certSelEnviar')) g('certSelEnviar').addEventListener('click', loteEnviarSelecionadas);
   if(g('certSelAprovar')) g('certSelAprovar').addEventListener('click', loteAprovarSelecionadas);
+  ['certEditFechar','certEditCancelar'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certEditOverlay'); });
+  });
+  if(g('certEditSalvar')) g('certEditSalvar').addEventListener('click', certEditSalvar);
   ['certLoteAprFechar','certLoteAprCancelar'].forEach(function(id){
     if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteAprOverlay'); });
   });

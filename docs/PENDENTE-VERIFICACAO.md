@@ -7061,3 +7061,10 @@ Testado no emulador e em jsdom (t280–t284). **Falta:** HML, abrir a tela de ve
 | 1 | Dependente puxa a escola do titular (servidor); opção "Escola diferente da do titular" (motivo; aviso se a raiz do CNPJ difere); sem escola do titular → digita com aviso; histórico `ESCOLA_DEPENDENTE`; lista de leitura dos já emitidos | Ver na tela: o campo de troca é texto livre (nome e CNPJ), sem busca nas 679 escolas |
 | 2 | E-mail único do certificado (modal "incluir os outros certificados prontos" e lote); cópia à instituição opcional, e-mail à parte por instituição quando diferentes (LGPD) | Testar o envio real e o visual no Gmail |
 | 3 | E-mail único de aprovação: `aprovarSolicitacoesCertBolsaEmLote` + botão "Aprovar selecionadas" na Central (t285) | Ver a janela e o e-mail de verdade; a troca de escola agora é busca no cadastro (t284) |
+
+### Voucher — botão Editar (24/11/2026) · NÃO TESTADO NO AR
+Lápis na linha da lista de Vouchers (o "Ver / Ações" virou o olho). Edita todos os campos da Nova solicitação; protocolo e código não. Provado no emulador (t289, t290); falta ver no sistema no ar:
+1. Abrir ✎ numa solicitação, mudar e-mail ou curso, Salvar: a lista atualiza e o histórico do protocolo mostra "Dado corrigido: campo “antigo” → “novo”".
+2. Num voucher EMITIDO, mudar o curso com "Refazer o certificado" marcado: o PDF novo tem o mesmo protocolo e código e os dados corrigidos (PDF de verdade, não coberto pelo emulador).
+3. Escola digitada fora do cadastro grava com aviso — a busca nas 679 escolas NÃO está na janela de edição (campo de texto).
+4. Aparência da janela (largura, grade dos campos).
