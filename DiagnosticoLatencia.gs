@@ -115,3 +115,84 @@ function diagnosticoLatenciaSISGEP() {
   Logger.log(saida.join("\n"));
   return { totalDentroMs: totalDentro, itens: linhas };
 }
+
+/**
+ * DIAGNÓSTICO DOS CAMINHOS — 2ª rodada (24/11/2026). SOMENTE LEITURA.
+ *
+ * A 1ª rodada (diagnosticoLatenciaSISGEP) mostrou serviços do Google rápidos
+ * (abrir planilha 254 ms, ler usuários 224 ms) e a planilha enorme (125 abas,
+ * 5,1 milhões de células, Memoria_Organizacional com 38 mil linhas). Mas o
+ * login levava 8,9 s fazendo muito pouco. Esta rodada mede o que sobrou: o
+ * que o login e as rotinas agendadas tocam FORA da planilha.
+ *
+ * Nada é gravado: o Firestore é só LIDO (1 documento), o PDF é gerado e
+ * descartado, o QR é só baixado. A única escrita é o token do Firestore no
+ * cache, que o próprio sistema já faria.
+ */
+function diagnosticoCaminhosSISGEP() {
+  var inicioGeral = Date.now();
+  var linhas = [];
+  function m(nome, fn) {
+    var a = Date.now(), detalhe = "";
+    try { var r = fn(); detalhe = (r === undefined || r === null) ? "" : String(r); }
+    catch (e) { detalhe = "ERRO: " + e.message; }
+    linhas.push({ nome: nome, ms: Date.now() - a, detalhe: detalhe });
+  }
+
+  m("1. Firestore configurado?", function () {
+    return (typeof firebaseDisponivel_ === "function" && firebaseDisponivel_()) ? "SIM" : "NÃO";
+  });
+  m("2. Firestore — token de acesso (cache ou rede)", function () {
+    var c = CacheService.getScriptCache();
+    var tinha = !!c.get(FB_CACHE_TOKEN);
+    fb_token_();
+    return tinha ? "veio do cache" : "buscado na rede (OAuth)";
+  });
+  m("3. Firestore — ler 1 registro da trilha (ida e volta pela rede)", function () {
+    var r = firebaseConsultar_(AUD_COLECAO, [], "dataHora", true, 1);
+    return (r && r.ok) ? "ok, " + r.total + " item" : "falhou: " + (r && r.mensagem);
+  });
+  m("4. E-mail — cota diária restante (100 = conta comum; 1500 = Workspace)", function () {
+    return MailApp.getRemainingDailyQuota();
+  });
+  m("5. Gmail — getAliases (usado no envio de voucher/ofício)", function () {
+    return GmailApp.getAliases().length + " alias";
+  });
+  m("6. Fila de ofícios — abrir aba e contar linhas (o que a rotina de 5 min faz)", function () {
+    /* getSheetByName, e NÃO obterOuCriarAbaFilaOficios_: esta cria a aba se
+       faltar, e o diagnóstico não pode escrever nada. */
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName("FILA_ENVIO_OFICIOS");
+    return sh ? sh.getLastRow() + " linhas" : "(aba não existe)";
+  });
+  m("7. Rede externa — QR do quickchart.io (usado na emissão do certificado)", function () {
+    var r = UrlFetchApp.fetch("https://quickchart.io/qr?size=160&text=diagnostico",
+      { muteHttpExceptions: true });
+    return "HTTP " + r.getResponseCode();
+  });
+  m("8. PDF — converter um HTML pequeno (custo de gerar certificado)", function () {
+    var b = Utilities.newBlob("<html><body><h1>teste</h1></body></html>", "text/html", "t.html")
+      .getAs(MimeType.PDF);
+    return b.getBytes().length + " bytes";
+  });
+  m("9. Memória organizacional — ler as 6 colunas inteiras", function () {
+    var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName("Memoria_Organizacional");
+    if (!sh) return "(aba não existe)";
+    var n = sh.getLastRow() - 1;
+    if (n < 1) return "vazia";
+    var v = sh.getRange(2, 1, n, 6).getValues();
+    return v.length + " linhas × 6 colunas = " + (v.length * 6) + " células";
+  });
+  m("10. URL base do sistema", function () {
+    return getSistemaUrlBase();
+  });
+
+  var totalDentro = Date.now() - inicioGeral;
+  var saida = ["═══ DIAGNÓSTICO DOS CAMINHOS — SISGEP ═══"];
+  linhas.forEach(function (l) {
+    saida.push(("      " + l.ms).slice(-6) + " ms  " + l.nome + "  →  " + l.detalhe);
+  });
+  saida.push("──────────────────────────────────────");
+  saida.push("Tempo medido DENTRO da função: " + totalDentro + " ms");
+  Logger.log(saida.join("\n"));
+  return { totalDentroMs: totalDentro, itens: linhas };
+}

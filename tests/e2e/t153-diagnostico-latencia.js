@@ -27,6 +27,11 @@ b.passo("3. item que falha não derruba os outros");
 const rr = g.diagnosticoLatenciaSISGEP();
 b.ok(rr.itens.length === 12, "mesmo com serviço não emulado, os 12 itens aparecem (erro vira texto, não exceção)");
 
+b.passo("3b. 2ª rodada (caminhos) também roda inteira, sem derrubar por item não emulado");
+const r2 = g.diagnosticoCaminhosSISGEP();
+b.ok(r2 && Array.isArray(r2.itens) && r2.itens.length === 10, "10 itens medidos", String(r2 && r2.itens && r2.itens.length));
+b.ok(r2.itens.every(i => typeof i.ms === "number"), "cada item tem tempo");
+
 b.passo("4. NÃO GRAVA NADA");
 const depois = { abas: ss.getSheets().map(s => s.getName() + ":" + s.getLastRow()).join("|"), caixa: amb.outbox.length };
 b.igual(depois.abas, antes.abas, "nenhuma aba ganhou ou perdeu linha, nenhuma aba criada");
