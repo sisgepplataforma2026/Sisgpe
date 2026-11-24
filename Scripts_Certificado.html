@@ -258,13 +258,24 @@
 #certEnvioOverlay.ativo { display: flex; }
 #certEnvioBox { width: min(640px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
 #certEnvioBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#certLoteAprBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 #certEnvioBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certLoteAprBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certEnvioBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
+#certLoteAprBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
 #certEnvioBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+#certLoteAprBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 #certEnvioBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
+#certLoteAprBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
 #certEnvioBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certLoteAprBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certNovaBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
 #certEnvioBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certLoteAprBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certNovaBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
 #certEnvioBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+#certLoteAprBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+#certNovaBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
 /* A origem do e-mail sugerido. "CADASTRO" pode estar velho e quem envia
    precisa saber que está usando um palpite, não algo conferido. */
 #certEnvioBox .cert-env-origem { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; }
@@ -277,15 +288,15 @@
 #certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
 #certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
 #certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
-#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head, #certLoteAprBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certLoteAprBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certLoteAprBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certLoteAprBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certLoteAprBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certLoteAprBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certLoteAprBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certLoteAprBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certLoteAprBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
 #certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid, #certNovaBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
@@ -1052,7 +1063,7 @@
 </div>
 
 <div id="certLoteAprOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
-  <div style="width:min(820px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+  <div id="certLoteAprBox" style="width:min(820px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
     <div class="cert-modal-head">
       <div class="cert-modal-head-l">
         <div class="cert-modal-ico">✔</div>

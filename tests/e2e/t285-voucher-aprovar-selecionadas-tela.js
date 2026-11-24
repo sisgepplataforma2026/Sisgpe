@@ -51,6 +51,20 @@ const el = id => doc.getElementById(id);
 
   b.fluxo("VOUCHER · aprovar selecionadas");
 
+  b.passo("0. A janela está NO PADRÃO DA TELA: a caixa tem id e entra no CSS que estiliza cabeçalho, corpo, rodapé e campos");
+  /* O CSS dos modais desta tela é amarrado ao id de cada caixa (#certEnvioBox, #certNovaBox…). Janela
+     sem id na lista sai sem cabeçalho nem rodapé — jsdom não desenha, então confere-se o texto da regra. */
+  const css = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "Scripts_Certificado.html"), "utf8");
+  b.ok(!!el("certLoteAprBox"), "a caixa da janela tem id (certLoteAprBox)");
+  ["head", "head-l", "ico", "title", "sub", "body", "foot", "close", "close:hover"].forEach(function (k) {
+    b.ok(css.indexOf("#certLoteAprBox .cert-modal-" + k) > -1, "o CSS estiliza .cert-modal-" + k + " na janela nova");
+  });
+  ["campo", "lbl", "input", "check"].forEach(function (k) {
+    b.ok(css.indexOf("#certLoteAprBox .cert-env-" + k) > -1, "e o campo .cert-env-" + k);
+  });
+  b.ok(css.indexOf("#certNovaBox .cert-env-check") > -1, "o checkbox 'Escola diferente' (dentro da Nova solicitação) também é estilizado");
+  b.ok(css.indexOf("z-index:10002") > -1 && /id="certLoteAprOverlay" style="position:fixed;inset:0;background:rgba\(15,23,42,\.52\)/.test(css), "mesmo overlay das outras janelas (fundo, blur, z-index)");
+
   b.passo("1. O botão existe na barra de seleção e mostra quantas estão marcadas");
   b.ok(!!el("certSelAprovar"), "existe #certSelAprovar");
   function marcar(p, v) { const c = doc.querySelector('.cert-sel-linha[data-prot="' + p + '"]'); if (!c) throw new Error("linha não achada: " + p); c.checked = v; c.dispatchEvent(new win.Event("change", { bubbles: true })); }
