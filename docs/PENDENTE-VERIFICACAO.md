@@ -7037,3 +7037,27 @@ t81, t82, t85, t89, t90, t101, t104, t127, t134) cobram comentário e
 indentação e **só valem sobre o repositório completo**. Rodar a suíte no
 pacote os reprova de propósito. Número de linha em erro do Apps Script deixa de
 bater com o repositório (nome de arquivo e de função batem).
+
+
+### Produção publicada em 24/11/2026 — versão 774 (anterior: 773)
+
+**Publicado e NÃO testado no ar por quem opera.** O Apps Script aceitou salvar o
+projeto enxuto (7,3 MB) e a implantação foi confirmada na versão 774. Entrou:
+pacote enxuto, setup do voucher com cache, e-mail do voucher sem link do Drive e
+sem código no corpo (semestre/ano conforme o regime), atalho da fila de ofícios,
+rótulo semestre/ano no ofício à escola, `DiagnosticoLatencia.gs`.
+
+**A conferir na produção:** portal abre e a Início carrega; emitir e ENVIAR um
+voucher para si mesmo (PDF anexado, texto, remetente da Secretaria); duração de
+`processarFilaEnvioOficios` em Execuções (esperado cair de ~8 s); o banner do
+canhoto vem do Drive (`SISGEP - Banner dos canhotos.jpg`). **Rollback:** versão 773.
+
+### Voucher — escola do dependente e e-mail único (24/11/2026) — SÓ NA BRANCH, não está em HML nem em produção
+
+Testado no emulador e em jsdom (t280–t284). **Falta:** HML, abrir a tela de verdade.
+
+| # | O quê | Falta |
+|---|---|---|
+| 1 | Dependente puxa a escola do titular (servidor); opção "Escola diferente da do titular" (motivo; aviso se a raiz do CNPJ difere); sem escola do titular → digita com aviso; histórico `ESCOLA_DEPENDENTE`; lista de leitura dos já emitidos | Ver na tela: o campo de troca é texto livre (nome e CNPJ), sem busca nas 679 escolas |
+| 2 | E-mail único do certificado (modal "incluir os outros certificados prontos" e lote); cópia à instituição opcional, e-mail à parte por instituição quando diferentes (LGPD) | Testar o envio real e o visual no Gmail |
+| 3 | E-mail único de aprovação: `aprovarSolicitacoesCertBolsaEmLote` (servidor) | **A tela não tem botão** "aprovar a família" — desenho pendente |
