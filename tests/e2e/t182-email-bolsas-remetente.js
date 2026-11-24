@@ -210,12 +210,19 @@ b.ok(cert.indexOf("<table role='presentation'") > -1,
 b.ok(cert.indexOf("display:flex;align-items:flex-start;justify-content:space-between") === -1,
   "o flexbox do cabeçalho antigo não sobrou");
 
-/* O MIOLO CONTINUA INTEIRO — migrar casca não podia mexer no conteúdo. */
+/* O MIOLO CONTINUA INTEIRO — migrar casca não podia mexer no conteúdo.
+   ATUALIZADO EM 24/11/2026, por pedido do usuário: o e-mail NÃO leva mais o
+   código de validação (fica no PDF) nem o botão "Abrir o certificado" (o
+   arquivo do Drive é privado e o link só gerava pedido de acesso). A frase de
+   apresentar à instituição ganhou o texto novo. O resto do miolo continua. */
 ["Certificado de Bolsa de Estudo", "Economia", "2027/1", "70%",
- "VAL-20260916211149-7850", "Abrir o certificado",
- "Apresente o certificado à instituição de ensino"].forEach(function (t) {
+ "apresente o certificado à instituição de ensino"].forEach(function (t) {
   b.ok(cert.indexOf(t) > -1, "o conteúdo do certificado continua: " + t);
 });
+["VAL-20260916211149-7850", "Abrir o certificado"].forEach(function (t) {
+  b.ok(cert.indexOf(t) === -1, "e NÃO traz mais no corpo: " + t);
+});
+
 
 /* OS TRÊS TONS DE BADGE SÃO VOCABULÁRIO, não hex solto por módulo. */
 b.passo("o tom do badge é nomeado, não escolhido em hex");
