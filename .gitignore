@@ -9,3 +9,4 @@ design/*.html
 
 # Pacote enxuto gerado por scripts/enxugar-para-deploy.js (cópia derivada, nunca editar)
 dist-apps-script/
+__pycache__/

@@ -135,6 +135,58 @@ b.igual(chamadas.length, 0,
   "nenhum .html chama as cinco",
   chamadas.join(", ") || "só o editor as executa");
 
+/* ══════════════════════════════════════════════════════════════════════════
+   A FREQUÊNCIA, E O TERMO EM PORTUGUÊS — 09/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário reenviou o ofício 407 e nada saiu. O log trazia "Service invoked
+   too many times for one day: gmail" — a conta esgotou o limite de operações
+   do Gmail. Em 04/09 os reenvios saíram normalmente; o que mudou não foi o
+   código, foi o acúmulo de LEITURAS.
+
+   A varredura de e-mails não entregues rodava de 3 em 3 horas: 8 rodadas por
+   dia, todas em horário de expediente, disputando com o ENVIO o mesmo
+   orçamento. Ele decidiu: uma vez por dia, de madrugada.
+
+   Continua automática — e é a única que continua. É o único aviso que precisa
+   chegar sem alguém pedir: ofício que não chegou e ninguém percebeu deixa a
+   escola sem o documento e o sindicato sem saber. */
+b.passo("8. a varredura de não-entrega roda 1x por dia, de madrugada");
+
+const monSrc = fs.readFileSync(path.join(RAIZ, "MonitoramentoOficios.gs"), "utf8");
+const instalador = monSrc.slice(
+  monSrc.indexOf("function instalarTriggerFalhasEntrega"),
+  monSrc.indexOf("function removerTriggerFalhasEntrega"));
+
+b.ok(/everyDays\(1\)/.test(instalador) && /atHour\(3\)/.test(instalador),
+  "instala 1x por dia, às 3h",
+  "8 rodadas por dia em horário de expediente foi o que competiu com o envio");
+b.ok(!/everyHours/.test(instalador),
+  "  e não roda mais de hora em hora");
+
+/* A de CONFIRMAÇÃO é a que vira botão — ela não some, mas quem a liga é ele. */
+const instConf = monSrc.slice(
+  monSrc.indexOf("function instalarTriggerConfirmacoes"),
+  monSrc.indexOf("function removerTriggerConfirmacoes"));
+b.ok(/everyHours\(2\)/.test(instConf),
+  "a de confirmação segue como está no código (2h), para ele DESLIGAR quando quiser",
+  "mudar as duas de uma vez tiraria dele a escolha — os removedores já existem");
+
+b.passo("9. o que a secretaria lê está em português");
+
+/* "Esse bounce é o que?" e depois "podemos ajustar esse termo em inglês".
+   Quem lê a coluna OBSERVAÇÕES e o e-mail de aviso é a secretaria. */
+b.ok(/E-mail não chegou ao destino/.test(monSrc),
+  "o texto gravado na planilha diz o que houve, sem termo técnico");
+
+const semComent = monSrc
+  .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const textosVisiveis = (semComent.match(/"[^"]*[Bb]ounce[^"]*"/g) || [])
+  .filter(t => !/query|emailsCom|teveB/.test(t));
+b.igual(textosVisiveis.length, 0,
+  "e nenhum texto visível ao usuário ainda diz \"bounce\"",
+  textosVisiveis.join(" | ") || "só nomes de variável e comentários, que ninguém que opera lê");
+
 b.naoTestavel(
   "o gatilho de fato criado no projeto",
   "ScriptApp.newTrigger é apenas registrado pelo emulador. O que se prova " +

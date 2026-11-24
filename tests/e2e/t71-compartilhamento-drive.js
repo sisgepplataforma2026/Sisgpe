@@ -146,6 +146,17 @@ igual(oficiosTocados, [],
       "Ofícios não compartilhava arquivo e continua sem compartilhar",
       "é o único módulo em operação — não entrou nesta mudança");
 
+/* ─── 6. exceções nomeadas: só a esperada, só quem pode chamar ─── */
+passo("exceções nomeadas à política (15/11/2026)");
+const chaves = (fonteDono.match(/ARQUIVO_EXCECOES\s*=\s*\{([\s\S]*?)\n\};/) || ["", ""])[1].match(/^\s{2}(\w+)\s*:\s*\{/gm) || [];
+igual(chaves.map(function (x) { return x.replace(/[\s:{]/g, ""); }), ["ingresso_festa"],
+      "a lista de exceções tem SÓ a do ingresso da festa (decisão do usuário, 15/11/2026)",
+      "uma exceção nova precisa de decisão escrita e de ajuste aqui — não cresce em silêncio");
+const chamamExcecao = gs.filter(function (f) {
+  return f !== DONO && /arquivoAplicarExcecao_\s*\(/.test(semComentarios(fs.readFileSync(path.join(RAIZ, f), "utf8")));
+});
+igual(chamamExcecao, ["CompassoIngressosDados.gs"], "só o módulo dos ingressos chama a exceção");
+
 /* ─── o que este teste não alcança ─── */
 fluxo("LIMITES · O que este arquivo NÃO prova");
 

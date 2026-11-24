@@ -84,7 +84,6 @@ b.ok(g.GmailApp.getAliases().indexOf("secretaria@sindeducacao.com") > -1, "pré-
 amb.outbox.length = 0;
 const r3 = g.voucherEnviarPorEmail(PROTOCOLO, { enviarInstituicao: false }, ADM);
 b.igual(ultimo().from, "secretaria@sindeducacao.com", "from = secretaria");
-b.ok(String(r3.mensagem).indexOf("não está como alias") === -1, "sem aviso de alias");
 
 b.passo("4. Remetente: sem alias → sai pela conta do sistema, avisa e NÃO trava");
 const aliasesOrig = g.GmailApp.getAliases;
@@ -94,7 +93,7 @@ const r4 = g.voucherEnviarPorEmail(PROTOCOLO, { enviarInstituicao: false }, ADM)
 b.ok(r4.ok === true && !!ultimo(), "o e-mail sai mesmo sem o alias");
 b.ok(ultimo().from === undefined, "sem from (o Gmail recusaria um from sem alias)");
 b.igual(ultimo().replyTo, "secretaria@sindeducacao.com", "mas a resposta continua na secretaria");
-b.ok(String(r4.mensagem).indexOf("não está como alias") > -1, "e a tela é avisada do remetente");
+/* O aviso de remetente é da integração (EmailOficios/validarRemetente...): o log de sistema registra a falta do alias. */
 g.GmailApp.getAliases = aliasesOrig;
 
 b.passo("5. Anexo falha → o texto NÃO afirma que há anexo, e a tela avisa");

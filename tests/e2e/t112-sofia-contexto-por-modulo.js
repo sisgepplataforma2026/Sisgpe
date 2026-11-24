@@ -56,7 +56,7 @@ const ESCOLA = "Escola Municipal Teste";
   if (!e) e = ss.insertSheet("Escolas");
   e.getRange(1, 1, 1, 4).setValues([["EscolaID", "Escola (Razão Social)", "CNPJ", "E-mail (principal)"]]);
   e.getRange(2, 1, 1, 4).setValues([["E1", ESCOLA, "12345678000199", "escola@teste.com"]]);
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (x) {}
+  try { g.invalidarCacheEscolas_(); } catch (x) {}
 })();
 
 const PERGUNTA = "buscar joana pereira";

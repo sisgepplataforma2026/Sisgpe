@@ -100,6 +100,10 @@ function el(id) { return doc.getElementById(id); }
   await t.assentar(60);
   b.igual(el("certEnvPara").value, "beatriz@exemplo.com", "e-mail do associado preenchido");
   b.igual(el("certEnvCopia").value, "secretaria@ieses.edu.br", "e-mail da instituição preenchido");
+  /* 29/10/2026, o usuário: a cópia é "optativa". Nasce desmarcada — o e-mail
+     aparece, mas só vai se quem envia marcar. */
+  b.ok(el("certEnvCopiaAtiva").checked === false, "a cópia para a instituição nasce DESMARCADA");
+  b.ok(el("certEnvCopia").disabled, "e o campo dela vem desabilitado até marcar");
   b.ok(t.texto("#certEnvNome") === "Beatriz do Nascimento Campos", "nome na tela",
     t.texto("#certEnvNome"));
   b.ok(String(t.texto("#certEnvCurso")).indexOf("Pedagogia") > -1, "curso e período na tela");
@@ -121,6 +125,8 @@ function el(id) { return doc.getElementById(id); }
    * do digitado, o certificado de um associado vai para o endereço de outro
    * e ninguém descobre — o envio "deu certo". */
   t.digitar("#certEnvPara", "beatriz.pessoal@exemplo.com");
+  t.marcar("#certEnvCopiaAtiva", true);
+  await t.assentar(20);
   t.digitar("#certEnvCopia", "coordenacao@ieses.edu.br");
   t.clicar("#certEnvBtnEmail");
   await t.assentar(80);

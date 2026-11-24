@@ -100,10 +100,59 @@ function compassoImp_conferir(origem, aba, tokenSessao) {
  * @param {number} limite       quantas linhas
  * @param {Object=} mapaManual  correções que a pessoa fez na tela
  */
+/**
+ * IMPORTAR — a porta antiga, de uma tacada só.
+ *
+ * Continua existindo com a mesma assinatura porque quem chamava continua
+ * chamando. Por dentro delega para a faixa, que é onde o trabalho mora.
+ */
 function compassoImp_importar(origem, aba, limite, mapaManual, tokenSessao) {
   exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — importar planilha (tela)', true);
   compasso_assertHomologacao_();
+  var teto = parseInt(limite, 10); if (!(teto > 0)) teto = 10;
+  return compassoImp_rodarFaixa_(origem, aba, mapaManual, 0, teto, teto);
+}
 
+/**
+ * IMPORTAR EM LOTES, COM PORCENTAGEM DE VERDADE — 15/09/2026.
+ *
+ * "Tinha que ter um contador de porcentagem quando estiver importando."
+ *
+ * O `google.script.run` é uma chamada única e bloqueante: o servidor processa
+ * tudo e só responde no fim. Não existe meio do caminho para o navegador
+ * escutar, então barra de progresso honesta só é possível de um jeito — a
+ * tela pede de 25 em 25 e sabe, a cada resposta, exatamente onde está.
+ *
+ * O GANHO MAIOR NÃO É A BARRA. É que a importação deixa de ter teto de tempo.
+ * O caminho antigo carregava uma trava de 4 minutos no meio do laço: se
+ * estourasse, parava pela metade e devolvia "tempo esgotado" — e quem estava
+ * importando não sabia o que tinha entrado e o que não. Em faixas, cada
+ * chamada é curta por construção, e o total deixa de importar.
+ *
+ * A planilha é reaberta a cada faixa. Para planilha por link isso é leitura
+ * barata; para arquivo anexado o Drive converte de novo a cada lote, e é o
+ * preço de saber onde se está. Se algum dia doer, o conserto é guardar a
+ * grade lida no cache e passar a chave — não é preciso hoje.
+ *
+ * @param {Object} faixa  { inicio, tamanho, total }
+ */
+function compassoImp_importarLote(origem, aba, mapaManual, faixa, tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, 'eventos', 'Compasso — importar planilha (lote)', true);
+  compasso_assertHomologacao_();
+  faixa = faixa || {};
+  var inicio  = Math.max(0, parseInt(faixa.inicio, 10) || 0);
+  var tamanho = parseInt(faixa.tamanho, 10); if (!(tamanho > 0)) tamanho = 25;
+  tamanho = Math.min(tamanho, 100);
+  var total   = parseInt(faixa.total, 10); if (!(total > 0)) total = tamanho;
+  return compassoImp_rodarFaixa_(origem, aba, mapaManual, inicio, tamanho, total);
+}
+
+/**
+ * O miolo, que as duas portas usam. Uma regra só: quem importa tudo de uma vez
+ * e quem importa de 25 em 25 passam exatamente pelo mesmo caminho, senão o
+ * teste de um não diria nada sobre o outro.
+ */
+function compassoImp_rodarFaixa_(origem, aba, mapaManual, inicio, quantas, total) {
   var lido;
   try { lido = compassoImp_abrir_(origem || {}, aba); }
   catch (e) { return { ok: false, erro: e.message }; }
@@ -120,15 +169,19 @@ function compassoImp_importar(origem, aba, limite, mapaManual, tokenSessao) {
     if (!isNaN(i) && i >= 0) { m.mapa[campo] = i; ajustes++; }
   });
 
-  var teto = parseInt(limite, 10);
-  if (!(teto > 0)) teto = 10;
-  linhas = linhas.slice(0, teto);
+  /* O total pedido limita tudo; a faixa é uma janela dentro dele. */
+  var teto = Math.min(total, linhas.length);
+  var fim  = Math.min(inicio + quantas, teto);
+  var janela = linhas.slice(inicio, fim);
 
   var criadas = 0, ignoradas = [], erros = [];
-  for (var i = 0; i < linhas.length; i++) {
-    var dados = compasso_importarLinha_(linhas[i], m.mapa);
+  for (var i = 0; i < janela.length; i++) {
+    /* O número da linha é o da PLANILHA, não o da janela: quem for conferir
+       vai abrir o arquivo e procurar por ele. */
+    var numeroLinha = inicio + i + 2;
+    var dados = compasso_importarLinha_(janela[i], m.mapa);
     var motivo = compassoImp_recusar_(dados);
-    if (motivo) { ignoradas.push({ linha: i + 2, nome: dados.nome || '(sem nome)', motivo: motivo }); continue; }
+    if (motivo) { ignoradas.push({ linha: numeroLinha, nome: dados.nome || '(sem nome)', motivo: motivo }); continue; }
     try {
       var r = compasso_criarInscricaoAssociado_publica_({
         nome: dados.nome, cpf: dados.cpf, rg: dados.rg || '',
@@ -137,18 +190,24 @@ function compassoImp_importar(origem, aba, limite, mapaManual, tokenSessao) {
         origem: COMPASSO_IMPORT_ORIGEM
       });
       if (r && r.ok) criadas++;
-      else ignoradas.push({ linha: i + 2, nome: dados.nome, motivo: (r && r.erro) || 'recusada' });
+      else ignoradas.push({ linha: numeroLinha, nome: dados.nome, motivo: (r && r.erro) || 'recusada' });
     } catch (e) {
-      erros.push({ linha: i + 2, nome: dados.nome, erro: e.message });
+      erros.push({ linha: numeroLinha, nome: dados.nome, erro: e.message });
     }
   }
 
+  var terminou = fim >= teto;
   compasso_auditar_('IMPORTACAO_TELA', 'planilha', lido.nomeAba,
-    { criadas: criadas, ignoradas: ignoradas.length, erros: erros.length, ajustesDeColuna: ajustes });
+    { criadas: criadas, ignoradas: ignoradas.length, erros: erros.length,
+      ajustesDeColuna: ajustes, inicio: inicio, fim: fim, total: teto });
 
   return {
     ok: true, criadas: criadas, ignoradas: ignoradas, erros: erros,
     ajustesDeColuna: ajustes,
+    /* O que a barra precisa saber, e nada além: onde parou, quanto falta. */
+    inicio: inicio, fim: fim, total: teto,
+    proximoInicio: terminou ? -1 : fim,
+    terminou: terminou,
     mensagem: criadas + ' inscrição(ões) criada(s)' +
       (ignoradas.length ? ' · ' + ignoradas.length + ' ignorada(s)' : '') +
       (erros.length ? ' · ' + erros.length + ' com erro' : '') + '.'

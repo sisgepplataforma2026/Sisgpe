@@ -95,13 +95,26 @@ function compasso_checkinManual(ingressoId, dispositivoId, motivo, tokenSessao) 
   try {
     ing=fs_get_('ingressos',ingressoId);
     if(ing.status==='CANCELADO') return {ok:false,codigo:'CANCELADO',mensagem:'Ingresso cancelado.'};
-    if(ing.status==='UTILIZADO') return {ok:false,codigo:'JA_UTILIZADO',mensagem:'Ingresso já utilizado.',utilizadoEm:ing.utilizadoEm,utilizadoPor:ing.utilizadoPor};
+    if(ing.status==='UTILIZADO'){
+      compasso_registroAnotar_({tipo:'RECUSADO', codigo:'JA_UTILIZADO', manual:true,
+        nome:ing.nome, numero:ing.numero, escola:ing.escola,
+        categoria:ing.categoria, por:compasso_emailUsuario_(),
+        dispositivo:String(dispositivoId||'manual'),
+        detalhe:'já utilizado' + (ing.utilizadoEm ? ' em ' + ing.utilizadoEm : '')});
+      return {ok:false,codigo:'JA_UTILIZADO',mensagem:'Ingresso já utilizado.',utilizadoEm:ing.utilizadoEm,utilizadoPor:ing.utilizadoPor};
+    }
     if(ing.status!=='EMITIDO') return {ok:false,codigo:'STATUS_INVALIDO',mensagem:'Ingresso não liberado.'};
     var agora=new Date(),operador=compasso_emailUsuario_(),checkinId=compasso_uuid_();
     ing.status='UTILIZADO';ing.utilizadoEm=agora;ing.utilizadoPor=operador;ing.dispositivoId=String(dispositivoId||'manual');
     fs_set_('ingressos',ingressoId,ing);
     fs_set_('checkinsEventos',checkinId,{checkinId:checkinId,eventoId:EMISSAO_CFG.EVENTO_ID,ingressoId:ingressoId,numero:ing.numero,pessoaId:ing.pessoaId||'',checkinEm:agora,checkinPor:operador,dispositivoId:String(dispositivoId||'manual'),status:'VALIDO_MANUAL',motivo:motivo});
     compasso_auditar_('CHECKIN_MANUAL','ingresso',ingressoId,{checkinId:checkinId,motivo:motivo,dispositivoId:dispositivoId||''});
+    /* O MOTIVO VIAJA JUNTO. Entrada manual sem motivo à vista é a porta pela
+       qual se libera alguém sem ingresso e ninguém percebe depois. */
+    compasso_registroAnotar_({tipo:'ENTROU', manual:true, motivo:motivo,
+      nome:ing.nome, numero:ing.numero, escola:ing.escola,
+      categoria:ing.categoria, por:operador,
+      dispositivo:String(dispositivoId||'manual')});
     return {ok:true,codigo:'LIBERADO',mensagem:'Entrada liberada manualmente.',nome:ing.nome,escola:ing.escola,categoria:ing.categoria,numero:ing.numero,checkinEm:agora};
   } finally {lock.releaseLock();}
 }

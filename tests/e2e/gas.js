@@ -316,7 +316,11 @@ function blob(content, type, name) {
     getContentType() { return this._type; },
     getName() { return this._name; },
     setName(n) { this._name = n; return this; },
-    getAs() { return this; },
+    /* getAs CONVERTE: o blob devolvido tem o tipo pedido. Devolver o mesmo
+       objeto deixava um "PDF" com tipo text/html — e quem confere o tipo do
+       arquivo antes de anexar (o leitor da Secretaria, 21/10/2026) recusava
+       um certificado que no ar é PDF de verdade. */
+    getAs(t) { return t ? blob(this._content, t, this._name) : this; },
     copyBlob() { return blob(this._content, this._type, this._name); }
   };
 }
@@ -476,7 +480,10 @@ function install(g, opts) {
       const m = (typeof a === "object") ? a : Object.assign({ to: a, subject: b, body: c }, d || {});
       let apagado = false;
       const rascunhos = g.__rascunhosGmail || (g.__rascunhosGmail = []);
-      const eu = { apagado: false, dados: m };
+      /* `criadoEm` existe para a varredura de rascunhos órfãos poder medir
+         idade. O teste o reescreve para simular rascunho antigo — não há
+         como esperar quinze minutos dentro de um teste. */
+      const eu = { apagado: false, dados: m, criadoEm: new Date() };
       rascunhos.push(eu);
       return {
         send() {
@@ -491,6 +498,21 @@ function install(g, opts) {
         deleteDraft() { apagado = true; eu.apagado = true; },
         getId: () => "DRAFT" + rascunhos.length
       };
+    },
+    /* getDrafts — o que a varredura de rascunhos órfãos lê.
+       Devolve só os NÃO apagados, que é o que o Gmail faria: rascunho
+       apagado pelo catch do envio não pode aparecer na caixa. */
+    getDrafts() {
+      const rascunhos = g.__rascunhosGmail || [];
+      return rascunhos.filter(r => !r.apagado).map((r, i) => ({
+        getId: () => "DRAFT" + (i + 1),
+        getMessage: () => ({
+          getSubject: () => String(r.dados.subject || ""),
+          getTo: () => String(r.dados.to || ""),
+          getDate: () => r.criadoEm,
+          getAttachments: () => r.dados.attachments || []
+        })
+      }));
     },
     search: () => [],
     getInboxThreads: () => [],

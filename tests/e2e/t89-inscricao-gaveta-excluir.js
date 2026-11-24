@@ -345,14 +345,12 @@ t = montarTela(); t.tela.LISTA = [pessoa({ status: "" })]; t.tela.abrirGaveta(0)
 igual(t.els.btEmitir.hidden, true,  "não analisada: sem Emitir",
       "emitir antes de validar só produz mensagem de erro");
 igual(t.els.btCancelar.hidden, true, "  sem Cancelar ingresso");
-igual(t.els.btEmail.hidden, true,    "  sem Enviar");
 
 /* validada e sem ingresso: só emitir */
 t = montarTela();
 t.tela.LISTA = [pessoa({ status: "VALIDADA_ADMINISTRATIVAMENTE" })];
 t.tela.abrirGaveta(0);
 igual(t.els.btEmitir.hidden, false, "validada sem ingresso: Emitir aparece");
-igual(t.els.btEmail.hidden, true,   "  e enviar ainda não");
 igual(t.els.btCancelar.hidden, true, "  nem cancelar");
 
 /* com ingresso: enviar e cancelar, nunca emitir de novo */
@@ -362,7 +360,13 @@ t.tela.LISTA = [pessoa({ status:"VALIDADA_ADMINISTRATIVAMENTE",
 t.tela.abrirGaveta(0);
 igual(t.els.btEmitir.hidden, true,   "com ingresso: Emitir some",
       "emitir duas vezes consumiria duas das 2.000 vagas para a mesma pessoa");
-igual(t.els.btEmail.hidden, false,   "  Enviar por e-mail aparece");
+/* O BOTAO DE E-MAIL SAIU DA GAVETA EM 15/09: "tira a opção por e-mail". Ele
+   já estava desligado no servidor (COMPASSO_EMAIL_INGRESSO), então só servia
+   para abrir um aviso explicando por que não funcionava. A entrega é pelo
+   WhatsApp, decisão de 09/09. A função continua no arquivo, para o dia em que
+   alguém religar a propriedade. */
+ok(t.els.btEmail === undefined, "  o botão de e-mail nem existe mais",
+   "oferecer o que não se pode fazer gasta o clique de quem trabalha");
 igual(t.els.btWhats.hidden, false,   "  Enviar por WhatsApp aparece");
 igual(t.els.btCancelar.hidden, false, "  e Cancelar ingresso aparece",
       "compasso_cancelarIngressoV2 existia no backend e não tinha botão em " +
@@ -434,15 +438,25 @@ ok(/maria@exemplo\.com/.test(t.els.tb.innerHTML),
    "o e-mail aparece embaixo do nome",
    "sem ele, duas Marias da mesma escola são indistinguíveis na lista");
 ok(/acompanhante/.test(t.els.tb.innerHTML), "e a categoria também");
-/* O CONTROLE DA LINHA VIROU O STATUS — 26/08/2026. O usuário: "aí vai ter um
-   botão de status; no status você reemite, envia, edita". A linha não tem
-   mais uma coluna de ações: o próprio estado é o botão, e é dele que saem
-   emitir, enviar, editar, cancelar e excluir — todas ainda pela gaveta, que
-   continua sendo o único lugar onde se decide. */
-ok(/abrirMenuStatus\(0,/.test(t.els.tb.innerHTML),
-   "e o controle da linha é o botão de situação",
-   "coluna de ações separada obrigava a pessoa a ler duas colunas para saber " +
-   "o que dava para fazer");
+/* A DECISÃO DE 26/08 FOI REVERTIDA PELO USUÁRIO EM 14/09 — e fica registrado
+   aqui porque as duas são dele, e a segunda não apaga a primeira.
+
+   Em 26/08 ele pediu o contrário do que está no arquivo hoje: "aí vai ter um
+   botão de status; no status você reemite, envia, edita". A linha perdeu a
+   coluna de ações e o estado virou o comando.
+
+   Em 14/09, olhando a tela pronta com a fila real, ele mandou o print do
+   financeiro e disse: "deveria ter um campo de ações. Quando o cara fez a
+   inscrição, para eu emitir, eu reenviar, eu cancelar. Um do lado do outro. E
+   não é o que está acontecendo."
+
+   O que mudou entre uma e outra não foi a opinião: foi ver a fila funcionando.
+   Menu suspenso cobra um clique toda vez que alguém precisa saber o que é
+   possível — e numa fila de 2.000 a mesma decisão se repete o dia inteiro. */
+ok(/acaoLinha\(0,&quot;editar&quot;\)/.test(t.els.tb.innerHTML),
+   "e as ações da linha estão na própria linha",
+   "escondidas num menu, a pessoa precisava abrir uma a uma para descobrir " +
+   "o que dava para fazer com cada inscrição");
 
 /* ═══ AS ABAS ═════════════════════════════════════════════════════════════
    "Tudo num único lugar: Central de Inscrições — validação, importar
@@ -482,11 +496,12 @@ ok(/Preparando/.test(t.els.mdStatus.innerHTML),
    "  e avisa que o arquivo está sendo preparado",
    "os botões de baixar e imprimir dependem do PDF que ainda está vindo");
 
-/* Os seis botões que o usuário nomeou, um a um. */
+/* Os botões que o usuário nomeou, um a um. */
 const htmlModal = html.slice(html.indexOf('<div class="md-fundo"'),
                              html.indexOf('<!-- ══ GAVETA'));
+/* Eram seis; o de e-mail saiu em 15/09, a pedido dele. */
 [["mdAbrir","abrir o ingresso"], ["mdBaixar","baixar o PDF"],
- ["mdImprimir","imprimir"], ["mdEmail","enviar por e-mail"],
+ ["mdImprimir","imprimir"],
  ["mdWhats","enviar por WhatsApp"], ["mdEditar","editar os dados"]].forEach(([f, oq]) => {
   ok(htmlModal.indexOf('onclick="' + f + '()"') >= 0, "  tem botão para " + oq);
   ok(new RegExp("function " + f + "\\(").test(html), "    e a função existe");
@@ -648,10 +663,9 @@ ok(/compasso_excluirInscricoesEmLote/.test(html),
 const corpoBarra = (html.match(/function atualizarBarra\(\)\{[\s\S]*?\n\}/) || [""])[0];
 ok(/g\('btLoteExcluir'\)\.hidden = !SOU_ADMIN/.test(corpoBarra),
    "e ele só aparece para quem é administrador");
-ok(/g\('btLoteEmail'\)\.hidden   = !comIngresso/.test(corpoBarra),
-   "enquanto o de enviar depende de haver ingresso na seleção",
-   "oferecer 'enviar ingresso' para quem não tem ingresso é botão que só " +
-   "produz erro");
+ok(!/btLoteEmail/.test(corpoBarra),
+   "e o envio em lote por e-mail saiu da barra — 15/09",
+   "era o mesmo botao desligado, agora em versao coletiva");
 
 /* ═══ A NAVEGAÇÃO POR SUBMÓDULOS ══════════════════════════════════════════
    "Quando eu clicasse Inscrições, já caía no relatório" e "participantes

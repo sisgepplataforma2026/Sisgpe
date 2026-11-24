@@ -12,8 +12,23 @@
 var CACHE_KEY_ESCOLAS_ = "sisgep_escolas_lista_v2";
 var CACHE_TTL_ESCOLAS_ = 300; // 5 minutos
 
+/* Uma escrita em escola invalida OS DOIS caches, sempre.
+ *
+ * Aqui só se limpava a lista de Ofícios. Enquanto o cache do cadastro nunca
+ * era gravado de fato (ver o cabeçalho de listarEscolasCadastro_interno_ em
+ * Escolas.gs), isso passava despercebido — não havia o que ficar velho. Com
+ * as fatias e o TTL de 6 horas passa a haver: esquecer esta linha significaria
+ * escola editada continuando a aparecer com o dado antigo por seis horas, em
+ * Ofícios, na Central de E-mails e na busca da bolsa.
+ *
+ * As quatro chamadas de fora de Escolas.gs (sincronização por CNPJ aqui
+ * mesmo, e a atualização pela Receita) entram por esta função — por isso a
+ * limpeza mora aqui, e não em cada chamador. */
 function invalidarCacheEscolas_() {
   try { CacheService.getScriptCache().remove(CACHE_KEY_ESCOLAS_); } catch (e) {}
+  try {
+    if (typeof cacheEscolasLimparFatias_ === "function") cacheEscolasLimparFatias_();
+  } catch (e2) {}
 }
 
 function colOuNovo_(h, novo, antigos) {

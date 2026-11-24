@@ -249,7 +249,11 @@ const semComent = tela.replace(/<!--[\s\S]*?-->/g, "")
                       .replace(/\/\*[\s\S]*?\*\//g, "");
 ok(!/(?<![\w$.])(confirm|alert|prompt)\s*\(/.test(semComent),
    "EventosAdmin não tem confirm/alert/prompt nativo");
-ok(/function evMostrarLink\(url\)/.test(tela),
+/* A assinatura ganhou titulo e texto em 15/09: o mesmo dialogo passou a servir
+   ao link de inscricao e ao da portaria, que precisam dizer coisas diferentes.
+   O que o teste cobra continua sendo o mesmo — que o plano B seja o dialogo do
+   sistema, e nao um alert nativo. */
+ok(/function evMostrarLink\(url/.test(tela),
    "  o plano B do copiar link usa o diálogo do sistema");
 
 resumo();

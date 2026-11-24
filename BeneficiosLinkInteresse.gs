@@ -10,7 +10,7 @@
 // vez. O botão "Enviar Link de Interesse" nas telas de benefício chama daqui.
 //
 // POR QUE É UM ARQUIVO SÓ, E NÃO UM POR BENEFÍCIO
-// O que se repete entre China Park, Voucher e Oftalmologia é exatamente isto:
+// O que se repete entre China Park e Voucher (e, até 13/11/2026, a Oftalmologia) é exatamente isto:
 // montar a URL, montar o texto, abrir o WhatsApp. São três coisas. O resto
 // (preço, disponibilidade, aprovação) é diferente em cada benefício e continua
 // no arquivo de cada um. Não se criou um "motor de formulários" — seria um
@@ -66,17 +66,6 @@ var BENEF_LINKS = {
     importante: "o preenchimento deste formulário não garante a concessão do voucher. A solicitação será analisada pela Secretaria do SindEducação-ES, que confere a regularidade do seu cadastro de associado antes da emissão.",
     retorno: "Após a conclusão da análise, você será informado sobre o resultado por e-mail e/ou WhatsApp.",
     prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a conferência do cadastro."
-  },
-  oftalmo: {
-    rotulo: "Exame oftalmológico",
-    rota: "?portal=oftalmo",
-    modulo: "beneficios",
-    titulo: "Agendamento de Exame Oftalmológico",
-    abertura: "Recebemos seu interesse em agendar o exame oftalmológico oferecido pelo SindEducação-ES.",
-    instrucao: "Para dar continuidade ao seu agendamento, pedimos que preencha o formulário abaixo com as informações necessárias:",
-    importante: "o agendamento só pode ser feito nas datas liberadas pela Secretaria do SindEducação-ES. Se não houver data disponível no momento, o formulário informará, e você poderá tentar novamente quando uma nova data for aberta.",
-    retorno: "Após a confirmação do agendamento, você será informado sobre o dia e o horário por e-mail e/ou WhatsApp.",
-    prazo: "Prazo de resposta: nossa equipe retornará o mais breve possível após a confirmação da agenda com a clínica parceira."
   }
 };
 
@@ -150,6 +139,7 @@ function beneficiosListarLinksInteresse(tokenSessao) {
     exigirModulo_(tokenSessao, "beneficios", false);
     var itens = [];
     Object.keys(BENEF_LINKS).forEach(function (k) {
+      if (BENEF_LINKS[k].oculto) return;
       itens.push({ chave: k, rotulo: BENEF_LINKS[k].rotulo });
     });
     return { ok: true, itens: itens };

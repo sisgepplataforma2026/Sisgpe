@@ -328,4 +328,27 @@ g.RECURSOS_AMBIENTE.RECIBOS.homologacao = guardado3;
 b.ok(typeof g.diagnosticoAmbienteRecursos === "undefined",
   "o diagnóstico NÃO está exposto ao google.script.run (nome termina em _)");
 
+/* NENHUM RECURSO PODE FICAR SEM ID — 16/09/2026.
+
+   DECLARACOES ficou com `producao: ""` e `homologacao: ""` por uma semana. A
+   ideia era boa (não escolher uma pasta do Drive em nome do sindicato), mas o
+   módulo foi para produção assim: a emissão falhava dizendo que faltava
+   configurar a Script Property, e o usuário passou duas rodadas achando que o
+   sistema tinha travado.
+
+   E cadastrar a property à mão nem era possível: o projeto passou de 50
+   propriedades, e acima disso a tela do Apps Script fica SOMENTE LEITURA.
+   Configuração que mora só na Script Property é configuração que ninguém
+   leva na promoção. No código, ela viaja junto.
+
+   Esta asserção existe para a próxima pasta nova não repetir o percurso. */
+Object.keys(g.RECURSOS_AMBIENTE).forEach(function (chave) {
+  const r = g.RECURSOS_AMBIENTE[chave];
+  b.ok(String(r.producao || "").length > 20 && String(r.homologacao || "").length > 20,
+    chave + " tem pasta nos DOIS ambientes",
+    "prod=" + (r.producao || "(vazio)") + " hml=" + (r.homologacao || "(vazio)"));
+  b.ok(r.producao !== r.homologacao,
+    chave + ": homologação não aponta para a pasta de produção");
+});
+
 b.resumo();

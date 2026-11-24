@@ -12,6 +12,67 @@ function compasso_lerReservaVagas_() {
   return r;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   DEVOLVER A VAGA DA INSCRIÇÃO — 14/09/2026
+
+   "Às vezes um associado não quer ir e temos que cancelar."
+
+   O cancelamento de ingresso devolvia a vaga no contador ERRADO. São dois
+   medidores paralelos dos mesmos 2.000 lugares, em estágios diferentes:
+
+     reservasEventos.reservadas  ← a INSCRIÇÃO pública soma aqui,
+                                   e é ESTE que a página pública lê para
+                                   dizer "vagas esgotadas"
+     contadores.vagasUsadas      ← a EMISSÃO do ingresso soma aqui
+
+   A mesma pessoa ocupa uma unidade em cada um. Cancelar o ingresso baixava
+   só o segundo: o ingresso morria certo — QR recusado na portaria — mas a
+   vaga continuava bloqueada para o público. Algumas dezenas de desistências
+   e a inscrição fecharia com cadeira vazia no salão, no dia 19/12.
+
+   E o índice de duplicidade tem o mesmo par: `eventoIdentidades` (que o
+   cancelamento já liberava) e `inscricaoUnicaEventos` (que é o que a página
+   pública consulta). Sem liberar o segundo, quem cancelasse e mudasse de
+   ideia não conseguiria se inscrever de novo — o índice ainda diria ATIVA.
+
+   ESTA FUNÇÃO NÃO GRAVA A INSCRIÇÃO. Ela altera o objeto e devolve se houve
+   liberação; quem chamou grava, porque já está gravando por outros motivos
+   dentro da mesma trava. Duas escritas do mesmo documento na mesma execução
+   seria uma sobrescrevendo a outra.
+
+   A MESMA LÓGICA existe inline no compasso_validarDecisaoAdmin, no ramo
+   REPROVADA (EventosSeguranca.gs:36). Não a migrei junto: aquela função é uma
+   linha só, densa, e está em uso. Fica registrado que são duas cópias — quem
+   mexer numa precisa olhar a outra.
+   ══════════════════════════════════════════════════════════════════════════ */
+function compasso_liberarReservaDaInscricao_(ins, statusIndice) {
+  if (!ins || !ins.vagaReservada) return false;
+
+  var r = fs_get_('reservasEventos', EMISSAO_CFG.EVENTO_ID) ||
+          { eventoId: EMISSAO_CFG.EVENTO_ID, limite: compasso_limiteVagas_(), reservadas: 0 };
+  r.reservadas = Math.max(0, Number(r.reservadas || 0) - 1);
+  r.atualizadoEm = new Date();
+  fs_set_('reservasEventos', EMISSAO_CFG.EVENTO_ID, r);
+
+  ins.vagaReservada = false;
+  ins.vagaLiberadaEm = new Date();
+
+  /* O índice que a página pública consulta. Falhar aqui não pode desfazer a
+     devolução da vaga, que é o que importa — por isso o try isolado. */
+  try {
+    var chave = compasso_chavePessoaEvento_(EMISSAO_CFG.EVENTO_ID, ins.pessoaId, ins.cpf);
+    var idx = fs_get_('inscricaoUnicaEventos', chave);
+    if (idx) {
+      idx.status = String(statusIndice || 'CANCELADA');
+      idx.atualizadoEm = new Date();
+      fs_set_('inscricaoUnicaEventos', chave, idx);
+    }
+  } catch (e) {
+    Logger.log('compasso_liberarReservaDaInscricao_: índice não liberado — ' + (e.message || e));
+  }
+  return true;
+}
+
 function compasso_reservarVagaInscricao_() {
   var r=compasso_lerReservaVagas_();
   if(Number(r.reservadas||0)>=Number(r.limite||compasso_limiteVagas_())) return {ok:false,erro:'Vagas de inscrição esgotadas.'};

@@ -69,7 +69,18 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
     /* Guarda DENTRO do try, pelo mesmo motivo de voucherEnviarPorEmail:
        fora dele, a recusa vira exceção crua e a tela mostra erro sem nome. */
     exigirModulo_(tokenSessao, "beneficios", false);
+    return voucherDadosEnvio_(protocolo);
+  } catch (e) {
+    Logger.log("voucherPrepararEnvio: " + e.message);
+    return { ok: false, mensagem: "Erro ao preparar o envio: " + e.message };
+  }
+}
 
+/* O preparo SEM a guarda de sessão — para o envio em lote e para a
+   continuação agendada, que já passaram pela guarda (ou não têm sessão,
+   no caso do gatilho, e só enviam o que alguém aprovou na tela). */
+function voucherDadosEnvio_(protocolo) {
+  try {
     protocolo = String(protocolo || "").trim();
     if (!protocolo) return { ok: false, mensagem: "Informe o protocolo." };
 
@@ -149,8 +160,7 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
       curso: curso,
       periodo: periodo,
       /* "Semestre" ou "Ano letivo" — mesma regra do certificado em PDF
-       * (VoucherPdf.gs: REGIME anual não tem semestre). Rotular tudo como
-       * "Período" deixava o associado sem saber se 2026/2 é semestre. */
+       * (VoucherPdf.gs: REGIME anual não tem semestre). */
       periodoRotulo: (String(solic.REGIME || "").toUpperCase().indexOf("ANUAL") > -1)
         ? "Ano letivo" : "Semestre",
       instituicao: String(solic.INSTITUICAO_ENSINO || "").trim(),
@@ -184,10 +194,16 @@ function voucherPrepararEnvio(protocolo, tokenSessao) {
        * Data convertida para texto no servidor não tem como quebrar a
        * serialização, e a tela já exibia isso como texto de qualquer forma. */
       emitidoEm: voucherDataTexto_(emissao.DATA_EMISSAO),
-      emitidoPor: String(emissao.USUARIO || "").trim()
+      emitidoPor: String(emissao.USUARIO || "").trim(),
+      /* A data que está no papel hoje, e a que ele vai ter ao sair: o envio
+         refaz o documento com a data do dia (VoucherLote.gs). A tela avisa. */
+      dataNoPapel: voucherDataTexto_(emissao.DATA_DOCUMENTO || emissao.DATA_EMISSAO).slice(0, 10),
+      dataDoEnvio: Utilities.formatDate(new Date(), "America/Sao_Paulo", "dd/MM/yyyy"),
+      presencial: (typeof voucherEhNaoAssociado_ === "function")
+        ? !!voucherEhNaoAssociado_(String(solic.SITUACAO_SINDICAL || "").toUpperCase()) : false
     };
   } catch (e) {
-    Logger.log("voucherPrepararEnvio: " + e.message);
+    Logger.log("voucherDadosEnvio_: " + e.message);
     return { ok: false, mensagem: "Erro ao preparar o envio: " + e.message };
   }
 }
@@ -220,8 +236,19 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
      * Todo o resto desta função já devolvia mensagem legível pelo catch. A
      * guarda era o único ponto que escapava. */
     var sessao = exigirModulo_(tokenSessao, "beneficios", false);
+    return voucherEnviarPorEmail_(protocolo, opcoes, sessao);
+  } catch (e) {
+    Logger.log("voucherEnviarPorEmail: " + e.message);
+    return { ok: false, mensagem: "Erro ao enviar o e-mail: " + e.message };
+  }
+}
 
-    var pronto = voucherPrepararEnvio(protocolo, tokenSessao);
+/* O envio SEM a guarda — a porta acima, o lote e a continuação agendada
+   passam todos por aqui, para o e-mail sair igual nos três. */
+function voucherEnviarPorEmail_(protocolo, opcoes, sessao) {
+  opcoes = opcoes || {};
+  try {
+    var pronto = voucherDadosEnvio_(protocolo);
     if (!pronto.ok) return pronto;
 
     var para = String(opcoes.para || pronto.emailAssociado || "").trim();
@@ -246,6 +273,22 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     if (copia && copia.indexOf("@") < 1) {
       return { ok: false, mensagem: "O e-mail da instituição não parece válido: " + copia };
     }
+    /* CÓPIA MARCADA TEM QUE TER E-MAIL — 29/10/2026, o usuário: "optativo,
+       mas tem que ter o email". Antes, marcada e vazia, o certificado saía
+       sem cópia e a tela dizia "enviado" — quem enviou achava que a escola
+       tinha recebido. */
+    if (opcoes.enviarInstituicao === true && !copia) {
+      return { ok: false, semEmailInstituicao: true,
+               mensagem: "A cópia para a instituição está marcada, mas não há e-mail da instituição. " +
+                         "Preencha o e-mail ou desmarque a cópia." };
+    }
+
+    /* O DOCUMENTO SAI COM A DATA DO ENVIO — 29/10/2026. Refeito com o mesmo
+       protocolo e o mesmo código se a data no papel for de outro dia. */
+    var quemEnvia = (sessao && (sessao.email || sessao.usuario)) || "";
+    var redatado = voucherRedatarDocumento_(pronto.protocolo, new Date(), "o envio por e-mail", quemEnvia);
+    if (!redatado.ok) return redatado;
+    pronto.linkPdf = redatado.linkPdf;
 
     var anexos = [];
     if (opcoes.anexarPdf !== false && pronto.linkPdf) {
@@ -253,37 +296,28 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
         var id = voucherIdDoLink_(pronto.linkPdf);
         if (id) anexos.push(DriveApp.getFileById(id).getBlob());
       } catch (e) {
-        /* Anexo falhou, mas o link continua no corpo. Não trava o envio: o
-         * associado recebe o aviso e consegue abrir o documento. */
-        Logger.log("Anexo do PDF falhou (o link vai no corpo): " + e.message);
+        /* Anexo falhou. Não trava o envio, mas o texto do e-mail deixa de dizer
+         * "anexo" e a tela de quem envia mostra o ATENÇÃO. */
+        Logger.log("Anexo do PDF falhou (o e-mail avisa e a tela mostra ATENÇÃO): " + e.message);
       }
     }
 
-    /* REMETENTE: secretaria@sindeducacao.com (pedido do usuário, 23/11/2026).
-     *
-     * MailApp não aceita `from`; GmailApp aceita, mas só para a conta
-     * executora ou um alias cadastrado nela. Reaproveita a mesma checagem dos
-     * ofícios (validarRemetenteInstitucionalOficios_): devolve a secretaria
-     * quando dá para usá-la como remetente e "" quando não dá. Sem alias o
-     * e-mail sai pela conta executora — não deixa de sair — mas com replyTo da
-     * secretaria, e a falta do alias fica no log de sistema. */
-    var remetente = validarRemetenteInstitucionalOficios_();
-    var opGmail = {
+    var msg = {
+      to: para,
+      subject: "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
       htmlBody: voucherCorpoEmail_(pronto, anexos.length > 0),
-      name: "SindEducação-ES",
-      replyTo: OFICIOS_EMAIL_INSTITUCIONAL
+      name: "SindEducação-ES"
     };
-    if (remetente) opGmail.from = remetente;
-    if (copia) opGmail.cc = copia;
-    if (anexos.length) opGmail.attachments = anexos;
+    if (copia) msg.cc = copia;
+    if (anexos.length) msg.attachments = anexos;
 
-    GmailApp.sendEmail(
-      para,
-      "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
-      "Seu Certificado de Bolsa de Estudo foi emitido pelo SindEducação-ES. " +
-        "Para visualizar esta mensagem, use um leitor de e-mail com suporte a HTML.",
-      opGmail
-    );
+    voucherEnviarMsg_(msg);
+    /* O lote conta na cota do dia (CotaEmail.gs): um destinatário pelo
+       associado, mais um se foi cópia. O envio avulso fica fora, como sempre
+       foi — ele é um, e a reserva existe justamente para ele. */
+    if (opcoes.campanhaCota && typeof cotaEmail_registrarEnvio_ === "function") {
+      cotaEmail_registrarEnvio_(opcoes.campanhaCota, copia ? 2 : 1);
+    }
     voucherRegistrarEnvio_(pronto.protocolo, "EMAIL",
       para + (copia ? " (cc " + copia + ")" : ""), sessao);
 
@@ -309,11 +343,10 @@ function voucherEnviarPorEmail(protocolo, opcoes, tokenSessao) {
     }
 
     return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + "." +
-               (remetente ? "" : " Remetente: a secretaria não está como alias da conta executora; as respostas vão para a secretaria, mas o e-mail saiu pela conta do sistema.") +
                (anexos.length ? "" : " ATENÇÃO: o PDF NÃO foi anexado — o associado ficou sem o documento. Reenvie com o anexo ou entregue na sede."),
-             para: para, copia: copia, comAnexo: anexos.length > 0 };
+             para: para, copia: copia, comAnexo: anexos.length > 0, redatado: !!redatado.redatado };
   } catch (e) {
-    Logger.log("voucherEnviarPorEmail: " + e.message);
+    Logger.log("voucherEnviarPorEmail_: " + e.message);
     return { ok: false, mensagem: "Erro ao enviar o e-mail: " + e.message };
   }
 }
@@ -444,7 +477,7 @@ function voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link) {
  *   do e-mail de ofício. São papéis diferentes: o documento é ato do
  *   sindicato, o e-mail é quem atende. Quem responder a mensagem cai em
  *   quem sabe resolver, e não na presidência.
- * - O bloco de dados é rotulado (curso, período, desconto) em
+ * - O bloco de dados é rotulado (curso, período, desconto, validação) em
  *   vez de diluído na frase. O associado leva esse e-mail para a
  *   secretaria da faculdade, e lá o que se procura é campo, não prosa.
  *
@@ -469,43 +502,36 @@ function voucherCorpoEmail_(d, comAnexo) {
     "</tr>";
   }
 
-  var saudacao = "Olá" + (d.nome ? ", " + esc(voucherPrimeiroNome_(d.nome)) : "") + "!";
-
-  return "" +
-  "<div style='font-family:Segoe UI,Arial,sans-serif;max-width:680px;color:#0f172a;'>" +
-
-    /* ── CABEÇALHO ── */
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 55%,#003b82 100%);" +
-      "padding:22px 28px 20px;border-radius:8px 8px 0 0;'>" +
-      "<div style='display:flex;align-items:flex-start;justify-content:space-between;gap:20px;'>" +
-        "<div style='border-left:4px solid #C9A84C;padding-left:16px;'>" +
-          "<div style='font-size:21px;font-weight:900;color:#fff;'>SINDEDUCAÇÃO-ES</div>" +
-          "<div style='font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;'>" +
-            "Sindicato dos Educadores Técnico-Administrativos<br>" +
-            "em Estabelecimentos de Ensino Particular no Estado do Espírito Santo</div>" +
-          "<div style='font-size:10.5px;font-weight:800;color:#C9A84C;margin-top:6px;'>" +
-            "CNPJ: 31.815.780/0001-51</div>" +
-        "</div>" +
-        "<div style='text-align:right;'>" +
-          "<div style='font-size:10px;font-weight:700;color:rgba(255,255,255,.4);" +
-            "text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px;'>Protocolo</div>" +
-          "<div style='font-size:16px;font-weight:900;color:#C9A84C;white-space:nowrap;'>" +
-            esc(d.protocolo) + "</div>" +
-        "</div>" +
-      "</div>" +
-      "<div style='height:1px;background:rgba(201,168,76,.25);margin:16px 0 14px;'></div>" +
-      /* Verde, e não o dourado institucional: o dourado é identidade, não
-         estado. Concessão de benefício é notícia boa, e o badge diz isso
-         antes de a pessoa ler o texto. */
-      "<div style='display:inline-block;background:rgba(16,185,129,.18);" +
-        "border:1px solid rgba(52,211,153,.42);color:#6ee7b7;font-size:11px;" +
-        "font-weight:800;padding:5px 14px;border-radius:999px;" +
-        "text-transform:uppercase;'>Bolsa de Estudo</div>" +
-    "</div>" +
-
-    /* ── CORPO ── */
-    "<div style='background:#fff;padding:28px 28px 24px;border:1px solid #e2e8f0;border-top:none;'>" +
-      "<p style='margin:0 0 18px 0;font-size:14px;color:#334155;'>" + saudacao + " Tudo bem?</p>" +
+  /* ESTE ERA O ÚLTIMO CABEÇALHO PRÓPRIO DE BOLSAS — 17/09/2026.
+   *
+   * Ele já era o mais parecido com o do ofício: tinha CNPJ, protocolo à
+   * direita e badge. Mas era OUTRO código fazendo a mesma coisa, e duas
+   * cópias do mesmo desenho envelhecem separadas — foi exatamente assim que
+   * o módulo chegou a ter seis cascas diferentes.
+   *
+   * Duas coisas daqui foram para a casca única em vez de se perderem:
+   *
+   *   o BADGE VERDE, que tinha razão registrada — "o dourado é identidade,
+   *   não estado; concessão de benefício é notícia boa". Virou `badgeTom`,
+   *   vocabulário nomeado em vez de hex solto.
+   *
+   *   a ASSINATURA da Marcelha no rodapé, que diz a quem responder. Virou
+   *   `assinatura`, opcional.
+   *
+   * E ganhou o que não tinha: o cabeçalho em TABELA, que o Outlook entende.
+   * O de antes usava flexbox, e no Outlook o protocolo caía para baixo do
+   * nome do sindicato. */
+  return sisgepEmailHtml_({
+    numero: d.protocolo,
+    rotuloNumero: "Protocolo",
+    badge: "Bolsa de Estudo",
+    badgeTom: "sucesso",
+    assinatura: {
+      nome: "MARCELHA ALINE PINTO GOMES",
+      cargo: "Administrativo & Secretaria — SindEducação-ES"
+    },
+    corpo:
+      sisgepSaudacaoEmail_(d.nome) +
 
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
         "Informamos que seu <strong>Certificado de Bolsa de Estudo</strong>" +
@@ -515,8 +541,8 @@ function voucherCorpoEmail_(d, comAnexo) {
           ? ", referente ao " + (d.periodoRotulo === "Ano letivo" ? "ano letivo de " : "semestre letivo de ") +
             "<strong>" + esc(d.periodo) + "</strong>,"
           : "") +
-        " foi emitido pelo <strong>SindEducação-ES</strong>, conforme as disposições da Convenção Coletiva de " +
-        "Trabalho vigente, e " +
+        " foi emitido pelo <strong>SindEducação-ES</strong>, conforme as disposições da Convenção " +
+        "Coletiva de Trabalho vigente, e " +
         (comAnexo
           ? "segue anexo a este e-mail."
           : "está disponível para retirada na sede do sindicato.") +
@@ -532,10 +558,11 @@ function voucherCorpoEmail_(d, comAnexo) {
         linha("Desconto", d.percentual ? d.percentual + "%" : "") +
       "</table>" +
 
-      /* SEM BOTÃO COM LINK DO DRIVE (23/11/2026). O arquivo é privado de
-         propósito (ArquivoDrive.gs) e o link só abre para a conta dona dele:
-         para o associado virava tela de "solicitar acesso" e e-mail de pedido
-         para o sindicato. O certificado vai anexado. */
+      /* SEM BOTÃO COM LINK DO DRIVE E SEM O CÓDIGO NO CORPO (23/11/2026).
+         O arquivo é privado de propósito (ArquivoDrive.gs) e o link só abre
+         para a conta dona dele: para o associado virava tela de "solicitar
+         acesso" e e-mail de pedido para o sindicato. O certificado vai
+         anexado, e o código de validação continua impresso nele. */
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
         "<p style='margin:0 0 14px;'>Solicitamos que apresente o certificado à instituição de " +
         "ensino para que o desconto seja aplicado à matrícula, rematrícula e mensalidades, " +
@@ -547,27 +574,8 @@ function voucherCorpoEmail_(d, comAnexo) {
         "<p style='margin:0 0 4px;'>Atenciosamente,</p>" +
         "<p style='margin:14px 0 0;font-size:12px;color:#64748b;'><em>Provérbios 16:3 — " +
           "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.</em></p>" +
-      "</div>" +
-    "</div>" +
-
-    /* ── RODAPÉ ── */
-    "<div style='background:linear-gradient(135deg,#001228 0%,#001f4d 60%,#002f6c 100%);" +
-      "border-radius:0 0 8px 8px;padding:22px 28px;text-align:center;'>" +
-      "<div style='height:3px;background:linear-gradient(90deg,#C9A84C,#f0c843,#C9A84C);" +
-        "margin-bottom:18px;'></div>" +
-      "<div style='font-size:16px;font-weight:900;color:#fff;'>MARCELHA ALINE PINTO GOMES</div>" +
-      "<div style='font-size:12px;color:#C9A84C;font-weight:700;margin-top:3px;'>" +
-        "Administrativo &amp; Secretaria — SindEducação-ES</div>" +
-      "<div style='margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.10);" +
-        "font-size:11px;color:rgba(255,255,255,.75);line-height:1.7;'>" +
-        "Av. Nossa Senhora dos Navegantes, 755 - Salas 707/708<br>" +
-        "Enseada do Suá - Vitória/ES - CEP 29.050-355<br>" +
-        "(27) 99735-8900 • secretaria@sindeducacao.com • www.sindeducacao.com.br" +
-      "</div>" +
-      "<div style='margin-top:12px;font-size:10px;color:rgba(255,255,255,.25);'>" +
-        "Documento gerado pelo SISGEP · SindEducação-ES</div>" +
-    "</div>" +
-  "</div>";
+      "</div>"
+  });
 }
 
 /** Extrai o id do arquivo de uma URL do Drive, para poder anexar o blob. */
@@ -594,12 +602,19 @@ function voucherIdDoLink_(url) {
  * A trilha real é auditar_(dados) — AuditoriaCore.gs:133. Ela NUNCA lança, e
  * cai para a planilha de reserva quando o Firestore não está configurado.
  */
-function voucherRegistrarEnvio_(protocolo, canal, destino, sessao) {
+function voucherRegistrarEnvio_(protocolo, canal, destino, sessao, opcoes) {
   /* A anotação na linha vem ANTES da auditoria e fora do try dela de
    * propósito: são dois registros independentes, e uma auditoria indisponível
    * não pode levar junto a data de envio que fica à vista de quem abre a
    * planilha. */
   voucherAnotarEnvioNaObservacao_(protocolo, canal, destino, sessao);
+  /* E o HISTÓRICO PERMANENTE do envio (VoucherHistoricoEnvio.gs, 31/10/2026):
+   * quem, quando, para onde — para o dia em que alguém perguntar. */
+  opcoes = opcoes || {};
+  if (typeof voucherHistoricoAnotar_ === "function") {
+    voucherHistoricoAnotar_(protocolo, opcoes.acao || (canal === "EMAIL" ? "ENVIO_EMAIL" : "ENVIO_" + canal),
+      (sessao && (sessao.email || sessao.usuario)) || "", String(destino || canal) + (opcoes.ref ? " · ref " + opcoes.ref : ""));
+  }
 
   try {
     if (typeof auditar_ !== "function") return false;

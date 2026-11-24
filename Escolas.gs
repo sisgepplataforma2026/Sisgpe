@@ -275,7 +275,9 @@ function invalidarCacheEscolasInterno_() {
   try { invalidarCacheEscolas_(); } catch(e) {
     try { CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch(e2) {}
   }
-  try { CacheService.getScriptCache().remove(CACHE_KEY_ESCOLAS_CADASTRO_); } catch(e3) {}
+  try { cacheEscolasLimparFatias_(); } catch(e3) {
+    try { CacheService.getScriptCache().remove(CACHE_KEY_ESCOLAS_CADASTRO_); } catch(e4) {}
+  }
 }
 
 /* =============================================================== */
@@ -460,19 +462,99 @@ function listarEscolasCadastro(tokenSessao) {
  * disponível, como triggers automáticos) — nunca exponha esta função
  * diretamente a google.script.run.
  */
-var CACHE_KEY_ESCOLAS_CADASTRO_ = "sisgep_escolas_cadastro_v1";
-var CACHE_TTL_ESCOLAS_CADASTRO_ = 300; // 5 minutos — mesmo padrão de listarEscolasOficio_interno_
+/* CACHE DA LISTA DE ESCOLAS — EM FATIAS, E POR QUE ISSO IMPORTA.
+ *
+ * Aqui havia uma chave só, com `cache.put` guardado atrás de um
+ * `if (json.length < 95000)`. A lista real tem 679 escolas com 43 colunas:
+ * medido em 24/09/2026, o JSON dá 1.199.925 bytes — 12 vezes o limite. Ou
+ * seja, o `if` nunca foi verdadeiro e o cache NUNCA foi gravado, desde o dia
+ * em que foi escrito. Cada chamada relia a planilha inteira.
+ *
+ * O custo não era teórico. A busca de escola da solicitação manual de bolsa
+ * chama isto a cada tecla digitada (debounce de 320ms): medido, digitar uma
+ * palavra custava 12 leituras de planilha e 175.440 células. Com as fatias,
+ * a mesma digitação custa 2 leituras e 29.240 células — só a primeira tecla
+ * lê. Quem mais se beneficia nem é a bolsa: Ofícios, Central de E-mails,
+ * o núcleo de IA e o resumo da tela Início chamam esta mesma função.
+ *
+ * O CacheService aceita ~100 KB por CHAVE, mas várias chaves. Então o JSON
+ * vai picado em pedaços de 90 KB (`..._0`, `..._1`, …) mais uma chave
+ * `_meta` com a quantidade. Na leitura, um `getAll` traz tudo de uma vez; se
+ * QUALQUER pedaço faltar (expirou sozinho, foi despejado por pressão de
+ * memória), o cache inteiro é descartado e a planilha é relida. Meio JSON
+ * seria pior que nenhum: `JSON.parse` estouraria, ou pior, não estouraria.
+ *
+ * TTL DE 6 HORAS, decidido pelo usuário em 24/09/2026 (o máximo que o Apps
+ * Script permite). Cadastro de escola muda pouco — são 679 registros que a
+ * secretaria mexe de vez em quando — e o risco de dado velho está coberto
+ * pela invalidação: TODA gravação em escola passa por
+ * `invalidarCacheEscolas_()` ou `invalidarCacheEscolasInterno_()`, e as duas
+ * limpam as fatias. Se alguém criar um caminho de escrita novo que não
+ * invalide, o sintoma será escola editada que continua aparecendo com o dado
+ * antigo por horas — procure a invalidação antes de procurar erro na tela. */
+var CACHE_KEY_ESCOLAS_CADASTRO_ = "sisgep_escolas_cadastro_v1"; // legado: chave única, só para limpar
+var CACHE_PREFIXO_ESCOLAS_CADASTRO_ = "sisgep_escolas_cadastro_v2";
+var CACHE_TTL_ESCOLAS_CADASTRO_ = 21600; // 6 horas — teto do Apps Script
+var CACHE_FATIA_ESCOLAS_ = 90000;        // abaixo do limite de ~100 KB por chave
+var CACHE_MAX_FATIAS_ESCOLAS_ = 60;      // ~5,4 MB: trava contra base absurda
+
+function cacheEscolasGravarFatias_(json) {
+  var cache = CacheService.getScriptCache();
+  var n = Math.ceil(json.length / CACHE_FATIA_ESCOLAS_);
+  if (n > CACHE_MAX_FATIAS_ESCOLAS_) {
+    Logger.log("[listarEscolasCadastro] lista grande demais para cache: " + json.length + " bytes");
+    return false;
+  }
+  var mapa = {};
+  for (var i = 0; i < n; i++) {
+    mapa[CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_" + i] = json.substr(i * CACHE_FATIA_ESCOLAS_, CACHE_FATIA_ESCOLAS_);
+  }
+  // A _meta vai no mesmo putAll, e não antes: escrita parcial deixaria a meta
+  // apontando para fatias que ainda não existem.
+  mapa[CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_meta"] = String(n);
+  cache.putAll(mapa, CACHE_TTL_ESCOLAS_CADASTRO_);
+  return true;
+}
+
+function cacheEscolasLerFatias_() {
+  var cache = CacheService.getScriptCache();
+  var meta = cache.get(CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_meta");
+  if (!meta) return null;
+  var n = Number(meta);
+  if (!(n > 0) || n > CACHE_MAX_FATIAS_ESCOLAS_) return null;
+  var chaves = [];
+  for (var i = 0; i < n; i++) chaves.push(CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_" + i);
+  var achadas = cache.getAll(chaves) || {};
+  var txt = "";
+  for (var j = 0; j < n; j++) {
+    var pedaco = achadas[CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_" + j];
+    if (pedaco === undefined || pedaco === null) return null; // pedaço faltando: reler a planilha
+    txt += pedaco;
+  }
+  try {
+    var arr = JSON.parse(txt);
+    return Array.isArray(arr) ? arr : null;
+  } catch (e) {
+    Logger.log("[listarEscolasCadastro] cache corrompido: " + e);
+    return null;
+  }
+}
+
+function cacheEscolasLimparFatias_() {
+  try {
+    var cache = CacheService.getScriptCache();
+    var chaves = [CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_meta", CACHE_KEY_ESCOLAS_CADASTRO_];
+    // Limpa o teto de fatias, não o que a _meta diz: se a _meta já sumiu, as
+    // fatias continuariam lá e voltariam a ser lidas na próxima gravação.
+    for (var i = 0; i < CACHE_MAX_FATIAS_ESCOLAS_; i++) chaves.push(CACHE_PREFIXO_ESCOLAS_CADASTRO_ + "_" + i);
+    cache.removeAll(chaves);
+  } catch (e) { Logger.log("[listarEscolasCadastro] limpar cache: " + e); }
+}
 
 function listarEscolasCadastro_interno_() {
   try {
-    var cache = CacheService.getScriptCache();
-    var cached = cache.get(CACHE_KEY_ESCOLAS_CADASTRO_);
-    if (cached) {
-      try {
-        var parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
-      } catch (eCache) { Logger.log("[listarEscolasCadastro] cache read: " + eCache); }
-    }
+    var doCache = cacheEscolasLerFatias_();
+    if (doCache) return doCache;
 
     const ss = SpreadsheetApp.openById(PLANILHA_ID);
     const sh = ss.getSheetByName(ABA_ESCOLAS);
@@ -537,12 +619,7 @@ function listarEscolasCadastro_interno_() {
     });
 
     try {
-      var json = JSON.stringify(resultado);
-      if (json.length < 95000) {
-        cache.put(CACHE_KEY_ESCOLAS_CADASTRO_, json, CACHE_TTL_ESCOLAS_CADASTRO_);
-      } else {
-        Logger.log("[listarEscolasCadastro] lista muito grande para cache: " + json.length + " bytes");
-      }
+      cacheEscolasGravarFatias_(JSON.stringify(resultado));
     } catch (ePut) { Logger.log("[listarEscolasCadastro] cache put: " + ePut); }
 
     return resultado;
