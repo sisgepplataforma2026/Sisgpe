@@ -278,13 +278,21 @@ function voucherEnvioLoteExecutar(protocolos, opcoes, tokenSessao) {
   }
 }
 
-/** O laço. Para na cota (PARE: não gasta tentativa de ninguém) ou no tempo. */
+/** O laço. Para na cota (PARE: não gasta tentativa de ninguém) ou no tempo.
+ *
+ * E-MAIL ÚNICO POR FAMÍLIA (24/11/2026): certificados do MESMO titular (CPF) e do
+ * MESMO destino saem num e-mail só (VoucherEnvioFamilia.gs). Com um só protocolo
+ * no grupo, é o envio de sempre. Cada protocolo é lido UMA vez. */
 function voucherEnvioLoteProcessar_(lista, copiaInstituicao, quem) {
   var inicio = Date.now();
   var enviados = [], pulados = [], restantes = [], porCota = false;
+
+  /* 1ª passada: lê cada protocolo uma vez, separa o que não pode sair e agrupa o resto. */
+  var prontos = [], grupos = {};
+  var corteLeitura = VOUCHER_LOTE_LIMITE_MS / 4;
   for (var i = 0; i < lista.length; i++) {
     var p = lista[i];
-    if (Date.now() - inicio > VOUCHER_LOTE_LIMITE_MS) { restantes = lista.slice(i); break; }
+    if (Date.now() - inicio > corteLeitura) { restantes = restantes.concat(lista.slice(i)); break; }
     var d = voucherDadosEnvio_(p);
     var s = voucherSituacaoEnvio_(d);
     if (s.situacao !== "PRONTO" && s.situacao !== "JA_ENVIADO") {
@@ -294,17 +302,62 @@ function voucherEnvioLoteProcessar_(lista, copiaInstituicao, quem) {
       pulados.push({ protocolo: p, motivo: "Cópia marcada, mas sem e-mail da instituição — abrir e preencher" });
       continue;
     }
+    var chave = (d.cpf || p) + "|" + String(d.emailAssociado || "").toLowerCase();
+    (grupos[chave] = grupos[chave] || []).push({ protocolo: p, d: d });
+    prontos.push({ protocolo: p, d: d, chave: chave });
+  }
+
+  var feitos = {};
+  for (var j = 0; j < prontos.length; j++) {
+    var it = prontos[j];
+    if (feitos[it.protocolo]) continue;
+    if (Date.now() - inicio > VOUCHER_LOTE_LIMITE_MS) {
+      restantes = restantes.concat(prontos.slice(j).filter(function (x) { return !feitos[x.protocolo]; })
+        .map(function (x) { return x.protocolo; }));
+      break;
+    }
+    var grupo = grupos[it.chave].filter(function (x) { return !feitos[x.protocolo]; });
+
+    if (grupo.length >= 2) {
+      var emailsInst = {};
+      if (copiaInstituicao) grupo.forEach(function (x) { emailsInst[x.d.emailInstituicao] = true; });
+      var precisaG = 1 + (copiaInstituicao ? Object.keys(emailsInst).length : 0);
+      if (cotaEmail_quantosCabem_(VOUCHER_LOTE_CAMPANHA, precisaG).cabem < precisaG) {
+        restantes = restantes.concat(grupo.map(function (x) { return x.protocolo; }));
+        grupo.forEach(function (x) { feitos[x.protocolo] = true; });
+        porCota = true;
+        continue;
+      }
+      var copias = {};
+      if (copiaInstituicao) grupo.forEach(function (x) { copias[x.protocolo] = x.d.emailInstituicao; });
+      var rf = voucherEnviarFamiliaPorEmail_(grupo.map(function (x) { return x.protocolo; }), {
+        enviarInstituicao: copiaInstituicao, copias: copias, campanhaCota: VOUCHER_LOTE_CAMPANHA
+      }, { email: quem, usuario: quem });
+      grupo.forEach(function (x) { feitos[x.protocolo] = true; });
+      if (rf && rf.ok) {
+        (rf.enviados || []).forEach(function (e) { enviados.push({ protocolo: e.protocolo, para: e.para, copia: e.copia }); });
+        (rf.pulados || []).forEach(function (e) { pulados.push(e); });
+      } else {
+        grupo.forEach(function (x) { pulados.push({ protocolo: x.protocolo, motivo: (rf && rf.mensagem) || "Não enviou." }); });
+      }
+      continue;
+    }
+
+    /* Sozinho: o caminho de sempre. */
+    feitos[it.protocolo] = true;
     var precisa = copiaInstituicao ? 2 : 1;
     if (cotaEmail_quantosCabem_(VOUCHER_LOTE_CAMPANHA, precisa).cabem < precisa) {
-      restantes = lista.slice(i); porCota = true; break;
+      restantes = restantes.concat(prontos.slice(j).filter(function (x) { return !feitos[x.protocolo] || x.protocolo === it.protocolo; })
+        .map(function (x) { return x.protocolo; }));
+      porCota = true; break;
     }
-    var r = voucherEnviarPorEmail_(p, {
+    var r = voucherEnviarPorEmail_(it.protocolo, {
       enviarInstituicao: copiaInstituicao,
-      copia: copiaInstituicao ? d.emailInstituicao : "",
+      copia: copiaInstituicao ? it.d.emailInstituicao : "",
       campanhaCota: VOUCHER_LOTE_CAMPANHA
     }, { email: quem, usuario: quem });
-    if (r && r.ok) enviados.push({ protocolo: p, para: r.para, copia: r.copia });
-    else pulados.push({ protocolo: p, motivo: (r && r.mensagem) || "Não enviou." });
+    if (r && r.ok) enviados.push({ protocolo: it.protocolo, para: r.para, copia: r.copia });
+    else pulados.push({ protocolo: it.protocolo, motivo: (r && r.mensagem) || "Não enviou." });
   }
   return { enviados: enviados, pulados: pulados, restantes: restantes, porCota: porCota };
 }

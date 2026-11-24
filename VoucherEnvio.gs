@@ -155,6 +155,11 @@ function voucherDadosEnvio_(protocolo) {
       ok: true,
       protocolo: protocolo,
       nome: nome,
+      /* Para o e-mail único da família: quem é o titular (CPF) e quem é o
+       * beneficiário deste certificado. */
+      cpf: (typeof voucherCpf11_ === "function") ? voucherCpf11_(solic.CPF_SOLICITANTE || emissao.CPF) : String(solic.CPF_SOLICITANTE || ""),
+      beneficiario: String(solic.NOME_BENEFICIARIO || "").trim(),
+      tipoBeneficiario: String(solic.TIPO_BENEFICIARIO || "").trim().toUpperCase(),
       codigo: codigo,
       percentual: percentual,
       curso: curso,
@@ -164,6 +169,7 @@ function voucherDadosEnvio_(protocolo) {
       periodoRotulo: (String(solic.REGIME || "").toUpperCase().indexOf("ANUAL") > -1)
         ? "Ano letivo" : "Semestre",
       instituicao: String(solic.INSTITUICAO_ENSINO || "").trim(),
+      cnpjInstituicao: String(solic.CNPJ_INSTITUICAO || "").replace(/\D/g, ""),
       linkPdf: link,
       temPdf: !!link,
       emailAssociado: emailAssociado,
