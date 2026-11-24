@@ -57,18 +57,19 @@ const el = id => doc.getElementById(id);
 
   b.fluxo("VOUCHER · modal de envio — e-mail único");
 
-  b.passo("1. Quem tem outros certificados prontos vê o convite — e nada vem marcado");
+  b.passo("1. Quem tem outros certificados prontos vê o convite — e eles JÁ VÊM MARCADOS (e-mail único é o padrão)");
   win.certAbrirEnvio(A);
   await t.assentar(200);
   ok_(el("certEnvIrmaos").style.display !== "none", "o bloco dos outros certificados aparece");
   const caixas = doc.querySelectorAll("#certEnvIrmaosLista .cert-env-irmao");
   b.igual(caixas.length, 2, "com 2 certificados oferecidos (JOAO e PEDRO)");
-  b.ok(Array.from(caixas).every(c => c.checked === false), "NENHUM vem marcado sozinho");
+  b.ok(Array.from(caixas).every(c => c.checked === true), "todos vêm marcados (mesmo e-mail do associado): saem juntos num e-mail só");
   const txt = doc.getElementById("certEnvIrmaosLista").textContent;
   b.ok(/JOAO/.test(txt) && /PEDRO/.test(txt) && !/MARIA/.test(txt), "mostra os irmãos, não o próprio protocolo");
   b.ok(!/SOZINHO/.test(txt), "e não mostra o de outra família");
 
-  b.passo("2. Sem marcar nada, o envio é o de SEMPRE (voucherEnviarPorEmail, um e-mail)");
+  b.passo("2. DESMARCANDO os outros, o envio é o de SEMPRE (voucherEnviarPorEmail, um e-mail)");
+  caixas.forEach(c => { c.checked = false; });
   amb.outbox.length = 0;
   t.clicar("#certEnvBtnEmail");
   await t.assentar(250);
@@ -77,13 +78,13 @@ const el = id => doc.getElementById(id);
   b.ok(!t.chamadas.some(c => c.fn === "voucherEnviarFamiliaPorEmail"), "e NÃO chamou o e-mail único");
   b.igual(amb.outbox.length, 1, "saiu 1 e-mail");
 
-  b.passo("3. Marcando os dois, sai UM e-mail com os três");
+  b.passo("3. Clicando em Enviar sem mexer em nada, sai UM e-mail com os certificados da família");
   win.certAbrirEnvio(B);
   await t.assentar(200);
   const caixas2 = doc.querySelectorAll("#certEnvIrmaosLista .cert-env-irmao");
   b.ok(caixas2.length >= 1 && Array.from(caixas2).some(c => c.value === C), "o PEDRO continua oferecido (ainda não foi enviado)");
   b.ok(!Array.from(caixas2).some(c => c.value === A), "e a MARIA, já enviada, não é oferecida de novo");
-  caixas2.forEach(c => { c.checked = true; });
+  b.ok(Array.from(caixas2).every(c => c.checked === true), "já vêm marcados, sem a pessoa fazer nada");
   amb.outbox.length = 0;
   t.clicar("#certEnvBtnEmail");
   await t.assentar(300);

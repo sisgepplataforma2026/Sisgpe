@@ -893,7 +893,7 @@
       </div>
 
       <div id="certEnvIrmaos" class="cert-lote-aviso" style="display:none;margin-top:10px;">
-        <strong>Mais certificados prontos deste associado.</strong> Marque para sair tudo num e-mail só:
+        <strong>Mais certificados prontos deste associado.</strong> Saem <strong>todos juntos num e-mail só</strong> — desmarque o que quiser mandar à parte:
         <div id="certEnvIrmaosLista" style="margin-top:6px;"></div>
       </div>
 
@@ -3072,7 +3072,7 @@ function envIrmaosBuscar(protocolo, seq){
       var html='';
       r.irmaos.forEach(function(i){
         var rot=[i.curso, i.periodo ? ((i.periodoRotulo||'Período')+' '+i.periodo) : ''].filter(Boolean).join(' · ');
-        html += '<label class="cert-env-check"><input type="checkbox" class="cert-env-irmao" value="'+cert_escHtml(i.protocolo)+'"> '+
+        html += '<label class="cert-env-check"><input type="checkbox" class="cert-env-irmao" value="'+cert_escHtml(i.protocolo)+'"'+(i.mesmoEmail ? ' checked' : '')+'> '+
                 '<strong>'+cert_escHtml(i.beneficiario||'')+'</strong> — '+cert_escHtml(rot)+' · '+cert_escHtml(i.protocolo)+
                 (i.mesmoEmail ? '' : ' <em>(e-mail do associado diferente)</em>')+'</label>';
       });
