@@ -20,6 +20,14 @@ const { g } = b.subir({});
 b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 g.setupVoucherModuleFase1();
+const ssE = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+const shEsc = ssE.getSheetByName("Escolas") || ssE.insertSheet("Escolas");
+shEsc.clear();
+shEsc.getRange(1, 1, 1, 6).setValues([["Escola (Razão Social)", "CNPJ", "Cidade", "UF", "EscolaID", "E-mail (principal)"]]);
+shEsc.getRange(2, 1, 2, 6).setValues([
+  ["COLEGIO REDE ALFA LTDA", "11222333000225", "VITORIA", "ES", "ESC-002", "col@alfa.com"],
+  ["COLEGIO OUTRA REDE LTDA", "99888777000166", "SERRA", "ES", "ESC-003", "col@outra.com"]
+]);
 const t = dom.montar(g, ["Scripts_Certificado.html"], { token: TOKEN });
 const doc = t.doc, win = t.win;
 const el = id => doc.getElementById(id);
@@ -82,15 +90,22 @@ const cards = () => doc.querySelectorAll("#certNvBenefLista .cert-nv-benef-card"
   t.marcar("#certNvEscolaDif", true);
   await t.assentar(20);
   t.escolher("#certNvEscolaDifMotivo", "MESMA_REDE");
-  t.digitar("#certNvEscolaDifNome", "COLEGIO REDE ALFA");
-  t.digitar("#certNvEscolaDifCnpj", "11.222.333/0002-25");
+  t.digitar("#certNvEscolaDifNome", "rede alfa");
+  await t.assentar(500);
+  const itens = doc.querySelectorAll("#certNvEscolaDifLista .cert-nv-item");
+  b.ok(itens.length >= 1, "a BUSCA devolveu escolas do cadastro", itens.length + " item(ns)");
+  t.clicar(itens[0]); await t.assentar(60);
+  b.igual(el("certNvEscolaDifNome").getAttribute("data-escola-id"), "ESC-002", "escolher grava o id da escola");
+  b.ok(/11\.222\.333/.test(el("certNvEscolaDifCnpj").value), "e preenche o CNPJ (somente leitura)", el("certNvEscolaDifCnpj").value);
+  b.ok(el("certNvEscolaDifCnpj").readOnly, "o CNPJ não é editável");
   await t.assentar(120);
   t.clicar("#certNvSalvarAprovar"); await t.assentar(350);
   const unico = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").pop().args[0];
   b.ok(unico.escolaDiferenteDoTitular === true, "manda escolaDiferenteDoTitular");
   b.igual(unico.motivoEscolaDiferente, "MESMA_REDE", "com o motivo");
-  b.igual(unico.escola, "COLEGIO REDE ALFA", "a escola do dependente");
-  b.igual(unico.cnpjEscola, "11222333000225", "e o CNPJ só com dígitos");
+  b.igual(unico.escola, "COLEGIO REDE ALFA LTDA", "a escola do dependente, a do CADASTRO");
+  b.igual(unico.cnpjEscola, "11222333000225", "o CNPJ só com dígitos");
+  b.igual(unico.escolaId, "ESC-002", "e o id da escola");
 
   b.passo("6. No LOTE a troca vai SÓ no beneficiário certo — a escola comum não é sobrescrita");
   t.clicar("#certBtnNova"); await t.assentar(40);
@@ -98,8 +113,9 @@ const cards = () => doc.querySelectorAll("#certNvBenefLista .cert-nv-benef-card"
   t.marcar("#certNvEscolaDif", true);
   await t.assentar(20);
   t.escolher("#certNvEscolaDifMotivo", "OUTRO");
-  t.digitar("#certNvEscolaDifNome", "COLEGIO OUTRA REDE");
-  t.digitar("#certNvEscolaDifCnpj", "99888777000166");
+  t.digitar("#certNvEscolaDifNome", "outra rede");
+  await t.assentar(500);
+  t.clicar(doc.querySelector("#certNvEscolaDifLista .cert-nv-item")); await t.assentar(60);
   t.clicar("#certNvBenefAdd"); await t.assentar(30);
   const c = cards()[0];
   t.escolher(c.querySelector(".js-quem"), "FILHO_2");
@@ -109,11 +125,26 @@ const cards = () => doc.querySelectorAll("#certNvBenefLista .cert-nv-benef-card"
   await t.assentar(120);
   t.clicar("#certNvSalvarAprovar"); await t.assentar(400);
   const lote = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacoesEmLote").pop().args[0];
-  b.ok(lote.beneficiarios[0].escolaDiferenteDoTitular === true && lote.beneficiarios[0].escola === "COLEGIO OUTRA REDE", "o de cima leva a troca", JSON.stringify(lote.beneficiarios[0]));
+  b.ok(lote.beneficiarios[0].escolaDiferenteDoTitular === true && lote.beneficiarios[0].escola === "COLEGIO OUTRA REDE LTDA" && lote.beneficiarios[0].escolaId === "ESC-003", "o de cima leva a troca, com o id do cadastro", JSON.stringify(lote.beneficiarios[0]));
   b.ok(!("escolaDiferenteDoTitular" in lote.beneficiarios[1]), "o card, desmarcado, NÃO leva troca");
   b.ok(!("escolaDiferenteDoTitular" in lote.comuns), "e a escola comum (do titular) não foi tocada");
 
-  b.passo("7. Card COM troca; e o resultado traz a escola aplicada na tela");
+  b.passo("6b. Troca MARCADA sem escolher na busca: a tela barra e NÃO chama o servidor");
+t.clicar("#certBtnNova"); await t.assentar(40);
+preencherBase("FILHA SEM ESCOLHA", "FILHO_1", "27595487040");
+t.marcar("#certNvEscolaDif", true);
+await t.assentar(20);
+t.escolher("#certNvEscolaDifMotivo", "MESMA_REDE");
+t.digitar("#certNvEscolaDifNome", "texto solto sem escolher");
+await t.assentar(500);
+const antes = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao" || c.fn === "voucherCriarSolicitacoesEmLote").length;
+t.clicar("#certNvSalvarAprovar"); await t.assentar(300);
+b.igual(t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao" || c.fn === "voucherCriarSolicitacoesEmLote").length, antes, "nada foi enviado ao servidor");
+t.digitar("#certNvEscolaDifNome", "rede alfa");
+await t.assentar(500);
+b.ok(!el("certNvEscolaDifNome").hasAttribute("data-escola-id"), "digitar de novo mantém a escolha invalidada até clicar na lista");
+
+b.passo("7. Card COM troca; e o resultado traz a escola aplicada na tela");
   t.clicar("#certBtnNova"); await t.assentar(40);
   preencherBase("FILHO CINCO", "FILHO_1", "52998224725");   // outro titular: o teto de 3 dependentes é por associado
   t.clicar("#certNvBenefAdd"); await t.assentar(30);
@@ -124,15 +155,16 @@ const cards = () => doc.querySelectorAll("#certNvBenefLista .cert-nv-benef-card"
   c2.querySelector(".js-curso").value = "Fundamental";
   const chk = c2.querySelector(".js-escolaDif"); chk.checked = true; chk.dispatchEvent(new win.Event("change"));
   c2.querySelector(".js-escolaMotivo").value = "MESMA_REDE";
-  c2.querySelector(".js-escolaNome").value = "COLEGIO REDE ALFA";
-  c2.querySelector(".js-escolaCnpj").value = "11.222.333/0002-25";
+  t.digitar(c2.querySelector(".js-escolaNome"), "rede alfa");
+  await t.assentar(500);
+  t.clicar(c2.querySelector(".js-escolaLista .cert-nv-item")); await t.assentar(60);
   await t.assentar(120);
   b.ok(c2.querySelector(".js-escolaDifBox").style.display !== "none", "os campos do card abrem ao marcar");
   t.clicar("#certNvSalvarAprovar"); await t.assentar(400);
   const lote2 = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacoesEmLote").pop().args[0];
   const bc = lote2.beneficiarios[1];
-  b.ok(bc.escolaDiferenteDoTitular === true && bc.motivoEscolaDiferente === "MESMA_REDE" && bc.escola === "COLEGIO REDE ALFA" && bc.cnpjEscola === "11222333000225", "o card leva a troca completa", JSON.stringify(bc));
+  b.ok(bc.escolaDiferenteDoTitular === true && bc.motivoEscolaDiferente === "MESMA_REDE" && bc.escola === "COLEGIO REDE ALFA LTDA" && bc.cnpjEscola === "11222333000225" && bc.escolaId === "ESC-002", "o card leva a troca completa, do cadastro", JSON.stringify(bc));
   b.ok(!("escolaDiferenteDoTitular" in lote2.beneficiarios[0]), "o de cima, desmarcado, não leva");
-  b.ok(/COLEGIO REDE ALFA/.test(c2.querySelector(".cert-nv-benef-res").textContent), "o card mostra a escola aplicada", c2.querySelector(".cert-nv-benef-res").textContent);
+  b.ok(/COLEGIO REDE ALFA LTDA/.test(c2.querySelector(".cert-nv-benef-res").textContent), "o card mostra a escola aplicada", c2.querySelector(".cert-nv-benef-res").textContent);
   b.resumo();
 })();

@@ -94,6 +94,14 @@ b.ok(outraRede.ok, "raiz diferente NÃO bloqueia — só avisa", outraRede.mensa
 b.ok(/mesma rede/i.test(outraRede.escolaAplicada.aviso), "e o aviso fala de rede", outraRede.escolaAplicada.aviso);
 b.ok(historico(outraRede.protocolo).some(t => /DIFERENTE da do titular/.test(t) && /OUTRO/.test(t)), "o histórico guarda o motivo");
 
+b.passo("4b. A troca é BUSCA NO CADASTRO: escola que não existe é recusada, e valem os dados do cadastro");
+const inventada = criar({ escolaDiferenteDoTitular: true, motivoEscolaDiferente: "MESMA_REDE", escola: "ESCOLA INVENTADA XYZ", cnpjEscola: "12345678000195", beneficiario: "FILHA INVENTADA", ordemFilho: "2" });
+b.ok(!inventada.ok && /cadastro de escolas/.test(inventada.mensagem) && /não foi encontrada/.test(inventada.mensagem), "escola fora das 679: recusa", inventada.mensagem);
+const porId = criar({ escolaDiferenteDoTitular: true, motivoEscolaDiferente: "MESMA_REDE", escola: "nome digitado errado", cnpjEscola: "11222333000225", escolaId: "ESC-002", beneficiario: "FILHA DO CADASTRO", ordemFilho: "2", periodo: "2029" });
+b.ok(porId.ok, "achada pelo ID/CNPJ, mesmo com o nome digitado errado", porId.mensagem);
+b.igual(linha(porId.protocolo).ESCOLA_SELECIONADA, "COLEGIO REDE ALFA LTDA", "grava o NOME DO CADASTRO, não o digitado");
+b.igual(String(linha(porId.protocolo).CNPJ_ESCOLA), "11222333000225", "e o CNPJ do cadastro");
+
 b.passo("5. Titular SEM escola achada: deixa digitar, com aviso; sem escola nenhuma, CRIA e avisa (como sempre foi)");
 const sem = g.voucherCriarSolicitacao({ cpf: "52998224725", nome: "TITULAR SEM ESCOLA", email: "t2@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA X", aprovar: true }, TOKEN);
 b.ok(sem.ok && sem.escolaAplicada.origem === "SEM_ESCOLA" && /Preencha a escola/.test(sem.escolaAplicada.aviso), "sem escola nenhuma: cria, e avisa que falta preencher antes de emitir", JSON.stringify(sem.escolaAplicada));

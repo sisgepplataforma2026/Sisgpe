@@ -89,6 +89,41 @@ function voucherEscolaCasarComCadastro_(nomeCadastro) {
   };
 }
 
+/**
+ * A escola escolhida na TROCA tem de existir no cadastro das 679 escolas
+ * (decisão do usuário, 24/11/2026: a troca é busca no cadastro, não texto
+ * livre). Confere por ID, depois por CNPJ, depois por nome igual — e devolve os
+ * dados DO CADASTRO, que valem mais que os digitados. null = não existe.
+ */
+function voucherEscolaDoCadastro_(dados) {
+  if (typeof buscarEscolasPorTermo_interno_ !== "function") return null;
+  var id = String(dados.escolaId || "").trim();
+  var cnpj = String(dados.cnpjEscola || "").replace(/\D/g, "");
+  var nome = String(dados.escola || "").trim();
+  var norm = (typeof voucherInstNormalizar_ === "function")
+    ? voucherInstNormalizar_ : function (t) { return String(t || "").trim().toUpperCase(); };
+  var termos = [];
+  if (cnpj.length >= 2) termos.push(cnpj);
+  if (nome.length >= 2) termos.push(nome);
+  for (var t = 0; t < termos.length; t++) {
+    var achadas = [];
+    try { achadas = buscarEscolasPorTermo_interno_(termos[t]) || []; } catch (e) { achadas = []; }
+    for (var i = 0; i < achadas.length; i++) {
+      var e = achadas[i];
+      var eId = String(e.EscolaID || e.escolaId || (typeof ESC_COL_ID !== "undefined" ? e[ESC_COL_ID] : "") || "").trim();
+      var eCnpj = String(e.cnpjLimpo || e.cnpj || e.CNPJ || "").replace(/\D/g, "");
+      var eNome = String(e.escola || e.NomeEscola || e.nome || e["Escola (Razão Social)"] || "").trim();
+      var bate = (id && eId && id === eId) || (cnpj && eCnpj && cnpj === eCnpj) ||
+                 (!id && !cnpj && nome && norm(nome) === norm(eNome));
+      if (bate) {
+        return { nome: eNome, fantasia: String(e.fantasia || e.Fantasia || e.NOME_FANTASIA || "").trim(), unidade: "",
+                 cnpj: eCnpj, cidade: String(e.cidade || e.municipio || e.Cidade || "").trim(), escolaId: eId };
+      }
+    }
+  }
+  return null;
+}
+
 /** A escola gravada na solicitação MAIS RECENTE do próprio titular (beneficiário TITULAR), com CNPJ e ID já gravados. */
 function voucherEscolaDaSolicitacaoAnterior_(cpf11) {
   var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName("Voucher_Solicitacoes");
@@ -162,7 +197,15 @@ function voucherAplicarEscolaDoTitular_(dados, cpf) {
   if (dados.escolaDiferenteDoTitular === true) {
     var motivo = String(dados.motivoEscolaDiferente || "").trim();
     if (!motivo) return { erro: "Informe o motivo de a escola do dependente ser diferente da do titular." };
-    if (!String(dados.escola || "").trim()) return { erro: "Escolha a escola do dependente." };
+    if (!String(dados.escola || "").trim()) return { erro: "Escolha a escola do dependente na busca do cadastro de escolas." };
+    var noCadastro = voucherEscolaDoCadastro_(dados);
+    if (!noCadastro) {
+      return { erro: "A escola do dependente precisa ser escolhida na busca do cadastro de escolas (as 679 cadastradas). “" +
+                     String(dados.escola).trim() + "” não foi encontrada." };
+    }
+    /* Valem os dados do CADASTRO, não os digitados. */
+    dados.escola = noCadastro.nome; dados.escolaFantasia = noCadastro.fantasia; dados.unidadeEscola = noCadastro.unidade;
+    dados.cnpjEscola = noCadastro.cnpj; dados.cidadeEscola = noCadastro.cidade; dados.escolaId = noCadastro.escolaId;
     var aviso = "";
     var raizT = voucherEscolaRaizCnpj_(titular.cnpj), raizD = voucherEscolaRaizCnpj_(dados.cnpjEscola);
     if (titular.achou && raizT && raizD && raizT !== raizD) {

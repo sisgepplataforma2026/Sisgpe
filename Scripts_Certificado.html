@@ -1278,8 +1278,11 @@
           <div id="certNvEscolaDifBox" style="display:none;margin-top:6px;">
             <select class="cert-nv-in" id="certNvEscolaDifMotivo">
               <option value="MESMA_REDE">Mesma rede</option><option value="OUTRO">Outro motivo</option></select>
-            <input class="cert-nv-in" id="certNvEscolaDifNome" placeholder="nome da escola do dependente" style="margin-top:4px;">
-            <input class="cert-nv-in" id="certNvEscolaDifCnpj" placeholder="CNPJ da escola do dependente" style="margin-top:4px;">
+            <div style="position:relative;margin-top:4px;">
+              <input class="cert-nv-in" id="certNvEscolaDifNome" placeholder="buscar a escola do dependente no cadastro (nome, CNPJ ou cidade)" autocomplete="off">
+              <div class="cert-nv-lista" id="certNvEscolaDifLista"></div>
+            </div>
+            <input class="cert-nv-in" id="certNvEscolaDifCnpj" placeholder="CNPJ (vem do cadastro)" readonly style="margin-top:4px;">
           </div>
           <div class="cert-env-dica">Por padrão o dependente usa a escola do titular, vinda do cadastro.</div>
         </div>
@@ -3369,8 +3372,10 @@ function nvBenefAdicionar(dados){
    +   '<label class="cert-env-check"><input type="checkbox" class="js-escolaDif"> Escola diferente da do titular</label>'
    +   '<div class="js-escolaDifBox" style="display:none;margin-top:6px;">'
    +     '<select class="cert-nv-in js-escolaMotivo"><option value="MESMA_REDE">Mesma rede</option><option value="OUTRO">Outro motivo</option></select>'
-   +     '<input class="cert-nv-in js-escolaNome" placeholder="nome da escola do dependente" style="margin-top:4px;">'
-   +     '<input class="cert-nv-in js-escolaCnpj" placeholder="CNPJ da escola do dependente" style="margin-top:4px;">'
+   +     '<div style="position:relative;margin-top:4px;">'
+   +       '<input class="cert-nv-in js-escolaNome" placeholder="buscar a escola do dependente no cadastro (nome, CNPJ ou cidade)" autocomplete="off">'
+   +       '<div class="cert-nv-lista js-escolaLista"></div></div>'
+   +     '<input class="cert-nv-in js-escolaCnpj" placeholder="CNPJ (vem do cadastro)" readonly style="margin-top:4px;">'
    +   '</div>'
    + '</div>'
    + '<div class="cert-nv-benef-res" style="display:none;"></div>';
@@ -3378,6 +3383,7 @@ function nvBenefAdicionar(dados){
   c.querySelector('.js-escolaDif').onchange = function(){
     c.querySelector('.js-escolaDifBox').style.display = this.checked ? 'block' : 'none';
   };
+  nvEscolaDifLigar(c.querySelector('.js-escolaNome'), c.querySelector('.js-escolaLista'), c.querySelector('.js-escolaCnpj'));
 
   c.querySelector('.cert-nv-benef-x').onclick = function(){
     c.remove(); nvBenefRenumerar();
@@ -3418,8 +3424,62 @@ function nvEscolaDifDe(chk, motivo, nome, cnpj){
     escolaDiferenteDoTitular: true,
     motivoEscolaDiferente: motivo ? motivo.value : '',
     escola: nome ? String(nome.value||'').trim() : '',
-    cnpjEscola: cnpj ? String(cnpj.value||'').replace(/\D/g,'') : ''
+    cnpjEscola: cnpj ? String(cnpj.value||'').replace(/\D/g,'') : '',
+    escolaId: nome ? (nome.getAttribute('data-escola-id')||'') : '',
+    escolaFantasia: nome ? (nome.getAttribute('data-fantasia')||'') : '',
+    cidadeEscola: nome ? (nome.getAttribute('data-cidade')||'') : ''
   };
+}
+/* A TROCA DE ESCOLA É BUSCA NO CADASTRO DAS 679 ESCOLAS (decisão do usuário,
+   24/11/2026) — não texto livre. Escolher na lista preenche nome, CNPJ e o id
+   da escola; digitar de novo invalida a escolha, como no campo "onde trabalha".
+   O servidor confere de novo contra o cadastro. */
+function nvEscolaDifLigar(inp, lista, cnpj){
+  if(!inp || !lista) return;
+  var timer = null;
+  inp.addEventListener('input', function(){
+    inp.removeAttribute('data-escola-id'); inp.removeAttribute('data-fantasia'); inp.removeAttribute('data-cidade');
+    if(cnpj) cnpj.value = '';
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      var termo = String(inp.value||'').trim();
+      if(termo.length < 2){ lista.classList.remove('ativo'); return; }
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r || !r.ok || !r.escolas || !r.escolas.length){ lista.classList.remove('ativo'); return; }
+          lista.innerHTML = r.escolas.map(nvItemEscolaHtml).join('');
+          lista.classList.add('ativo');
+          lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+            it.addEventListener('click', function(){
+              var e = r.escolas[Number(this.getAttribute('data-i'))] || {};
+              inp.value = e.nome || e.fantasia || '';
+              inp.setAttribute('data-escola-id', e.escolaId || '');
+              inp.setAttribute('data-fantasia', e.fantasia || '');
+              inp.setAttribute('data-cidade', e.cidade || '');
+              if(cnpj) cnpj.value = e.cnpj ? cert_fmtCnpj(e.cnpj) : '';
+              lista.classList.remove('ativo');
+            });
+          });
+        })
+        .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+        .voucherBuscarEscola(termo, certToken());
+    }, 320);
+  });
+}
+/* Troca marcada sem escolha feita na busca: o primeiro campo que falta, ou null. */
+function nvEscolaDifFalta(){
+  var campos = [];
+  if(!nvQuem().proprio && g('certNvEscolaDif') && g('certNvEscolaDif').checked) campos.push(g('certNvEscolaDifNome'));
+  nvBenefCards().forEach(function(c){
+    var k=c.querySelector('.js-escolaDif');
+    if(k && k.checked) campos.push(c.querySelector('.js-escolaNome'));
+  });
+  /* Escolher na lista grava o atributo data-escola-id (mesmo vazio, se a escola não tem id);
+     digitar de novo o remove. Sem o atributo, nada foi escolhido no cadastro. */
+  for(var i=0;i<campos.length;i++){
+    if(campos[i] && !campos[i].hasAttribute('data-escola-id')) return campos[i];
+  }
+  return null;
 }
 function nvEscolaDifTop(){
   if(nvQuem().proprio) return {};
@@ -3615,6 +3675,7 @@ function nvLimpar(){
   if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
   if(g('certNvEscolaDif')) g('certNvEscolaDif').checked=false;
   ['certNvEscolaDifNome','certNvEscolaDifCnpj'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  if(g('certNvEscolaDifNome')){ g('certNvEscolaDifNome').removeAttribute('data-escola-id'); g('certNvEscolaDifNome').removeAttribute('data-fantasia'); g('certNvEscolaDifNome').removeAttribute('data-cidade'); }
   nvSincronizarBeneficiario();
   nvEscolaDifSincronizar();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
@@ -4336,6 +4397,13 @@ function nvSalvar(aprovar){
   if(!nvExigir('certNvPeriodoAno', !!String(dados.periodo||'').trim(),
       'Escolha o período de referência — é ele que impede o mesmo voucher sair duas vezes.')) return;
 
+  var faltaEscolaDif = nvEscolaDifFalta();
+  if(faltaEscolaDif){
+    cert_msg('Escolha a escola do dependente na busca do cadastro de escolas.','warn');
+    if(faltaEscolaDif.scrollIntoView) faltaEscolaDif.scrollIntoView({ block: 'center' });
+    faltaEscolaDif.focus(); return;
+  }
+
   /* A trava também barra AQUI, não só no visual. Botão desabilitado é
      aparência; esta linha é a regra. O servidor recusa de novo depois — três
      travas para a mesma coisa é o que se faz quando emitir duas vezes não
@@ -4988,6 +5056,7 @@ function initInterno(){
   }
   if(g('certNvEnteadoIR')) g('certNvEnteadoIR').addEventListener('change', nvSugerir);
   if(g('certNvEscolaDif')) g('certNvEscolaDif').addEventListener('change', nvEscolaDifSincronizar);
+  nvEscolaDifLigar(g('certNvEscolaDifNome'), g('certNvEscolaDifLista'), g('certNvEscolaDifCnpj'));
 
   if(g('certNvEscola')){
     g('certNvEscola').addEventListener('input', function(){
