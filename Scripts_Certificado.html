@@ -1986,11 +1986,25 @@ function loteEnviarPintar_(){
       + '<td>' + (copia ? (l.emailInstituicao ? cert_escHtml(l.emailInstituicao)
             + '<div class="cert-lote-peq">' + (l.origemEmailInstituicao === 'CADASTRO' ? 'do cadastro — confira' : 'da solicitação') + '</div>'
           : '<span class="cert-lote-sit SEM_EMAIL">sem e-mail da instituição</span>') : '<span class="cert-lote-peq">—</span>') + '</td>'
-      + '<td><span class="cert-lote-sit ' + cert_escHtml(l.situacao) + '">' + cert_escHtml(l.motivo) + '</span></td></tr>';
+      + '<td><span class="cert-lote-sit ' + cert_escHtml(l.situacao) + '">' + cert_escHtml(l.motivo) + '</span>'
+      + loteEnviarNotaJunto_(l, linhas) + '</td></tr>';
   });
   html += '</table>';
   g('certLoteEnvLista').innerHTML = html;
   loteEnviarResumo_();
+}
+
+/* Irmãos do mesmo titular saem num e-mail só (mesmo titular + mesmo e-mail de destino). O aviso
+   diz isso na conferência — e, se o titular é o mesmo mas o e-mail difere, que vão separados. */
+function loteEnviarNotaJunto_(l, linhas){
+  if(!l.grupo) return '';
+  var juntos = linhas.filter(function(x){ return x !== l && x.grupo === l.grupo; });
+  if(juntos.length) return '<div class="cert-lote-peq">👨‍👩‍👧 sai junto com ' + juntos.map(function(x){ return cert_escHtml(x.protocolo); }).join(', ')
+    + ' — um e-mail só</div>';
+  var mesmoTit = linhas.filter(function(x){ return x !== l && x.titular === l.titular && x.grupo !== l.grupo; });
+  if(mesmoTit.length) return '<div class="cert-lote-peq" style="color:#d97706;">⚠ mesmo titular de ' + mesmoTit.map(function(x){ return cert_escHtml(x.protocolo); }).join(', ')
+    + ', mas com e-mail diferente — sai separado</div>';
+  return '';
 }
 
 function loteEnviarMarcados_(){
@@ -2003,14 +2017,23 @@ function loteEnviarMarcados_(){
 
 function loteEnviarResumo_(){
   if(!_loteEnv) return;
-  var n = loteEnviarMarcados_().length;
+  var marc = loteEnviarMarcados_();
+  var n = marc.length;
   var fora = _loteEnv.linhas.length - n;
   var cabem = _loteEnv.cota.disponivel;
   var porEnvio = g('certLoteEnvCopia').checked ? 2 : 1;
-  var hoje = Math.min(n, Math.floor(cabem / porEnvio));
-  g('certLoteEnvResumo').innerHTML = 'Vão sair <strong>' + n + ' e-mail(s)</strong>. '
+  /* e-mails de verdade: a família marcada junta conta UM (ou nenhum a mais de um só marcado) */
+  var gruposVistos = {}, nEmails = 0;
+  marc.forEach(function(pr){
+    var l = _loteEnv.linhas.filter(function(x){ return x.protocolo === pr; })[0];
+    var k = (l && l.grupo) ? 'g' + l.grupo : 'p' + pr;
+    if(!gruposVistos[k]){ gruposVistos[k] = true; nEmails++; }
+  });
+  var hoje = Math.min(nEmails, Math.floor(cabem / porEnvio));
+  g('certLoteEnvResumo').innerHTML = 'Vão sair <strong>' + nEmails + ' e-mail(s)</strong>'
+    + (nEmails < n ? ' com ' + n + ' certificados (irmãos saem juntos)' : '') + '. '
     + (fora ? fora + ' ficam de fora (motivo ao lado). ' : '')
-    + (n > hoje ? '<strong>' + hoje + ' saem hoje</strong> e ' + (n - hoje)
+    + (nEmails > hoje ? '<strong>' + hoje + ' saem hoje</strong> e ' + (nEmails - hoje)
         + ' saem <strong>amanhã de manhã, sozinhos</strong> — para não tirar e-mail dos ofícios. ' : '')
     + 'Quem já recebeu vem desmarcado: para reenviar, marque.';
   var btn = g('certLoteEnvConfirmar');
