@@ -4561,3 +4561,27 @@ lado.
 
 Todos corrigidos, o último de forma a não depender de acertar o nome. **Se
 aparecer função nova que "não roda", suspeite disto antes do código.**
+
+
+### Lentidão e tamanho do projeto — 24/11/2026 (ABERTO, nada disto está no ar)
+
+**Entregue e NÃO testado no sistema no ar.** Tudo abaixo foi provado só no
+emulador e por árvore sintática; falta colar na homologação e medir.
+
+| # | O que | O que falta confirmar |
+|---|---|---|
+| 1 | `Voucher.gs`: `setupVoucherModuleFase1` não refaz mais ~160 `autoResizeColumn` a cada listagem/emissão (marca no cache com assinatura das colunas) | Colar em HML e ver `listarSolicitacoesCertBolsa` e `gerarDocumentoCertBolsaCompleto` caírem em Execuções |
+| 2 | `DiagnosticoLatencia.gs`: `pingSISGEP`, `diagnosticoLatenciaSISGEP` (rodada 1 já feita) e `diagnosticoCaminhosSISGEP` (**rodada 2 pendente**) | Rodar a rodada 2 na produção e mandar o Registro: Firestore, cota de e-mail, PDF, QR, Memoria_Organizacional |
+| 3 | `scripts/enxugar-para-deploy.js`: pacote sem comentário e sem indentação, 7,37 → 5,75 MB (−21,9%), todos os arquivos com árvore sintática idêntica à original | Colar/`clasp push` do pacote em HML e confirmar que o editor **salva**; depois emitir um ofício e um voucher de teste |
+| 4 | Início (`getResumoInicioSISGEP`) recalcula 5 módulos inteiros a cada login, sem cache | **Desenho ainda não aprovado** (cache + cartões em chamadas separadas) |
+
+**Medido na produção em 23/11:** serviços do Google rápidos (abrir a planilha 254 ms,
+ler usuários 224 ms), custo de iniciar o projeto ~1–2 s, planilha com 125 abas e
+5,1 milhões de células (51% do limite), `Memoria_Organizacional` com 38 mil
+linhas, 10 gatilhos (fila de ofícios a cada 5 min, Central de E-mail a cada 15).
+
+**Sobre o pacote enxuto:** os testes que leem o TEXTO do código (t53, t74, t76,
+t81, t82, t85, t89, t90, t101, t104, t127, t134) cobram comentário e
+indentação e **só valem sobre o repositório completo**. Rodar a suíte no
+pacote os reprova de propósito. Número de linha em erro do Apps Script deixa de
+bater com o repositório (nome de arquivo e de função batem).

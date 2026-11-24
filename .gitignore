@@ -6,3 +6,6 @@ client_secret*.json
 # Canvas de design gerado (2,5 MB, reconstruído a partir dos .dc.html)
 design/*.html
 !design/*.dc.html
+
+# Pacote enxuto gerado por scripts/enxugar-para-deploy.js (cópia derivada, nunca editar)
+dist-apps-script/
