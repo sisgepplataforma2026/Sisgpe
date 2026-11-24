@@ -3476,6 +3476,28 @@ function nvBenefRenumerar(){
   if(btn) btn.disabled = nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES;
 }
 
+/* A escola do titular (onde ele trabalha), como a tela a conhece agora. */
+function nvBenefEscolaTitular(){
+  var e = g('certNvEscola');
+  return { nome: String((e && e.value) || '').trim(),
+           cnpj: String((g('certNvCnpjEscola') || {}).value || '').trim(),
+           email: String((e && e.getAttribute('data-escola-email')) || '').trim() };
+}
+/* Preenche a instituição do card com a escola do titular — só se a pessoa ainda não mexeu nela. */
+function nvBenefInstAuto(c){
+  var inp = c.querySelector('.js-inst'), o = c.querySelector('.js-instOrigem');
+  if(inp.getAttribute('data-manual') === '1') return;
+  var t = nvBenefEscolaTitular();
+  if(!t.nome){
+    if(inp.getAttribute('data-auto') === '1'){ inp.value = ''; inp.removeAttribute('data-auto'); }
+    if(o) o.textContent = '';
+    return;
+  }
+  inp.value = t.nome; inp.setAttribute('data-auto','1');
+  if(o) o.textContent = 'da escola do titular \u2014 confira (pode trocar)';
+}
+function nvBenefInstSincronizar(){ nvBenefCards().forEach(nvBenefInstAuto); }
+
 function nvBenefAdicionar(dados){
   var lista = g('certNvBenefLista');
   if(!lista) return null;
@@ -3508,7 +3530,8 @@ function nvBenefAdicionar(dados){
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do beneficiário</label>'
    +     '<input class="cert-nv-in js-nome"></div>'
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Instituição de ensino</label>'
-   +     '<input class="cert-nv-in js-inst"></div>'
+   +     '<input class="cert-nv-in js-inst">'
+   +     '<div class="js-instOrigem" style="font-size:11px;color:#64748b;margin-top:3px;"></div></div>'
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Modalidade</label>'
    +     '<select class="cert-nv-in js-modalidade">'
    +       '<option value="">—</option>'
@@ -3556,6 +3579,15 @@ function nvBenefAdicionar(dados){
   if(dados.curso)       c.querySelector('.js-curso').value = dados.curso;
   if(dados.percentual !== undefined && dados.percentual !== '')
     c.querySelector('.js-percentual').value = dados.percentual;
+
+  /* A instituição do dependente nasce com a ESCOLA DO TITULAR (24/11/2026) — com a origem à vista, editável,
+     e sem sobrescrever o que a pessoa digitar ou o que veio da memória. */
+  c.querySelector('.js-inst').addEventListener('input', function(){
+    this.setAttribute('data-manual','1'); this.removeAttribute('data-auto');
+    c.querySelector('.js-instOrigem').textContent = '';
+  });
+  if(dados.instituicao) c.querySelector('.js-inst').setAttribute('data-manual','1');
+  nvBenefInstAuto(c);
 
   lista.appendChild(c);
   nvBenefRenumerar();
@@ -3670,6 +3702,8 @@ function nvBenefPayload(){
       ordemFilho: q.ordem,
       beneficiario: c.querySelector('.js-nome').value,
       instituicao: c.querySelector('.js-inst').value,
+      cnpjInstituicao: c.querySelector('.js-inst').getAttribute('data-auto') === '1' ? nvBenefEscolaTitular().cnpj : '',
+      emailInstituicao: c.querySelector('.js-inst').getAttribute('data-auto') === '1' ? nvBenefEscolaTitular().email : '',
       modalidade: c.querySelector('.js-modalidade').value,
       curso: c.querySelector('.js-curso').value,
       percentual: c.querySelector('.js-percentual').value
@@ -4328,6 +4362,7 @@ function nvAplicarEscola(x, origem){
  * etiqueta ao lado do campo diz de onde veio. Campo preenchido em silêncio
  * é o que vira erro que ninguém percebe (REGRA Nº 0.6). */
 function nvMesmaEscolaAtualizar(){
+  nvBenefInstSincronizar();   /* cartões de dependentes seguem a escola do titular enquanto ninguém mexeu neles */
   var btn = g('certNvMesmaEscola');
   if(!btn) return;
   var nome = String((g('certNvEscola')||{}).value||'').trim();

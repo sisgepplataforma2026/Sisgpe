@@ -873,6 +873,16 @@ function voucherCriarSolicitacoesEmLote(pedido, tokenSessao) {
       if (b[k] !== "" && b[k] !== null && b[k] !== undefined) dados[k] = b[k];
     });
 
+    /* A instituição do card é OUTRA que a do cabeçalho: o CNPJ e o e-mail do cabeçalho não são dela —
+     * herdá-los gravaria o CNPJ de uma escola sob o nome de outra. O card traz os seus, ou fica sem e a
+     * busca por nome do envio resolve. */
+    var instCard = String(b.instituicao || "").trim().toUpperCase();
+    var instComum = String(comuns.instituicao || "").trim().toUpperCase();
+    if (instCard && instComum && instCard !== instComum) {
+      if (!String(b.cnpjInstituicao || "").trim()) delete dados.cnpjInstituicao;
+      if (!String(b.emailInstituicao || "").trim()) { delete dados.emailInstituicao; delete dados.origemEmailInstituicao; }
+    }
+
     /* O período é do pedido, um só para todos — com a exceção de o card
      * trazer o dele, que é o caso raro previsto no desenho. */
     if (!dados.periodo) dados.periodo = comuns.periodo;
