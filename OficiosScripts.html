@@ -3597,12 +3597,13 @@ window.mostrarAbaOficio = function(aba) {
       var url=tr?(tr.dataset.url||""):"", cells=tr?tr.querySelectorAll("td"):[];
       var tipo=cells[2]?cells[2].textContent.trim():"", escola=cells[3]?cells[3].textContent.trim():"";
 
-      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true,novos:[]};
+      Historico._reenvioCtx={numero:numero,url:url,tipo:tipo,escola:escola,anexosOk:true,novos:[],digitados:[]};
       var g=function(id){return document.getElementById(id);};
       if(g("histReenvNumero")) g("histReenvNumero").textContent=numero;
       if(g("histReenvEscola")) g("histReenvEscola").textContent=escola||"—";
       if(g("histReenvTipo"))   g("histReenvTipo").textContent=tipo||"—";
       if(g("histReenvExtra"))  g("histReenvExtra").value="";
+      Historico._erroExtra(""); if(g("histReenvSemEndereco")) g("histReenvSemEndereco").style.display="none";
       if(g("histReenvArquivo")) g("histReenvArquivo").value="";
       if(g("histReenvDestinos")) g("histReenvDestinos").innerHTML='<span style="color:#94a3b8;">carregando…</span>';
       if(g("histReenvAnexos"))   g("histReenvAnexos").innerHTML='<span style="color:#94a3b8;">conferindo…</span>';
@@ -3782,12 +3783,15 @@ window.mostrarAbaOficio = function(aba) {
                 ? '<span style="color:#0f8a5f;font-weight:700;">✅ confirmou '+d.confirmacoes+' ofício(s)</span>'
                 : '<span style="color:#94a3b8;">— sem histórico</span>');
           return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 4px;cursor:pointer;">'
-            +'<input type="checkbox" class="hist-reenv-dest" data-email="'+escapeHtml(d.email)+'"'+marca+' style="margin-top:3px;">'
+            +'<input type="checkbox" class="hist-reenv-dest" data-email="'+escapeHtml(d.email)+'" data-falhas="'+(d.falhas||0)+'"'+marca+' onchange="Historico.destMudou()" style="margin-top:3px;">'
             +'<span><strong>'+escapeHtml(d.email)+'</strong><br>'
             +'<span style="color:#64748b;font-size:11px;">'+escapeHtml(d.origem||"")+'</span><br>'
             +hist+'</span></label>';
         }).join("");
       }
+
+      /* Endereços digitados pela pessoa voltam ao refazer a prévia (25/11/2026). */
+      Historico._destinosPosDesenho();
 
       /* ── motivo e quem (04/11/2026) — só na primeira prévia, para não
          desfazer o que a pessoa marcou quando a prévia é refeita ── */
@@ -3871,12 +3875,103 @@ window.mostrarAbaOficio = function(aba) {
       document.querySelectorAll(".hist-reenv-dest").forEach(function(cb){
         if(cb.checked) escolhidos.push(cb.dataset.email);
       });
-      var extra=document.getElementById("histReenvExtra");
-      String((extra&&extra.value)||"").split(/[;,]/).forEach(function(e){
-        var v=String(e||"").trim();
-        if(v && escolhidos.indexOf(v)===-1) escolhidos.push(v);
-      });
       return escolhidos;
+    },
+
+    /* ── INCLUIR E-MAIL NA LISTA (25/11/2026, desenho aprovado) ──
+       Antes o endereço digitado só entrava no envio ao clicar em Reenviar:
+       não aparecia na lista nem era conferido. Agora "+ Incluir" valida o
+       formato, recusa repetido, e o endereço entra na lista já marcado, com a
+       etiqueta NOVO e como "digitado agora". O que sai é o que a lista mostra. */
+    _emailValido: function(v){ return /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(v); },
+    _erroExtra: function(msg){
+      var e=document.getElementById("histReenvExtraErro"); if(!e) return;
+      e.textContent=msg||""; e.style.display=msg?"block":"none";
+    },
+    _itemDigitado: function(email){
+      var el=document.createElement("label");
+      el.className="hist-reenv-novo";
+      el.setAttribute("data-novo",email);
+      el.style.cssText="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;cursor:pointer;background:#ecfdf5;border-radius:8px;margin-bottom:2px;";
+      el.innerHTML='<input type="checkbox" class="hist-reenv-dest" data-email="'+escapeHtml(email)+'" data-falhas="0" data-novo="1" checked onchange="Historico.destMudou()" style="margin-top:3px;">'
+        +'<span><strong>'+escapeHtml(email)+'</strong>'
+        +'<span style="background:#ede9fe;color:#5b21b6;border-radius:999px;font-size:10.5px;font-weight:800;padding:1px 8px;margin-left:6px;">NOVO</span><br>'
+        +'<span style="color:#0f8a5f;font-size:11px;font-weight:700;">\u271a digitado agora por você</span> &nbsp;'
+        +'<a href="#" onclick="Historico.removerDigitado(\''+escapeHtml(email).replace(/'/g,"\\'")+'\');return false;" style="color:#dc2626;font-size:11px;font-weight:700;">remover</a></span>';
+      return el;
+    },
+    _jaNaLista: function(email){
+      var k=String(email).toLowerCase(), achou=null;
+      document.querySelectorAll(".hist-reenv-dest").forEach(function(cb){
+        if(String(cb.dataset.email||"").toLowerCase()===k) achou=cb;
+      });
+      return achou;
+    },
+    /** Lê o campo e inclui cada endereço. Devolve true se não sobrou nada inválido. */
+    incluirEmail: function(){
+      var ctx=Historico._reenvioCtx; if(!ctx) return true;
+      var campo=document.getElementById("histReenvExtra"), alvo=document.getElementById("histReenvDestinos");
+      if(!campo||!alvo) return true;
+      ctx.digitados=ctx.digitados||[];
+      var texto=String(campo.value||"").trim();
+      if(!texto){ Historico._erroExtra("Digite o e-mail que deve receber o ofício."); return false; }
+      var invalidos=[], repetidos=[], novos=0;
+      texto.split(/[;,\s]+/).forEach(function(bruto){
+        var v=String(bruto||"").trim(); if(!v) return;
+        if(!Historico._emailValido(v)){ invalidos.push(v); return; }
+        var ja=Historico._jaNaLista(v);
+        if(ja){ ja.checked=true; repetidos.push(v); return; }
+        ctx.digitados.push(v);
+        alvo.insertBefore(Historico._itemDigitado(v), alvo.firstChild);
+        novos++;
+      });
+      campo.value=invalidos.join(", ");
+      var msgs=[];
+      if(invalidos.length) msgs.push("“"+invalidos.join("”, “")+"” não "+(invalidos.length>1?"são e-mails válidos":"é um e-mail válido")+" — confira antes de incluir.");
+      if(repetidos.length) msgs.push(repetidos.join(", ")+" já está na lista — foi marcado.");
+      Historico._erroExtra(msgs.join(" "));
+      Historico.destMudou();
+      return invalidos.length===0;
+    },
+    removerDigitado: function(email){
+      var ctx=Historico._reenvioCtx; if(!ctx) return;
+      var k=String(email).toLowerCase();
+      ctx.digitados=(ctx.digitados||[]).filter(function(e){return e.toLowerCase()!==k;});
+      document.querySelectorAll(".hist-reenv-novo").forEach(function(el){
+        if(String(el.getAttribute("data-novo")||"").toLowerCase()===k) el.parentNode.removeChild(el);
+      });
+      Historico.destMudou();
+    },
+    _destinosPosDesenho: function(){
+      var ctx=Historico._reenvioCtx, alvo=document.getElementById("histReenvDestinos");
+      if(ctx && alvo){
+        (ctx.digitados||[]).slice().reverse().forEach(function(e){
+          if(!Historico._jaNaLista(e)) alvo.insertBefore(Historico._itemDigitado(e), alvo.firstChild);
+        });
+      }
+      Historico.destMudou();
+    },
+    /** Aviso âmbar + botão apagado quando nenhum endereço está marcado. */
+    destMudou: function(){
+      var box=document.getElementById("histReenvSemEndereco"), campo=document.getElementById("histReenvExtra"),
+          ok=document.getElementById("histReenvOk");
+      var todos=document.querySelectorAll(".hist-reenv-dest"), marcados=0, comFalha=0;
+      todos.forEach(function(cb){ if(cb.checked) marcados++; if(Number(cb.dataset.falhas||0)>0) comFalha++; });
+      var semMarca=todos.length>0 && marcados===0;
+      if(box){
+        if(semMarca){
+          box.style.display="block";
+          box.innerHTML=(comFalha===todos.length
+            ? "<b>⚠ Todos os endereços desta escola já falharam.</b>"
+            : "<b>⚠ Nenhum endereço marcado.</b>")
+            +"Inclua um endereço que receba (campo abaixo) ou marque um da lista só se tiver certeza.";
+        } else { box.style.display="none"; box.innerHTML=""; }
+      }
+      if(campo){
+        campo.style.borderColor=semMarca?"#d97706":"#cbd5e1";
+        campo.style.boxShadow=semMarca?"0 0 0 3px rgba(217,119,6,.18)":"";
+      }
+      if(ok) ok.style.opacity=semMarca?".45":"";
     },
 
     reenvioFechar: function() {
@@ -4382,6 +4477,9 @@ window.mostrarAbaOficio = function(aba) {
       var ctx=Historico._reenvioCtx; if(!ctx) return;
       var g=function(id){return document.getElementById(id);};
 
+      /* O que ficou digitado e não foi incluído entra pela mesma conferência do botão Incluir. */
+      var campoExtra=g("histReenvExtra");
+      if(campoExtra && String(campoExtra.value||"").trim() && !Historico.incluirEmail()) return;
       var escolhidos=Historico._reenvioEscolhidos();
       if(!escolhidos.length){ toast("Marque ao menos um endereço.","err"); return; }
       var motivo=Historico._motivoAtual(), obs=g("histReenvObs")?g("histReenvObs").value.trim():"";
