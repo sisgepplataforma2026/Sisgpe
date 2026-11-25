@@ -47,7 +47,7 @@ function incluir() { el("histReenvIncluirBtn").click(); }
   b.ok(/falha\(s\) de entrega/.test(t.texto("#histReenvDestinos")) && /sem histórico/.test(t.texto("#histReenvDestinos")), "cada um com a falha ou 'sem histórico' à vista");
   b.igual(marcadosEmails().length, 0, "nenhum nasce marcado");
   b.ok(el("histReenvAvisoTodos").style.display === "block" && /Todos os endereços desta escola já falharam/.test(t.texto("#histReenvAvisoTodos")), "aviso amarelo");
-  b.ok(el("histReenvOk").disabled === true, "Reenviar desativado sem destino");
+  b.ok(el("histReenvOk").disabled === true && el("histReenvOk").style.opacity === "0.45", "Reenviar desativado sem destino — e acinzentado, como no desenho");
   b.ok(!!el("histReenvIncluirBtn") && /\+ Incluir/.test(el("histReenvIncluirBtn").textContent), "botão '+ Incluir'");
   b.ok(/Inclua um endereço que receba, ou desmarque a falha só se tiver certeza\./.test(t.texto("#histReenvAvisoTodos")), "o texto do aviso é o do desenho, palavra por palavra");
   b.ok(/digite o e-mail \(vários: separe por vírgula\)/.test(el("histReenvExtra").placeholder), "placeholder do desenho");
@@ -68,7 +68,7 @@ function incluir() { el("histReenvIncluirBtn").click(); }
   b.ok(/NOVO/.test(t.texto("#histReenvNovos")) && /digitado agora por você/.test(t.texto("#histReenvNovos")) && /remover/.test(t.texto("#histReenvNovos")), "com NOVO, 'digitado agora por você' e 'remover'");
   b.igual(el("histReenvExtra").value, "", "o campo esvaziou");
   b.ok(el("histReenvAvisoTodos").style.display === "none", "o aviso sumiu");
-  b.ok(el("histReenvOk").disabled === false, "Reenviar ativo");
+  b.ok(el("histReenvOk").disabled === false && el("histReenvOk").style.opacity === "", "Reenviar ativo, sem o cinza");
 
   b.passo("4. Repetido não duplica (e marca o que já estava); vários separados por vírgula");
   digitar("dp@multivix.edu.br"); incluir(); await t.assentar(30);

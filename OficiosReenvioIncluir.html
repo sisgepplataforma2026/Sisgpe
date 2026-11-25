@@ -92,11 +92,18 @@
     return String(e.value || "").split(/[;,]/).some(function (x) { return RX.test(String(x).trim()); });
   }
 
+  /* O sistema não tem estilo de botão desabilitado: sem isto o Reenviar desativado ficaria igual ao ativo (no desenho ele é cinza). */
+  function estiloOk(desativado) {
+    var ok = g("histReenvOk"); if (!ok) return;
+    ok.disabled = desativado;
+    ok.style.opacity = desativado ? ".45" : "";
+    ok.style.cursor = desativado ? "not-allowed" : "";
+  }
+
   /* O Reenviar só fica ativo com ao menos um destino; o aviso some quando há destino marcado. */
   function reavaliar() {
     var n = marcados(), tem = n > 0 || textoValido();
-    var ok = g("histReenvOk");
-    if (ok) ok.disabled = !tem;
+    estiloOk(!tem);
     var av = g("histReenvAvisoTodos");
     var ligado = semMarcadoInicial && !tem;
     if (av) av.style.display = ligado ? "block" : "none";
@@ -156,7 +163,7 @@
       mostrarMsg("", false);
       semMarcadoInicial = false;
       var av = g("histReenvAvisoTodos"); if (av) av.style.display = "none";
-      var ok = g("histReenvOk"); if (ok) ok.disabled = true;   // só ativa quando a lista carregar com destino
+      estiloOk(true);   // só ativa quando a lista carregar com destino
     }
     return origReenviar.apply(this, arguments);
   };
