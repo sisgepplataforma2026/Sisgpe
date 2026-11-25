@@ -347,43 +347,6 @@ function processarFilaEnvioOficios() {
   });
 
   var totalCols    = sh.getLastColumn();
-
-  /* ATALHO: SÓ LÊ A FILA INTEIRA SE HÁ O QUE PROCESSAR — 24/11/2026.
-   *
-   * Medido na produção em 23/11: a fila tinha 486 linhas e NUNCA é limpa (os
-   * ofícios enviados ficam). Esta rotina roda de 5 em 5 minutos (288 vezes
-   * por dia) e levava ~8 s. Cada rodada lia TODAS as linhas e TODAS as colunas
-   * — inclusive HTML_BODY, o e-mail inteiro de cada ofício — para só depois
-   * descartar o que não é PENDENTE nem ERRO (o `continue` mais abaixo). Na
-   * maior parte do dia não há nenhum, e a leitura foi à toa.
-   *
-   * Aqui lê-se só a coluna STATUS. Se nenhuma linha é PENDENTE ou ERRO, o
-   * laço abaixo não faria nada além de contar zero e atualizar o badge — então
-   * devolve o MESMO resultado e faz a MESMA atualização, sem ler o resto. Se
-   * há trabalho, segue o código de sempre, byte a byte.
-   *
-   * A condição é a mesma do laço (status PENDENTE ou ERRO, comparado em caixa
-   * alta e sem espaços). Mudar uma sem a outra faz o atalho esconder trabalho:
-   * por isso o t-teste cobre as duas pontas. */
-  var statusDaFila = sh.getRange(2, colStatus, sh.getLastRow() - 1, 1).getValues();
-  var haTrabalho   = statusDaFila.some(function (l) {
-    var st = String(l[0] || "").trim().toUpperCase();
-    return st === "PENDENTE" || st === "ERRO";
-  });
-  if (!haTrabalho) {
-    SpreadsheetApp.flush();
-    _atualizarBadgeMonitoramento_(0);
-    return {
-      ok: true,
-      mensagem: "Processamento concluído.",
-      processados: 0,
-      enviados: 0,
-      erros: 0,
-      condenados: 0,
-      cotaAcabou: false
-    };
-  }
-
   var dados        = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var usuarioEnvio = "secretaria@sindeducacao.com";
   var processados  = 0;

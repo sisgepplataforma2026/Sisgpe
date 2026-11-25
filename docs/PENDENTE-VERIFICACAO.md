@@ -7068,3 +7068,6 @@ Lápis na linha da lista de Vouchers (o "Ver / Ações" virou o olho). Edita tod
 2. Num voucher EMITIDO, mudar o curso com "Refazer o certificado" marcado: o PDF novo tem o mesmo protocolo e código e os dados corrigidos (PDF de verdade, não coberto pelo emulador).
 3. Escola digitada fora do cadastro grava com aviso — a busca nas 679 escolas NÃO está na janela de edição (campo de texto).
 4. Aparência da janela (largura, grade dos campos).
+
+### Fila de ofícios — atalho REVERTIDO (25/11/2026)
+O atalho de 24/11 (ler só a coluna STATUS) foi revertido: `FilaOficios.gs` voltou byte a byte ao de antes dele (REGRA Nº -3 do CLAUDE.md — função viva não se altera). A reversão só vale em produção depois do próximo deploy. Efeito esperado: a rotina de 5 em 5 minutos volta a ler a fila inteira (~8 s por execução, como antes de 24/11). Quando ela for ao ar, confirmar que os ofícios seguem saindo.
