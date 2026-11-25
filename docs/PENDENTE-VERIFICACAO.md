@@ -7068,3 +7068,7 @@ Lápis na linha da lista de Vouchers (o "Ver / Ações" virou o olho). Edita tod
 2. Num voucher EMITIDO, mudar o curso com "Refazer o certificado" marcado: o PDF novo tem o mesmo protocolo e código e os dados corrigidos (PDF de verdade, não coberto pelo emulador).
 3. Escola digitada fora do cadastro grava com aviso — a busca nas 679 escolas NÃO está na janela de edição (campo de texto).
 4. Aparência da janela (largura, grade dos campos).
+
+## 🔒 Segurança P0, família 1 — PUBLICADO EM PRODUÇÃO em 25/11/2026 (commit 9ccbd91), NÃO TESTADO no ar
+
+10 funções legadas de prestadores em `GuiasPagamento.gs` agora exigem sessão e módulo financeiro (`cadastrarNovoPrestador`, `salvarPrestador`, `excluirPrestador`, `salvarEmailPrestadorRapido`, `salvarEmailETelefonePrestadorRapido`, `limparCachePrestadoresFixos`, `importarPrestadoresDoHistorico`, `listarTodosPrestadores`, `listarPrestadoresSemEmail`, `buscarPrestadorGuiaPagamento`). Nenhuma tela as chama; provado só no emulador (t282). Falta, no ar: (1) abrir Financeiro › Prestadores e conferir que a lista, o cadastro, o e-mail rápido e a exclusão seguem funcionando (a tela usa as variantes `*Desp`, não as alteradas); (2) o envio de lembrete e de guia continua saindo. Teto do t6 de exposição: 189 (decisão de 25/11, 4 diagnósticos de editor).
