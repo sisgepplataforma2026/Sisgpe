@@ -1111,8 +1111,9 @@ function enviarGuiaPorEmailSISGEP(dados) {
 
 /* ================= BUSCA DE PRESTADOR ================= */
 
-function buscarPrestadorGuiaPagamento(termo) {
+function buscarPrestadorGuiaPagamento(termo, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     termo = String(termo || "").trim();
     if (!termo) return { ok: true, lista: [] };
 
@@ -1698,8 +1699,9 @@ function listarPrestadoresFixos() {
   }
 }
 
-function limparCachePrestadoresFixos() {
+function limparCachePrestadoresFixos(tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     CacheService.getScriptCache().remove("sisgep_prestadores_fixos");
     return { ok: true, mensagem: "Cache de prestadores fixos limpo." };
   } catch (e) {
@@ -1709,8 +1711,9 @@ function limparCachePrestadoresFixos() {
 
 /* ================= CADASTRAR NOVO PRESTADOR ================= */
 
-function cadastrarNovoPrestador(payload) {
+function cadastrarNovoPrestador(payload, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     payload = payload || {};
 
     const nome               = String(payload.nome               || "").trim();
@@ -1935,8 +1938,9 @@ function garantirAbaPrestadores_() {
   return aba;
 }
 
-function listarTodosPrestadores(filtros) {
+function listarTodosPrestadores(filtros, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     filtros = filtros || {};
     var aba = garantirAbaPrestadores_();
     var lastRow = aba.getLastRow();
@@ -1995,8 +1999,9 @@ function listarTodosPrestadores(filtros) {
     return { ok: false, mensagem: e.message };
   }
 }
-function salvarPrestador(payload) {
+function salvarPrestador(payload, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     payload = payload || {};
     var nome      = String(payload.nome      || "").trim();
     var documento = String(payload.documento || "").trim();
@@ -2073,8 +2078,9 @@ function salvarPrestador(payload) {
     return { ok: false, mensagem: e.message };
   }
 }
-function excluirPrestador(rowIndex) {
+function excluirPrestador(rowIndex, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     var aba = garantirAbaPrestadores_();
     var headers = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0]
@@ -2089,8 +2095,9 @@ function excluirPrestador(rowIndex) {
   }
 }
 
-function importarPrestadoresDoHistorico() {
+function importarPrestadoresDoHistorico(tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     var sh = garantirAbaGuiasPagamento_();
     var lastRow = sh.getLastRow();
     if (lastRow < 2) return { ok: true, importados: 0, mensagem: "Nenhum registro no histórico." };
@@ -3091,8 +3098,9 @@ function obterResumoLembretes() {
    PRESTADORES SEM EMAIL
    ═══════════════════════════════════════════════════════════════ */
 
-function listarPrestadoresSemEmail() {
+function listarPrestadoresSemEmail(tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     var aba     = garantirAbaPrestadores_();
     var lastRow = aba.getLastRow();
     if (lastRow < 2) return { ok: true, lista: [], total: 0 };
@@ -3146,8 +3154,9 @@ function listarPrestadoresSemEmail() {
   }
 }
 
-function salvarEmailPrestadorRapido(rowIndex, email) {
+function salvarEmailPrestadorRapido(rowIndex, email, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     if (!email || !emailValido(email)) return { ok: false, mensagem: "E-mail inválido." };
 
@@ -3236,8 +3245,9 @@ function obterStatusLeituraEmail(token) {
     };
   } catch(e) { return { lido: false }; }
 }
-function salvarEmailETelefonePrestadorRapido(rowIndex, email, telefone) {
+function salvarEmailETelefonePrestadorRapido(rowIndex, email, telefone, tokenSessao) {
   try {
+    exigirModulo_(tokenSessao, "financeiro", false);
     if (!rowIndex || rowIndex < 2) return { ok: false, mensagem: "Linha inválida." };
     if (!email || !emailValido(email)) return { ok: false, mensagem: "E-mail inválido." };
 
