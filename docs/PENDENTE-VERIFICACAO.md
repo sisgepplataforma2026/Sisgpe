@@ -7013,3 +7013,58 @@ O banner (238 KB de JPEG, 318 KB em base64) saiu de CompassoCanhotosArte.html pa
 A folha busca no Drive, pelo NOME, o arquivo **"SISGEP - Banner dos canhotos.jpg"** (CompassoCanhotosDados.gs, compassoCanhotos_arte). Sem o arquivo, a folha sai SEM
 banner e a tela avisa. **Antes de publicar em produção:** o arquivo precisa estar no Drive da conta que roda o SISGEP. Depois de publicado: gerar uma prévia e uma
 folha IMPRESSA de canhotos (Eventos › Festa › Canhotos) e conferir o banner igual ao de antes. Testado só no emulador (t205: byte a byte, sem arquivo, erro do Drive).
+
+
+### Lentidão e tamanho do projeto — 24/11/2026 (ABERTO, nada disto está no ar)
+
+**Entregue e NÃO testado no sistema no ar.** Tudo abaixo foi provado só no
+emulador e por árvore sintática; falta colar na homologação e medir.
+
+| # | O que | O que falta confirmar |
+|---|---|---|
+| 1 | `Voucher.gs`: `setupVoucherModuleFase1` não refaz mais ~160 `autoResizeColumn` a cada listagem/emissão (marca no cache com assinatura das colunas) | Colar em HML e ver `listarSolicitacoesCertBolsa` e `gerarDocumentoCertBolsaCompleto` caírem em Execuções |
+| 2 | `DiagnosticoLatencia.gs`: `pingSISGEP`, `diagnosticoLatenciaSISGEP` (rodada 1 já feita) e `diagnosticoCaminhosSISGEP` (**rodada 2 pendente**) | Rodar a rodada 2 na produção e mandar o Registro: Firestore, cota de e-mail, PDF, QR, Memoria_Organizacional |
+| 3 | `scripts/enxugar-para-deploy.js`: pacote sem comentário e sem indentação, 7,37 → 5,75 MB (−21,9%), todos os arquivos com árvore sintática idêntica à original | Colar/`clasp push` do pacote em HML e confirmar que o editor **salva**; depois emitir um ofício e um voucher de teste |
+| 4 | Início (`getResumoInicioSISGEP`) recalcula 5 módulos inteiros a cada login, sem cache | **Desenho ainda não aprovado** (cache + cartões em chamadas separadas) |
+
+**Medido na produção em 23/11:** serviços do Google rápidos (abrir a planilha 254 ms,
+ler usuários 224 ms), custo de iniciar o projeto ~1–2 s, planilha com 125 abas e
+5,1 milhões de células (51% do limite), `Memoria_Organizacional` com 38 mil
+linhas, 10 gatilhos (fila de ofícios a cada 5 min, Central de E-mail a cada 15).
+
+**Sobre o pacote enxuto:** os testes que leem o TEXTO do código (t53, t74, t76,
+t81, t82, t85, t89, t90, t101, t104, t127, t134) cobram comentário e
+indentação e **só valem sobre o repositório completo**. Rodar a suíte no
+pacote os reprova de propósito. Número de linha em erro do Apps Script deixa de
+bater com o repositório (nome de arquivo e de função batem).
+
+
+### Produção publicada em 24/11/2026 — versão 774 (anterior: 773)
+
+**Publicado e NÃO testado no ar por quem opera.** O Apps Script aceitou salvar o
+projeto enxuto (7,3 MB) e a implantação foi confirmada na versão 774. Entrou:
+pacote enxuto, setup do voucher com cache, e-mail do voucher sem link do Drive e
+sem código no corpo (semestre/ano conforme o regime), atalho da fila de ofícios,
+rótulo semestre/ano no ofício à escola, `DiagnosticoLatencia.gs`.
+
+**A conferir na produção:** portal abre e a Início carrega; emitir e ENVIAR um
+voucher para si mesmo (PDF anexado, texto, remetente da Secretaria); duração de
+`processarFilaEnvioOficios` em Execuções (esperado cair de ~8 s); o banner do
+canhoto vem do Drive (`SISGEP - Banner dos canhotos.jpg`). **Rollback:** versão 773.
+
+### Voucher — escola do dependente e e-mail único (24/11/2026) — SÓ NA BRANCH, não está em HML nem em produção
+
+Testado no emulador e em jsdom (t280–t284). **Falta:** HML, abrir a tela de verdade.
+
+| # | O quê | Falta |
+|---|---|---|
+| 1 | Dependente puxa a escola do titular (servidor); opção "Escola diferente da do titular" (motivo; aviso se a raiz do CNPJ difere); sem escola do titular → digita com aviso; histórico `ESCOLA_DEPENDENTE`; lista de leitura dos já emitidos | Ver na tela: o campo de troca é texto livre (nome e CNPJ), sem busca nas 679 escolas |
+| 2 | E-mail único do certificado (modal "incluir os outros certificados prontos" e lote); cópia à instituição opcional, e-mail à parte por instituição quando diferentes (LGPD) | Testar o envio real e o visual no Gmail |
+| 3 | E-mail único de aprovação: `aprovarSolicitacoesCertBolsaEmLote` + botão "Aprovar selecionadas" na Central (t285) | Ver a janela e o e-mail de verdade; a troca de escola agora é busca no cadastro (t284) |
+
+### Voucher — botão Editar (24/11/2026) · NÃO TESTADO NO AR
+Lápis na linha da lista de Vouchers (o "Ver / Ações" virou o olho). Edita todos os campos da Nova solicitação; protocolo e código não. Provado no emulador (t289, t290); falta ver no sistema no ar:
+1. Abrir ✎ numa solicitação, mudar e-mail ou curso, Salvar: a lista atualiza e o histórico do protocolo mostra "Dado corrigido: campo “antigo” → “novo”".
+2. Num voucher EMITIDO, mudar o curso com "Refazer o certificado" marcado: o PDF novo tem o mesmo protocolo e código e os dados corrigidos (PDF de verdade, não coberto pelo emulador).
+3. Escola digitada fora do cadastro grava com aviso — a busca nas 679 escolas NÃO está na janela de edição (campo de texto).
+4. Aparência da janela (largura, grade dos campos).

@@ -106,7 +106,7 @@ var VOUCHER_HIST_ROTULOS = {
   EMAIL_NA_FILA: "Entrou na fila de envio", EMAIL_SAIU: "Saiu da caixa", EMAIL_ERRO: "Erro no envio",
   ENVIO_EMAIL: "Enviado por e-mail", ENVIO_WHATSAPP_ABERTO: "WhatsApp aberto com a mensagem",
   DOCUMENTO_ENVIADO: "Documento enviado", SOLICITACAO_INDEFERIDA: "Indeferida",
-  SOLICITACAO_EXCLUIDA: "Excluída", EMAIL_ESCOLA_ENVIADO: "Ofício enviado à escola"
+  SOLICITACAO_EXCLUIDA: "Excluída", CAMPO_EDITADO: "Dado corrigido", EMAIL_ESCOLA_ENVIADO: "Ofício enviado à escola"
 };
 
 /** A linha do tempo de um voucher, para a ficha (Caixa de E-mails ou Voucher). */

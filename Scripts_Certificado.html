@@ -258,13 +258,24 @@
 #certEnvioOverlay.ativo { display: flex; }
 #certEnvioBox { width: min(640px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 30px 80px rgba(0,20,60,.28); overflow: hidden; max-height: 94vh; display: flex; flex-direction: column; font-family: 'Plus Jakarta Sans', sans-serif; }
 #certEnvioBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+#certLoteAprBox .cert-env-campo , #certEditBox .cert-env-campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 #certEnvioBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certLoteAprBox .cert-env-lbl , #certEditBox .cert-env-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
 #certEnvioBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
+#certLoteAprBox .cert-env-input , #certEditBox .cert-env-input { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 10px 12px; outline: none; color: #1e293b; transition: border-color .16s; }
 #certEnvioBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
+#certLoteAprBox .cert-env-input:focus , #certEditBox .cert-env-input:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 #certEnvioBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
+#certLoteAprBox .cert-env-input:disabled , #certEditBox .cert-env-input:disabled { background: #f8fafc; color: #94a3b8; }
 #certEnvioBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certLoteAprBox .cert-env-check , #certEditBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
+#certNovaBox .cert-env-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #334155; cursor: pointer; margin-bottom: 8px; }
 #certEnvioBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certLoteAprBox .cert-env-check input , #certEditBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
+#certNovaBox .cert-env-check input { accent-color: #1565C0; width: 15px; height: 15px; }
 #certEnvioBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+#certLoteAprBox .cert-env-dica , #certEditBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
+#certNovaBox .cert-env-dica { font-size: 11px; color: #64748b; line-height: 1.5; margin-top: 3px; }
 /* A origem do e-mail sugerido. "CADASTRO" pode estar velho e quem envia
    precisa saber que está usando um palpite, não algo conferido. */
 #certEnvioBox .cert-env-origem { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; }
@@ -277,15 +288,15 @@
 #certEnvioBox .cert-env-hist-linha { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
 #certEnvioBox .cert-env-hist-quando { color: #94a3b8; font-weight: 700; white-space: nowrap; font-size: 11px; }
 #certEnvioBox .cert-env-vazio { font-size: 12px; color: #94a3b8; font-style: italic; }
-#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
-#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
-#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
-#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
-#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
-#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
-#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
-#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+#certModalBox .cert-modal-head, #certEnvioBox .cert-modal-head, #certNovaBox .cert-modal-head, #certExcluirBox .cert-modal-head, #certLoteAprBox .cert-modal-head , #certEditBox .cert-modal-head { padding: 18px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+#certModalBox .cert-modal-head-l, #certEnvioBox .cert-modal-head-l, #certExcluirBox .cert-modal-head-l, #certLoteAprBox .cert-modal-head-l, #certEditBox .cert-modal-head-l, #certNovaBox .cert-modal-head-l { display: flex; align-items: center; gap: 12px; }
+#certModalBox .cert-modal-ico, #certEnvioBox .cert-modal-ico, #certExcluirBox .cert-modal-ico, #certLoteAprBox .cert-modal-ico, #certEditBox .cert-modal-ico, #certNovaBox .cert-modal-ico { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #0b3b75, #1565C0); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#certModalBox .cert-modal-title, #certEnvioBox .cert-modal-title, #certExcluirBox .cert-modal-title, #certLoteAprBox .cert-modal-title, #certEditBox .cert-modal-title, #certNovaBox .cert-modal-title { font-size: 15px; font-weight: 900; color: #0f172a; }
+#certModalBox .cert-modal-sub, #certEnvioBox .cert-modal-sub, #certExcluirBox .cert-modal-sub, #certLoteAprBox .cert-modal-sub, #certEditBox .cert-modal-sub, #certNovaBox .cert-modal-sub   { font-size: 11px; color: #64748b; margin-top: 2px; }
+#certModalBox .cert-modal-body, #certEnvioBox .cert-modal-body, #certExcluirBox .cert-modal-body, #certLoteAprBox .cert-modal-body, #certEditBox .cert-modal-body, #certNovaBox .cert-modal-body  { padding: 20px 22px; overflow-y: auto; flex: 1; }
+#certModalBox .cert-modal-foot, #certEnvioBox .cert-modal-foot, #certExcluirBox .cert-modal-foot, #certLoteAprBox .cert-modal-foot, #certEditBox .cert-modal-foot, #certNovaBox .cert-modal-foot  { padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+#certModalBox .cert-modal-close, #certEnvioBox .cert-modal-close, #certExcluirBox .cert-modal-close, #certLoteAprBox .cert-modal-close, #certEditBox .cert-modal-close, #certNovaBox .cert-modal-close { width: 36px; height: 36px; border-radius: 999px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: 17px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all .14s; }
+#certModalBox .cert-modal-close:hover, #certEnvioBox .cert-modal-close:hover, #certExcluirBox .cert-modal-close:hover, #certLoteAprBox .cert-modal-close:hover, #certEditBox .cert-modal-close:hover, #certNovaBox .cert-modal-close:hover { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
 #certModalBox .cert-info-grid, #certEnvioBox .cert-info-grid, #certNovaBox .cert-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
 #certModalBox .cert-info-item, #certEnvioBox .cert-info-item, #certNovaBox .cert-info-item { display: flex; flex-direction: column; gap: 3px; }
 #certModalBox .cert-info-label, #certEnvioBox .cert-info-label, #certNovaBox .cert-info-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
@@ -498,6 +509,7 @@
       <div class="cert-barra-sel" id="certBarraSel">
         <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelAprovar">✔ Aprovar selecionadas</button>
         <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelEmitir">📄 Emitir selecionadas</button>
         <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelEnviar">📧 Enviar selecionadas</button>
         <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
@@ -880,6 +892,11 @@
         <input type="email" class="cert-env-input" id="certEnvPara" placeholder="e-mail do associado">
       </div>
 
+      <div id="certEnvIrmaos" class="cert-lote-aviso" style="display:none;margin-top:10px;">
+        <strong>Mais certificados prontos deste associado.</strong> Saem <strong>todos juntos num e-mail só</strong> — desmarque o que quiser mandar à parte:
+        <div id="certEnvIrmaosLista" style="margin-top:6px;"></div>
+      </div>
+
       <label class="cert-env-check">
         <input type="checkbox" id="certEnvCopiaAtiva">
         Enviar cópia para a instituição de ensino
@@ -1041,6 +1058,59 @@
       <span class="cert-lote-peq" id="certLoteEnvCota" style="margin-right:auto;"></span>
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteEnvCancelar">Cancelar</button>
       <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteEnvConfirmar">📧 Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div id="certLoteAprOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certLoteAprBox" style="width:min(820px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">✔</div>
+        <div>
+          <div class="cert-modal-title">Aprovar solicitações</div>
+          <div class="cert-modal-sub" id="certLoteAprSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certLoteAprFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" style="overflow:auto;">
+      <div id="certLoteAprLista"></div>
+      <div class="cert-env-campo" style="margin-top:12px;">
+        <label class="cert-env-lbl" for="certLoteAprObs">Observação (opcional)</label>
+        <input type="text" class="cert-env-input" id="certLoteAprObs" placeholder="fica no histórico de cada solicitação">
+      </div>
+      <div class="cert-lote-aviso" id="certLoteAprResumo" style="margin-top:12px;display:none;"></div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLoteAprCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certLoteAprConfirmar">✔ Aprovar</button>
+    </div>
+  </div>
+</div>
+
+<div id="certEditOverlay" style="position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;padding:16px;z-index:10002;backdrop-filter:blur(3px);">
+  <div id="certEditBox" style="width:min(860px,100%);background:#fff;border-radius:18px;box-shadow:0 30px 80px rgba(0,20,60,.28);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;">
+    <div class="cert-modal-head">
+      <div class="cert-modal-head-l">
+        <div class="cert-modal-ico">✎</div>
+        <div>
+          <div class="cert-modal-title">Editar solicitação</div>
+          <div class="cert-modal-sub" id="certEditSub">—</div>
+        </div>
+      </div>
+      <button class="cert-modal-close" id="certEditFechar">✕</button>
+    </div>
+    <div class="cert-modal-body" style="overflow:auto;">
+      <div id="certEditCampos"><div class="cert-env-dica">Carregando…</div></div>
+      <div class="cert-lote-aviso alerta" id="certEditAviso" style="display:none;margin-top:12px;"></div>
+      <label class="cert-env-check" id="certEditRefazerBox" style="display:none;margin-top:8px;"><input type="checkbox" id="certEditRefazer" checked> Refazer o certificado depois de salvar (mesmo protocolo e mesmo código; nada é enviado)</label>
+      <div class="cert-env-dica" style="margin-top:8px;">Cada mudança fica no histórico: campo, valor antigo → novo, quem e quando. Protocolo e código não se editam.</div>
+      <div class="cert-lote-aviso alerta" id="certEditErro" style="display:none;margin-top:8px;"></div>
+    </div>
+    <div class="cert-modal-foot">
+      <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certEditCancelar">Cancelar</button>
+      <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certEditSalvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -1266,6 +1336,20 @@
         <div class="cert-nv-campo" id="certNvBoxNome" style="display:none;">
           <label class="cert-nv-lbl">Nome do beneficiário</label>
           <input class="cert-nv-in" id="certNvBeneficiario">
+        </div>
+        <div class="cert-nv-campo" id="certNvBoxEscolaDif" style="display:none;grid-column:1/-1;">
+          <label class="cert-env-check"><input type="checkbox" id="certNvEscolaDif">
+            Escola diferente da do titular <small>(ex.: titular numa faculdade e filho num colégio da mesma rede)</small></label>
+          <div id="certNvEscolaDifBox" style="display:none;margin-top:6px;">
+            <select class="cert-nv-in" id="certNvEscolaDifMotivo">
+              <option value="MESMA_REDE">Mesma rede</option><option value="OUTRO">Outro motivo</option></select>
+            <div style="position:relative;margin-top:4px;">
+              <input class="cert-nv-in" id="certNvEscolaDifNome" placeholder="buscar a escola do dependente no cadastro (nome, CNPJ ou cidade)" autocomplete="off">
+              <div class="cert-nv-lista" id="certNvEscolaDifLista"></div>
+            </div>
+            <input class="cert-nv-in" id="certNvEscolaDifCnpj" placeholder="CNPJ (vem do cadastro)" readonly style="margin-top:4px;">
+          </div>
+          <div class="cert-env-dica">Por padrão o dependente usa a escola do titular, vinda do cadastro.</div>
         </div>
         <div class="cert-nv-campo">
           <label class="cert-nv-lbl">Modalidade</label>
@@ -1640,6 +1724,7 @@ function atualizarBarraSelecao(){
     g('certBarraSelTxt').textContent = n === 1 ? '1 selecionada' : n + ' selecionadas';
   }
   if(g('certSelExcluir')) g('certSelExcluir').innerHTML = '🗑 Excluir' + (n ? ' ('+n+')' : '');
+  if(g('certSelAprovar')) g('certSelAprovar').innerHTML = '✔ Aprovar selecionadas' + (n ? ' ('+n+')' : '');
   if(g('certSelEmitir')) g('certSelEmitir').innerHTML = '📄 Emitir selecionadas' + (n ? ' ('+n+')' : '');
   if(g('certSelEnviar')) g('certSelEnviar').innerHTML = '📧 Enviar selecionadas' + (n ? ' ('+n+')' : '');
   /* O "marcar todos" reflete a página, não a base: marcar 8.000 registros com
@@ -1790,6 +1875,179 @@ function loteEmitirParaEnvio_(){
 
 function loteEnviarSelecionadas(){ loteEnviarConferir(selecionadosLista()); }
 
+/* APROVAR VÁRIAS (24/11/2026): a mesma aprovação de sempre, protocolo a
+   protocolo, mas quem tem mais de um dependente recebe UM e-mail só. A janela
+   mostra o desconto de cada um, editável — nada é aprovado sem conferência. */
+var _loteApr = null;
+var LOTE_APR_STATUS_OK = ['ANALISE','PENDENTE','AGUARDANDO_VALIDACAO_CADASTRAL'];
+
+function loteAprovarSelecionadas(){
+  var protos = selecionadosLista();
+  if(!protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
+  var porProt = {};
+  _lista.forEach(function(s){ porProt[s.protocolo] = s; });
+  var elegiveis = [], fora = [];
+  protos.forEach(function(p){
+    var s = porProt[p];
+    if(!s){ fora.push({ protocolo:p, motivo:'não está na lista carregada' }); return; }
+    var st = String(s.status||'').toUpperCase();
+    if(LOTE_APR_STATUS_OK.indexOf(st) === -1){ fora.push({ protocolo:p, nome:certBeneficiarioNome(s), motivo:'não está em análise (situação: '+(s.status||'—')+')' }); return; }
+    elegiveis.push(s);
+  });
+  _loteApr = { elegiveis: elegiveis };
+
+  var grupos = {}, ordem = [];
+  elegiveis.forEach(function(s){
+    var k = (String(s.cpf||'').replace(/\D/g,'') || String(s.nome||'').toUpperCase()) + '|' + String(s.email||'').toLowerCase();
+    if(!grupos[k]){ grupos[k] = []; ordem.push(k); }
+    grupos[k].push(s);
+  });
+  var html = '';
+  ordem.forEach(function(k){
+    var g0 = grupos[k][0];
+    html += '<div class="cert-lote-grupo" style="margin:0 0 12px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;">'
+         + '<div><strong>'+cert_escHtml(g0.nome||'')+'</strong> <span class="cert-lote-peq">'+cert_escHtml(g0.email||'sem e-mail')+'</span></div>'
+         + '<div class="cert-lote-peq" style="margin:2px 0 6px;">'
+         + (grupos[k].length > 1 ? '→ 1 e-mail com os '+grupos[k].length+' protocolos' : '→ 1 e-mail')+'</div>';
+    grupos[k].forEach(function(s){
+      html += '<div style="display:flex;gap:8px;align-items:center;margin:3px 0;">'
+           + '<span style="flex:1;"><strong>'+cert_escHtml(certBeneficiarioNome(s))+'</strong> — '+cert_escHtml(s.curso||'')+' <span class="cert-lote-peq">'+cert_escHtml(s.protocolo)+'</span></span>'
+           + '<label class="cert-lote-peq">desconto <input type="text" class="cert-env-input cert-lote-apr-pct" data-prot="'+cert_escHtml(s.protocolo)+'" value="'+cert_escHtml(String(s.percentual||'').replace('%','').trim())+'" inputmode="numeric" style="width:64px;display:inline-block;"> %</label>'
+           + '</div>';
+    });
+    html += '</div>';
+  });
+  fora.forEach(function(f){
+    html += '<div class="cert-lote-aviso alerta" style="margin:0 0 6px;">✕ '+cert_escHtml(f.nome||f.protocolo)+' <span class="cert-lote-peq">('+cert_escHtml(f.protocolo)+')</span> fica de fora: '+cert_escHtml(f.motivo)+'</div>';
+  });
+  if(!elegiveis.length) html = '<div class="cert-lote-aviso alerta">Nenhuma das selecionadas está em análise.</div>' + html;
+  g('certLoteAprLista').innerHTML = html;
+  g('certLoteAprSub').textContent = elegiveis.length + (elegiveis.length === 1 ? ' solicitação' : ' solicitações') + ' · ' + ordem.length + (ordem.length === 1 ? ' e-mail' : ' e-mails');
+  g('certLoteAprResumo').style.display = 'none';
+  g('certLoteAprObs').value = '';
+  g('certLoteAprConfirmar').disabled = !elegiveis.length;
+  g('certLoteAprConfirmar').textContent = '✔ Aprovar' + (ordem.length ? ' e enviar '+ordem.length+(ordem.length===1?' e-mail':' e-mails') : '');
+  loteAbrir_('certLoteAprOverlay');
+}
+
+function loteAprovarConfirmar(){
+  if(!_loteApr || !_loteApr.elegiveis.length) return;
+  var protos = _loteApr.elegiveis.map(function(s){ return s.protocolo; });
+  var pct = {};
+  var campos = document.querySelectorAll('#certLoteAprLista .cert-lote-apr-pct');
+  for(var i=0;i<campos.length;i++){
+    var v = String(campos[i].value||'').replace('%','').trim();
+    var n = Number(v);
+    if(v === '' || isNaN(n) || n <= 0 || n > 100){
+      campos[i].style.borderColor = '#dc2626'; campos[i].focus();
+      cert_msg('O desconto precisa ser um número entre 1 e 100.','warn'); return;
+    }
+    campos[i].style.borderColor = '';
+    pct[campos[i].getAttribute('data-prot')] = String(Math.round(n));
+  }
+  var btn = g('certLoteAprConfirmar');
+  setBtnLoad(btn, 'Aprovando...');
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r){ cert_msg('O servidor não respondeu nada ao aprovar.','erro'); return; }
+      var resumo = g('certLoteAprResumo');
+      var linhas = (r.resultados||[]).map(function(x){
+        return (x.ok ? '✓ ' : '✕ ')+cert_escHtml(x.protocolo)+(x.ok ? '' : ' — '+cert_escHtml(x.mensagem||'não aprovada'));
+      }).join('<br>');
+      resumo.innerHTML = '<strong>'+cert_escHtml(r.mensagem||'')+'</strong><br>'+linhas;
+      resumo.style.display = 'block';
+      if(r.ok){
+        selecionadosLista().forEach(function(p){ if(protos.indexOf(p) > -1) delete _selecionados[p]; });
+        atualizarBarraSelecao();
+        cert_carregarLista();
+        g('certLoteAprConfirmar').disabled = true;
+        cert_msg((r.aprovados === protos.length ? '✅ ' : '⚠ ')+r.mensagem, r.aprovados === protos.length ? 'ok' : 'warn');
+      } else cert_msg(r.mensagem || 'Nada foi aprovado.','erro');
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
+    .aprovarSolicitacoesCertBolsaEmLote(protos, String(g('certLoteAprObs').value||'').trim(), certToken(), pct);
+}
+
+/* EDITAR SOLICITAÇÃO (24/11/2026) — todos os campos da Nova solicitação. O servidor valida de novo e grava o histórico campo a campo. */
+var _certEdit = null;
+var CERT_EDIT_GRUPOS = [
+  ['Titular', [['nome','Nome'],['cpf','CPF'],['email','E-mail'],['telefone','Telefone'],
+    ['situacaoSindical','Situação sindical',[['ASSOCIADO','Associado'],['NAO_ASSOCIADO','Não associado'],['','— não informado —']]]]],
+  ['Escola onde o titular trabalha', [['escola','Escola (razão social)'],['cnpjEscola','CNPJ'],['cidadeEscola','Cidade'],['escolaFantasia','Nome fantasia'],['unidadeEscola','Unidade']]],
+  ['Beneficiário', [['tipoBeneficiario','Quem é',[['TITULAR','Titular'],['FILHO','Filho(a)'],['CONJUGE','Cônjuge'],['ENTEADO','Enteado(a)']]],
+    ['beneficiario','Nome do beneficiário'],['ordemFilho','Ordem do filho',[['','—'],['1','1º filho'],['2','2º filho'],['3','3º filho']]],
+    ['parentesco','Parentesco'],['dataNascimento','Data de nascimento'],['idadeBeneficiario','Idade'],['enteadoDeclaradoIR','Enteado declarado no IR']]],
+  ['Instituição de ensino', [['instituicao','Instituição'],['cnpjInstituicao','CNPJ da instituição'],['emailInstituicao','E-mail da instituição']]],
+  ['Curso e desconto', [['modalidade','Modalidade',[['','—'],['CRECHE','Creche'],['EDUCACAO_INFANTIL','Educação Infantil'],['ENSINO_FUNDAMENTAL','Ensino Fundamental'],
+      ['ENSINO_MEDIO','Ensino Médio'],['TECNICO','Técnico'],['GRADUACAO','Graduação'],['POS_GRADUACAO','Pós-Graduação']]],
+    ['area','Área'],['curso','Curso'],['regime','Regime',[['','—'],['ANUAL','Anual'],['SEMESTRAL','Semestral']]],['periodo','Período (ex.: 2027 ou 2027/1)'],['percentual','Percentual (%)']]]
+];
+function certEditDesenhar_(valores){
+  var html = '';
+  CERT_EDIT_GRUPOS.forEach(function(gr){
+    html += '<div class="cert-section-title" style="margin-top:12px;">' + cert_escHtml(gr[0]) + '</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">';
+    gr[1].forEach(function(f){
+      var v = valores[f[0]] == null ? '' : String(valores[f[0]]);
+      html += '<div class="cert-env-campo"><label class="cert-env-lbl" for="certEd_' + f[0] + '">' + cert_escHtml(f[1]) + '</label>';
+      if(f[2]){
+        html += '<select class="cert-env-input" id="certEd_' + f[0] + '" data-orig="' + cert_escHtml(v) + '">'
+          + f[2].map(function(o){ return '<option value="' + cert_escHtml(o[0]) + '"' + (String(o[0]) === v ? ' selected' : '') + '>' + cert_escHtml(o[1]) + '</option>'; }).join('')
+          + '</select>';
+      } else {
+        html += '<input type="text" class="cert-env-input" id="certEd_' + f[0] + '" data-orig="' + cert_escHtml(v) + '" value="' + cert_escHtml(v) + '">';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  g('certEditCampos').innerHTML = html;
+}
+function certEditAbrir(s){
+  _certEdit = { protocolo: s.protocolo, emitido: false };
+  g('certEditSub').textContent = (s.protocolo || '') + (s.beneficiario || s.nome ? ' · ' + (s.beneficiario || s.nome) : '');
+  g('certEditCampos').innerHTML = '<div class="cert-env-dica">Carregando…</div>';
+  g('certEditAviso').style.display = 'none'; g('certEditErro').style.display = 'none'; g('certEditRefazerBox').style.display = 'none';
+  g('certEditSalvar').disabled = true;
+  loteAbrir_('certEditOverlay');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){ g('certEditCampos').innerHTML = '<div class="cert-lote-aviso alerta">' + cert_escHtml((r && r.mensagem) || 'Erro ao abrir a edição.') + '</div>'; return; }
+      _certEdit.emitido = !!r.emitido;
+      certEditDesenhar_(r.valores || {});
+      if(r.emitido){
+        g('certEditAviso').innerHTML = '⚠ Este voucher já foi <strong>emitido</strong>' + (r.emitidoEm ? ' em ' + cert_escHtml(r.emitidoEm) : '')
+          + '. Mudar nome, escola, instituição, curso, período ou percentual muda o que está impresso no certificado — refaça-o antes de enviar.';
+        g('certEditAviso').style.display = 'block';
+        g('certEditRefazerBox').style.display = 'flex'; g('certEditRefazer').checked = true;
+      }
+      g('certEditSalvar').disabled = false;
+    })
+    .withFailureHandler(function(err){ g('certEditCampos').innerHTML = '<div class="cert-lote-aviso alerta">Erro: ' + cert_escHtml((err && err.message) || '') + '</div>'; })
+    .voucherCarregarParaEdicao(s.protocolo, certToken());
+}
+function certEditSalvar(){
+  if(!_certEdit) return;
+  var mudou = {}, n = 0;
+  CERT_EDIT_GRUPOS.forEach(function(gr){ gr[1].forEach(function(f){
+    var el = g('certEd_' + f[0]); if(!el) return;
+    if(String(el.value).trim() !== String(el.getAttribute('data-orig') || '').trim()){ mudou[f[0]] = el.value; n++; }
+  }); });
+  if(!n){ cert_msg('Nada foi alterado.', 'warn'); return; }
+  var btn = g('certEditSalvar'); setBtnLoad(btn, 'Salvando...');
+  g('certEditErro').style.display = 'none';
+  google.script.run
+    .withSuccessHandler(function(r){
+      cert_resetBtn(btn);
+      if(!r || !r.ok){ g('certEditErro').textContent = (r && r.mensagem) || 'Não salvou.'; g('certEditErro').style.display = 'block'; return; }
+      loteFechar_('certEditOverlay');
+      cert_msg('✅ ' + r.mensagem + ((r.avisos && r.avisos.length) ? ' ⚠ ' + r.avisos.join(' ') : ''), (r.certificadoDesatualizado || (r.avisos && r.avisos.length)) ? 'warn' : 'ok');
+      cert_carregarLista();
+    })
+    .withFailureHandler(function(err){ cert_resetBtn(btn); g('certEditErro').textContent = 'Erro: ' + ((err && err.message) || ''); g('certEditErro').style.display = 'block'; })
+    .voucherEditarSolicitacao(_certEdit.protocolo, mudou, { refazerCertificado: !!(_certEdit.emitido && g('certEditRefazer').checked) }, certToken());
+}
+
 function loteEnviarConferir(protos){
   if(!protos || !protos.length){ cert_msg('Nenhuma solicitação selecionada.','warn'); return; }
   _loteEnv = null;
@@ -1833,11 +2091,25 @@ function loteEnviarPintar_(){
       + '<td>' + (copia ? (l.emailInstituicao ? cert_escHtml(l.emailInstituicao)
             + '<div class="cert-lote-peq">' + (l.origemEmailInstituicao === 'CADASTRO' ? 'do cadastro — confira' : 'da solicitação') + '</div>'
           : '<span class="cert-lote-sit SEM_EMAIL">sem e-mail da instituição</span>') : '<span class="cert-lote-peq">—</span>') + '</td>'
-      + '<td><span class="cert-lote-sit ' + cert_escHtml(l.situacao) + '">' + cert_escHtml(l.motivo) + '</span></td></tr>';
+      + '<td><span class="cert-lote-sit ' + cert_escHtml(l.situacao) + '">' + cert_escHtml(l.motivo) + '</span>'
+      + loteEnviarNotaJunto_(l, linhas) + '</td></tr>';
   });
   html += '</table>';
   g('certLoteEnvLista').innerHTML = html;
   loteEnviarResumo_();
+}
+
+/* Irmãos do mesmo titular saem num e-mail só (mesmo titular + mesmo e-mail de destino). O aviso
+   diz isso na conferência — e, se o titular é o mesmo mas o e-mail difere, que vão separados. */
+function loteEnviarNotaJunto_(l, linhas){
+  if(!l.grupo) return '';
+  var juntos = linhas.filter(function(x){ return x !== l && x.grupo === l.grupo; });
+  if(juntos.length) return '<div class="cert-lote-peq">👨‍👩‍👧 sai junto com ' + juntos.map(function(x){ return cert_escHtml(x.protocolo); }).join(', ')
+    + ' — um e-mail só</div>';
+  var mesmoTit = linhas.filter(function(x){ return x !== l && x.titular === l.titular && x.grupo !== l.grupo; });
+  if(mesmoTit.length) return '<div class="cert-lote-peq" style="color:#d97706;">⚠ mesmo titular de ' + mesmoTit.map(function(x){ return cert_escHtml(x.protocolo); }).join(', ')
+    + ', mas com e-mail diferente — sai separado</div>';
+  return '';
 }
 
 function loteEnviarMarcados_(){
@@ -1850,14 +2122,23 @@ function loteEnviarMarcados_(){
 
 function loteEnviarResumo_(){
   if(!_loteEnv) return;
-  var n = loteEnviarMarcados_().length;
+  var marc = loteEnviarMarcados_();
+  var n = marc.length;
   var fora = _loteEnv.linhas.length - n;
   var cabem = _loteEnv.cota.disponivel;
   var porEnvio = g('certLoteEnvCopia').checked ? 2 : 1;
-  var hoje = Math.min(n, Math.floor(cabem / porEnvio));
-  g('certLoteEnvResumo').innerHTML = 'Vão sair <strong>' + n + ' e-mail(s)</strong>. '
+  /* e-mails de verdade: a família marcada junta conta UM (ou nenhum a mais de um só marcado) */
+  var gruposVistos = {}, nEmails = 0;
+  marc.forEach(function(pr){
+    var l = _loteEnv.linhas.filter(function(x){ return x.protocolo === pr; })[0];
+    var k = (l && l.grupo) ? 'g' + l.grupo : 'p' + pr;
+    if(!gruposVistos[k]){ gruposVistos[k] = true; nEmails++; }
+  });
+  var hoje = Math.min(nEmails, Math.floor(cabem / porEnvio));
+  g('certLoteEnvResumo').innerHTML = 'Vão sair <strong>' + nEmails + ' e-mail(s)</strong>'
+    + (nEmails < n ? ' com ' + n + ' certificados (irmãos saem juntos)' : '') + '. '
     + (fora ? fora + ' ficam de fora (motivo ao lado). ' : '')
-    + (n > hoje ? '<strong>' + hoje + ' saem hoje</strong> e ' + (n - hoje)
+    + (nEmails > hoje ? '<strong>' + hoje + ' saem hoje</strong> e ' + (nEmails - hoje)
         + ' saem <strong>amanhã de manhã, sozinhos</strong> — para não tirar e-mail dos ofícios. ' : '')
     + 'Quem já recebeu vem desmarcado: para reenviar, marque.';
   var btn = g('certLoteEnvConfirmar');
@@ -1994,13 +2275,15 @@ function certAgruparIrmaos(lista){
 /* "Enviado em / por" — do histórico permanente (31/10/2026). */
 function certEnvioCelula(s){
   var e=s.envio;
-  if(!e) return '<span style="color:#94a3b8;">— não enviado</span>';
+  /* Primeiro QUANDO FOI EMITIDO (só quando houve emissão), depois o envio — cada data com o seu rótulo. */
+  var emi = s.emitidoEm ? '<span style="color:#475569;">Emitido: '+cert_escHtml(s.emitidoEm)+'</span><br>' : '';
+  if(!e) return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span>';
   var quem=String(e.por||'').split('@')[0];
-  if(e.situacao==='NA_FILA') return '<span style="color:#92400e;">⏳ na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
-  if(e.situacao==='ERRO') return '<span style="color:#991b1b;" title="'+cert_escHtml(e.erro||'')+'">✖ erro no envio</span><br><span style="color:#64748b;">'+cert_escHtml(e.em)+'</span>';
-  if(e.situacao==='WHATSAPP') return '💬 WhatsApp '+cert_escHtml(e.em)+'<br><span style="color:#64748b;">'+cert_escHtml(quem)+'</span>';
-  return '<span style="color:#065f46;font-weight:700;">✔ '+cert_escHtml(e.em)+'</span> · '+cert_escHtml(quem)
-    +(e.para?'<br><span style="color:#64748b;">para '+cert_escHtml(e.para)+'</span>':'');
+  if(e.situacao==='NA_FILA') return emi+'<span style="color:#92400e;">⏳ Na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
+  if(e.situacao==='ERRO') return emi+'<span style="color:#991b1b;" title="'+cert_escHtml(e.erro||'')+'">✖ Erro no envio em '+cert_escHtml(e.em)+'</span>';
+  if(e.situacao==='WHATSAPP') return emi+'💬 WhatsApp aberto em '+cert_escHtml(e.em)+'<br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
+  return emi+'<span style="color:#065f46;font-weight:700;">✔ Enviado: '+cert_escHtml(e.em)+'</span>'
+    +'<br><span style="color:#64748b;">por '+cert_escHtml(quem)+(e.para?' · para '+cert_escHtml(e.para):'')+'</span>';
 }
 function certSituacaoEnvio(s){ return s.envio ? s.envio.situacao : 'NAO'; }
 
@@ -2017,6 +2300,7 @@ function cert_renderTabela(){
   if(_paginaAtual>totalPag) _paginaAtual=totalPag;
   var ini=(_paginaAtual-1)*_porPagina, pag=_filtrada.slice(ini,ini+_porPagina);
   if(sub) sub.textContent=total+' solicitação(ões) encontrada(s)';
+  var icoVer='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   var icoEdit='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
   var html='';
   var _agr = certAgruparIrmaos(pag); pag = _agr.lista; var _irm = _agr.irmaos;
@@ -2032,7 +2316,7 @@ function cert_renderTabela(){
          engano no lugar do botão vizinho — e o vizinho emite documento. */
       +'<td style="text-align:center;"><input type="checkbox" class="cert-sel-linha" data-prot="'+cert_escHtml(s.protocolo||'')+'"'+(marcado?' checked':'')+'></td>'
       +'<td class="c-sol"><div class="cert-sol-prot">'+cert_escHtml(s.protocolo||'—')+'</div>'
-        +'<div class="cert-sol-data">'+cert_escHtml(certData(s.data))+'</div></td>'
+        +'<div class="cert-sol-data">Solicitado: '+cert_escHtml(certData(s.data))+'</div></td>'
       /* QUEM ESTUDA VEM PRIMEIRO; O TITULAR VEM LOGO ABAIXO — 22/09/2026.
          Seu print mostrou duas linhas iguais, "WANDERSON NASCIMENTO CASTELO"
          nas duas, com o mesmo CPF: dava a impressão de dois vouchers para o
@@ -2103,7 +2387,8 @@ function cert_renderTabela(){
          valor em branco e podia não achar nada — e aí o clique não fazia
          absolutamente nada, sem erro, sem aviso, sem log. "Não acontece nada"
          é o pior defeito possível, porque não deixa nem por onde começar. */
-        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoEdit+'</button>'
+        +'<button type="button" class="cert-btn-abrir-modal" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Ver / Ações" style="'+bs+'">'+icoVer+'</button>'
+        +'<button type="button" class="cert-btn-editar" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Editar dados da solicitação" style="'+bs+'">'+icoEdit+'</button>'
         +(s.status==='EMITIDO'?'<button type="button" class="cert-btn-emitir-rapido" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Reemitir / ver a prévia do certificado" style="'+bs+'background:#f5f0ff;border-color:#c4b5fd;color:#5b21b6;">🎓</button>':'')
       +'</div></td>'
       +'</tr>';
@@ -2138,6 +2423,12 @@ function cert_renderTabela(){
       if(ev.target.closest && ev.target.closest('input,button,a,select,label')) return;
       var b=tr.querySelector('.cert-btn-abrir-modal'); if(!b) return;
       var s=linhaDoBotao(b); if(s) cert_abrirModal(s);
+    });
+  });
+  tbody.querySelectorAll('.cert-btn-editar').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var s=linhaDoBotao(this);
+      if(s) certEditAbrir(s);
     });
   });
   tbody.querySelectorAll('.cert-btn-emitir-rapido').forEach(function(btn){
@@ -2726,6 +3017,7 @@ function envAbrir(protocolo){
   g('certEnvTelefone').textContent = '—';
   g('certEnvAlerta').style.display='none';
   g('certEnvHistorico').innerHTML = '<span class="cert-env-vazio">carregando...</span>';
+  envIrmaosLimpar();
 
   var meu = ++_envSeq;
   google.script.run
@@ -2746,6 +3038,7 @@ function envAbrir(protocolo){
       }
       _envAtual = r;
       envPintar(r);
+      envIrmaosBuscar(protocolo, meu);
     })
     .withFailureHandler(function(err){
       if(meu !== _envSeq) return;
@@ -2879,6 +3172,37 @@ function envSincronizarCopia(){
   if(campo) campo.disabled = !ativo;
 }
 
+/* E-MAIL ÚNICO PARA O SOLICITANTE (24/11/2026): se o associado tem mais certificados
+   prontos, o modal oferece mandar todos num e-mail só. Nada vem marcado sozinho:
+   incluir é escolha de quem envia. */
+function envIrmaosLimpar(){
+  var bloco=g('certEnvIrmaos'); if(bloco) bloco.style.display='none';
+  var lista=g('certEnvIrmaosLista'); if(lista) lista.innerHTML='';
+}
+function envIrmaosBuscar(protocolo, seq){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(seq !== _envSeq) return;              /* resposta atrasada de outro protocolo */
+      if(!r || !r.ok || !r.irmaos || !r.irmaos.length) return;
+      var html='';
+      r.irmaos.forEach(function(i){
+        var rot=[i.curso, i.periodo ? ((i.periodoRotulo||'Período')+' '+i.periodo) : ''].filter(Boolean).join(' · ');
+        html += '<label class="cert-env-check"><input type="checkbox" class="cert-env-irmao" value="'+cert_escHtml(i.protocolo)+'"'+(i.mesmoEmail ? ' checked' : '')+'> '+
+                '<strong>'+cert_escHtml(i.beneficiario||'')+'</strong> — '+cert_escHtml(rot)+' · '+cert_escHtml(i.protocolo)+
+                (i.mesmoEmail ? '' : ' <em>(e-mail do associado diferente)</em>')+'</label>';
+      });
+      g('certEnvIrmaosLista').innerHTML=html;
+      g('certEnvIrmaos').style.display='block';
+    })
+    .withFailureHandler(function(){ /* é um convite; sem ele o envio individual continua igual */ })
+    .voucherIrmaosProntosParaEnvio(protocolo, certToken());
+}
+function envIrmaosMarcados(){
+  var out=[], els=document.querySelectorAll('#certEnvIrmaosLista .cert-env-irmao');
+  for(var i=0;i<els.length;i++){ if(els[i].checked) out.push(els[i].value); }
+  return out;
+}
+
 function envEnviarEmail(){
   if(!_envAtual){cert_msg('Nada preparado para enviar.','warn');return;}
   var para = String(g('certEnvPara').value||'').trim();
@@ -2910,12 +3234,20 @@ function envEnviarEmail(){
       cert_carregarLista();
     })
     .withFailureHandler(function(err){cert_resetBtn(btn);cert_msg('Erro: '+((err&&err.message)||''),'erro');})
-    .voucherEnviarPorEmail(protocolo, {
-      para: para,
-      enviarInstituicao: enviarInst,
-      copia: copia,
-      anexarPdf: g('certEnvAnexo').checked
-    }, certToken());
+    [envIrmaosMarcados().length ? 'voucherEnviarFamiliaPorEmail' : 'voucherEnviarPorEmail'](
+      envIrmaosMarcados().length ? [protocolo].concat(envIrmaosMarcados()) : protocolo,
+      envIrmaosMarcados().length ? {
+        para: para,
+        enviarInstituicao: enviarInst,
+        copias: (function(){ var c={}; if(enviarInst) c[protocolo]=copia; return c; })(),
+        anexarPdf: g('certEnvAnexo').checked
+      } : {
+        para: para,
+        enviarInstituicao: enviarInst,
+        copia: copia,
+        anexarPdf: g('certEnvAnexo').checked
+      },
+      certToken());
 }
 
 function envAbrirZap(){
@@ -3259,6 +3591,28 @@ function nvBenefRenumerar(){
   if(btn) btn.disabled = nvBenefTotalDependentes() >= NV_MAX_DEPENDENTES;
 }
 
+/* A escola do titular (onde ele trabalha), como a tela a conhece agora. */
+function nvBenefEscolaTitular(){
+  var e = g('certNvEscola');
+  return { nome: String((e && e.value) || '').trim(),
+           cnpj: String((g('certNvCnpjEscola') || {}).value || '').trim(),
+           email: String((e && e.getAttribute('data-escola-email')) || '').trim() };
+}
+/* Preenche a instituição do card com a escola do titular — só se a pessoa ainda não mexeu nela. */
+function nvBenefInstAuto(c){
+  var inp = c.querySelector('.js-inst'), o = c.querySelector('.js-instOrigem');
+  if(inp.getAttribute('data-manual') === '1') return;
+  var t = nvBenefEscolaTitular();
+  if(!t.nome){
+    if(inp.getAttribute('data-auto') === '1'){ inp.value = ''; inp.removeAttribute('data-auto'); }
+    if(o) o.textContent = '';
+    return;
+  }
+  inp.value = t.nome; inp.setAttribute('data-auto','1');
+  if(o) o.textContent = 'da escola do titular \u2014 confira (pode trocar)';
+}
+function nvBenefInstSincronizar(){ nvBenefCards().forEach(nvBenefInstAuto); }
+
 function nvBenefAdicionar(dados){
   var lista = g('certNvBenefLista');
   if(!lista) return null;
@@ -3291,7 +3645,8 @@ function nvBenefAdicionar(dados){
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Nome do beneficiário</label>'
    +     '<input class="cert-nv-in js-nome"></div>'
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Instituição de ensino</label>'
-   +     '<input class="cert-nv-in js-inst"></div>'
+   +     '<input class="cert-nv-in js-inst">'
+   +     '<div class="js-instOrigem" style="font-size:11px;color:#64748b;margin-top:3px;"></div></div>'
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Modalidade</label>'
    +     '<select class="cert-nv-in js-modalidade">'
    +       '<option value="">—</option>'
@@ -3308,7 +3663,22 @@ function nvBenefAdicionar(dados){
    +   '<div class="cert-nv-campo"><label class="cert-nv-lbl">Percentual (%)</label>'
    +     '<input class="cert-nv-in js-percentual" inputmode="numeric"></div>'
    + '</div>'
+   + '<div class="cert-nv-campo" style="margin-top:6px;">'
+   +   '<label class="cert-env-check"><input type="checkbox" class="js-escolaDif"> Escola diferente da do titular</label>'
+   +   '<div class="js-escolaDifBox" style="display:none;margin-top:6px;">'
+   +     '<select class="cert-nv-in js-escolaMotivo"><option value="MESMA_REDE">Mesma rede</option><option value="OUTRO">Outro motivo</option></select>'
+   +     '<div style="position:relative;margin-top:4px;">'
+   +       '<input class="cert-nv-in js-escolaNome" placeholder="buscar a escola do dependente no cadastro (nome, CNPJ ou cidade)" autocomplete="off">'
+   +       '<div class="cert-nv-lista js-escolaLista"></div></div>'
+   +     '<input class="cert-nv-in js-escolaCnpj" placeholder="CNPJ (vem do cadastro)" readonly style="margin-top:4px;">'
+   +   '</div>'
+   + '</div>'
    + '<div class="cert-nv-benef-res" style="display:none;"></div>';
+
+  c.querySelector('.js-escolaDif').onchange = function(){
+    c.querySelector('.js-escolaDifBox').style.display = this.checked ? 'block' : 'none';
+  };
+  nvEscolaDifLigar(c.querySelector('.js-escolaNome'), c.querySelector('.js-escolaLista'), c.querySelector('.js-escolaCnpj'));
 
   c.querySelector('.cert-nv-benef-x').onclick = function(){
     c.remove(); nvBenefRenumerar();
@@ -3325,6 +3695,15 @@ function nvBenefAdicionar(dados){
   if(dados.percentual !== undefined && dados.percentual !== '')
     c.querySelector('.js-percentual').value = dados.percentual;
 
+  /* A instituição do dependente nasce com a ESCOLA DO TITULAR (24/11/2026) — com a origem à vista, editável,
+     e sem sobrescrever o que a pessoa digitar ou o que veio da memória. */
+  c.querySelector('.js-inst').addEventListener('input', function(){
+    this.setAttribute('data-manual','1'); this.removeAttribute('data-auto');
+    c.querySelector('.js-instOrigem').textContent = '';
+  });
+  if(dados.instituicao) c.querySelector('.js-inst').setAttribute('data-manual','1');
+  nvBenefInstAuto(c);
+
   lista.appendChild(c);
   nvBenefRenumerar();
   /* O Salvar pode estar desabilitado por uma trava do beneficiário de cima;
@@ -3339,21 +3718,112 @@ function nvBenefLimpar(){
   nvBenefRenumerar();
 }
 
+/* ESCOLA DO DEPENDENTE (24/11/2026). Por padrão o dependente usa a escola do
+   TITULAR, vinda do cadastro (a regra mora no servidor). Esta opção é a troca:
+   titular numa faculdade, filho num colégio da mesma rede. Só manda os campos
+   quando marcada; o servidor exige o motivo e só AVISA se a raiz do CNPJ difere. */
+function nvEscolaDifDe(chk, motivo, nome, cnpj){
+  if(!chk || !chk.checked) return {};
+  return {
+    escolaDiferenteDoTitular: true,
+    motivoEscolaDiferente: motivo ? motivo.value : '',
+    escola: nome ? String(nome.value||'').trim() : '',
+    cnpjEscola: cnpj ? String(cnpj.value||'').replace(/\D/g,'') : '',
+    escolaId: nome ? (nome.getAttribute('data-escola-id')||'') : '',
+    escolaFantasia: nome ? (nome.getAttribute('data-fantasia')||'') : '',
+    cidadeEscola: nome ? (nome.getAttribute('data-cidade')||'') : ''
+  };
+}
+/* A TROCA DE ESCOLA É BUSCA NO CADASTRO DAS 679 ESCOLAS (decisão do usuário,
+   24/11/2026) — não texto livre. Escolher na lista preenche nome, CNPJ e o id
+   da escola; digitar de novo invalida a escolha, como no campo "onde trabalha".
+   O servidor confere de novo contra o cadastro. */
+function nvEscolaDifLigar(inp, lista, cnpj){
+  if(!inp || !lista) return;
+  var timer = null;
+  inp.addEventListener('input', function(){
+    inp.removeAttribute('data-escola-id'); inp.removeAttribute('data-fantasia'); inp.removeAttribute('data-cidade');
+    if(cnpj) cnpj.value = '';
+    clearTimeout(timer);
+    timer = setTimeout(function(){
+      var termo = String(inp.value||'').trim();
+      if(termo.length < 2){ lista.classList.remove('ativo'); return; }
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(!r || !r.ok || !r.escolas || !r.escolas.length){ lista.classList.remove('ativo'); return; }
+          lista.innerHTML = r.escolas.map(nvItemEscolaHtml).join('');
+          lista.classList.add('ativo');
+          lista.querySelectorAll('.cert-nv-item').forEach(function(it){
+            it.addEventListener('click', function(){
+              var e = r.escolas[Number(this.getAttribute('data-i'))] || {};
+              inp.value = e.nome || e.fantasia || '';
+              inp.setAttribute('data-escola-id', e.escolaId || '');
+              inp.setAttribute('data-fantasia', e.fantasia || '');
+              inp.setAttribute('data-cidade', e.cidade || '');
+              if(cnpj) cnpj.value = e.cnpj ? cert_fmtCnpj(e.cnpj) : '';
+              lista.classList.remove('ativo');
+            });
+          });
+        })
+        .withFailureHandler(function(){ lista.classList.remove('ativo'); })
+        .voucherBuscarEscola(termo, certToken());
+    }, 320);
+  });
+}
+/* Troca marcada sem escolha feita na busca: o primeiro campo que falta, ou null. */
+function nvEscolaDifFalta(){
+  var campos = [];
+  if(!nvQuem().proprio && g('certNvEscolaDif') && g('certNvEscolaDif').checked) campos.push(g('certNvEscolaDifNome'));
+  nvBenefCards().forEach(function(c){
+    var k=c.querySelector('.js-escolaDif');
+    if(k && k.checked) campos.push(c.querySelector('.js-escolaNome'));
+  });
+  /* Escolher na lista grava o atributo data-escola-id (mesmo vazio, se a escola não tem id);
+     digitar de novo o remove. Sem o atributo, nada foi escolhido no cadastro. */
+  for(var i=0;i<campos.length;i++){
+    if(campos[i] && !campos[i].hasAttribute('data-escola-id')) return campos[i];
+  }
+  return null;
+}
+function nvEscolaDifTop(){
+  if(nvQuem().proprio) return {};
+  return nvEscolaDifDe(g('certNvEscolaDif'), g('certNvEscolaDifMotivo'), g('certNvEscolaDifNome'), g('certNvEscolaDifCnpj'));
+}
+function nvEscolaDifSincronizar(){
+  var caixa=g('certNvBoxEscolaDif'); if(!caixa) return;
+  var dependente = !nvQuem().proprio;
+  caixa.style.display = dependente ? '' : 'none';
+  if(!dependente && g('certNvEscolaDif')) g('certNvEscolaDif').checked = false;
+  if(g('certNvEscolaDifBox')) g('certNvEscolaDifBox').style.display = (dependente && g('certNvEscolaDif') && g('certNvEscolaDif').checked) ? 'block' : 'none';
+}
+/* O que o servidor decidiu sobre a escola de cada dependente — NADA é trocado em silêncio. */
+function nvEscolaAvisos(resultados){
+  var out=[];
+  (resultados||[]).forEach(function(r){
+    var e=r && r.escolaAplicada;
+    if(e && e.aviso) out.push((r.nome ? r.nome+': ' : '')+e.aviso);
+  });
+  return out.join(' ');
+}
+
 /* O que cada card extra manda para o servidor. O `quem` vira tipo + ordem
    pelo mesmo helper do beneficiario de cima — uma regra, um lugar. */
 function nvBenefPayload(){
   return nvBenefCards().map(function(c){
     var v = String(c.querySelector('.js-quem').value || 'FILHO_1');
     var q = nvQuemDe(v);
-    return {
+    return Object.assign({
       tipoBeneficiario: q.tipo,
       ordemFilho: q.ordem,
       beneficiario: c.querySelector('.js-nome').value,
       instituicao: c.querySelector('.js-inst').value,
+      cnpjInstituicao: c.querySelector('.js-inst').getAttribute('data-auto') === '1' ? nvBenefEscolaTitular().cnpj : '',
+      emailInstituicao: c.querySelector('.js-inst').getAttribute('data-auto') === '1' ? nvBenefEscolaTitular().email : '',
       modalidade: c.querySelector('.js-modalidade').value,
       curso: c.querySelector('.js-curso').value,
       percentual: c.querySelector('.js-percentual').value
-    };
+    }, nvEscolaDifDe(c.querySelector('.js-escolaDif'), c.querySelector('.js-escolaMotivo'),
+                     c.querySelector('.js-escolaNome'), c.querySelector('.js-escolaCnpj')));
   });
 }
 
@@ -3369,7 +3839,7 @@ function nvBenefPintarResultado(resultados){
     if(!box) return;
     box.style.display = '';
     box.className = 'cert-nv-benef-res ' + (r.ok ? 'ok' : 'erro');
-    box.textContent = r.ok ? ('✓ ' + r.protocolo) : ('✕ ' + (r.mensagem || 'não foi criado'));
+    box.textContent = r.ok ? ('✓ ' + r.protocolo + (r.escolaAplicada && r.escolaAplicada.nome ? ' · escola: ' + r.escolaAplicada.nome : '') + (r.escolaAplicada && r.escolaAplicada.aviso ? ' ⚠ ' + r.escolaAplicada.aviso : '')) : ('✕ ' + (r.mensagem || 'não foi criado'));
   });
 }
 
@@ -3509,7 +3979,11 @@ function nvLimpar(){
   nvPeriodoMontarAnos();
   nvPeriodoSincronizarRegime();
   if(g('certNvQuem')) g('certNvQuem').value='PROPRIO';
+  if(g('certNvEscolaDif')) g('certNvEscolaDif').checked=false;
+  ['certNvEscolaDifNome','certNvEscolaDifCnpj'].forEach(function(id){ if(g(id)) g(id).value=''; });
+  if(g('certNvEscolaDifNome')){ g('certNvEscolaDifNome').removeAttribute('data-escola-id'); g('certNvEscolaDifNome').removeAttribute('data-fantasia'); g('certNvEscolaDifNome').removeAttribute('data-cidade'); }
   nvSincronizarBeneficiario();
+  nvEscolaDifSincronizar();
   if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
   /* A faixa some junto com o resto. Sem isto, o próximo atendimento abriria
      com "atendimento presencial" no topo por causa da pessoa anterior. */
@@ -4003,6 +4477,7 @@ function nvAplicarEscola(x, origem){
  * etiqueta ao lado do campo diz de onde veio. Campo preenchido em silêncio
  * é o que vira erro que ninguém percebe (REGRA Nº 0.6). */
 function nvMesmaEscolaAtualizar(){
+  nvBenefInstSincronizar();   /* cartões de dependentes seguem a escola do titular enquanto ninguém mexeu neles */
   var btn = g('certNvMesmaEscola');
   if(!btn) return;
   var nome = String((g('certNvEscola')||{}).value||'').trim();
@@ -4229,6 +4704,13 @@ function nvSalvar(aprovar){
   if(!nvExigir('certNvPeriodoAno', !!String(dados.periodo||'').trim(),
       'Escolha o período de referência — é ele que impede o mesmo voucher sair duas vezes.')) return;
 
+  var faltaEscolaDif = nvEscolaDifFalta();
+  if(faltaEscolaDif){
+    cert_msg('Escolha a escola do dependente na busca do cadastro de escolas.','warn');
+    if(faltaEscolaDif.scrollIntoView) faltaEscolaDif.scrollIntoView({ block: 'center' });
+    faltaEscolaDif.focus(); return;
+  }
+
   /* A trava também barra AQUI, não só no visual. Botão desabilitado é
      aparência; esta linha é a regra. O servidor recusa de novo depois — três
      travas para a mesma coisa é o que se faz quando emitir duas vezes não
@@ -4283,6 +4765,7 @@ function nvSalvar(aprovar){
       idadeBeneficiario: dados.idadeBeneficiario,
       enteadoDeclaradoIR: dados.enteadoDeclaradoIR
     };
+    Object.assign(primeiro, nvEscolaDifTop());
     google.script.run
       .withSuccessHandler(function(r){
         cert_resetBtn(btn);
@@ -4297,7 +4780,8 @@ function nvSalvar(aprovar){
           cert_carregarLista();
           return;
         }
-        cert_msg('✅ '+r.mensagem,'ok');
+        var avisosLote = nvEscolaAvisos(r.resultados);
+        cert_msg('✅ '+r.mensagem+(avisosLote ? ' ⚠ '+avisosLote : ''), avisosLote ? 'warn' : 'ok');
         nvFechar();
         cert_carregarLista();
       })
@@ -4324,12 +4808,13 @@ function nvSalvar(aprovar){
         }
         cert_msg((r&&r.mensagem)||'Erro ao salvar.','erro'); return;
       }
-      cert_msg('✅ '+r.mensagem,'ok');
+      var avisoEscola = (r.escolaAplicada && r.escolaAplicada.aviso) ? r.escolaAplicada.aviso : '';
+      cert_msg('✅ '+r.mensagem+(avisoEscola ? ' ⚠ '+avisoEscola : ''), avisoEscola ? 'warn' : 'ok');
       nvFechar();
       cert_carregarLista();
     })
     .withFailureHandler(function(err){ cert_resetBtn(btn); cert_msg('Erro: '+((err&&err.message)||''),'erro'); })
-    .voucherCriarSolicitacao(dados, certToken());
+    .voucherCriarSolicitacao(Object.assign(dados, nvEscolaDifTop()), certToken());
 }
 
 window.certAbrirNovaSolicitacao = nvAbrir;
@@ -4608,14 +5093,14 @@ function certCopiar(texto, aviso){
 
 function cert_exportarCsv(){
   if(!_filtrada.length){cert_msg('Nenhum dado para exportar.','warn');return;}
-  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Data',
+  var headers=['Protocolo','Nome','CPF','E-mail','Escola','Modalidade','Curso','Beneficiário','Período','Status','Solicitado em','Emitido em',
                 'Situação do envio','Enviado em','Enviado por','Enviado para'];
   var rows=[headers].concat(_filtrada.map(function(s){
     var e=s.envio||{};
     return [s.protocolo||'',s.nome||'',s.cpf||'',s.email||'',s.escola||'',
             s.nivel||s.modalidade||'',s.curso||'',s.tipoBeneficiario||s.beneficiario||'',
-            s.periodoReferencia||s.periodo||'',s.status||'',s.data||'',
-            ({ENVIADO:'Enviado',NA_FILA:'Na fila',ERRO:'Erro',WHATSAPP:'WhatsApp'})[e.situacao]||'Não enviado',
+            s.periodoReferencia||s.periodo||'',s.status||'',s.data||'',s.emitidoEm||'',
+            ({ENVIADO:'Enviado',NA_FILA:'Na fila',ERRO:'Erro',WHATSAPP:'WhatsApp'})[e.situacao]||'Ainda não enviado',
             e.em||'',e.por||'',e.para||''];
   }));
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(';');}).join('\n');
@@ -4677,6 +5162,15 @@ function initInterno(){
   // ── lote: emitir e enviar as selecionadas
   if(g('certSelEmitir')) g('certSelEmitir').addEventListener('click', loteEmitirSelecionadas);
   if(g('certSelEnviar')) g('certSelEnviar').addEventListener('click', loteEnviarSelecionadas);
+  if(g('certSelAprovar')) g('certSelAprovar').addEventListener('click', loteAprovarSelecionadas);
+  ['certEditFechar','certEditCancelar'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certEditOverlay'); });
+  });
+  if(g('certEditSalvar')) g('certEditSalvar').addEventListener('click', certEditSalvar);
+  ['certLoteAprFechar','certLoteAprCancelar'].forEach(function(id){
+    if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteAprOverlay'); });
+  });
+  if(g('certLoteAprConfirmar')) g('certLoteAprConfirmar').addEventListener('click', loteAprovarConfirmar);
   ['certLoteEmiFechar','certLoteEmiFechar2'].forEach(function(id){
     if(g(id)) g(id).addEventListener('click', function(){ loteFechar_('certLoteEmiOverlay'); });
   });
@@ -4867,7 +5361,7 @@ function initInterno(){
   }
   if(g('certNvQuem')){
     g('certNvQuem').addEventListener('change', function(){
-      nvSincronizarBeneficiario(); nvSugerir();
+      nvSincronizarBeneficiario(); nvSugerir(); nvEscolaDifSincronizar();
       /* RECONTA AS VAGAS. Trocar o de cima de "Próprio" para "1º filho" muda
          quantos dependentes o pedido tem — e sem esta linha o + Adicionar
          continuava liberado depois de o teto já ter sido atingido. Achado
@@ -4877,6 +5371,8 @@ function initInterno(){
     });
   }
   if(g('certNvEnteadoIR')) g('certNvEnteadoIR').addEventListener('change', nvSugerir);
+  if(g('certNvEscolaDif')) g('certNvEscolaDif').addEventListener('change', nvEscolaDifSincronizar);
+  nvEscolaDifLigar(g('certNvEscolaDifNome'), g('certNvEscolaDifLista'), g('certNvEscolaDifCnpj'));
 
   if(g('certNvEscola')){
     g('certNvEscola').addEventListener('input', function(){

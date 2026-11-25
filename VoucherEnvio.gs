@@ -155,11 +155,21 @@ function voucherDadosEnvio_(protocolo) {
       ok: true,
       protocolo: protocolo,
       nome: nome,
+      /* Para o e-mail único da família: quem é o titular (CPF) e quem é o
+       * beneficiário deste certificado. */
+      cpf: (typeof voucherCpf11_ === "function") ? voucherCpf11_(solic.CPF_SOLICITANTE || emissao.CPF) : String(solic.CPF_SOLICITANTE || ""),
+      beneficiario: String(solic.NOME_BENEFICIARIO || "").trim(),
+      tipoBeneficiario: String(solic.TIPO_BENEFICIARIO || "").trim().toUpperCase(),
       codigo: codigo,
       percentual: percentual,
       curso: curso,
       periodo: periodo,
+      /* "Semestre" ou "Ano letivo" — mesma regra do certificado em PDF
+       * (VoucherPdf.gs: REGIME anual não tem semestre). */
+      periodoRotulo: (String(solic.REGIME || "").toUpperCase().indexOf("ANUAL") > -1)
+        ? "Ano letivo" : "Semestre",
       instituicao: String(solic.INSTITUICAO_ENSINO || "").trim(),
+      cnpjInstituicao: String(solic.CNPJ_INSTITUICAO || "").replace(/\D/g, ""),
       linkPdf: link,
       temPdf: !!link,
       emailAssociado: emailAssociado,
@@ -292,16 +302,16 @@ function voucherEnviarPorEmail_(protocolo, opcoes, sessao) {
         var id = voucherIdDoLink_(pronto.linkPdf);
         if (id) anexos.push(DriveApp.getFileById(id).getBlob());
       } catch (e) {
-        /* Anexo falhou, mas o link continua no corpo. Não trava o envio: o
-         * associado recebe o aviso e consegue abrir o documento. */
-        Logger.log("Anexo do PDF falhou (o link vai no corpo): " + e.message);
+        /* Anexo falhou. Não trava o envio, mas o texto do e-mail deixa de dizer
+         * "anexo" e a tela de quem envia mostra o ATENÇÃO. */
+        Logger.log("Anexo do PDF falhou (o e-mail avisa e a tela mostra ATENÇÃO): " + e.message);
       }
     }
 
     var msg = {
       to: para,
       subject: "Certificado de Bolsa de Estudo — protocolo " + pronto.protocolo,
-      htmlBody: voucherCorpoEmail_(pronto),
+      htmlBody: voucherCorpoEmail_(pronto, anexos.length > 0),
       name: "SindEducação-ES"
     };
     if (copia) msg.cc = copia;
@@ -338,7 +348,8 @@ function voucherEnviarPorEmail_(protocolo, opcoes, sessao) {
       });
     }
 
-    return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + ".",
+    return { ok: true, mensagem: "E-mail enviado para " + para + (copia ? " com cópia para " + copia : "") + "." +
+               (anexos.length ? "" : " ATENÇÃO: o PDF NÃO foi anexado — o associado ficou sem o documento. Reenvie com o anexo ou entregue na sede."),
              para: para, copia: copia, comAnexo: anexos.length > 0, redatado: !!redatado.redatado };
   } catch (e) {
     Logger.log("voucherEnviarPorEmail_: " + e.message);
@@ -479,7 +490,7 @@ function voucherTextoWhatsApp_(nome, protocolo, curso, periodo, link) {
  * Tudo em style inline e sem imagem externa: cliente de e-mail ignora
  * <style> em <head> e bloqueia imagem remota por padrão.
  */
-function voucherCorpoEmail_(d) {
+function voucherCorpoEmail_(d, comAnexo) {
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
@@ -529,33 +540,46 @@ function voucherCorpoEmail_(d) {
       sisgepSaudacaoEmail_(d.nome) +
 
       "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
-        "Seu <strong>Certificado de Bolsa de Estudo</strong> foi emitido pelo SindEducação-ES, " +
-        "nos termos da Convenção Coletiva de Trabalho vigente, e segue " +
-        (d.linkPdf ? "<strong>anexo a este e-mail</strong>" : "em anexo") + "." +
+        "Informamos que seu <strong>Certificado de Bolsa de Estudo</strong>" +
+        /* O texto acompanha o REGIME, como o certificado em PDF: bolsa anual é
+           "ano letivo", não "semestre letivo". */
+        (d.periodo
+          ? ", referente ao " + (d.periodoRotulo === "Ano letivo" ? "ano letivo de " : "semestre letivo de ") +
+            "<strong>" + esc(d.periodo) + "</strong>,"
+          : "") +
+        " foi emitido pelo <strong>SindEducação-ES</strong>, conforme as disposições da Convenção " +
+        "Coletiva de Trabalho vigente, e " +
+        (comAnexo
+          ? "segue anexo a este e-mail."
+          : "está disponível para retirada na sede do sindicato.") +
       "</div>" +
 
+      "<p style='margin:20px 0 6px;font-size:13.5px;font-weight:800;color:#0f172a;'>" +
+        "Dados do certificado:</p>" +
       "<table role='presentation' cellpadding='0' cellspacing='0' " +
         "style='width:100%;background:#f8fafc;border:1px solid #cbd5e1;" +
-        "border-radius:10px;padding:6px 16px;margin:20px 0;border-collapse:separate;'>" +
+        "border-radius:10px;padding:6px 16px;margin:0 0 20px;border-collapse:separate;'>" +
         linha("Curso", d.curso) +
-        linha("Período", d.periodo) +
+        linha(d.periodoRotulo || "Período", d.periodo) +
         linha("Desconto", d.percentual ? d.percentual + "%" : "") +
-        linha("Código de validação", d.codigo, true) +
       "</table>" +
 
-      (d.linkPdf
-        ? "<div style='text-align:center;margin:24px 0 20px;'>" +
-            "<a href='" + esc(d.linkPdf) + "' style='background:#001f4d;color:#fff;" +
-            "text-decoration:none;padding:13px 30px;border-radius:8px;font-weight:800;" +
-            "font-size:14px;display:inline-block;'>Abrir o certificado</a>" +
-          "</div>"
-        : "") +
-
-      "<div style='margin:20px 0 0;padding:14px 16px;background:#eff6ff;" +
-        "border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;" +
-        "font-size:13px;color:#1e3a8a;line-height:1.65;'>" +
-        "<strong>Apresente o certificado à instituição de ensino</strong> para que o desconto " +
-        "seja aplicado na matrícula, rematrícula e mensalidades." +
+      /* SEM BOTÃO COM LINK DO DRIVE E SEM O CÓDIGO NO CORPO (23/11/2026).
+         O arquivo é privado de propósito (ArquivoDrive.gs) e o link só abre
+         para a conta dona dele: para o associado virava tela de "solicitar
+         acesso" e e-mail de pedido para o sindicato. O certificado vai
+         anexado, e o código de validação continua impresso nele. */
+      "<div style='text-align:justify;line-height:1.7;font-size:13.5px;color:#1a2233;'>" +
+        "<p style='margin:0 0 14px;'>Solicitamos que apresente o certificado à instituição de " +
+        "ensino para que o desconto seja aplicado à matrícula, rematrícula e mensalidades, " +
+        "conforme as condições previstas na Convenção Coletiva de Trabalho.</p>" +
+        "<p style='margin:0 0 14px;'>Pedimos, por gentileza, que confirme o recebimento deste " +
+        "e-mail" + (comAnexo ? " e do certificado anexo" : "") + ".</p>" +
+        "<p style='margin:0 0 14px;'>Permanecemos à disposição para quaisquer esclarecimentos.</p>" +
+        "<p style='margin:0 0 14px;'>Desejamos um excelente e abençoado dia!</p>" +
+        "<p style='margin:0 0 4px;'>Atenciosamente,</p>" +
+        "<p style='margin:14px 0 0;font-size:12px;color:#64748b;'><em>Provérbios 16:3 — " +
+          "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.</em></p>" +
       "</div>"
   });
 }

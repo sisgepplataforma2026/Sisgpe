@@ -80,7 +80,7 @@ function voucherLinhaEmitido_(protocolo) {
  * data e a linha da solicitação — então o documento refeito é o mesmo papel
  * com outra data, não uma emissão nova.
  */
-function voucherRedatarDocumento_(protocolo, quando, motivo, usuario) {
+function voucherRedatarDocumento_(protocolo, quando, motivo, usuario, forcar) {
   protocolo = String(protocolo || "").trim();
   var emi = voucherLinhaEmitido_(protocolo);
   if (!emi) return { ok: false, mensagem: "O protocolo " + protocolo + " ainda não foi emitido." };
@@ -106,7 +106,8 @@ function voucherRedatarDocumento_(protocolo, quando, motivo, usuario) {
   var html = gerarHtmlDocumentoVoucher_(dadosDoc);
 
   var dataNoPapel = emi.reg.DATA_DOCUMENTO || emi.reg.DATA_EMISSAO;
-  if (voucherDiaDe_(dataNoPapel) === voucherDiaDe_(quando)) {
+  /* `forcar` (edição de dados, 24/11/2026): o papel precisa refletir a solicitação corrigida mesmo sendo do mesmo dia. */
+  if (!forcar && voucherDiaDe_(dataNoPapel) === voucherDiaDe_(quando)) {
     return { ok: true, redatado: false, linkPdf: String(emi.reg.LINK_ARQUIVO || ""), html: html };
   }
 
@@ -229,8 +230,10 @@ function voucherEnvioLotePreparar(protocolos, tokenSessao) {
     var lista = (Array.isArray(protocolos) ? protocolos : [])
       .map(function (p) { return String(p || "").trim(); })
       .filter(function (p, i, a) { return p && a.indexOf(p) === i; });
+    var dadosPorProt = {};
     var linhas = lista.map(function (p) {
       var d = voucherDadosEnvio_(p);
+      dadosPorProt[p] = d;
       var s = voucherSituacaoEnvio_(d);
       return {
         protocolo: p,
@@ -241,6 +244,19 @@ function voucherEnvioLotePreparar(protocolos, tokenSessao) {
         situacao: s.situacao, motivo: s.motivo, marcado: s.marcado,
         podeEnviar: s.situacao === "PRONTO" || s.situacao === "JA_ENVIADO"
       };
+    });
+    /* Quem sai JUNTO (24/11/2026): mesmo titular (CPF) e mesmo e-mail de destino = um e-mail só,
+       a mesma regra de voucherEnvioLoteProcessar_. Mesmo titular com e-mail diferente sai separado
+       — a tela avisa, em vez de deixar a pessoa descobrir depois. */
+    var gId = {}, tId = {}, ng = 0, nt = 0;
+    linhas.forEach(function (l) {
+      if (!l.podeEnviar) return;
+      var d = dadosPorProt[l.protocolo];
+      var tk = d.cpf || l.protocolo;
+      var gk = tk + "|" + String(d.emailAssociado || "").toLowerCase();
+      if (gId[gk] === undefined) gId[gk] = ++ng;
+      if (tId[tk] === undefined) tId[tk] = ++nt;
+      l.grupo = gId[gk]; l.titular = tId[tk];
     });
     var orc = cotaEmail_orcamentoDoDia_(VOUCHER_LOTE_CAMPANHA);
     return { ok: true, linhas: linhas,
@@ -278,13 +294,21 @@ function voucherEnvioLoteExecutar(protocolos, opcoes, tokenSessao) {
   }
 }
 
-/** O laço. Para na cota (PARE: não gasta tentativa de ninguém) ou no tempo. */
+/** O laço. Para na cota (PARE: não gasta tentativa de ninguém) ou no tempo.
+ *
+ * E-MAIL ÚNICO POR FAMÍLIA (24/11/2026): certificados do MESMO titular (CPF) e do
+ * MESMO destino saem num e-mail só (VoucherEnvioFamilia.gs). Com um só protocolo
+ * no grupo, é o envio de sempre. Cada protocolo é lido UMA vez. */
 function voucherEnvioLoteProcessar_(lista, copiaInstituicao, quem) {
   var inicio = Date.now();
   var enviados = [], pulados = [], restantes = [], porCota = false;
+
+  /* 1ª passada: lê cada protocolo uma vez, separa o que não pode sair e agrupa o resto. */
+  var prontos = [], grupos = {};
+  var corteLeitura = VOUCHER_LOTE_LIMITE_MS / 4;
   for (var i = 0; i < lista.length; i++) {
     var p = lista[i];
-    if (Date.now() - inicio > VOUCHER_LOTE_LIMITE_MS) { restantes = lista.slice(i); break; }
+    if (Date.now() - inicio > corteLeitura) { restantes = restantes.concat(lista.slice(i)); break; }
     var d = voucherDadosEnvio_(p);
     var s = voucherSituacaoEnvio_(d);
     if (s.situacao !== "PRONTO" && s.situacao !== "JA_ENVIADO") {
@@ -294,17 +318,62 @@ function voucherEnvioLoteProcessar_(lista, copiaInstituicao, quem) {
       pulados.push({ protocolo: p, motivo: "Cópia marcada, mas sem e-mail da instituição — abrir e preencher" });
       continue;
     }
+    var chave = (d.cpf || p) + "|" + String(d.emailAssociado || "").toLowerCase();
+    (grupos[chave] = grupos[chave] || []).push({ protocolo: p, d: d });
+    prontos.push({ protocolo: p, d: d, chave: chave });
+  }
+
+  var feitos = {};
+  for (var j = 0; j < prontos.length; j++) {
+    var it = prontos[j];
+    if (feitos[it.protocolo]) continue;
+    if (Date.now() - inicio > VOUCHER_LOTE_LIMITE_MS) {
+      restantes = restantes.concat(prontos.slice(j).filter(function (x) { return !feitos[x.protocolo]; })
+        .map(function (x) { return x.protocolo; }));
+      break;
+    }
+    var grupo = grupos[it.chave].filter(function (x) { return !feitos[x.protocolo]; });
+
+    if (grupo.length >= 2) {
+      var emailsInst = {};
+      if (copiaInstituicao) grupo.forEach(function (x) { emailsInst[x.d.emailInstituicao] = true; });
+      var precisaG = 1 + (copiaInstituicao ? Object.keys(emailsInst).length : 0);
+      if (cotaEmail_quantosCabem_(VOUCHER_LOTE_CAMPANHA, precisaG).cabem < precisaG) {
+        restantes = restantes.concat(grupo.map(function (x) { return x.protocolo; }));
+        grupo.forEach(function (x) { feitos[x.protocolo] = true; });
+        porCota = true;
+        continue;
+      }
+      var copias = {};
+      if (copiaInstituicao) grupo.forEach(function (x) { copias[x.protocolo] = x.d.emailInstituicao; });
+      var rf = voucherEnviarFamiliaPorEmail_(grupo.map(function (x) { return x.protocolo; }), {
+        enviarInstituicao: copiaInstituicao, copias: copias, campanhaCota: VOUCHER_LOTE_CAMPANHA
+      }, { email: quem, usuario: quem });
+      grupo.forEach(function (x) { feitos[x.protocolo] = true; });
+      if (rf && rf.ok) {
+        (rf.enviados || []).forEach(function (e) { enviados.push({ protocolo: e.protocolo, para: e.para, copia: e.copia }); });
+        (rf.pulados || []).forEach(function (e) { pulados.push(e); });
+      } else {
+        grupo.forEach(function (x) { pulados.push({ protocolo: x.protocolo, motivo: (rf && rf.mensagem) || "Não enviou." }); });
+      }
+      continue;
+    }
+
+    /* Sozinho: o caminho de sempre. */
+    feitos[it.protocolo] = true;
     var precisa = copiaInstituicao ? 2 : 1;
     if (cotaEmail_quantosCabem_(VOUCHER_LOTE_CAMPANHA, precisa).cabem < precisa) {
-      restantes = lista.slice(i); porCota = true; break;
+      restantes = restantes.concat(prontos.slice(j).filter(function (x) { return !feitos[x.protocolo] || x.protocolo === it.protocolo; })
+        .map(function (x) { return x.protocolo; }));
+      porCota = true; break;
     }
-    var r = voucherEnviarPorEmail_(p, {
+    var r = voucherEnviarPorEmail_(it.protocolo, {
       enviarInstituicao: copiaInstituicao,
-      copia: copiaInstituicao ? d.emailInstituicao : "",
+      copia: copiaInstituicao ? it.d.emailInstituicao : "",
       campanhaCota: VOUCHER_LOTE_CAMPANHA
     }, { email: quem, usuario: quem });
-    if (r && r.ok) enviados.push({ protocolo: p, para: r.para, copia: r.copia });
-    else pulados.push({ protocolo: p, motivo: (r && r.mensagem) || "Não enviou." });
+    if (r && r.ok) enviados.push({ protocolo: it.protocolo, para: r.para, copia: r.copia });
+    else pulados.push({ protocolo: it.protocolo, motivo: (r && r.mensagem) || "Não enviou." });
   }
   return { enviados: enviados, pulados: pulados, restantes: restantes, porCota: porCota };
 }
@@ -375,17 +444,24 @@ function voucherEnvioLoteContinuar() {
   try {
     var fila = voucherFilaLer_();
     if (!fila.itens.length) return;
-    var inicio = Date.now(), processados = 0, porCota = false, k = 0;
-    /* Um item por vez, na ordem da fila: cada um carrega a própria escolha de
-       cópia e quem mandou. Para na cota (amanhã) ou no tempo (daqui a 1 min). */
-    for (; k < fila.itens.length; k++) {
+    var inicio = Date.now(), processados = 0, porCota = false;
+    /* Em blocos de itens com a MESMA escolha de cópia e o MESMO remetente (cada item carrega os seus):
+       o bloco inteiro vai de uma vez para voucherEnvioLoteProcessar_, que junta a família num e-mail só
+       — item a item, os irmãos que ficaram para amanhã sairiam separados. Para na cota (amanhã) ou no
+       tempo (daqui a 1 min); o que não saiu continua na fila. */
+    var restoFila = fila.itens.slice();
+    while (restoFila.length) {
       if (Date.now() - inicio > VOUCHER_LOTE_LIMITE_MS) break;
-      var it = fila.itens[k];
-      var r = voucherEnvioLoteProcessar_([it.p], !!it.c, it.q || "gatilho");
-      if (r.restantes.length) { porCota = r.porCota; break; }
-      processados++;
+      var c0 = !!restoFila[0].c, q0 = restoFila[0].q || "gatilho";
+      var bloco = restoFila.filter(function (x) { return !!x.c === c0 && (x.q || "gatilho") === q0; });
+      var outros = restoFila.filter(function (x) { return !(!!x.c === c0 && (x.q || "gatilho") === q0); });
+      var r = voucherEnvioLoteProcessar_(bloco.map(function (x) { return x.p; }), c0, q0);
+      var sobrou = bloco.filter(function (x) { return r.restantes.indexOf(x.p) > -1; });
+      processados += bloco.length - sobrou.length;
+      restoFila = sobrou.concat(outros);
+      if (sobrou.length) { porCota = r.porCota; break; }
     }
-    fila.itens = fila.itens.slice(k);
+    fila.itens = restoFila;
     voucherFilaGravar_(fila);
     if (fila.itens.length) voucherAgendarContinuacao_(porCota);
     Logger.log("voucherEnvioLoteContinuar: " + processados + " processados, " + fila.itens.length + " na fila.");

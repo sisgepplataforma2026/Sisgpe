@@ -693,6 +693,30 @@ function VOUCHER_COLUNAS_SOLICITACOES_() {
   ];
 }
 
+/** Assinatura das colunas canônicas: muda quando o código ganha/perde coluna. */
+function voucherAssinaturaEstrutura_(sheets) {
+  const txt = sheets.map(function(d) { return d.name + ":" + d.headers.join(","); }).join("|");
+  let h = 0;
+  for (let i = 0; i < txt.length; i++) h = ((h * 31) + txt.charCodeAt(i)) | 0;
+  return "v1_" + sheets.length + "_" + txt.length + "_" + (h >>> 0);
+}
+
+/** True só se a marca do cache bate com a assinatura E as 7 abas existem. */
+function voucherEstruturaJaGarantida_(ss, sheets, assinatura) {
+  try {
+    if (CacheService.getScriptCache().get("VOUCHER_ESTRUTURA_OK") !== assinatura) return false;
+    const existentes = {};
+    ss.getSheets().forEach(function(sh) { existentes[sh.getName()] = true; });
+    return sheets.every(function(d) { return existentes[d.name] === true; });
+  } catch (e) {
+    return false;   // na dúvida, roda a volta completa — o comportamento de sempre
+  }
+}
+
+function voucherMarcarEstruturaGarantida_(assinatura) {
+  try { CacheService.getScriptCache().put("VOUCHER_ESTRUTURA_OK", assinatura, 21600); } catch (e) {}
+}
+
 function setupVoucherModuleFase1() {
   const ss = SpreadsheetApp.openById(PLANILHA_ID);
 
@@ -834,6 +858,26 @@ function setupVoucherModuleFase1() {
     }
   ];
 
+  /* GUARDA DE DESEMPENHO — 23/11/2026.
+   *
+   * Esta função é chamada de ~13 lugares, a maioria em caminho de LEITURA
+   * (listagem, prévia, emissão). Cada chamada refazia a estrutura inteira:
+   * 7 abas, ~160 `autoResizeColumn` (só a de solicitações tem ~85 colunas),
+   * formatação e congelamento de linha — e o `autoResizeColumn` lê a coluna
+   * inteira, então o custo cresce com as linhas. Na produção as listagens
+   * levavam 17 s e a emissão 18–21 s.
+   *
+   * A estrutura só precisa ser garantida UMA vez por versão do código. A
+   * marca no cache leva a ASSINATURA das colunas: coluna nova no código muda
+   * a assinatura e força uma volta completa; aba apagada à mão também força
+   * (confere os nomes). O que a guarda NÃO faz mais: consertar cabeçalho
+   * alterado à mão antes de a marca vencer (até 6 h). Leitura é por nome, então
+   * uma coluna apagada aparece como vazia, não como dado trocado. */
+  const assinatura = voucherAssinaturaEstrutura_(sheets);
+  if (voucherEstruturaJaGarantida_(ss, sheets, assinatura)) {
+    return { ok: true, mensagem: "Módulo Voucher já inicializado.", pulado: true };
+  }
+
   sheets.forEach(function(def) {
     const sh = getOrCreateSheet_(ss, def.name);
     ensureHeaders_(sh, def.headers);
@@ -843,6 +887,7 @@ function setupVoucherModuleFase1() {
   });
 
   seedVoucherRules_();
+  voucherMarcarEstruturaGarantida_(assinatura);
 
   Logger.log("Estrutura do módulo Voucher criada com sucesso!");
 
@@ -1965,6 +2010,10 @@ function listarSolicitacoesVoucher() {
         dataAprovacao: String(formatarDataBrVoucher_(val(l, "DATA_VALIDACAO")) || ""),
         emitidoPor: String((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).usuario || ""),
         dataEmissao: String(formatarDataBrVoucher_(val(l, "DATA_EMISSAO")) || ""),
+        /* QUANDO FOI EMITIDO (24/11/2026), com hora, da aba de emissões — a da última emissão, que é a que vale.
+         * Vazio quando o voucher nunca foi emitido: a tela não afirma uma emissão que não houve. */
+        emitidoEm: (typeof voucherDataTexto_ === "function")
+          ? voucherDataTexto_((quemEmitiu[String(val(l, "NUMERO_PROTOCOLO") || "").trim()] || {}).data) : "",
 
         linkContracheque: String(val(l, "LINK_CONTRACHEQUE", "CONTRACHEQUE", "LINK DOCUMENTO VINCULO") || ""),
         linkDocPessoal: String(val(l, "LINK_DOC_PESSOAL", "DOC_PESSOAL", "DOCUMENTO_PESSOAL") || ""),

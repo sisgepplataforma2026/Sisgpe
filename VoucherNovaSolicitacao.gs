@@ -156,6 +156,16 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
     var cab = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]
       .map(function (c) { return String(c || "").trim(); });
 
+    /* ESCOLA DO DEPENDENTE = ESCOLA DO TITULAR (24/11/2026). A regra mora aqui,
+     * no servidor: tela, pedido em lote e qualquer chamada direta passam por
+     * este ponto. Ver VoucherEscolaDoTitular.gs. Altera `dados` (escola, CNPJ,
+     * ID…) e devolve a origem, para a resposta e o histórico dizerem de onde
+     * veio — escola preenchida sozinha sem aviso é o erro que ninguém percebe. */
+    var escolaAplicada = voucherAplicarEscolaDoTitular_(dados, cpf);
+    if (escolaAplicada.erro) {
+      return { ok: false, mensagem: escolaAplicada.erro };
+    }
+
     var valores = {
       ID_SOLICITACAO: gerarIdPadrao_("SOL"),
       DATA_SOLICITACAO: dataPedido,
@@ -405,6 +415,8 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * Não lança: a solicitação já está gravada quando isto roda, e perder o
      * atendimento inteiro por causa de uma anotação seria trocar o problema
      * grande pelo pequeno. */
+    voucherRegistrarEscolaDoDependente_(valores.ID_SOLICITACAO, cpf, protocolo, quem, escolaAplicada);
+
     if (voucherEhNaoAssociado_(dados.situacaoSindical)) {
       try {
         var papelData = String(dados.papelRecebidoEm || "").trim();
@@ -485,6 +497,10 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       tipo: valores.TIPO_SOLICITACAO || "",
       renovacao: valores.TIPO_SOLICITACAO === "RENOVACAO",
       excecao: !!excecaoAplicada,
+      escolaAplicada: escolaAplicada.aplicada ? {
+        nome: escolaAplicada.aplicada.nome, cnpj: escolaAplicada.aplicada.cnpj,
+        origem: escolaAplicada.origem, fonte: escolaAplicada.fonte || "", aviso: escolaAplicada.aviso || ""
+      } : null,
       mensagem: aprovar
         ? "Solicitação criada e aprovada. Protocolo " + protocolo + "."
         : "Solicitação criada em análise. Protocolo " + protocolo + "."
@@ -857,6 +873,16 @@ function voucherCriarSolicitacoesEmLote(pedido, tokenSessao) {
       if (b[k] !== "" && b[k] !== null && b[k] !== undefined) dados[k] = b[k];
     });
 
+    /* A instituição do card é OUTRA que a do cabeçalho: o CNPJ e o e-mail do cabeçalho não são dela —
+     * herdá-los gravaria o CNPJ de uma escola sob o nome de outra. O card traz os seus, ou fica sem e a
+     * busca por nome do envio resolve. */
+    var instCard = String(b.instituicao || "").trim().toUpperCase();
+    var instComum = String(comuns.instituicao || "").trim().toUpperCase();
+    if (instCard && instComum && instCard !== instComum) {
+      if (!String(b.cnpjInstituicao || "").trim()) delete dados.cnpjInstituicao;
+      if (!String(b.emailInstituicao || "").trim()) { delete dados.emailInstituicao; delete dados.origemEmailInstituicao; }
+    }
+
     /* O período é do pedido, um só para todos — com a exceção de o card
      * trazer o dele, que é o caso raro previsto no desenho. */
     if (!dados.periodo) dados.periodo = comuns.periodo;
@@ -879,6 +905,7 @@ function voucherCriarSolicitacoesEmLote(pedido, tokenSessao) {
       protocolo: (r && r.protocolo) || "",
       duplicado: !!(r && r.duplicado),
       tetoDependentes: !!(r && r.tetoDependentes),
+      escolaAplicada: (r && r.escolaAplicada) || null,
       mensagem: (r && r.mensagem) || ""
     });
   }

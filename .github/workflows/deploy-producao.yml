@@ -164,6 +164,29 @@ jobs:
       - name: Rodar a suite completa
         run: npm test
 
+      # ═══ O QUE VAI PARA O APPS SCRIPT É O PACOTE ENXUTO — 24/11/2026 ═══
+      #
+      # O projeto chegou a 9,57 MB e a produção já recusou salvar ("The
+      # project is too large to save") em 9.874.149 bytes. Comentário e
+      # indentação são ~24% do código e não executam nada. Este passo gera, A
+      # PARTIR do commit já homologado e testado acima, uma cópia sem eles e a
+      # coloca no lugar dos arquivos DENTRO DESTA MÁQUINA DE CI (descartável).
+      # O repositório não muda. As travas anteriores (commit contido na
+      # homologação, arquivos idênticos ao homologado, t46, suíte completa)
+      # já rodaram sobre o código COMPLETO; o enxuto vem depois delas.
+      #
+      # A ferramenta confere arquivo por arquivo que a árvore sintática do
+      # original e a do enxuto são idênticas; se algum diferir, ele vai inteiro.
+      # Mesmo passo que a homologação usa desde a versão 297.
+      - name: Enxugar para o Apps Script (sem comentario e sem indentacao)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/enxugar-para-deploy.js /tmp/enxuto | tee /tmp/enxuto.txt
+          grep -q 'prova de árvore: 0$' /tmp/enxuto.txt
+          cp /tmp/enxuto/*.gs /tmp/enxuto/*.html /tmp/enxuto/appsscript.json .
+          echo "projeto a enviar: $(cat ./*.gs ./*.html ./appsscript.json | wc -c) bytes (teto de producao: entre 9.866.462 e 9.874.149)"
+
       - name: Configurar credencial e travar o projeto de Producao
         shell: bash
         env:

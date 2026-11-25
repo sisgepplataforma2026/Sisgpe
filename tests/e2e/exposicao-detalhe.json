@@ -1,6 +1,6 @@
 {
-  "medidoEm": "2026-11-16",
-  "totalPublicas": 1113,
+  "medidoEm": "2026-11-24",
+  "totalPublicas": 1116,
   "protegidas": 826,
   "expostas": [
     {
@@ -211,6 +211,21 @@
     {
       "nome": "obterCnpjPrestadorDespesa",
       "arquivo": "Despesas.gs",
+      "escreve": false
+    },
+    {
+      "nome": "pingSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoLatenciaSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoCaminhosSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
       "escreve": false
     },
     {

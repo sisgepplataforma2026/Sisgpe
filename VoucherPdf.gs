@@ -1318,7 +1318,8 @@ function gerarHtmlOficioEscolaVoucher_(dados) {
     "<strong>Beneficiário:</strong> " + escHtmlVoucher_(beneficiario) + "<br>" +
     "<strong>Modalidade:</strong> " + escHtmlVoucher_(modalidade) + "<br>" +
     "<strong>Curso:</strong> " + escHtmlVoucher_(curso) + "<br>" +
-    "<strong>Período:</strong> " + escHtmlVoucher_(periodo) + "<br>" +
+    "<strong>" + (String(reg.REGIME || "").toUpperCase().indexOf("ANUAL") > -1
+        ? "Ano letivo" : "Semestre") + ":</strong> " + escHtmlVoucher_(periodo) + "<br>" +
     "<strong>Percentual concedido:</strong> " + escHtmlVoucher_(percentual) + "%<br>" +
     "<strong>Código de validação:</strong> " + escHtmlVoucher_(codigo) +
     "</div>" +

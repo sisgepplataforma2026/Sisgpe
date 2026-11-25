@@ -111,7 +111,7 @@ const doc = t.doc, win = t.win, el = id => doc.getElementById(id);
   t.clicar("#certBtnRecarregar");
   await t.assentar(300);
   const tab = () => t.texto("#certTbody");
-  b.ok(/para ana@exemplo\.com/.test(tab()) && /erro no envio/.test(tab()), "a coluna 'Enviado em / por' aparece", tab().slice(0, 300));
+  b.ok(/para ana@exemplo\.com/.test(tab()) && /Erro no envio/.test(tab()), "a coluna 'Enviado em / por' aparece", tab().slice(0, 300));
   const f = el("certFiltroEnvio");
   f.value = "ENVIADO"; f.dispatchEvent(new win.Event("change", { bubbles: true }));
   await t.assentar(30);
