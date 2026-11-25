@@ -35,13 +35,13 @@
     aviso.id = "histReenvAvisoTodos";
     aviso.style.cssText = "display:none;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fffbeb;border:1.5px solid #d97706;color:#92400e;font-size:12px;";
     aviso.innerHTML = "<strong>⚠ Todos os endereços desta escola já falharam ou não têm histórico.</strong><br>" +
-      "Inclua um endereço que receba, ou marque um da lista só se tiver certeza.";
+      "Inclua um endereço que receba, ou desmarque a falha só se tiver certeza.";
     alvo.insertBefore(aviso, lista);
 
     var novos = document.createElement("div");
     novos.id = "histReenvNovos";
-    novos.style.cssText = "margin-top:6px;";
-    alvo.appendChild(novos);
+    novos.style.cssText = "margin-bottom:4px;";
+    alvo.insertBefore(novos, lista);   // no desenho (B) o e-mail incluído aparece NO TOPO, acima dos endereços do cadastro
 
     var label = extra.parentNode;
     var linha = document.createElement("div");
@@ -54,10 +54,16 @@
     btn.style.cssText = "padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:700;white-space:nowrap;";
     btn.textContent = "+ Incluir";
     linha.appendChild(btn);
+    extra.placeholder = "digite o e-mail (vários: separe por vírgula)";
     var erro = document.createElement("div");
     erro.id = "histReenvIncluirMsg";
     erro.style.cssText = "display:none;margin-top:4px;font-size:11.5px;font-weight:400;";
     label.appendChild(erro);
+    var nota = document.createElement("div");
+    nota.id = "histReenvIncluirNota";
+    nota.style.cssText = "display:none;margin-top:2px;font-size:11px;font-weight:400;color:#94a3b8;";
+    nota.textContent = "E-mail já na lista não é incluído de novo; ele só é recusado se estiver com o formato errado.";
+    label.appendChild(nota);
 
     btn.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); incluir(); });
     extra.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); incluir(); } });
@@ -75,6 +81,7 @@
     m.textContent = texto || "";
     m.style.display = texto ? "block" : "none";
     m.style.color = ruim ? "#dc2626" : "#0f8a5f";
+    var nt = g("histReenvIncluirNota"); if (nt) nt.style.display = (texto && ruim) ? "block" : "none";
   }
 
   function marcados() {
@@ -91,7 +98,10 @@
     var ok = g("histReenvOk");
     if (ok) ok.disabled = !tem;
     var av = g("histReenvAvisoTodos");
-    if (av) av.style.display = (semMarcadoInicial && !tem) ? "block" : "none";
+    var ligado = semMarcadoInicial && !tem;
+    if (av) av.style.display = ligado ? "block" : "none";
+    var campo = g("histReenvExtra");
+    if (campo) { campo.style.borderColor = ligado ? "#d97706" : ""; campo.style.boxShadow = ligado ? "0 0 0 3px rgba(217,119,6,.18)" : ""; }
   }
 
   function jaNaLista(email) {

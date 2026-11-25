@@ -49,12 +49,17 @@ function incluir() { el("histReenvIncluirBtn").click(); }
   b.ok(el("histReenvAvisoTodos").style.display === "block" && /Todos os endereços desta escola já falharam/.test(t.texto("#histReenvAvisoTodos")), "aviso amarelo");
   b.ok(el("histReenvOk").disabled === true, "Reenviar desativado sem destino");
   b.ok(!!el("histReenvIncluirBtn") && /\+ Incluir/.test(el("histReenvIncluirBtn").textContent), "botão '+ Incluir'");
+  b.ok(/Inclua um endereço que receba, ou desmarque a falha só se tiver certeza\./.test(t.texto("#histReenvAvisoTodos")), "o texto do aviso é o do desenho, palavra por palavra");
+  b.ok(/digite o e-mail \(vários: separe por vírgula\)/.test(el("histReenvExtra").placeholder), "placeholder do desenho");
+  b.ok(el("histReenvExtra").style.borderColor !== "", "campo com a borda laranja do desenho A");
+  b.ok(el("histReenvNovos").compareDocumentPosition(el("histReenvDestinos")) & win.Node.DOCUMENT_POSITION_FOLLOWING, "o espaço dos e-mails incluídos fica ACIMA da lista (desenho B)");
 
   b.passo("2. E-mail com formato errado: recusa, com a mensagem, e NÃO entra na lista");
   digitar("natalia.souza@"); incluir(); await t.assentar(30);
   b.ok(/não é um e-mail válido/.test(t.texto("#histReenvIncluirMsg")) && /natalia\.souza@/.test(t.texto("#histReenvIncluirMsg")), "mensagem de erro", t.texto("#histReenvIncluirMsg"));
   b.igual(dest().length, 3, "a lista não ganhou nada");
   b.igual(el("histReenvExtra").value, "natalia.souza@", "o texto fica no campo para corrigir");
+  b.ok(/E-mail já na lista não é incluído de novo; ele só é recusado se estiver com o formato errado\./.test(t.texto("#histReenvIncluirNota")) && el("histReenvIncluirNota").style.display === "block", "a nota cinza do desenho B aparece sob o erro");
   b.ok(el("histReenvOk").disabled === true, "continua sem destino válido");
 
   b.passo("3. E-mail certo: entra marcado, com NOVO e 'remover'; o aviso some; Reenviar ativa");
