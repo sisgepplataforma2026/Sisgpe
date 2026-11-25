@@ -353,6 +353,17 @@ depois de 300 linhas de backend e uma tela pronta, não.
 Vale inclusive quando o pedido parece pequeno: "cria a tela X" também tem
 arquitetura, e é aí que a divergência aparece.
 
+**REFORÇADO EM 25/11/2026 — o usuário: *"Sempre mostrar como ficaria antes de implementar"*.** Dito depois de eu implementar o "+ Incluir"
+do reenvio de ofício sem mostrar, de novo, como ficaria — achando que bastava existir um desenho antigo no repositório, e ainda trocando
+palavras do desenho por conta própria. Regras práticas, sem exceção:
+1. **Desenho no repositório não é aprovação de implementar agora.** Antes de escrever código, mostrar NA CONVERSA como vai ficar (imagem
+   ou wireframe) e esperar o "pode". Um pedido curto ("incluir os e-mails…") não dispensa isso.
+2. **Alteração em tela que já existe: mostrar ANTES e DEPOIS**, e dizer o que muda e o que NÃO muda (REGRA Nº -3).
+3. **Texto do desenho é do usuário.** Rótulo, aviso e placeholder aprovados saem palavra por palavra; qualquer diferença é perguntada,
+   nunca trocada em silêncio.
+4. **Depois de implementar, mostrar como ficou de verdade** (captura real da tela, não só "testes passaram") e listar o que difere do
+   desenho. Chromium + Playwright já estão instalados no ambiente: renderizar o HTML e enviar a imagem.
+
 ## 🚨 REGRA Nº 0 — SCRIPTLET DO APPS SCRIPT NUNCA VAI DENTRO DE COMENTÁRIO
 
 O template engine do Apps Script (`createTemplateFromFile().evaluate()`, usado por `include()` em `Code.gs:267`) avalia scriptlet em **qualquer posição do arquivo**, inclusive dentro de `<!-- comentário HTML -->`, porque ele roda ANTES do navegador ver o HTML. Comentar um scriptlet não o desliga.
