@@ -145,14 +145,15 @@ if (!dom.jsdomDisponivel()) {
   /* O DEFEITO EM UMA ASSERÇÃO: antes, as duas linhas eram indistinguíveis
      porque só traziam o nome do pai. */
   const nomeForte = function (tr) {
-    var el = tr && tr.querySelector("td:nth-child(3) div");
+    /* 26/11/2026 (refino aprovado): o funcionário (titular) é a linha de cima; o dependente vem na linha "Dependente: …" */
+    var el = tr && tr.querySelector(".cert-dep-linha");
     return el ? el.textContent.replace(/\s+/g, " ").trim() : "";
   };
   b.ok(nomeForte(tr1) !== nomeForte(tr2),
     "as duas linhas do mesmo titular deixam de ser idênticas",
     nomeForte(tr1) + " | " + nomeForte(tr2));
-  b.ok(nomeForte(tr1).indexOf("GUILHERME") === 0,
-    "e o nome do beneficiário vem PRIMEIRO na célula, não escondido embaixo",
+  b.ok(nomeForte(tr1).indexOf("Dependente: GUILHERME") === 0,
+    "e o dependente aparece na linha 'Dependente:' logo abaixo do funcionário",
     nomeForte(tr1));
 
   b.passo("4. a etiqueta explica por que o nome é outro");
@@ -164,16 +165,16 @@ if (!dom.jsdomDisponivel()) {
     "e a linha do próprio associado NÃO traz etiqueta — seria ruído em quase toda linha");
 
   b.passo("5. o titular continua visível, porque a conta por CPF é dele");
-  b.ok(tr1 && /Titular:/.test(tr1.textContent),
-    "a linha do dependente mostra de quem é o direito",
+  b.ok(tr1 && /Dependente:/.test(tr1.textContent) && tr1.querySelector(".cert-benef-nome") && tr1.querySelector(".cert-benef-nome").textContent.indexOf(TITULAR) === 0,
+    "a linha do dependente mostra de quem é o direito (o funcionário é o nome principal)",
     tr1 && tr1.textContent.replace(/\s+/g, " ").trim());
   b.ok(tr1 && tr1.textContent.indexOf(TITULAR) > -1,
     "com o nome do associado");
   b.ok(tr1 && /111\.444\.777-35/.test(tr1.textContent),
     "e o CPF dele, formatado — é por ele que se conta o limite",
     tr1 && tr1.textContent.replace(/\s+/g, " ").trim());
-  b.ok(trTit && !/Titular:/.test(trTit.textContent),
-    "na linha do próprio associado o rótulo não se repete: o nome já é o dele");
+  b.ok(trTit && !/Dependente:/.test(trTit.textContent),
+    "na linha do próprio associado não há linha de dependente: o nome já é o dele");
 
   b.passo("6. a busca acha pelos dois nomes");
   /* Quem digita "Guilherme" espera achar a bolsa dele; quem digita o nome do

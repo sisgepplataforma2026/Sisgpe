@@ -57,9 +57,10 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.ok(!!E.querySelector(".cert-tag-assoc") && !!E.querySelector(".cert-tag-parentesco"), "dependente de titular associado: filho + associado");
   b.ok(!A.querySelector(".cert-tag-presencial") && !A.querySelector(".cert-tag-sind-ni") && !B.querySelector(".cert-tag-assoc") && !C.querySelector(".cert-tag-assoc"), "contraprova: nenhuma linha leva etiqueta de outra situação");
 
-  b.passo("2. a etiqueta 'associado' antiga virou 'titular'");
-  b.ok(/titular/i.test(txt(A.querySelector(".cert-tag-proprio"))) && !/associado/i.test(txt(A.querySelector(".cert-tag-proprio"))), "o titular diz 'titular', não 'associado'", txt(A.querySelector(".cert-tag-proprio")));
-  b.ok(!D.querySelector(".cert-tag-proprio") && !E.querySelector(".cert-tag-proprio"), "dependente não leva a etiqueta de titular");
+  b.passo("2. refino de 26/11/2026: o funcionário (titular) é o nome principal; o dependente vem embaixo");
+  b.ok(!A.querySelector(".cert-tag-proprio") && !B.querySelector(".cert-tag-proprio"), "a etiqueta 'titular/associado' antiga saiu: quem é o funcionário se vê pelo nome em destaque");
+  b.ok(/^DANIELA TITULAR NAO ASSOC/.test(txt(D.querySelector(".cert-benef-nome"))) && /Dependente: DUDA FILHA/.test(txt(D.querySelector(".cert-dep-linha"))), "dependente: o funcionário em cima, 'Dependente: …' embaixo");
+  b.ok(!A.querySelector(".cert-dep-linha"), "titular: sem linha de dependente");
 
   b.passo("3. não associado sem envio: 'Só impresso', nunca 'Ainda não enviado'");
   b.ok(/Só impresso — retirada presencial na sede/.test(sit(B)) && /não é enviado por e-mail/.test(sit(B)), "mostra 'Só impresso — retirada presencial'", sit(B));

@@ -80,6 +80,24 @@
 #secCertificadoAdmin .cert-tabela th { padding: 11px 13px; text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--g500); border-bottom: 1px solid var(--g200); white-space: nowrap; }
 #secCertificadoAdmin .cert-tabela td { padding: 11px 13px; font-size: 12.5px; color: var(--g700); border-bottom: 1px solid var(--g100); vertical-align: middle; }
 #secCertificadoAdmin .cert-tabela tbody tr:hover td { background: var(--g50); }
+#secCertificadoAdmin .cert-tabela thead{background:var(--navy,#001f4d)}
+#secCertificadoAdmin .cert-tabela thead th{background:var(--navy,#001f4d);color:#fff;border-bottom:0;padding:12px 14px}
+#secCertificadoAdmin .cert-th-ord{cursor:pointer;user-select:none;white-space:nowrap}
+#secCertificadoAdmin .cert-th-ord:hover{background:var(--navy2,#002f6c)}
+#secCertificadoAdmin .cert-ord-seta{font-size:10px;font-weight:700;color:#bcd3f5;margin-left:4px}
+#secCertificadoAdmin .cert-th-ord[data-ordem]:not([data-ordem=""]) .cert-ord-seta{color:#f0c843}
+#secCertificadoAdmin .cert-painel-filtros{margin:8px 20px 14px;background:#f6f8fb;border:1px solid #e3e9f1;border-radius:14px;padding:14px 16px;width:100%;box-sizing:border-box}
+#secCertificadoAdmin .cert-pf{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+#secCertificadoAdmin .cert-pf label{font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.07em}
+#secCertificadoAdmin .cert-pf-l1{display:flex;gap:12px;align-items:flex-end;margin-bottom:12px}
+#secCertificadoAdmin .cert-pf-busca{flex:3}
+#secCertificadoAdmin .cert-pf-l1 .cert-busca{width:100%;box-sizing:border-box}
+#secCertificadoAdmin .cert-pf-l2{display:grid;grid-template-columns:repeat(7,1fr);gap:12px}
+#secCertificadoAdmin .cert-painel-filtros .cert-filtro-col,#secCertificadoAdmin .cert-painel-filtros .cert-input{height:34px;box-sizing:border-box;width:100%;border:1.5px solid #d3dbe6;border-radius:10px;background:#fff;padding:0 10px;font-size:12.5px;font-weight:600;color:#334155}
+#secCertificadoAdmin .cert-painel-filtros .cert-filtro-col.ativo,#secCertificadoAdmin .cert-painel-filtros .cert-input.ativo{border-color:#1565C0;background:#f0f6ff;color:#001f4d;font-weight:800}
+#secCertificadoAdmin .cert-pf-chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:#64748b}
+#secCertificadoAdmin .cert-pf-chip{background:#e0ecff;color:#0b3d91;border-radius:999px;padding:3px 10px;font-weight:700;cursor:pointer;margin-right:6px;display:inline-block}
+#secCertificadoAdmin .cert-pf-limpar{margin-left:auto;background:none;border:0;color:#dc2626;font-weight:800;font-size:12px;cursor:pointer}
 #secCertificadoAdmin .cert-tabela-vazia { text-align: center; padding: 44px 20px; color: var(--g400); font-size: 14px; }
 
 #secCertificadoAdmin .cert-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 9px; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
@@ -175,7 +193,6 @@
 #certNovaBox .cert-nv-org.recusa { background: #fef2f2; color: #dc2626; }
 #certNovaBox .cert-nv-aviso { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 3px solid #1565C0; border-radius: 8px; padding: 8px 11px; font-size: 12px; color: #334155; margin-bottom: 7px; line-height: 1.5; }
 #certNovaBox .cert-nv-aviso.alerta { background: #fffbeb; border-color: #fcd34d; border-left-color: #d97706; color: #92400e; font-weight: 700; }
-.cert-linha-filtros th { padding: 4px 8px 8px !important; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
 .cert-filtro-col { width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; padding: 4px 6px; color: #334155; outline: none; font-weight: 600; }
 .cert-filtro-col:focus { border-color: #1565C0; box-shadow: 0 0 0 3px rgba(21,101,192,.10); }
 .cert-filtro-col.ativo { border-color: #1565C0; background: #eff6ff; }
@@ -330,12 +347,11 @@
 
 /* LINHA REFINADA 19/11/2026 (desenho aprovado): 7 colunas, nada à direita escondido, botão da próxima ação à vista; no celular vira cartão. */
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot]{cursor:pointer}
-#secCertificadoAdmin .cert-sol-prot{font-size:12.5px;font-weight:800;color:#002f6c}
+#secCertificadoAdmin .cert-sol-prot{font-size:12.5px;font-weight:400;color:#1e3a8a}
 #secCertificadoAdmin .cert-sol-data{font-size:11px;color:#94a3b8;margin-top:2px}
-#secCertificadoAdmin .cert-tabela td.c-benef{position:relative;padding-left:62px;min-width:240px}
-#secCertificadoAdmin .cert-tabela td.c-benef::before{content:attr(data-ini);position:absolute;left:14px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
-#secCertificadoAdmin .cert-tabela td.c-benef.dep::before{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
-#secCertificadoAdmin .cert-benef-nome{font-weight:700;font-size:12.5px;color:#0f172a}
+#secCertificadoAdmin .cert-tabela td.c-benef{min-width:250px}
+#secCertificadoAdmin .cert-benef-nome{font-weight:800;font-size:13.5px;color:#0f172a}
+#secCertificadoAdmin .cert-dep-linha{font-weight:400;font-size:12.5px;color:#334155;margin-top:4px}
 #secCertificadoAdmin .cert-tag-assoc{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#d1fae5;color:#065f46;margin-left:6px;vertical-align:1px}
 #secCertificadoAdmin .cert-tag-sind-ni{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;border:1px dashed #94a3b8;margin-left:6px;vertical-align:1px}
 #secCertificadoAdmin .cert-so-impresso{background:#fdf2c8;border:1.5px solid #C9A84C;border-radius:10px;padding:6px 9px;color:#5b4300;font-weight:700;line-height:1.35}
@@ -344,7 +360,7 @@
 #secCertificadoAdmin .cert-aguarda-envio{color:#92400e}
 #secCertificadoAdmin .cert-tag-proprio{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#e3edff;color:#1d4ed8;margin-left:6px;vertical-align:1px}
 #secCertificadoAdmin .cert-tag-parentesco{background:#f1e9ff;color:#6d28d9;border-color:#e1d1fb}
-#secCertificadoAdmin .cert-escola-nome{font-size:12.5px;font-weight:700;color:#1e293b;max-width:260px}
+#secCertificadoAdmin .cert-escola-nome{font-size:12.5px;font-weight:400;color:#1e293b;max-width:260px}
 #secCertificadoAdmin .cert-curso-sub{font-size:11.5px;color:#94a3b8;margin-top:2px;max-width:260px}
 #secCertificadoAdmin .cert-chip{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#eef2f7;color:#475569;margin:0 5px 3px 0}
 #secCertificadoAdmin .cert-chip.per{background:#fff6dc;color:#8a6d1f}
@@ -359,23 +375,18 @@
 #secCertificadoAdmin .cert-tabela tbody tr.cert-irmao td{background:#faf7ff}
 #secCertificadoAdmin .cert-tabela tbody tr.cert-irmao td:first-child{box-shadow:inset 4px 0 0 #8b5cf6}
 #secCertificadoAdmin .cert-tabela tbody tr.cert-irmao:hover td{background:#f4edff}
-#secCertificadoAdmin .cert-linha-filtros th{vertical-align:top}
-#secCertificadoAdmin .cert-linha-filtros th .cert-filtro-col{display:block;width:100%}
-#secCertificadoAdmin .cert-linha-filtros th .cert-filtro-col + .cert-filtro-col{margin-top:4px}
 @media (max-width:760px){#secCertificadoAdmin .cert-tabela,#secCertificadoAdmin .cert-tabela thead,#secCertificadoAdmin .cert-tabela tbody{display:block;width:100%}
 #secCertificadoAdmin .cert-tabela thead tr:first-child{display:none}
-#secCertificadoAdmin .cert-tabela .cert-linha-filtros{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:#f8fafc}
-#secCertificadoAdmin .cert-tabela .cert-linha-filtros th{display:block;padding:0 !important;border:0;background:transparent}
-#secCertificadoAdmin .cert-tabela .cert-linha-filtros th.f-chk,#secCertificadoAdmin .cert-tabela .cert-linha-filtros th.f-aca{display:none}
-#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"chk sol sit" "ben ben ben" "esc esc esc" "niv niv niv" "aca aca aca";gap:4px 8px;background:#fff;border:1px solid #e8edf4;border-radius:14px;margin:10px 8px;padding:12px;box-shadow:0 2px 10px rgba(15,35,80,.07)}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"chk sol sit" "ben ben ben" "esc esc esc" "niv per per" "aca aca aca";gap:4px 8px;background:#fff;border:1px solid #e8edf4;border-radius:14px;margin:10px 8px;padding:12px;box-shadow:0 2px 10px rgba(15,35,80,.07)}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td{display:block;border:0;padding:0;background:transparent !important;box-shadow:none !important}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td:nth-child(1){grid-area:chk}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-sol{grid-area:sol}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-sit{grid-area:sit;text-align:right}
-#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-benef{grid-area:ben;min-width:0;padding-left:48px;margin-top:6px}
-#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-benef::before{left:0;width:38px;height:38px}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-benef{grid-area:ben;min-width:0;margin-top:6px}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-escola{grid-area:esc}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-nivel{grid-area:niv}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-per{grid-area:per}
+#secCertificadoAdmin .cert-pf-l1{flex-wrap:wrap}#secCertificadoAdmin .cert-pf-l2{grid-template-columns:1fr 1fr}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-acao{grid-area:aca;margin-top:6px}
 #secCertificadoAdmin .cert-acao-prim{padding:11px 24px;font-size:13px}
 #secCertificadoAdmin .cert-tabela tbody tr.cert-irmao{border-left:4px solid #8b5cf6}}
@@ -502,47 +513,21 @@
              lugares criaria dois controles para a mesma pergunta, e a hora em
              que eles discordassem seria a hora em que alguem concluiria que a
              lista esta errada. -->
-        <div class="cert-filtros">
-          <input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Nome, CPF, protocolo...">
-          <div class="cert-filtro-data">
-            <span class="cert-filtro-lbl">Data</span>
-            <input type="date" class="cert-input cert-input-data" id="certFiltroDataDe" title="a partir de">
-            <span class="cert-filtro-lbl">até</span>
-            <input type="date" class="cert-input cert-input-data" id="certFiltroDataAte" title="até">
+        <!-- PAINEL DE FILTROS (refino UX 26/11/2026, desenho aprovado): fora do cabeçalho, cada campo com rótulo fixo; o filtro em uso fica azul e
+             aparece em "Filtros ativos". Os campos de protocolo e de solicitante ficam escondidos (vazios): a busca geral já cobre os dois. -->
+        <div class="cert-painel-filtros" id="certPainelFiltros">
+          <div class="cert-pf-l1">
+            <div class="cert-pf cert-pf-busca"><label for="certBusca">Funcionário, CPF ou nº da bolsa</label><input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Digite o nome, o CPF ou o número…"></div>
+            <div class="cert-pf"><label for="certFiltroDataDe">Solicitado de</label><input type="date" class="cert-input cert-input-data" id="certFiltroDataDe" title="a partir de"></div>
+            <div class="cert-pf"><label for="certFiltroDataAte">até</label><input type="date" class="cert-input cert-input-data" id="certFiltroDataAte" title="até"></div>
           </div>
-          <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certLimparFiltros" style="display:none;">Limpar filtros</button>
-        </div>
-      <div class="cert-barra-sel" id="certBarraSel">
-        <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
-        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
-        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelAprovar">✔ Aprovar selecionadas</button>
-        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelEmitir">📄 Emitir selecionadas</button>
-        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelEnviar">📧 Enviar selecionadas</button>
-        <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
-      </div>
-      <div class="cert-tabela-wrap">
-        <table class="cert-tabela">
-          <thead>
-            <tr>
-              <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
-              <th>Solicitação</th><th>Beneficiário</th><th>Escola e curso</th>
-              <th>Nível e período</th><th>Situação e envio</th><th style="text-align:right;">Ação</th>
-            </tr>
-            <!-- FILTRO POR COLUNA, embaixo do titulo dela.
-                 Pedido do usuario em 13/08/2026 apontando a propria linha de
-                 cabecalho. Cada controle fica sob a coluna que filtra: nao ha
-                 o que decifrar, e some a duvida de "qual campo filtra o que"
-                 que uma faixa generica sempre deixa. -->
-            <tr class="cert-linha-filtros">
-              <th class="f-chk"></th>
-              <th class="f-sol"><input type="text" class="cert-filtro-col" id="certFiltroProtocolo" placeholder="protocolo"></th>
-              <th class="f-ben"><input type="text" class="cert-filtro-col" id="certFiltroSolicitante" placeholder="beneficiário, titular ou CPF"></th>
-              <th class="f-esc"><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="escola"><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="curso"></th>
-              <!-- O periodo e montado a partir do que EXISTE na lista, nunca
-                   de uma lista fixa de anos: assim nao oferece periodo vazio
-                   nem esconde um que existe. -->
-              <th class="f-niv"><select class="cert-filtro-col" id="certFiltroModalidade">
-                  <option value="">todas</option>
+          <input type="text" class="cert-filtro-col" id="certFiltroProtocolo" hidden aria-hidden="true" tabindex="-1">
+          <input type="text" class="cert-filtro-col" id="certFiltroSolicitante" hidden aria-hidden="true" tabindex="-1">
+          <div class="cert-pf-l2">
+            <div class="cert-pf"><label for="certFiltroEscola">Escola</label><input type="text" class="cert-filtro-col" id="certFiltroEscola" placeholder="Todas"></div>
+            <div class="cert-pf"><label for="certFiltroCurso">Curso</label><input type="text" class="cert-filtro-col" id="certFiltroCurso" placeholder="Todos"></div>
+            <div class="cert-pf"><label for="certFiltroModalidade">Nível</label><select class="cert-filtro-col" id="certFiltroModalidade">
+                  <option value="">Todas</option>
                   <option value="CRECHE">Creche</option>
                   <option value="EDUCACAO_INFANTIL">Ed. Infantil</option>
                   <option value="ENSINO_FUNDAMENTAL">Ens. Fundamental</option>
@@ -552,9 +537,10 @@
                   <option value="POS_GRADUACAO">Pós-Graduação</option>
                   <option value="MESTRADO">Mestrado</option>
                   <option value="DOUTORADO">Doutorado</option>
-                </select><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">todos</option></select></th>
-              <th class="f-sit"><select class="cert-filtro-col" id="certFiltroStatus">
-                  <option value="">todos</option>
+                </select></div>
+            <div class="cert-pf"><label for="certFiltroPeriodo">Período</label><select class="cert-filtro-col" id="certFiltroPeriodo"><option value="">Todos</option></select></div>
+            <div class="cert-pf"><label for="certFiltroStatus">Situação</label><select class="cert-filtro-col" id="certFiltroStatus">
+                  <option value="">Todos</option>
                   <option value="AGUARDANDO_VALIDACAO_CADASTRAL">Validação cadastral</option>
                   <!-- NENHUM ESTADO PODE FICAR INVISÍVEL — 16/09/2026.
                        `BLOQUEADA_POR_REGRA` e `AGUARDANDO_ATENDIMENTO_PRESENCIAL`
@@ -573,18 +559,41 @@
                   <option value="INDEFERIDO">Indeferido</option>
                   <option value="EMITIDO">Emitido</option>
                   <option value="CANCELADO">Cancelado</option>
-                </select><select class="cert-filtro-col" id="certFiltroEnvio">
-                  <option value="">todos</option>
+                </select></div>
+            <div class="cert-pf"><label for="certFiltroEnvio">Envio</label><select class="cert-filtro-col" id="certFiltroEnvio">
+                  <option value="">Todos</option>
                   <option value="ENVIADO">✔ Enviados</option>
                   <option value="NA_FILA">⏳ Na fila</option>
                   <option value="ERRO">✖ Erro no envio</option>
                   <option value="NAO">— Não enviados</option>
-                </select><select class="cert-filtro-col" id="certFiltroEnviadoPor"><option value="">enviado por: todos</option></select></th>
-              <th class="f-aca"></th>
+                </select></div>
+            <div class="cert-pf"><label for="certFiltroEnviadoPor">Enviado por</label><select class="cert-filtro-col" id="certFiltroEnviadoPor"><option value="">Todos</option></select></div>
+          </div>
+          <div class="cert-pf-chips" id="certFiltrosAtivos" style="display:none;">
+            <span class="cert-pf-chips-t">Filtros ativos:</span><span id="certChips"></span>
+            <button type="button" class="cert-pf-limpar" id="certLimparFiltros">✕ Limpar filtros</button>
+          </div>
+        </div>
+      <div class="cert-barra-sel" id="certBarraSel">
+        <span class="cert-barra-sel-txt" id="certBarraSelTxt">0 selecionadas</span>
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelLimpar">Limpar seleção</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelAprovar">✔ Aprovar selecionadas</button>
+        <button type="button" class="cert-btn cert-btn-primary cert-btn-sm" id="certSelEmitir">📄 Emitir selecionadas</button>
+        <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certSelEnviar">📧 Enviar selecionadas</button>
+        <button type="button" class="cert-btn cert-btn-danger cert-btn-sm" id="certSelExcluir">🗑 Excluir</button>
+      </div>
+      <div class="cert-tabela-wrap">
+        <table class="cert-tabela">
+          <thead>
+            <tr>
+              <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
+              <th>Nº da bolsa</th>
+              <th id="certThFunc" class="cert-th-ord" data-ordem="" title="Ordenar o funcionário de A a Z (clique de novo: Z a A; de novo: ordem original)">Funcionário <span class="cert-ord-seta" id="certOrdSeta">↕ A–Z</span></th>
+              <th>Escola</th><th>Nível</th><th>Período</th><th>Situação</th><th style="text-align:right;">Ação</th>
             </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="7"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="8"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1501,6 +1510,7 @@
 
 var _lista       = [];
 var _filtrada    = [];
+var _ordemFunc   = '';   // '' (ordem original) | 'asc' (A–Z) | 'desc' (Z–A) — clique no título 'Funcionário'
 var _paginaAtual = 1;
 var _porPagina   = 20;
 var _buscaTimer  = null;
@@ -1626,7 +1636,7 @@ function certMontarFiltroEnviadoPor(){
   var sel=g('certFiltroEnviadoPor'); if(!sel) return;
   var atual=sel.value, vistos={};
   _lista.forEach(function(s){ if(s.envio&&s.envio.por) vistos[s.envio.por]=1; });
-  sel.innerHTML='<option value="">enviado por: todos</option>'+Object.keys(vistos).sort().map(function(p){
+  sel.innerHTML='<option value="">Todos</option>'+Object.keys(vistos).sort().map(function(p){
     return '<option value="'+cert_escHtml(p)+'"'+(p===atual?' selected':'')+'>'+cert_escHtml(p.split('@')[0])+'</option>';
   }).join('');
 }
@@ -1640,7 +1650,7 @@ function montarFiltroPeriodo(){
     if(p) vistos[p] = true;
   });
   var chaves = Object.keys(vistos).sort().reverse();
-  sel.innerHTML = '<option value="">todos</option>'
+  sel.innerHTML = '<option value="">Todos</option>'
     + chaves.map(function(p){ return '<option value="'+cert_escHtml(p)+'">'+cert_escHtml(p)+'</option>'; }).join('');
   if(atual && chaves.indexOf(atual) > -1) sel.value = atual;
 }
@@ -1708,8 +1718,18 @@ function cert_aplicarFiltros(){
     return true;
   });
 
-  var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate);
+  /* ORDEM A–Z / Z–A no funcionário (pedido de 26/11/2026). Ordena pelo nome do titular (o funcionário); no empate, pelo do beneficiário — irmãos ficam juntos. */
+  if(_ordemFunc){
+    var _sinal = _ordemFunc==='desc' ? -1 : 1;
+    var _cmp = function(x,y){ return String(x||'').localeCompare(String(y||''),'pt',{sensitivity:'base'}); };
+    _filtrada = _filtrada.slice().sort(function(a,b){
+      return _sinal*(_cmp(a.nome,b.nome) || _cmp(certBeneficiarioNome(a),certBeneficiarioNome(b)));
+    });
+  }
+
+  var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate||envio||envPor);
   if(g('certLimparFiltros')) g('certLimparFiltros').style.display = algum ? '' : 'none';
+  cert_renderChips();
 
   _paginaAtual=1; cert_renderTabela();
 }
@@ -2178,6 +2198,29 @@ function loteEnviarExecutar(){
     .voucherEnvioLoteExecutar(protos, { copiaInstituicao: g('certLoteEnvCopia').checked }, certToken());
 }
 
+/* FILTROS ATIVOS (26/11/2026): uma etiqueta com ✕ para cada filtro em uso; o ✕ limpa só aquele filtro. */
+var CERT_FILTROS_ROTULO = [['certBusca','Busca'],['certFiltroDataDe','De'],['certFiltroDataAte','Até'],['certFiltroEscola','Escola'],['certFiltroCurso','Curso'],
+  ['certFiltroModalidade','Nível'],['certFiltroPeriodo','Período'],['certFiltroStatus','Situação'],['certFiltroEnvio','Envio'],['certFiltroEnviadoPor','Enviado por']];
+function cert_renderChips(){
+  var box = g('certFiltrosAtivos'), alvo = g('certChips'); if(!box || !alvo) return;
+  var html = '';
+  CERT_FILTROS_ROTULO.forEach(function(par){
+    var el = g(par[0]); if(!el) return;
+    var v = String(el.value||'').trim(); if(!v) return;
+    var txt = el.tagName==='SELECT' ? String((el.options[el.selectedIndex]||{}).text||v) : v;
+    html += '<span class="cert-pf-chip" data-filtro="'+par[0]+'" title="Tirar este filtro">'+cert_escHtml(par[1])+': '+cert_escHtml(txt)+' ✕</span>';
+  });
+  alvo.innerHTML = html;
+  box.style.display = html ? 'flex' : 'none';
+}
+function cert_ordenarFuncionario(){
+  _ordemFunc = _ordemFunc==='' ? 'asc' : (_ordemFunc==='asc' ? 'desc' : '');
+  var th = g('certThFunc'), seta = g('certOrdSeta');
+  if(th) th.setAttribute('data-ordem', _ordemFunc);
+  if(seta) seta.textContent = _ordemFunc==='asc' ? '▲ A–Z' : (_ordemFunc==='desc' ? '▼ Z–A' : '↕ A–Z');
+  cert_aplicarFiltros();
+}
+
 function cert_limparFiltros(){
   ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
    'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
@@ -2309,7 +2352,7 @@ function cert_renderTabela(){
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="7"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="8"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -2344,32 +2387,21 @@ function cert_renderTabela(){
          ao lado, e o titular aparece em cinza embaixo, junto do CPF. A conta
          de "um por CPF" continua sendo do titular; o que muda é que dá para
          ver de quem é cada bolsa sem abrir a solicitação. */
-      +'<td class="c-benef'+(ehDep?' dep':'')+'" data-ini="'+cert_escHtml(certIniciais(certBeneficiarioNome(s)))+'"><div class="cert-benef-nome">'
-        +cert_escHtml(certBeneficiarioNome(s))
-        +certBeneficiarioEtiqueta(s)
-        +(ehDep?'':'<span class="cert-tag-proprio" title="O próprio titular da solicitação (a situação sindical está na etiqueta ao lado)">titular</span>')
-        /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
-           antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
-           omissão — dizer isso de uma bolsa já renovada seria inventar. */
+      /* FUNCIONÁRIO = O TITULAR, EM NEGRITO; O DEPENDENTE VEM EMBAIXO, EM PESO NORMAL (refino UX de 26/11/2026, desenho aprovado: "em negrito somente os
+         funcionários"). A conta de "um por CPF" é do titular, então o CPF que aparece é o dele. Etiquetas de situação sindical ao lado do nome do funcionário. */
+      +'<td class="c-benef'+(ehDep?' dep':'')+'"><div class="cert-benef-nome">'
+        +cert_escHtml(s.nome||certBeneficiarioNome(s)||'—')
+        /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por omissão. */
         +(s.tipoSolicitacao==='RENOVACAO'?'<span class="cert-tag-renov">renovação</span>':'')
-        /* SELO PRESENCIAL — quem olha a fila precisa saber que aquele voucher
-           espera alguém buscar, em vez de achar que o e-mail falhou.
-           Regra de 14/08/2026: o não associado tem o MESMO benefício, mas
-           solicita em papel e retira na sede. Por isso o selo é dourado
-           institucional e não a cor de alerta: não é pendência nem erro, é
-           outro canal. A ausência dele é que seria o problema — sem selo, a
-           secretaria ligaria para a pessoa avisando de um e-mail que, por
-           decisão, nunca foi enviado. */
+        /* SELO PRESENCIAL (regra de 14/08/2026): o não associado solicita em papel e retira na sede — outro canal, não erro de e-mail. Dourado institucional. */
         +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
             ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">não associado</span>':'')
         +(certSindical(s)==='ASSOCIADO'?'<span class="cert-tag-assoc" title="Situação sindical: associado">✔ associado</span>':'')
         +(certSindical(s)==='NI'?'<span class="cert-tag-sind-ni" title="A situação sindical desta solicitação está em branco: edite (✏) e informe se é associado ou não associado.">sindical não informada</span>':'')
         +'</div>'
-        +'<div class="cert-titular-linha">'
-          + (certEhOutroBeneficiario(s)
-              ? 'Titular: ' + cert_escHtml(s.nome||'—') + (s.cpf ? ' · ' + cert_escHtml(s.cpf) : '')
-              : cert_escHtml(s.cpf||''))
-          +'</div></td>'
+        +'<div class="cert-titular-linha">'+cert_escHtml(s.cpf||'')+'</div>'
+        +(ehDep?'<div class="cert-dep-linha">Dependente: '+cert_escHtml(certBeneficiarioNome(s))+certBeneficiarioEtiqueta(s)+'</div>':'')
+        +'</td>'
       +'<td class="c-escola"><div class="cert-escola-nome" title="'+cert_escHtml(s.escola||'')+'">'+cert_escHtml(s.escola||'—')+'</div>'
         +'<div class="cert-curso-sub" title="'+cert_escHtml(s.curso||'')+'">'+cert_escHtml(s.curso||'—')+'</div></td>'
       /* PERÍODO VAZIO NÃO É TRAÇO, É AVISO — pedido do usuário em 13/08/2026:
@@ -2378,7 +2410,8 @@ function cert_renderTabela(){
          virar obrigatório. Um "—" discreto some no meio da tabela; o que a
          pessoa precisa saber é que aquela linha NÃO EMITE, e por quê. A cor
          é a de alerta do design system, não o dourado institucional. */
-      +'<td class="c-nivel"><span class="cert-chip" title="'+cert_escHtml(s.nivel||s.modalidade||'')+'">'+cert_escHtml(certNivelRotulo(s.nivel||s.modalidade))+'</span>'
+      +'<td class="c-nivel"><span class="cert-chip" title="'+cert_escHtml(s.nivel||s.modalidade||'')+'">'+cert_escHtml(certNivelRotulo(s.nivel||s.modalidade))+'</span></td>'
+      +'<td class="c-per">'
         + ((s.periodoReferencia||s.periodo)
             ? '<span class="cert-chip per">'+cert_escHtml(s.periodoReferencia||s.periodo)+'</span>'
             : '<span title="Sem período não dá para emitir: ele sai impresso no '
@@ -5042,7 +5075,7 @@ function certDocEnviar(){
 // ── Carregar
 function cert_carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="7"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="8"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];
@@ -5159,6 +5192,12 @@ function initInterno(){
     if(g(id)) g(id).addEventListener('change', cert_aplicarFiltros);
   });
   if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', cert_limparFiltros);
+  if(g('certThFunc')) g('certThFunc').addEventListener('click', cert_ordenarFuncionario);
+  if(g('certChips')) g('certChips').addEventListener('click', function(ev){
+    var c = ev.target && ev.target.closest ? ev.target.closest('.cert-pf-chip') : null; if(!c) return;
+    var el = g(c.getAttribute('data-filtro')); if(el){ el.value=''; el.classList.remove('ativo'); }
+    cert_aplicarFiltros();
+  });
 
   // ── modal do documento: prévia, gerar, imprimir, baixar, enviar
   if(g('certDocFechar'))   g('certDocFechar').addEventListener('click', certDocFechar);

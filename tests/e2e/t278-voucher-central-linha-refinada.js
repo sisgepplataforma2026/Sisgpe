@@ -51,10 +51,11 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.passo("1. a tabela tem 7 colunas (checkbox + 6) e todos os filtros continuam");
   b.igual(linhas.length, 6, "as seis solicitações foram desenhadas");
   const ths = doc.querySelectorAll(".cert-tabela thead tr:first-child th");
-  b.igual(ths.length, 7, "cabeçalho com 7 colunas (eram 11)", Array.from(ths).map(txt).join(" | "));
-  b.ok(linhas.every((tr) => tr.querySelectorAll("td").length === 7), "toda linha tem 7 células");
+  /* 26/11/2026 (refino aprovado): Nível e Período viraram duas colunas e os filtros saíram do cabeçalho para o painel #certPainelFiltros. */
+  b.igual(ths.length, 8, "cabeçalho com 8 colunas: checkbox, Nº da bolsa, Funcionário, Escola, Nível, Período, Situação, Ação", Array.from(ths).map(txt).join(" | "));
+  b.ok(linhas.every((tr) => tr.querySelectorAll("td").length === 8), "toda linha tem 8 células");
   ["Protocolo", "Solicitante", "Escola", "Curso", "Modalidade", "Periodo", "Status", "Envio", "EnviadoPor"].forEach((n) =>
-    b.ok(!!doc.querySelector(".cert-linha-filtros #certFiltro" + n), "filtro de " + n + " continua na linha de filtros"));
+    b.ok(!!doc.querySelector("#certPainelFiltros #certFiltro" + n), "filtro de " + n + " continua no painel de filtros"));
   b.ok(!!doc.getElementById("certFiltroDataDe") && !!doc.getElementById("certFiltroDataAte") && !!doc.getElementById("certBusca"), "busca geral e filtro de data continuam");
 
   b.passo("2. dependente claro: nome primeiro, ordem do filho, titular e CPF em toda linha");
@@ -62,10 +63,10 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.ok(/2º filho\(a\)/.test(txt(trB.querySelector(".cert-tag-parentesco"))), "Beatriz: selo '2º filho(a)'");
   b.ok(/1º filho\(a\)/.test(txt(trL.querySelector(".cert-tag-parentesco"))), "Lucas: selo '1º filho(a)'");
   b.ok(txt(trD.querySelector(".cert-tag-parentesco")) === "filho(a)", "linha antiga sem ordem continua 'filho(a)' (não inventa número)", txt(trD.querySelector(".cert-tag-parentesco")));
-  b.ok(txt(trC.querySelector(".cert-benef-nome")).indexOf("CARLOS EXEMPLO SOUZA") === 0 && !!trC.querySelector(".cert-tag-proprio") && !trC.querySelector(".cert-tag-parentesco"), "associado: nome primeiro e selo 'associado', sem selo de parentesco");
-  [trB, trL].forEach((tr) => b.ok(/Titular: MARIANA EXEMPLO SILVA/.test(txt(tr)) && /111\.444\.777-35/.test(txt(tr)), "cada irmão traz o titular e o CPF formatado (filtrando por um só, a linha continua dizendo de quem é)"));
-  b.ok(trB.querySelector("td.c-benef").getAttribute("data-ini") === "BS" && trC.querySelector("td.c-benef").getAttribute("data-ini") === "CS", "iniciais do avatar vão em atributo (não entram no texto da célula)");
-  b.ok(/^BEATRIZ/.test(txt(trB.querySelector(".cert-benef-nome"))), "e o nome continua sendo a primeira coisa lida");
+  b.ok(txt(trC.querySelector(".cert-benef-nome")).indexOf("CARLOS EXEMPLO SOUZA") === 0 && !!trC.querySelector(".cert-tag-assoc") && !trC.querySelector(".cert-tag-parentesco") && !trC.querySelector(".cert-dep-linha"), "associado (titular): o nome em destaque e a etiqueta de situação, sem parentesco e sem linha de dependente");
+  [trB, trL].forEach((tr) => b.ok(/^MARIANA EXEMPLO SILVA/.test(txt(tr.querySelector(".cert-benef-nome"))) && /111\.444\.777-35/.test(txt(tr)), "cada irmão traz o funcionário (titular) em destaque e o CPF formatado"));
+  b.ok(/Dependente: BEATRIZ/.test(txt(trB.querySelector(".cert-dep-linha"))) && /Dependente: LUCAS/.test(txt(trL.querySelector(".cert-dep-linha"))), "e o dependente na linha de baixo, em peso normal");
+  b.ok(!trB.querySelector("td.c-benef").hasAttribute("data-ini"), "o avatar com iniciais saiu do desenho aprovado");
 
   b.passo("3. irmãos juntos, em ordem de filho");
   const protsOrdem = linhas.map((tr) => tr.getAttribute("data-prot"));
