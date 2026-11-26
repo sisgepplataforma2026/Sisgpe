@@ -189,6 +189,10 @@ function enviarEmailOficio_(emailUsuario, htmlBody, anexos, assunto, destino, co
  * prévia do e-mail do ofício.
  */
 function enviarComoRascunhoSISGEP_(opcoes, corpoTexto) {
+  /* ENVIO EM NOME DE QUEM ESTÁ LOGADO (26/11/2026, pedido do usuário). SÓ entra aqui quem MARCOU opcoes.remetente = 'SECRETARIA' (hoje: certificado
+     de voucher e declaração; ofício e recibo não marcam e seguem EXATAMENTE como antes) E o leitor da Secretaria está ligado. Falhou no leitor:
+     o erro sobe — nunca cai para a conta do Financeiro, que poderia mandar o e-mail duas vezes. Ver EnvioPorUsuario.gs. */
+  if (opcoes && opcoes.remetente === 'SECRETARIA' && envioViaSecretariaDisponivel_()) return envioPelaSecretaria_(opcoes, corpoTexto);
   var opcoesGmail = {
     htmlBody:    opcoes.htmlBody,
     attachments: opcoes.attachments || [],

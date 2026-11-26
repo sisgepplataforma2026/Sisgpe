@@ -740,6 +740,7 @@ function voucherEnviarMsg_(msg) {
   var opcoes = montarOpcoesEmailSISGEP_(
     "", msg.htmlBody || "", msg.attachments || [], msg.subject || "", msg.to || "");
   if (msg.cc) opcoes.cc = msg.cc;
+  if (msg.remetente) opcoes.remetente = msg.remetente;   // 26/11/2026: quem envia o certificado (ver EnvioPorUsuario.gs)
   return enviarComoRascunhoSISGEP_(opcoes, msg.body || "Mensagem do SindEducação-ES.");
 }
 

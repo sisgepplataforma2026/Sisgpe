@@ -1,5 +1,5 @@
 /**
- * ENVIO EM NOME DE QUEM ESTÁ LOGADO — CÓDIGO NOVO, AINDA SEM CHAMADOR (26/11/2026).
+ * ENVIO EM NOME DE QUEM ESTÁ LOGADO — FUNÇÕES NOVAS (26/11/2026); ligadas só no certificado e na declaração (t297).
  * Prova: (1) quem é o remetente por usuário (financeiro@ → Financeiro; secretaria@ e os demais → Secretaria); (2) o pacote que vai ao leitor da
  * Secretaria leva destinatários, cópias, assunto, corpo e anexos em base64; (3) a trava de homologação vale; (4) sem destinatário, recusa;
  * (5) NADA do caminho de hoje mudou: nenhuma função em uso chama as novas. NÃO PROVA: o envio de verdade pelo leitor nem a caixa de Itens enviados.
@@ -35,9 +35,10 @@ erro = ""; chamada = null; try { g.envioPelaSecretaria_({ to: "escola@exemplo.co
 b.ok(/HML/.test(erro) && chamada === null, "em homologação, e-mail para fora da equipe é BLOQUEADO antes de chamar o leitor", erro.slice(0, 60));
 g.getAmbienteAtual = () => "producao";
 
-b.fluxo("ENVIO POR USUÁRIO · o caminho de hoje não mudou");
+b.fluxo("ENVIO POR USUÁRIO · escopo da ligação");
 const raiz = path.join(__dirname, "../..");
 const quem = fs.readdirSync(raiz).filter((f) => f.endsWith(".gs") && f !== "EnvioPorUsuario.gs" && /envioPelaSecretaria_|envioRemetentePorSessao_|envioViaSecretariaDisponivel_/.test(fs.readFileSync(path.join(raiz, f), "utf8")));
-b.igual(quem, [], "nenhum arquivo em uso chama as funções novas (só este arquivo e o teste as conhecem)", quem.join(", "));
+/* 26/11/2026: ligado (com o "sim" do usuário) só em certificado de voucher e declaração — ver t297. */
+b.igual(quem.sort(), ["DeclaracaoDiretor.gs", "EmailOficios.gs", "VoucherEnvio.gs", "VoucherEnvioFamilia.gs"], "só o certificado de voucher, a declaração e o caminho único de envio usam as funções novas", quem.join(", "));
 b.naoTestavel("o envio de verdade pelo leitor da Secretaria e a pasta Itens enviados", "só no ar, com o leitor ligado");
 b.resumo();

@@ -1196,6 +1196,7 @@ function declEnviarEmail(numero, emails, tokenSessao) {
     /* GmailApp, e não MailApp: o MailApp IGNORA o `from` em silêncio, e por
        isso a declaração saía da conta executora mesmo com o alias da
        Secretaria configurado. Ver enviarComoRascunhoSISGEP_. */
+    op.remetente = envioRemetentePorSessao_(sessao);   // 26/11/2026: Marcela/demais → Secretaria; financeiro → Financeiro
     enviarComoRascunhoSISGEP_(op, "Segue, em anexo, a declaração " + numero + ".");
     achado.sh.getRange(achado.linha, achado.hm.EMAILS_USADOS).setValue(destinoReal);
     achado.sh.getRange(achado.linha, achado.hm.EMAIL_STATUS).setValue(ambiente === "homologacao" ? "TESTE_HML_ENVIADO" : "ENVIADO");

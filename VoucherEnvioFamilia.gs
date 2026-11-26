@@ -119,6 +119,7 @@ function voucherEnviarFamiliaPorEmail_(protocolos, opcoes, sessao) {
       htmlBody: voucherCorpoEmailFamilia_(incluidos, comAnexo),
       name: "SindEducação-ES"
     };
+    msg.remetente = envioRemetentePorSessao_(sessao);   // 26/11/2026
     if (ccNoUnico) msg.cc = ccNoUnico;
     var anexosTodos = incluidos.map(function (i) { return blobs[i.protocolo]; }).filter(function (x) { return !!x; });
     if (anexosTodos.length) msg.attachments = anexosTodos;
@@ -138,6 +139,7 @@ function voucherEnviarFamiliaPorEmail_(protocolos, opcoes, sessao) {
         };
         var a = grupo.map(function (i) { return blobs[i.protocolo]; }).filter(function (x) { return !!x; });
         if (a.length) m.attachments = a;
+        m.remetente = envioRemetentePorSessao_(sessao);   // 26/11/2026
         voucherEnviarMsg_(m);
         emails++;
       });

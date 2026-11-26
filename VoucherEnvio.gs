@@ -316,6 +316,7 @@ function voucherEnviarPorEmail_(protocolo, opcoes, sessao) {
     };
     if (copia) msg.cc = copia;
     if (anexos.length) msg.attachments = anexos;
+    msg.remetente = envioRemetentePorSessao_(sessao);   // 26/11/2026: Marcela/demais → Secretaria; financeiro → Financeiro
 
     voucherEnviarMsg_(msg);
     /* O lote conta na cota do dia (CotaEmail.gs): um destinatário pelo
