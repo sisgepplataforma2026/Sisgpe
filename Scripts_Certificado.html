@@ -341,6 +341,7 @@
 #secCertificadoAdmin .cert-so-impresso{background:#fdf2c8;border:1.5px solid #C9A84C;border-radius:10px;padding:6px 9px;color:#5b4300;font-weight:700;line-height:1.35}
 #secCertificadoAdmin .cert-so-impresso small{display:block;font-weight:600;color:#7a5b00}
 #secCertificadoAdmin .cert-aviso-sind{color:#92400e;font-size:11px}
+#secCertificadoAdmin .cert-aguarda-envio{color:#92400e}
 #secCertificadoAdmin .cert-tag-proprio{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#e3edff;color:#1d4ed8;margin-left:6px;vertical-align:1px}
 #secCertificadoAdmin .cert-tag-parentesco{background:#f1e9ff;color:#6d28d9;border-color:#e1d1fb}
 #secCertificadoAdmin .cert-escola-nome{font-size:12.5px;font-weight:700;color:#1e293b;max-width:260px}
@@ -2290,7 +2291,9 @@ function certEnvioCelula(s){
   var emi = s.emitidoEm ? '<span style="color:#475569;">Emitido: '+cert_escHtml(s.emitidoEm)+'</span><br>' : '';
   /* NÃO ASSOCIADO: o voucher é só impresso e retirado na sede — não é pendência de e-mail (usuário, 26/11/2026). */
   if(!e && certSindical(s)==='NAO') return emi+'<div class="cert-so-impresso">🖨 Só impresso — retirada presencial na sede<small>não é enviado por e-mail</small></div>';
-  if(!e && certSindical(s)==='NI') return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span><br><span class="cert-aviso-sind">⚠ Situação sindical em branco — defina (✏) para saber como entregar</span>';
+  if(!e && certSindical(s)==='NI' && s.status==='EMITIDO') return emi+'<span class="cert-aviso-sind">⚠ Situação sindical em branco — defina para saber como entregar</span>';
+  /* ASSOCIADO emitido e ainda não enviado: o próximo passo é o e-mail (texto do desenho aprovado, 26/11/2026). */
+  if(!e && certSindical(s)==='ASSOCIADO' && s.status==='EMITIDO') return emi+'<span class="cert-aguarda-envio">✉ Aguardando envio por e-mail</span>';
   if(!e) return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span>';
   var quem=String(e.por||'').split('@')[0];
   if(e.situacao==='NA_FILA') return emi+'<span style="color:#92400e;">⏳ Na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
@@ -2358,7 +2361,7 @@ function cert_renderTabela(){
            secretaria ligaria para a pessoa avisando de um e-mail que, por
            decisão, nunca foi enviado. */
         +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
-            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">não associado · presencial</span>':'')
+            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">não associado</span>':'')
         +(certSindical(s)==='ASSOCIADO'?'<span class="cert-tag-assoc" title="Situação sindical: associado">✔ associado</span>':'')
         +(certSindical(s)==='NI'?'<span class="cert-tag-sind-ni" title="A situação sindical desta solicitação está em branco: edite (✏) e informe se é associado ou não associado.">sindical não informada</span>':'')
         +'</div>'

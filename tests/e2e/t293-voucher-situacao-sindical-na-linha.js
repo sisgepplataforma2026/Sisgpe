@@ -51,7 +51,7 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.passo("1. toda linha diz a situação sindical");
   const A = por(1), B = por(2), C = por(3), D = por(4), E = por(5), F = por(6);
   b.ok(!!A.querySelector(".cert-tag-assoc") && /associado/i.test(txt(A.querySelector(".cert-tag-assoc"))), "associado: etiqueta verde 'associado'");
-  b.ok(!!B.querySelector(".cert-tag-presencial") && /não associado/i.test(txt(B.querySelector(".cert-tag-presencial"))), "não associado: etiqueta 'não associado · presencial'", txt(B.querySelector(".cert-tag-presencial")));
+  b.ok(!!B.querySelector(".cert-tag-presencial") && txt(B.querySelector(".cert-tag-presencial")).toLowerCase() === "não associado", "não associado: etiqueta 'NÃO ASSOCIADO' (texto do desenho)", txt(B.querySelector(".cert-tag-presencial")));
   b.ok(!!C.querySelector(".cert-tag-sind-ni") && /não informada/i.test(txt(C.querySelector(".cert-tag-sind-ni"))), "em branco: 'sindical não informada' (não presume nada)");
   b.ok(!!D.querySelector(".cert-tag-presencial") && !!D.querySelector(".cert-tag-parentesco"), "dependente de titular não associado: as duas etiquetas (filho e não associado)");
   b.ok(!!E.querySelector(".cert-tag-assoc") && !!E.querySelector(".cert-tag-parentesco"), "dependente de titular associado: filho + associado");
@@ -65,16 +65,17 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.ok(/Só impresso — retirada presencial na sede/.test(sit(B)) && /não é enviado por e-mail/.test(sit(B)), "mostra 'Só impresso — retirada presencial'", sit(B));
   b.ok(!/Ainda não enviado/.test(sit(B)) && !/Ainda não enviado/.test(sit(D)), "e NÃO diz 'Ainda não enviado'");
   b.ok(/Emitido:/.test(sit(B)), "a data de emissão continua à vista");
+  b.ok(/Emitido:/.test(sit(A)) && /Emitido:/.test(sit(C)), "e nas outras situações também");
 
   b.passo("4. o botão");
   b.ok(txt(btnPrim(B)) === "Imprimir" && btnPrim(B).classList.contains("cert-btn-emitir-rapido") && !B.querySelector(".cert-btn-enviar"), "não associado: 'Imprimir' (abre o certificado), sem o botão Enviar", txt(btnPrim(B)));
   b.ok(txt(btnPrim(D)) === "Imprimir", "o mesmo no dependente");
   b.ok(!!B.querySelector(".cert-btn-abrir-modal") && !!B.querySelector(".cert-btn-editar"), "Ver / Ações e Editar continuam (o envio segue acessível pelo modal)");
   b.ok(txt(btnPrim(A)) === "Enviar" && !!A.querySelector(".cert-btn-enviar"), "associado: 'Enviar', como sempre");
-  b.ok(/Ainda não enviado/.test(sit(A)) && !/Só impresso/.test(sit(A)), "associado sem envio: 'Ainda não enviado', como sempre");
+  b.ok(/✉ Aguardando envio por e-mail/.test(sit(A)) && !/Só impresso/.test(sit(A)) && !/Ainda não enviado/.test(sit(A)), "associado emitido e sem envio: '✉ Aguardando envio por e-mail' (texto do desenho)", sit(A));
 
   b.passo("5. em branco: não presume, avisa");
-  b.ok(/Ainda não enviado/.test(sit(C)) && /Situação sindical em branco/.test(sit(C)), "mostra 'Ainda não enviado' e o aviso de situação sindical em branco", sit(C));
+  b.ok(/⚠ Situação sindical em branco — defina para saber como entregar/.test(sit(C)) && !/Ainda não enviado/.test(sit(C)), "em branco: o aviso do desenho, no lugar de 'Ainda não enviado'", sit(C));
   b.ok(txt(btnPrim(C)) === "Enviar", "o botão segue como era (não decide pela pessoa)");
 
   b.passo("6. não associado que JÁ teve envio registrado volta ao normal");

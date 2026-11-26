@@ -53,7 +53,9 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela", "jsdom não instalado"); b.r
 
   b.passo("4. Emitido e não enviado: 'Ainda não enviado'");
   const c2 = txt(tr("BOLSA-2026-100002").querySelector(".c-sit .cert-env"));
-  b.ok(/Emitido: 24\/11\/2026 08:12/.test(c2) && /Ainda não enviado/.test(c2), "emissão à vista e 'Ainda não enviado'", c2);
+  /* 26/11/2026 (desenho aprovado): emitido e sem envio de uma solicitação com a situação sindical EM BRANCO mostra o aviso no lugar de
+   "Ainda não enviado"; com ASSOCIADO mostra "✉ Aguardando envio por e-mail" (coberto em t293). Esta linha do teste tem a situação em branco. */
+  b.ok(/Emitido: 24\/11\/2026 08:12/.test(c2) && /Situação sindical em branco — defina para saber como entregar/.test(c2), "emissão à vista e o aviso de situação sindical em branco", c2);
 
   b.passo("5. Nunca emitido: sem 'Emitido:' (não afirma o que não houve)");
   const c3 = txt(tr("BOLSA-2026-100003").querySelector(".c-sit .cert-env"));
