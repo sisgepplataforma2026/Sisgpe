@@ -54,6 +54,35 @@ mal as minhas recomendações. A distinção que importa:
 Não usar isto como licença para pular teste. A REGRA Nº -1 continua valendo
 por inteiro — a diferença é no custo de errar, não no rigor de verificar.
 
+## 🚨 REGRA Nº -3 — FUNÇÃO QUE JÁ FUNCIONA NÃO SE ALTERA. NEM UMA VÍRGULA
+
+Definida pelo usuário em 25/11/2026: *"Não pode alterar nenhuma vírgula de funções que já funcionam."* — dita depois de eu ter mexido,
+em 24/11, na fila de envio de ofícios (`processarFilaEnvioOficios`) para ganhar velocidade, num sistema em que o ofício é a única
+operação viva e quando, no dia seguinte, os ofícios pararam de sair. Não se prova que a mudança causou isso — e é exatamente por isso
+que a regra existe: **mexer numa função viva por ganho de velocidade, limpeza ou "melhoria" cria uma dúvida que ninguém consegue
+desfazer**. A mudança foi revertida (commit de reversão de `1341e3f`).
+
+O que a regra proíbe, em função que está em uso e funciona: otimizar, refatorar, renomear, reformatar, "limpar" comentário, acrescentar
+atalho, trocar a ordem de uma leitura, ajustar uma mensagem — qualquer edição, ainda que "equivalente" e ainda que os testes passem.
+Teste verde não autoriza: a REGRA Nº -1 diz que teste não é produção.
+
+Como trabalhar, então:
+1. **Recurso novo = código novo.** Função nova, arquivo novo, caminho novo, chamando o que existe SEM modificá-lo. O diagnóstico da fila
+   (`DiagnosticoFilaOficios.gs`) é o modelo: lê, não toca na fila.
+2. **Se a mudança só cabe editando uma função viva, PARAR e perguntar antes**, mostrando a função, as linhas exatas e o que muda. Só
+   edita com o "sim" dele para AQUELA função. A aprovação de um recurso não vale como aprovação de mexer numa função existente.
+3. **Pedido do usuário para mudar a função é pedido explícito** (ex.: "troque o texto do e-mail do voucher"): vale só para o que foi
+   pedido, em commit separado, e ele é avisado de que a função viva foi alterada.
+4. **Desempenho não é motivo.** Lentidão se resolve fora das funções vivas (cache novo, rotina nova, medição) ou não se resolve sem
+   ele pedir. O que está funcionando e é lento continua como está até ele mandar.
+5. **Ofícios é o caso mais sensível** (operação diária da Marcela): vale a regra inteira, sem exceção, para EmailOficios, FilaOficios,
+   Oficios*, o reenvio com motivo (`OficiosReenvioMotivo.gs`) e qualquer função que eles chamem.
+
+O que o usuário descreveu como o reenvio de ofício que funciona e **não pode ser mexido**: *envia o ofício a uma escola; um mês depois
+vê que algumas pessoas não foram descontadas; pega aquele mesmo ofício, reenvia, escolhe só as pessoas, e já vem um texto pronto — não
+precisa mandar tudo.* (Reenvio com motivo, 04/11/2026: nomes com caixas de marcar, texto proposto com os nomes, só as fichas dos marcados,
+cláusula pelo MTE.)
+
 ## 🚨 REGRA Nº -2 — ARQUIVO NÃO SAI DAQUI SEM VALIDAÇÃO RODADA
 
 Definida pelo usuário em 2026-08-17: *"você não pode me passar um arquivo com
@@ -323,6 +352,17 @@ depois de 300 linhas de backend e uma tela pronta, não.
 
 Vale inclusive quando o pedido parece pequeno: "cria a tela X" também tem
 arquitetura, e é aí que a divergência aparece.
+
+**REFORÇADO EM 25/11/2026 — o usuário: *"Sempre mostrar como ficaria antes de implementar"*.** Dito depois de eu implementar o "+ Incluir"
+do reenvio de ofício sem mostrar, de novo, como ficaria — achando que bastava existir um desenho antigo no repositório, e ainda trocando
+palavras do desenho por conta própria. Regras práticas, sem exceção:
+1. **Desenho no repositório não é aprovação de implementar agora.** Antes de escrever código, mostrar NA CONVERSA como vai ficar (imagem
+   ou wireframe) e esperar o "pode". Um pedido curto ("incluir os e-mails…") não dispensa isso.
+2. **Alteração em tela que já existe: mostrar ANTES e DEPOIS**, e dizer o que muda e o que NÃO muda (REGRA Nº -3).
+3. **Texto do desenho é do usuário.** Rótulo, aviso e placeholder aprovados saem palavra por palavra; qualquer diferença é perguntada,
+   nunca trocada em silêncio.
+4. **Depois de implementar, mostrar como ficou de verdade** (captura real da tela, não só "testes passaram") e listar o que difere do
+   desenho. Chromium + Playwright já estão instalados no ambiente: renderizar o HTML e enviar a imagem.
 
 ## 🚨 REGRA Nº 0 — SCRIPTLET DO APPS SCRIPT NUNCA VAI DENTRO DE COMENTÁRIO
 
