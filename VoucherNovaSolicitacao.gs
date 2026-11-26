@@ -177,7 +177,8 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
       NOME_SOLICITANTE: nome,
       EMAIL: String(dados.email || "").trim(),
       TELEFONE: String(dados.telefone || "").trim(),
-      SITUACAO_SINDICAL: String(dados.situacaoSindical || "ASSOCIADO").trim(),
+      /* 26/11/2026 (pedido do usuário): em branco FICA em branco. Antes, "|| ASSOCIADO" gravava associado em silêncio quando o campo vinha vazio. */
+      SITUACAO_SINDICAL: String(dados.situacaoSindical || "").trim(),
       STATUS_VALIDACAO_SINDICAL: aprovar ? "VALIDADO" : "PENDENTE",
       /* Onde TRABALHA */
       ESCOLA_SELECIONADA: String(dados.escola || "").trim(),
