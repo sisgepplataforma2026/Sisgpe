@@ -136,6 +136,10 @@ banner e avisa. Item aberto em docs/PENDENTE-VERIFICACAO.md. A regra "folga de ~
 
 **VOUCHER — NÚMERO DA BOLSA SEQUENCIAL DESDE 26/11/2026.** O usuário: *"daqui em diante sequencial"* (a decisão de 19/11 era só a partir de 01/2027). Autorizou mexer na geração do número (`gerarNumeroProtocolo_`, Voucher.gs): bolsas novas BOLSA-2026-000001…; as antigas (sorteadas, ≥ 100000) não mudam e não entram na conta. Tela da lista refinada no mesmo dia (cabeçalho só com títulos, filtros em painel, funcionário em negrito, A–Z): ver docs/mock-voucher-cabecalho-refinado.png.
 
+**NOMES (usuário, 26/11/2026): "Anderson" = WANDERSON, sempre** (o do financeiro, `financeiro@sindeducacao.com`; é quem escreve, por voz ou digitação). *"Quando eu digo Anderson, é o Anderson. Sempre considerar o Anderson com W."* Nunca perguntar de novo quem é; "Marcela/Marcélia" = a secretaria (`secretaria@sindeducacao.com`).
+
+**ENVIO EM NOME DE QUEM ESTÁ LOGADO (pedido de 26/11/2026, ainda NÃO ligado).** Ofício, certificado, declaração e recibo hoje saem pela conta do Financeiro (De: secretaria@ pelo alias), por isso caem nos Itens enviados do Financeiro mesmo com a Marcela logada (EmailOficios.gs; o remetente é fixo desde sempre, não há histórico de escolha pelo usuário logado — só a ASSINATURA no texto era por usuário). O que o usuário quer: financeiro@/Wanderson logado → sai pelo Financeiro; Marcela e os demais → saem pela Secretaria (Itens enviados da Secretaria), via o leitor da Secretaria (`novoEmail`, aceita anexos). Código novo pronto e testado, SEM chamador: `EnvioPorUsuario.gs` (+ t296). Ligar exige editar `montarOpcoesEmailSISGEP_` e `enviarComoRascunhoSISGEP_` (EmailOficios.gs) e, para ofício, usar o USUARIO da fila — só com o "sim" do usuário para cada função (REGRA Nº -3). Recomendado: certificado e declaração primeiro, ofício por último.
+
 ## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
 
 O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo
