@@ -336,6 +336,11 @@
 #secCertificadoAdmin .cert-tabela td.c-benef::before{content:attr(data-ini);position:absolute;left:14px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
 #secCertificadoAdmin .cert-tabela td.c-benef.dep::before{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
 #secCertificadoAdmin .cert-benef-nome{font-weight:700;font-size:12.5px;color:#0f172a}
+#secCertificadoAdmin .cert-tag-assoc{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#d1fae5;color:#065f46;margin-left:6px;vertical-align:1px}
+#secCertificadoAdmin .cert-tag-sind-ni{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b;border:1px dashed #94a3b8;margin-left:6px;vertical-align:1px}
+#secCertificadoAdmin .cert-so-impresso{background:#fdf2c8;border:1.5px solid #C9A84C;border-radius:10px;padding:6px 9px;color:#5b4300;font-weight:700;line-height:1.35}
+#secCertificadoAdmin .cert-so-impresso small{display:block;font-weight:600;color:#7a5b00}
+#secCertificadoAdmin .cert-aviso-sind{color:#92400e;font-size:11px}
 #secCertificadoAdmin .cert-tag-proprio{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#e3edff;color:#1d4ed8;margin-left:6px;vertical-align:1px}
 #secCertificadoAdmin .cert-tag-parentesco{background:#f1e9ff;color:#6d28d9;border-color:#e1d1fb}
 #secCertificadoAdmin .cert-escola-nome{font-size:12.5px;font-weight:700;color:#1e293b;max-width:260px}
@@ -2210,6 +2215,12 @@ function certBeneficiarioNome(s){
   return benef || String((s && s.nome) || '') || '—';
 }
 
+/* Situação sindical da solicitação (26/11/2026): 'ASSOCIADO' | 'NAO' | 'NI' (em branco). Em branco NÃO é associado nem não associado (mesma regra do servidor:
+   só valor explícito conta; qualquer valor explícito diferente de ASSOCIADO é não associado). */
+function certSindical(s){
+  var v = String((s && (s.situacaoSindicalDeclarada || s.sindical)) || '').trim().toUpperCase();
+  return !v ? 'NI' : (v === 'ASSOCIADO' ? 'ASSOCIADO' : 'NAO');
+}
 function certEhOutroBeneficiario(s){
   var benef = String((s && s.nomeBeneficiario) || '').trim();
   var tit   = String((s && s.nome) || '').trim();
@@ -2277,6 +2288,9 @@ function certEnvioCelula(s){
   var e=s.envio;
   /* Primeiro QUANDO FOI EMITIDO (só quando houve emissão), depois o envio — cada data com o seu rótulo. */
   var emi = s.emitidoEm ? '<span style="color:#475569;">Emitido: '+cert_escHtml(s.emitidoEm)+'</span><br>' : '';
+  /* NÃO ASSOCIADO: o voucher é só impresso e retirado na sede — não é pendência de e-mail (usuário, 26/11/2026). */
+  if(!e && certSindical(s)==='NAO') return emi+'<div class="cert-so-impresso">🖨 Só impresso — retirada presencial na sede<small>não é enviado por e-mail</small></div>';
+  if(!e && certSindical(s)==='NI') return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span><br><span class="cert-aviso-sind">⚠ Situação sindical em branco — defina (✏) para saber como entregar</span>';
   if(!e) return emi+'<span style="color:#94a3b8;">○ Ainda não enviado</span>';
   var quem=String(e.por||'').split('@')[0];
   if(e.situacao==='NA_FILA') return emi+'<span style="color:#92400e;">⏳ Na fila desde '+cert_escHtml(e.em)+'</span><br><span style="color:#64748b;">por '+cert_escHtml(quem)+'</span>';
@@ -2330,7 +2344,7 @@ function cert_renderTabela(){
       +'<td class="c-benef'+(ehDep?' dep':'')+'" data-ini="'+cert_escHtml(certIniciais(certBeneficiarioNome(s)))+'"><div class="cert-benef-nome">'
         +cert_escHtml(certBeneficiarioNome(s))
         +certBeneficiarioEtiqueta(s)
-        +(ehDep?'':'<span class="cert-tag-proprio" title="O próprio associado">associado</span>')
+        +(ehDep?'':'<span class="cert-tag-proprio" title="O próprio titular da solicitação (a situação sindical está na etiqueta ao lado)">titular</span>')
         /* A etiqueta só aparece quando o dado existe. Linha antiga, gravada
            antes da coluna TIPO_SOLICITACAO, não recebe "primeira vez" por
            omissão — dizer isso de uma bolsa já renovada seria inventar. */
@@ -2344,7 +2358,9 @@ function cert_renderTabela(){
            secretaria ligaria para a pessoa avisando de um e-mail que, por
            decisão, nunca foi enviado. */
         +(String(s.situacaoSindicalDeclarada||s.sindical||'').toUpperCase()==='NAO_ASSOCIADO'
-            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">presencial</span>':'')
+            ?'<span class="cert-tag-presencial" title="Não associado: solicitação em papel e retirada na sede. O voucher não é enviado por e-mail.">não associado · presencial</span>':'')
+        +(certSindical(s)==='ASSOCIADO'?'<span class="cert-tag-assoc" title="Situação sindical: associado">✔ associado</span>':'')
+        +(certSindical(s)==='NI'?'<span class="cert-tag-sind-ni" title="A situação sindical desta solicitação está em branco: edite (✏) e informe se é associado ou não associado.">sindical não informada</span>':'')
         +'</div>'
         +'<div class="cert-titular-linha">'
           + (certEhOutroBeneficiario(s)
@@ -2378,7 +2394,10 @@ function cert_renderTabela(){
           ? '<button type="button" class="cert-btn-emitir-rapido cert-acao-prim" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Abre a prévia do certificado; emitir é uma segunda decisão">Emitir</button>'
           : '')
         /* Enviar só em EMITIDO (antes não há o que mandar); já enviado, diz "Reenviar". */
-        +(s.status==='EMITIDO'
+        +(s.status==='EMITIDO' && certSindical(s)==='NAO' && !s.envio
+          ? '<button type="button" class="cert-btn-emitir-rapido cert-acao-prim" data-id="'+cert_escHtml(s.id)+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Não associado: abre o certificado para imprimir e entregar na sede. O envio por e-mail continua disponível em Ver / Ações.">Imprimir</button>'
+          : '')
+        +(s.status==='EMITIDO' && !(certSindical(s)==='NAO' && !s.envio)
           ? '<button type="button" class="cert-btn-enviar cert-acao-prim'+(certSituacaoEnvio(s)==='ENVIADO'?' reenv':'')+'" data-prot="'+cert_escHtml(s.protocolo||'')+'" title="Enviar / reenviar certificado">'+(certSituacaoEnvio(s)==='ENVIADO'?'Reenviar':'Enviar')+'</button>'
           : '')
         /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
