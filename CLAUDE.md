@@ -134,6 +134,8 @@ homologação (9.874.654); não se sabe o valor. Por isso o usuário autorizou (
 (−318 KB; projeto em 9.556.758, folga de ~319 KB contra o teto da HML). A folha busca o arquivo "SISGEP - Banner dos canhotos.jpg" pelo nome (compassoCanhotos_arte); sem ele sai sem
 banner e avisa. Item aberto em docs/PENDENTE-VERIFICACAO.md. A regra "folga de ~1,8 KB" acima ficou superada.
 
+**VOUCHER — NÚMERO DA BOLSA SEQUENCIAL DESDE 26/11/2026.** O usuário: *"daqui em diante sequencial"* (a decisão de 19/11 era só a partir de 01/2027). Autorizou mexer na geração do número (`gerarNumeroProtocolo_`, Voucher.gs): bolsas novas BOLSA-2026-000001…; as antigas (sorteadas, ≥ 100000) não mudam e não entram na conta. Tela da lista refinada no mesmo dia (cabeçalho só com títulos, filtros em painel, funcionário em negrito, A–Z): ver docs/mock-voucher-cabecalho-refinado.png.
+
 ## 🚨 REGRA Nº -1.5 — TODA FUNÇÃO CHAMADA TEM QUE EXISTIR (10/11/2026)
 
 O usuário, ao saber que formatarDataExtensoBR nunca existiu (Recibo e Recibo

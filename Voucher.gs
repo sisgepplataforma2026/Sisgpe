@@ -132,12 +132,12 @@ function gerarIdPadrao_(prefixo) {
   return prefixo + "_" + data + "_" + aleatorio;
 }
 
-/* PROTOCOLO SEQUENCIAL A PARTIR DE 01/2027 (usuário, 19/11/2026). Até 31/12/2026 segue sorteado (6 dígitos, sem conferir repetição: ~5% de
- * chance de repetir com 300 pedidos, e o sistema acha a solicitação pelo protocolo, então repetido = pessoa errada). De 2027: BOLSA-2027-000001,
- * 000002…, recomeçando a cada ano; os antigos não mudam e nunca colidem (todos ≥ 100000). Próximo = maior entre o contador guardado e o maior
- * sequencial já gravado na planilha, + 1, sob a trava do script. Pedido que falha depois de pegar o número deixa um buraco (esperado).
+/* PROTOCOLO SEQUENCIAL (usuário, 26/11/2026: "daqui em diante sequencial"; antes valia só de 01/2027). Bolsas NOVAS: BOLSA-<ano>-000001, 000002…,
+ * recomeçando a cada ano. Os números antigos (sorteados, 6 dígitos ≥ 100000) NÃO mudam e não entram na conta: o sequencial só olha números < 100000,
+ * então não colide com eles. Próximo = maior entre o contador guardado e o maior sequencial já gravado na planilha, + 1, sob a trava do script.
+ * Pedido que falha depois de pegar o número deixa um buraco (esperado). O ramo sorteado (ano < o abaixo) fica só para datas anteriores.
  * `jaTrancado`: quem já segura a trava (VoucherNovaSolicitacao) passa true. `agora`: só para teste. */
-const PROTOCOLO_SEQUENCIAL_A_PARTIR_DE_ = 2027;
+const PROTOCOLO_SEQUENCIAL_A_PARTIR_DE_ = 2026;
 
 function gerarNumeroProtocolo_(jaTrancado, agora) {
   const ano = Number(Utilities.formatDate(agora || new Date(), Session.getScriptTimeZone(), "yyyy"));
@@ -166,7 +166,7 @@ function proximoSequencialProtocolo_(ano, jaTrancado) {
   }
 }
 
-/** O maior número sequencial JÁ gravado na planilha para aquele ano (0 se não houver). Só olha BOLSA-<ano>-<dígitos>. */
+/** O maior número sequencial JÁ gravado na planilha para aquele ano (0 se não houver). Só olha BOLSA-<ano>-<dígitos> abaixo de 100000: os sorteados antigos (≥ 100000) ficam de fora. */
 function maiorSequencialProtocoloNaPlanilha_(ano) {
   try {
     var sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName("Voucher_Solicitacoes");
@@ -175,7 +175,7 @@ function maiorSequencialProtocoloNaPlanilha_(ano) {
     if (idx < 0) return 0;
     var vals = sh.getRange(2, idx + 1, sh.getLastRow() - 1, 1).getValues();
     var re = new RegExp("^BOLSA-" + ano + "-(\\d{1,6})$"), maior = 0;
-    vals.forEach(function (v) { var m = re.exec(String(v[0] || "").trim()); if (m) { var n = parseInt(m[1], 10); if (n > maior) maior = n; } });
+    vals.forEach(function (v) { var m = re.exec(String(v[0] || "").trim()); if (m) { var n = parseInt(m[1], 10); if (n < 100000 && n > maior) maior = n; } });
     return maior;
   } catch (e) { return 0; }
 }

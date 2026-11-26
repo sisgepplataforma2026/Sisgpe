@@ -1,6 +1,6 @@
 /**
- * PROTOCOLO SEQUENCIAL A PARTIR DE 01/2027 (decisão do usuário, 19/11/2026). Até 31/12/2026 o número segue sorteado como sempre; de 2027 em
- * diante vira BOLSA-2027-000001, 000002… (recomeça a cada ano), sob trava, e nunca repete — nem se o contador guardado se perder (a planilha
+ * PROTOCOLO SEQUENCIAL (decisão do usuário, 19/11/2026 para 2027; ANTECIPADO em 26/11/2026: "daqui em diante sequencial"). Bolsas novas:
+ * BOLSA-2026-000001, 000002… (recomeça a cada ano; os sorteados antigos não mudam), sob trava, e nunca repete — nem se o contador guardado se perder (a planilha
  * segura). Dados FICTÍCIOS. NÃO PROVA: duas execuções simultâneas de verdade (o emulador roda uma de cada vez).
  */
 const b = require("./base");
@@ -15,13 +15,23 @@ function gravar(campos) {
 const d = (iso) => new Date(iso);
 const props = () => g.PropertiesService.getScriptProperties();
 
-b.fluxo("PROTOCOLO · até 2026 sorteado, como sempre");
-for (let i = 0; i < 40; i++) {
-  const p = g.gerarNumeroProtocolo_(false, d("2026-12-31T12:00:00-03:00"));
-  if (!/^BOLSA-2026-[1-9]\d{5}$/.test(p)) { b.ok(false, "formato de 2026 mudou: " + p); break; }
-  if (i === 39) b.ok(true, "40 protocolos de 2026: BOLSA-2026-NNNNNN, 6 dígitos de 100000 a 999999 (sorteio, como hoje)");
-}
-b.ok(props().getProperty("VOUCHER_PROTOCOLO_SEQ_2026") === null, "em 2026 nenhum contador é criado");
+b.fluxo("PROTOCOLO · 2026 passou a ser sequencial (26/11/2026), sem mexer nos antigos");
+/* três bolsas antigas, de número SORTEADO (≥ 100000), já gravadas em 2026 */
+gravar({ ID_SOLICITACAO: "ANT-1", NUMERO_PROTOCOLO: "BOLSA-2026-386298" });
+gravar({ ID_SOLICITACAO: "ANT-2", NUMERO_PROTOCOLO: "BOLSA-2026-747265" });
+gravar({ ID_SOLICITACAO: "ANT-3", NUMERO_PROTOCOLO: "BOLSA-2026-999999" });
+const n26 = [1, 2, 3].map(() => g.gerarNumeroProtocolo_(false, d("2026-11-26T12:00:00-03:00")));
+b.ok(n26.join(",") === "BOLSA-2026-000001,BOLSA-2026-000002,BOLSA-2026-000003", "as novas de 2026 saem em sequência a partir de 000001, ignorando os sorteados antigos (o maior deles é 999999)", n26.join(" "));
+b.ok(props().getProperty("VOUCHER_PROTOCOLO_SEQ_2026") === "3", "o contador de 2026 está em 3");
+const antigos = ss.getSheetByName("Voucher_Solicitacoes").getDataRange().getValues().map((l) => String(l[0])).concat([]);
+b.ok(["BOLSA-2026-386298", "BOLSA-2026-747265", "BOLSA-2026-999999"].every((n) => JSON.stringify(ss.getSheetByName("Voucher_Solicitacoes").getDataRange().getValues()).indexOf(n) > -1), "e as bolsas antigas continuam com o número que tinham");
+props().deleteProperty("VOUCHER_PROTOCOLO_SEQ_2026");                          // contador perdido: a planilha segura
+gravar({ ID_SOLICITACAO: "NOVA-3", NUMERO_PROTOCOLO: "BOLSA-2026-000003" });
+const depois = g.gerarNumeroProtocolo_(false, d("2026-11-27T12:00:00-03:00"));
+b.ok(depois === "BOLSA-2026-000004", "contador perdido em 2026: segue do maior sequencial gravado (000003) → 000004, nunca dos sorteados", depois);
+const quarenta = new Set(); for (let i = 0; i < 40; i++) quarenta.add(g.gerarNumeroProtocolo_(false, d("2026-12-30T12:00:00-03:00")));
+b.ok(quarenta.size === 40 && ![...quarenta].some((p) => /-[1-9]\d{5}$/.test(p)), "40 seguidas: todas diferentes e todas sequenciais (nenhuma no formato sorteado)");
+props().deleteProperty("VOUCHER_PROTOCOLO_SEQ_2026");
 
 b.fluxo("PROTOCOLO · a partir de 01/01/2027 é sequencial");
 const seq = [1, 2, 3].map(() => g.gerarNumeroProtocolo_(false, d("2027-01-01T08:00:00-03:00")));
