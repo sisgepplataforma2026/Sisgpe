@@ -38,8 +38,8 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.igual(original.length, 4, "as quatro solicitações foram desenhadas");
 
   b.passo("1. cabeçalho só com títulos");
-  const ths = Array.from(doc.querySelectorAll(".cert-tabela thead tr:first-child th")).map((th) => txt(th).replace(/[↕▲▼].*$/, "").trim());
-  b.igual(ths.slice(1), ["Nº da bolsa", "Funcionário", "Escola", "Nível", "Período", "Situação", "Ação"], "os sete títulos, na ordem pedida");
+  const ths = Array.from(doc.querySelectorAll(".cert-tabela thead tr:first-child th")).map((th) => txt(th).replace(/[↕▲▼].*$/, "").replace(/\s*▾$/, "").trim());
+  b.igual(ths.slice(1), ["Nº da bolsa", "Funcionário", "Escola", "Nível", "Período", "Situação", "Emissão", "Ação"], "os oito títulos, na ordem pedida (a coluna Emissão nasceu em 27/11/2026)");
   b.ok(doc.querySelectorAll(".cert-tabela thead input:not(#certSelTodos), .cert-tabela thead select").length === 0, "nenhum campo de filtro dentro do cabeçalho");
   b.ok(doc.querySelectorAll(".cert-tabela thead tr").length === 1, "o cabeçalho é uma linha só (a segunda linha de filtros saiu)");
 
