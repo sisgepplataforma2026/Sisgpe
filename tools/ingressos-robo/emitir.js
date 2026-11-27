@@ -57,7 +57,8 @@ const p = (...a) => console.log(...a);
          Então estes vão por uma planilha CSV de UMA linha pelo formulário de importação (admin_import_tickets), aceitando só a confirmação "emitir um ingresso para cada linha". */
       if (usaNome && (await pg.$("form[action*='admin_import_tickets'] input[type=file]"))) {
         const tipoTxt = cat === "acompanhante" ? "Acompanhante do Associado" : "Convidado";
-        const f = String(fone || ""), fmt = f.length === 11 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 7) + "-" + f.slice(7) : f.length === 10 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 6) + "-" + f.slice(6) : "";
+        let f = dig(it.telefone || ""); if (f.length >= 12 && f.slice(0, 2) === "55") f = f.slice(2);   /* local: o "fone" do formulário só é declarado mais abaixo (erro de 27/11) */
+        const fmt = f.length === 11 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 7) + "-" + f.slice(7) : f.length === 10 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 6) + "-" + f.slice(6) : "";
         const limpo = x => String(x || "").replace(/[;\r\n"]/g, " ").replace(/\s+/g, " ").trim();
         const csv = "\uFEFFNome;Email;CPF;Telefone;Cidade;Escola;Tipo\n" + [limpo(nome), "", "", fmt, limpo(it.cidade), limpo(it.escola), tipoTxt].join(";") + "\n";
         const form = await pg.$("form[action*='admin_import_tickets']"), arq = await form.$("input[type=file]"), btn = await form.$("button[type=submit]");
@@ -142,7 +143,7 @@ const p = (...a) => console.log(...a);
       const antesSet = new Set(String(textoAntes).split("\n").map(x => x.trim()).filter(Boolean));
       const novasLinhas = String(textoDepois).split("\n").map(x => x.trim()).filter(x => x && !antesSet.has(x)).slice(0, 6).map(x => x.slice(0, 120));
       pg.off("console", aoConsole); pg.off("pageerror", aoErro);
-      p("DIAGNÓSTICO · texto novo na tela depois do clique:", JSON.stringify(novasLinhas), "· erros de JS:", JSON.stringify(consolas.slice(0, 4)));
+      p("DIAGNÓSTICO · linhas de texto novas na tela depois do clique:", novasLinhas.length, "(conteúdo não é impresso: tem nome e CPF) · erros de JS:", JSON.stringify(consolas.slice(0, 4)));
       pg.off("response", ouvir); pg.off("dialog", aoDialogo);
       const infoTipo = await pg.evaluate(() => { const e = document.getElementById("popup-tipo-ingresso"); return e ? { valor: e.value, onchange: String(e.getAttribute("onchange") || "").slice(0, 80), opcoes: [...e.options].map(o => o.value).join("|") } : null; }).catch(() => null);
       p("DIAGNÓSTICO · seletor de tipo:", JSON.stringify(infoTipo));

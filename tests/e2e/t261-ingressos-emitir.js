@@ -93,7 +93,7 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.fluxo("EMISSÃO · o robô contra um TickOne FALSO");
   let modoBotaoNovo = false;   /* 27/11/2026: o TickOne tirou a grade de lugares e ganhou o botão "Emitir ingresso" */
   let linhas = [{ nome: "Ja Existe Fictícia", cpf: "529.982.247-25", cod: "EXI-0001" }];
-  let ocupados = new Set([1, 2]); const LIVRES = [3, 4, 5, 6, 7]; const emissoes = []; const outras = []; let seq = 0;
+  let ocupados = new Set([1, 2]); const LIVRES = [3, 4, 5, 6, 7]; const emissoes = []; const importacoes = []; const outras = []; let seq = 0;
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url, "http://x"), logado = /sid=ok/.test(req.headers.cookie || "");
     if (req.method === "POST" && u.searchParams.get("action") === "admin_login") {
@@ -106,13 +106,22 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
         ocupados.add(Number(j.seat)); seq++; linhas.push({ nome: j.nome, cpf: String(j.cpf || "").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"), cod: "TST-000" + seq }); res.end("ok");
       }); return;
     }
+    if (req.method === "POST" && u.searchParams.get("action") === "admin_import_tickets") {   /* 27/11/2026: o formulário de importação do TickOne (multipart, input file "arquivo") */
+      const partes = []; req.on("data", c => partes.push(c)); req.on("end", () => {
+        const corpoTxt = Buffer.concat(partes).toString("utf8"), m = corpoTxt.match(/name="arquivo"[^\r\n]*\r\n(?:Content-Type:[^\r\n]*\r\n)?\r\n([\s\S]*?)\r\n--/);
+        const csv = (m ? m[1] : "").replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+        importacoes.push({ cabecalho: csv[0], linhas: csv.slice(1), temCsrf: /name="csrf"/.test(corpoTxt), evento: (corpoTxt.match(/name="evento_id"\r\n\r\n(\d+)/) || [])[1] });
+        csv.slice(1).forEach(l => { const c = l.split(";"); seq++; emissoes.push({ via: "import", nome: c[0], telefone: c[3], tipo: c[6] }); linhas.push({ nome: c[0], cpf: "", cod: "TST-000" + seq }); });
+        res.writeHead(302, { Location: "/index.php?page=admin&evt_id=17" }); res.end();
+      }); return;
+    }
     if (u.searchParams.get("action")) { outras.push(u.searchParams.get("action")); res.end("ok"); return; }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     if (!logado) { res.end('<form method="post" action="/index.php?action=admin_login"><input name="username"><input type="password" name="password"><button type="submit">Entrar</button></form>'); return; }
     const livre = "seat-fluid bg-slate-850 border border-slate-700/80 text-emerald-400 hover:x", ocup = "seat-fluid bg-rose-500/20 text-rose-400 border border-rose-500/40";
     res.end('<h1>Gestão</h1><table><thead><tr><th></th><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Código</th><th>Tipo</th><th>Escola</th><th>Cidade</th><th>Ações</th></tr></thead><tbody>' +
       linhas.map(l => `<tr><td></td><td>${l.nome}</td><td>${l.cpf}</td><td>t</td><td>${l.cod}</td><td>Associado</td><td>E</td><td>C</td><td><button title="Enviar o ingresso (PDF) pelo WhatsApp" onclick="fetch('/index.php?action=whats')">w</button><a title="Reemitir (PDF)" href="index.php?page=ticket&ref=REF-${l.cod}">p</a><button title="Excluir ingresso" onclick="fetch('/index.php?action=excluir')">x</button></td></tr>`).join("") + '</tbody></table>' +
-      (modoBotaoNovo ? '<button onclick="emitirNovoIngressoAdmin(17)">Emitir ingresso</button>' : [1, 2].concat(LIVRES).map(n => `<button class="${ocupados.has(n) ? ocup : livre}" onclick="abrirPopUpAssentoAdmin(${n})">${n}</button>`).join("")) +
+      (modoBotaoNovo ? '<button onclick="emitirNovoIngressoAdmin(17)">Emitir ingresso</button><form method="post" action="index.php?action=admin_import_tickets" enctype="multipart/form-data" onsubmit="return confirm(\'Isso vai emitir um ingresso para cada linha do arquivo, ocupando os ingressos disponíveis. Confirmar importação?\')"><input type="hidden" name="csrf" value="tok"><input type="hidden" name="evento_id" value="17"><input type="file" name="arquivo" accept=".csv,.xlsx"><button type="submit">Importar</button></form>' : [1, 2].concat(LIVRES).map(n => `<button class="${ocupados.has(n) ? ocup : livre}" onclick="abrirPopUpAssentoAdmin(${n})">${n}</button>`).join("")) +
       '<div id="pop" style="display:none"><select id="popup-tipo-ingresso"><option value="pago">Pago</option><option value="cortesia">Cortesia</option><option value="convite">Convite</option><option value="associado">Associado</option><option value="acompanhante">Acompanhante Associado</option></select>' +
       '<input id="popup-buyer-nome"><input id="popup-buyer-email"><input id="popup-buyer-cpf"><input id="popup-buyer-telefone"><input id="popup-buyer-cidade"><textarea id="popup-buyer-observacao"></textarea>' +
       '<button onclick="fetch(\'/index.php?action=salvar\')">Salvar Dados</button><button onclick="fetch(\'/index.php?action=excluir\')">Excluir</button><button id="emit" onclick="emitir()">Emitir Ingresso</button></div>' +
@@ -179,6 +188,9 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.ok(st3.S2 && st3.S2.status === "FALHOU" && /CPF/.test(st3.S2.detalhe), "S2 (cortesia sem CPF): continua exigindo CPF", JSON.stringify(st3.S2));
   b.ok(st3.S3 && st3.S3.status === "EMITIDO", "S3 (acompanhante sem CPF): emitido", JSON.stringify(st3.S3));
   b.ok(emissoes.length === antes7 + 2, "o TickOne recebeu só os 2 emitidos", String(emissoes.length - antes7));
+  b.ok(importacoes.length === 2 && importacoes.every(i => i.cabecalho === "Nome;Email;CPF;Telefone;Cidade;Escola;Tipo" && i.linhas.length === 1 && i.temCsrf && i.evento === "17"), "sem CPF vai pela IMPORTAÇÃO: uma planilha de UMA linha cada, com o cabeçalho do modelo oficial, o csrf e o evento", JSON.stringify(importacoes));
+  b.ok(importacoes[0] && /^Sem Cpf Fictício;;;\(27\) 99999-0001;;;Convidado$/.test(importacoes[0].linhas[0]) && importacoes[1] && /^Acompanhante Sem Cpf;;;;;;Acompanhante do Associado$/.test(importacoes[1].linhas[0]), "a linha sai no formato do modelo (Tipo 'Convidado' / 'Acompanhante do Associado', telefone com máscara)", JSON.stringify(importacoes.map(i => i.linhas[0])));
+  b.ok(!emissoes.slice(antes7).some(x => x.via !== "import"), "e nada passou pelo formulário comum (que exige CPF)");
   srv.close(); fs.rmSync(tmp, { recursive: true, force: true });
   b.resumo();
   process.exit(process.exitCode || 0);   // a tela acompanha o pedido por timer; o teste termina por aqui
