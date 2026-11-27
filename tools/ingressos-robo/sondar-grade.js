@@ -60,6 +60,14 @@ const p = (...a) => console.log(...a);
       return out.slice(0, 12);
     }).catch(() => []);
     trechos.forEach(t => p("TRECHO", t.slice(0, 560)));
+    /* 4) O BOTÃO "Importar" e o campo de arquivo ao redor: como o TickOne recebe a planilha (só estrutura, sem dado). */
+    const imp = await pg.evaluate(() => {
+      const b = [...document.querySelectorAll("button,label,a")].find(x => /^\s*Importar\s*$/i.test(x.innerText || ""));
+      const arquivos = [...document.querySelectorAll("input[type=file]")].map(i => ({ id: i.id, accept: i.accept, onchange: String(i.getAttribute("onchange") || "").slice(0, 80), pai: String((i.closest("form") || {}).action || "").slice(0, 80), enc: String((i.closest("form") || {}).enctype || "") }));
+      const raiz = b ? (b.closest("div,form,section") || b.parentElement) : null;
+      return { botao: b ? b.outerHTML.replace(/\s+/g, " ").slice(0, 260) : null, arquivos, vizinhanca: raiz ? raiz.outerHTML.replace(/\s+/g, " ").slice(0, 500) : null };
+    }).catch(() => ({}));
+    p("TRECHO importar:", JSON.stringify(imp).slice(0, 1400));
     await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
   } catch (e) { p("ERRO:", String(e.message).slice(0, 160)); process.exitCode = 1; }
   finally { await br.close(); }
