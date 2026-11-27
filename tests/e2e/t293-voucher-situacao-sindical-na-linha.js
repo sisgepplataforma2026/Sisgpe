@@ -45,6 +45,7 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   const por = (n) => linhas.filter((tr) => tr.getAttribute("data-prot") === "BOLSA-2026-00000" + n)[0];
   const txt = (el) => (el ? el.textContent.replace(/\s+/g, " ").trim() : "");
   const sit = (tr) => txt(tr.querySelector("td.c-sit"));
+  const emi = (tr) => txt(tr.querySelector("td.c-emi"));
   const btnPrim = (tr) => tr.querySelector(".cert-acao-prim");
   b.igual(linhas.length, 6, "as seis solicitações foram desenhadas");
 
@@ -65,8 +66,8 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.passo("3. não associado sem envio: 'Só impresso', nunca 'Ainda não enviado'");
   b.ok(/Só impresso — retirada presencial na sede/.test(sit(B)) && /não é enviado por e-mail/.test(sit(B)), "mostra 'Só impresso — retirada presencial'", sit(B));
   b.ok(!/Ainda não enviado/.test(sit(B)) && !/Ainda não enviado/.test(sit(D)), "e NÃO diz 'Ainda não enviado'");
-  b.ok(/Emitido:/.test(sit(B)), "a data de emissão continua à vista");
-  b.ok(/Emitido:/.test(sit(A)) && /Emitido:/.test(sit(C)), "e nas outras situações também");
+  b.ok(/\d\d\/\d\d\/\d{4}/.test(emi(B)), "a data de emissão continua à vista (agora na coluna Emissão)");
+  b.ok(/\d\d\/\d\d\/\d{4}/.test(emi(A)) && /\d\d\/\d\d\/\d{4}/.test(emi(C)), "e nas outras situações também");
 
   b.passo("4. o botão");
   b.ok(txt(btnPrim(B)) === "Imprimir" && btnPrim(B).classList.contains("cert-btn-emitir-rapido") && !B.querySelector(".cert-btn-enviar"), "não associado: 'Imprimir' (abre o certificado), sem o botão Enviar", txt(btnPrim(B)));

@@ -1,7 +1,7 @@
 {
-  "medidoEm": "2026-11-24",
-  "totalPublicas": 1116,
-  "protegidas": 826,
+  "medidoEm": "2026-11-27",
+  "totalPublicas": 1134,
+  "protegidas": 857,
   "expostas": [
     {
       "nome": "beneficiosPrepararLinkInteresse",
@@ -214,6 +214,11 @@
       "escreve": false
     },
     {
+      "nome": "diagnosticoFilaOficiosSISGEP",
+      "arquivo": "DiagnosticoFilaOficios.gs",
+      "escreve": false
+    },
+    {
       "nome": "pingSISGEP",
       "arquivo": "DiagnosticoLatencia.gs",
       "escreve": false
@@ -299,11 +304,6 @@
       "escreve": true
     },
     {
-      "nome": "buscarPrestadorGuiaPagamento",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
       "nome": "listarRelatorioGuiasPagamento",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -312,16 +312,6 @@
       "nome": "listarHistoricoGuias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
-    },
-    {
-      "nome": "limparCachePrestadoresFixos",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "cadastrarNovoPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
     },
     {
       "nome": "marcarGuiaComoPaga",
@@ -339,26 +329,6 @@
       "escreve": false
     },
     {
-      "nome": "listarTodosPrestadores",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "excluirPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarPrestadoresDoHistorico",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterDashboardPendencias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -374,24 +344,9 @@
       "escreve": false
     },
     {
-      "nome": "listarPrestadoresSemEmail",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarEmailPrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterStatusLeituraEmail",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
-    },
-    {
-      "nome": "salvarEmailETelefonePrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
     },
     {
       "nome": "iaAssistente",
@@ -609,19 +564,9 @@
       "escreve": false
     },
     {
-      "nome": "cadastrarReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterResumoReceitas",
       "arquivo": "Receita.gs",
       "escreve": false
-    },
-    {
-      "nome": "excluirReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
     },
     {
       "nome": "gerarCodigoVerificacao",
@@ -637,16 +582,6 @@
       "nome": "buscarBeneficiariosPorEmpresa",
       "arquivo": "Recibo.gs",
       "escreve": false
-    },
-    {
-      "nome": "importarBeneficiariosReciboPadrao",
-      "arquivo": "Recibo.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarBeneficiariosReciboDaPlanilha",
-      "arquivo": "Recibo.gs",
-      "escreve": true
     },
     {
       "nome": "gerarPlanilhaAlvara",

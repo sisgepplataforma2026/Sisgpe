@@ -84,6 +84,19 @@
 #secCertificadoAdmin .cert-tabela thead th{background:var(--navy,#001f4d);color:#fff;border-bottom:0;padding:12px 14px}
 #secCertificadoAdmin .cert-th-ord{cursor:pointer;user-select:none;white-space:nowrap}
 #secCertificadoAdmin .cert-th-ord:hover{background:var(--navy2,#002f6c)}
+#secCertificadoAdmin .cert-col-f{background:transparent;border:0;color:#f0c843;font-size:12px;font-weight:800;cursor:pointer;padding:0 3px;font-family:inherit}
+#secCertificadoAdmin .cert-col-f:hover{color:#fff}
+#secCertificadoAdmin .cert-tabela thead th.cert-col-on{background:var(--navy2,#002f6c)}
+#secCertificadoAdmin .cert-tabela thead th.cert-col-on .cert-col-f::after{content:"●";color:#f0c843;font-size:8px;vertical-align:top;margin-left:2px}
+#secCertificadoAdmin .cert-emi-dia{font-size:12.5px;font-weight:700;color:#1e293b;white-space:nowrap}
+#secCertificadoAdmin .cert-emi-hora{font-size:11px;color:#94a3b8}
+.cert-col-pop{position:fixed;z-index:99999;width:240px;max-height:70vh;overflow:auto;background:#fff;color:#0f1c3a;border-radius:12px;box-shadow:0 12px 30px rgba(0,31,77,.28);padding:12px;font-family:inherit;font-size:12px}
+.cert-col-pop-t{font-weight:800;color:#001f4d;font-size:13px;margin-bottom:2px}
+.cert-col-pop b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#8a94a8;margin:8px 0 4px}
+.cert-col-pop .o{padding:6px 8px;border-radius:7px;cursor:pointer}.cert-col-pop .o:hover{background:#f1f5f9}.cert-col-pop .o.a{background:#e8f0fe;color:#1565C0;font-weight:700}
+.cert-col-in{width:100%;box-sizing:border-box;border:1px solid #cbd3e1;border-radius:8px;padding:7px 9px;font-family:inherit;font-size:12px}
+.cert-col-pop-bt{display:flex;gap:6px;margin-top:10px}.cert-col-pop-bt span{flex:1;text-align:center;border-radius:8px;padding:6px;font-weight:700;cursor:pointer}
+.cert-col-pop-bt .l{border:1px solid #cbd3e1}.cert-col-pop-bt .p{background:#001f4d;color:#fff}
 #secCertificadoAdmin .cert-ord-seta{font-size:10px;font-weight:700;color:#bcd3f5;margin-left:4px}
 #secCertificadoAdmin .cert-th-ord[data-ordem]:not([data-ordem=""]) .cert-ord-seta{color:#f0c843}
 #secCertificadoAdmin .cert-painel-filtros{margin:8px 20px 14px;background:#f6f8fb;border:1px solid #e3e9f1;border-radius:14px;padding:14px 16px;width:100%;box-sizing:border-box}
@@ -381,7 +394,7 @@
 #secCertificadoAdmin .cert-tabela tbody tr.cert-irmao:hover td{background:#f4edff}
 @media (max-width:760px){#secCertificadoAdmin .cert-tabela,#secCertificadoAdmin .cert-tabela thead,#secCertificadoAdmin .cert-tabela tbody{display:block;width:100%}
 #secCertificadoAdmin .cert-tabela thead tr:first-child{display:none}
-#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"chk sol sit" "ben ben ben" "esc esc esc" "niv per per" "aca aca aca";gap:4px 8px;background:#fff;border:1px solid #e8edf4;border-radius:14px;margin:10px 8px;padding:12px;box-shadow:0 2px 10px rgba(15,35,80,.07)}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot]{display:grid;grid-template-columns:28px 1fr auto;grid-template-areas:"chk sol sit" "ben ben ben" "esc esc esc" "niv niv emi" "per per emi" "aca aca aca";gap:4px 8px;background:#fff;border:1px solid #e8edf4;border-radius:14px;margin:10px 8px;padding:12px;box-shadow:0 2px 10px rgba(15,35,80,.07)}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td{display:block;border:0;padding:0;background:transparent !important;box-shadow:none !important}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td:nth-child(1){grid-area:chk}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-sol{grid-area:sol}
@@ -390,6 +403,8 @@
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-escola{grid-area:esc}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-nivel{grid-area:niv}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-per{grid-area:per}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-emi{grid-area:emi;text-align:right}
+#secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-emi::before{content:"Emitido";display:block;font-size:9px;font-weight:800;text-transform:uppercase;color:#94a3b8}
 #secCertificadoAdmin .cert-pf-l1{flex-wrap:wrap}#secCertificadoAdmin .cert-pf-l2{grid-template-columns:1fr 1fr}
 #secCertificadoAdmin .cert-tabela tbody tr[data-prot] td.c-acao{grid-area:aca;margin-top:6px}
 #secCertificadoAdmin .cert-acao-prim{padding:11px 24px;font-size:13px}
@@ -524,6 +539,8 @@
             <div class="cert-pf cert-pf-busca"><label for="certBusca">Funcionário, CPF ou nº da bolsa</label><input type="text" class="cert-input cert-busca" id="certBusca" placeholder="🔍 Digite o nome, o CPF ou o número…"></div>
             <div class="cert-pf"><label for="certFiltroDataDe">Solicitado de</label><input type="date" class="cert-input cert-input-data" id="certFiltroDataDe" title="a partir de"></div>
             <div class="cert-pf"><label for="certFiltroDataAte">até</label><input type="date" class="cert-input cert-input-data" id="certFiltroDataAte" title="até"></div>
+            <div class="cert-pf"><label for="certFiltroEmissao">Emitido em</label><input type="date" class="cert-input cert-input-data" id="certFiltroEmissao" title="dia da emissão"></div>
+            <div class="cert-pf"><label for="certOrdemSel">Ordenar</label><select class="cert-input" id="certOrdemSel"><option value="">Como está</option><option value="emi:desc">Emissão: mais recente</option><option value="emi:asc">Emissão: mais antiga</option><option value="prot:asc">Nº da bolsa: A–Z</option><option value="prot:desc">Nº da bolsa: Z–A</option><option value="func:asc">Funcionário: A–Z</option><option value="func:desc">Funcionário: Z–A</option><option value="esc:asc">Escola: A–Z</option><option value="esc:desc">Escola: Z–A</option></select></div>
           </div>
           <input type="text" class="cert-filtro-col" id="certFiltroProtocolo" hidden aria-hidden="true" tabindex="-1">
           <input type="text" class="cert-filtro-col" id="certFiltroSolicitante" hidden aria-hidden="true" tabindex="-1">
@@ -591,13 +608,18 @@
           <thead>
             <tr>
               <th style="width:34px;text-align:center;"><input type="checkbox" id="certSelTodos" title="Selecionar os desta página"></th>
-              <th>Nº da bolsa</th>
-              <th id="certThFunc" class="cert-th-ord" data-ordem="" title="Ordenar o funcionário de A a Z (clique de novo: Z a A; de novo: ordem original)">Funcionário <span class="cert-ord-seta" id="certOrdSeta">↕ A–Z</span></th>
-              <th>Escola</th><th>Nível</th><th>Período</th><th>Situação</th><th style="text-align:right;">Ação</th>
+              <th data-col="prot">Nº da bolsa <button type="button" class="cert-col-f" data-col="prot" title="Filtrar e ordenar">▾</button></th>
+              <th id="certThFunc" class="cert-th-ord" data-col="func" data-ordem="" title="Ordenar o funcionário de A a Z (clique de novo: Z a A; de novo: ordem original)">Funcionário <span class="cert-ord-seta" id="certOrdSeta">↕ A–Z</span> <button type="button" class="cert-col-f" data-col="func" title="Filtrar e ordenar">▾</button></th>
+              <th data-col="escola">Escola <button type="button" class="cert-col-f" data-col="escola" title="Filtrar e ordenar">▾</button></th>
+              <th data-col="nivel">Nível <button type="button" class="cert-col-f" data-col="nivel" title="Filtrar">▾</button></th>
+              <th data-col="per">Período <button type="button" class="cert-col-f" data-col="per" title="Filtrar">▾</button></th>
+              <th data-col="sit">Situação <button type="button" class="cert-col-f" data-col="sit" title="Filtrar">▾</button></th>
+              <th data-col="emi">Emissão <button type="button" class="cert-col-f" data-col="emi" title="Filtrar e ordenar">▾</button></th>
+              <th style="text-align:right;">Ação</th>
             </tr>
           </thead>
           <tbody id="certTbody">
-            <tr><td colspan="8"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
+            <tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1680,6 +1702,7 @@ function cert_aplicarFiltros(){
   var envPor = filtroVal('certFiltroEnviadoPor');
   var de     = certDataNumISO(filtroVal('certFiltroDataDe'));
   var ate    = certDataNumISO(filtroVal('certFiltroDataAte'));
+  var emiDia = certDataNumISO(filtroVal('certFiltroEmissao'));
 
   /* Todos se combinam com E, não com OU: cada filtro estreita o que o
      anterior deixou. É o que a pessoa espera ao ir preenchendo campo por
@@ -1710,6 +1733,7 @@ function cert_aplicarFiltros(){
     }
     if(esc    && normTxt(s.escola).indexOf(esc) === -1) return false;
     if(curso  && normTxt(s.curso).indexOf(curso) === -1) return false;
+    if(emiDia && certDataNum(s.emitidoEm) !== emiDia) return false;
     if(de || ate){
       var d = certDataNum(s.data);
       if(!d) return false;                    // sem data não dá para afirmar
@@ -1736,6 +1760,8 @@ function cert_aplicarFiltros(){
     _filtrada = _filtrada.slice().sort(function(a,b){
       return _sinal*(_cmp(a.nome,b.nome) || _cmp(certBeneficiarioNome(a),certBeneficiarioNome(b)));
     });
+  } else if(_ordemExtra){
+    _filtrada = certOrdenarExtra(_filtrada, _ordemExtra);
   }
 
   var algum = !!(busca||status||mod||prot||quem||esc||curso||per||de||ate||envio||envPor);
@@ -2210,7 +2236,7 @@ function loteEnviarExecutar(){
 }
 
 /* FILTROS ATIVOS (26/11/2026): uma etiqueta com ✕ para cada filtro em uso; o ✕ limpa só aquele filtro. */
-var CERT_FILTROS_ROTULO = [['certBusca','Busca'],['certFiltroDataDe','De'],['certFiltroDataAte','Até'],['certFiltroEscola','Escola'],['certFiltroCurso','Curso'],
+var CERT_FILTROS_ROTULO = [['certBusca','Busca'],['certFiltroDataDe','De'],['certFiltroDataAte','Até'],['certFiltroEmissao','Emissão'],['certFiltroProtocolo','Nº da bolsa'],['certFiltroSolicitante','Funcionário'],['certFiltroEscola','Escola'],['certFiltroCurso','Curso'],
   ['certFiltroModalidade','Nível'],['certFiltroPeriodo','Período'],['certFiltroStatus','Situação'],['certFiltroEnvio','Envio'],['certFiltroEnviadoPor','Enviado por']];
 function cert_renderChips(){
   var box = g('certFiltrosAtivos'), alvo = g('certChips'); if(!box || !alvo) return;
@@ -2223,9 +2249,135 @@ function cert_renderChips(){
   });
   alvo.innerHTML = html;
   box.style.display = html ? 'flex' : 'none';
+  if(typeof certColMarcar === 'function') certColMarcar();
+}
+/* FILTRO ▾ EM CADA COLUNA + COLUNA EMISSÃO (27/11/2026, desenho aprovado). O ▾ usa os MESMOS campos de filtro do painel (um controle só por pergunta);
+   no celular, onde o cabeçalho não aparece, valem o painel (Emitido em, Ordenar) e o cartão. */
+var _ordemExtra = null;
+var CERT_COLS = {
+  prot:  {rot:'Nº da bolsa', tipo:'texto', ctl:'certFiltroProtocolo',   ord:'prot'},
+  func:  {rot:'Funcionário', tipo:'texto', ctl:'certFiltroSolicitante', ord:'func'},
+  escola:{rot:'Escola',      tipo:'texto', ctl:'certFiltroEscola',      ord:'esc'},
+  nivel: {rot:'Nível',       tipo:'lista', ctl:'certFiltroModalidade'},
+  per:   {rot:'Período',     tipo:'lista', ctl:'certFiltroPeriodo'},
+  sit:   {rot:'Situação',    tipo:'lista', ctl:'certFiltroStatus'},
+  emi:   {rot:'Emissão',     tipo:'data',  ctl:'certFiltroEmissao',     ord:'emi'}
+};
+function certEmiNum(s){
+  var m = String(s.emitidoEm||'').match(/(\d{2})\/(\d{2})\/(\d{4})(?:\D+(\d{2}):(\d{2}))?/);
+  return m ? Number(m[3]+m[2]+m[1]+(m[4]||'00')+(m[5]||'00')) : 0;
+}
+function certEmissaoCelula(s){
+  var m = String(s.emitidoEm||'').match(/(\d{2}\/\d{2}\/\d{4})(?:\D+(\d{2}:\d{2}))?/);
+  if(!m) return '<span style="color:#94a3b8;">—</span>';
+  return '<div class="cert-emi-dia">'+cert_escHtml(m[1])+'</div>'+(m[2]?'<div class="cert-emi-hora">'+cert_escHtml(m[2])+'</div>':'');
+}
+function certOrdenarExtra(lista, o){
+  var cmp = function(x,y){ return String(x||'').localeCompare(String(y||''),'pt',{sensitivity:'base'}); };
+  var sinal = o.dir==='desc' ? -1 : 1;
+  return lista.slice().sort(function(a,b){
+    if(o.k==='emi'){ var x=certEmiNum(a), y=certEmiNum(b); if(!x && !y) return 0; if(!x) return 1; if(!y) return -1; return sinal*(x-y); }
+    if(o.k==='prot') return sinal*cmp(a.protocolo, b.protocolo);
+    if(o.k==='esc')  return sinal*cmp(a.escola, b.escola);
+    return 0;
+  });
+}
+function certOrdemSync(){
+  var sel = g('certOrdemSel'); if(!sel) return;
+  sel.value = _ordemFunc ? 'func:'+_ordemFunc : (_ordemExtra ? _ordemExtra.k+':'+_ordemExtra.dir : '');
+}
+function certDefinirOrdem(k, dir){
+  if(k==='func'){ _ordemExtra = null; _ordemFunc = dir||''; }
+  else { _ordemFunc = ''; _ordemExtra = (k && dir) ? {k:k, dir:dir} : null; }
+  var th = g('certThFunc'), seta = g('certOrdSeta');
+  if(th) th.setAttribute('data-ordem', _ordemFunc);
+  if(seta) seta.textContent = _ordemFunc==='asc' ? '▲ A–Z' : (_ordemFunc==='desc' ? '▼ Z–A' : '↕ A–Z');
+  certOrdemSync();
+  cert_aplicarFiltros();
+}
+function certOrdemAtual(k){
+  if(k==='func') return _ordemFunc;
+  return (_ordemExtra && _ordemExtra.k===k) ? _ordemExtra.dir : '';
+}
+/* Ponto dourado no título da coluna que está filtrada ou ordenando. */
+function certColMarcar(){
+  Object.keys(CERT_COLS).forEach(function(col){
+    var c = CERT_COLS[col], th = document.querySelector('#secCertificadoAdmin th[data-col="'+col+'"]'); if(!th) return;
+    var el = g(c.ctl), ativo = !!(el && String(el.value||'').trim()) || !!(c.ord && certOrdemAtual(c.ord));
+    th.classList.toggle('cert-col-on', ativo);
+  });
+}
+function certColFechar(){ var p = g('certColPop'); if(p && p.parentNode) p.parentNode.removeChild(p); }
+function certColAbrir(col, btn){
+  var c = CERT_COLS[col]; if(!c || !btn) return;
+  var jaAberto = g('certColPop') && g('certColPop').getAttribute('data-col')===col;
+  certColFechar(); if(jaAberto) return;
+  var el = g(c.ctl); if(!el) return;
+  var pop = document.createElement('div');
+  pop.id = 'certColPop'; pop.className = 'cert-col-pop'; pop.setAttribute('data-col', col);
+  var h = '<div class="cert-col-pop-t">'+cert_escHtml(c.rot)+'</div>';
+  if(c.ord){
+    var rot = c.ord==='emi' ? ['Mais recente primeiro','Mais antiga primeiro'] : ['A–Z','Z–A'];
+    var dirs = c.ord==='emi' ? ['desc','asc'] : ['asc','desc'], atual = certOrdemAtual(c.ord);
+    h += '<b>Ordenar</b>' + dirs.map(function(d,i){
+      return '<div class="o'+(atual===d?' a':'')+'" data-ord="'+d+'">'+(d==='desc'?'▼ ':'▲ ')+rot[i]+'</div>';
+    }).join('');
+  }
+  h += '<b>Filtrar</b>';
+  if(c.tipo==='texto') h += '<input type="text" class="cert-col-in" id="certColIn" placeholder="Digite para filtrar" value="'+cert_escHtml(el.value||'')+'">';
+  else if(c.tipo==='data') h += '<input type="date" class="cert-col-in" id="certColIn" value="'+cert_escHtml(el.value||'')+'">';
+  else h += Array.prototype.map.call(el.options, function(o){
+    return '<div class="o'+(o.value===el.value?' a':'')+'" data-val="'+cert_escHtml(o.value)+'">'+(o.value===el.value?'● ':'')+cert_escHtml(o.text)+'</div>';
+  }).join('');
+  h += '<div class="cert-col-pop-bt"><span class="l" data-limpar="1">Limpar</span><span class="p" data-fechar="1">Fechar</span></div>';
+  pop.innerHTML = h;
+  document.body.appendChild(pop);
+  var r = btn.getBoundingClientRect();
+  pop.style.top = Math.round(r.bottom + 6) + 'px';
+  pop.style.left = Math.max(8, Math.min(Math.round(r.left - 20), window.innerWidth - 248)) + 'px';
+  var tmr = null, inp = g('certColIn');
+  if(inp){
+    inp.focus();
+    inp.addEventListener('input', function(){ clearTimeout(tmr); tmr = setTimeout(function(){ el.value = inp.value; cert_aplicarFiltros(); }, 250); });
+    inp.addEventListener('change', function(){ el.value = inp.value; cert_aplicarFiltros(); });
+  }
+  pop.addEventListener('click', function(ev){
+    var t = ev.target && ev.target.closest ? ev.target.closest('[data-ord],[data-val],[data-limpar],[data-fechar]') : null; if(!t) return;
+    ev.stopPropagation();
+    if(t.hasAttribute('data-fechar')){ certColFechar(); return; }
+    if(t.hasAttribute('data-limpar')){
+      el.value = ''; el.classList.remove('ativo');
+      if(c.ord && certOrdemAtual(c.ord)) { certDefinirOrdem(c.ord, ''); } else cert_aplicarFiltros();
+      certColFechar(); return;
+    }
+    if(t.hasAttribute('data-ord')){
+      var d = t.getAttribute('data-ord');
+      certDefinirOrdem(c.ord, certOrdemAtual(c.ord)===d ? '' : d);
+      certColFechar(); return;
+    }
+    el.value = t.getAttribute('data-val'); cert_aplicarFiltros(); certColFechar();
+  });
+}
+function certColLigar(){
+  var tabela = document.querySelector('#secCertificadoAdmin .cert-tabela');
+  if(tabela) tabela.addEventListener('click', function(ev){
+    var b = ev.target && ev.target.closest ? ev.target.closest('.cert-col-f') : null; if(!b) return;
+    ev.stopPropagation(); certColAbrir(b.getAttribute('data-col'), b);
+  });
+  document.addEventListener('click', function(ev){
+    if(!g('certColPop')) return;
+    if(ev.target && ev.target.closest && (ev.target.closest('#certColPop') || ev.target.closest('.cert-col-f'))) return;
+    certColFechar();
+  });
+  document.addEventListener('keydown', function(ev){ if(ev.key==='Escape') certColFechar(); });
+  var sel = g('certOrdemSel');
+  if(sel) sel.addEventListener('change', function(){
+    var v = String(sel.value||'').split(':'); certDefinirOrdem(v[0]||'', v[1]||'');
+  });
 }
 function cert_ordenarFuncionario(){
   _ordemFunc = _ordemFunc==='' ? 'asc' : (_ordemFunc==='asc' ? 'desc' : '');
+  _ordemExtra = null; if(typeof certOrdemSync === 'function') certOrdemSync();
   var th = g('certThFunc'), seta = g('certOrdSeta');
   if(th) th.setAttribute('data-ordem', _ordemFunc);
   if(seta) seta.textContent = _ordemFunc==='asc' ? '▲ A–Z' : (_ordemFunc==='desc' ? '▼ Z–A' : '↕ A–Z');
@@ -2235,7 +2387,7 @@ function cert_ordenarFuncionario(){
 function cert_limparFiltros(){
   ['certBusca','certFiltroProtocolo','certFiltroSolicitante','certFiltroEscola',
    'certFiltroCurso','certFiltroDataDe','certFiltroDataAte','certFiltroStatus',
-   'certFiltroModalidade','certFiltroPeriodo','certFiltroEnvio','certFiltroEnviadoPor'].forEach(function(id){
+   'certFiltroModalidade','certFiltroPeriodo','certFiltroEnvio','certFiltroEnviadoPor','certFiltroEmissao'].forEach(function(id){
     if(g(id)){ g(id).value=''; g(id).classList.remove('ativo'); }
   });
   cert_aplicarFiltros();
@@ -2342,7 +2494,7 @@ function certAgruparIrmaos(lista){
 function certEnvioCelula(s){
   var e=s.envio;
   /* Primeiro QUANDO FOI EMITIDO (só quando houve emissão), depois o envio — cada data com o seu rótulo. */
-  var emi = s.emitidoEm ? '<span style="color:#475569;">Emitido: '+cert_escHtml(s.emitidoEm)+'</span><br>' : '';
+  var emi = '';  /* a data de emissão agora tem coluna própria (Emissão) */
   /* NÃO ASSOCIADO: o voucher é só impresso e retirado na sede — não é pendência de e-mail (usuário, 26/11/2026). */
   if(!e && certSindical(s)==='NAO') return emi+'<div class="cert-so-impresso">🖨 Só impresso — retirada presencial na sede<small>não é enviado por e-mail</small></div>';
   if(!e && certSindical(s)==='NI' && s.status==='EMITIDO') return emi+'<span class="cert-aviso-sind">⚠ Situação sindical em branco — defina para saber como entregar</span>';
@@ -2363,7 +2515,7 @@ function cert_renderTabela(){
   if(!tbody) return;
   if(!_filtrada.length){
     if(sub) sub.textContent='Nenhuma solicitação encontrada';
-    tbody.innerHTML='<tr><td colspan="8"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">📭 Nenhuma solicitação encontrada.</div></td></tr>';
     if(g('certPagWrap')) g('certPagWrap').style.display='none';
     return;
   }
@@ -2430,6 +2582,7 @@ function cert_renderTabela(){
               + 'style="color:#d97706;font-weight:700;white-space:nowrap;">⚠ sem período</span>')
       +'</td>'
       +'<td class="c-sit">'+badgeStatus(s.status)+'<div class="cert-env">'+certEnvioCelula(s)+'</div></td>'
+      +'<td class="c-emi">'+certEmissaoCelula(s)+'</td>'
       +'<td class="c-acao"><div class="cert-acoes">'
         /* O PROTOCOLO VAI JUNTO DO ID, e não é redundância.
          O ID_SOLICITACAO pode vir vazio em linha antiga, gravada antes de a
@@ -5115,7 +5268,7 @@ function certDocEnviar(){
 // ── Carregar
 function cert_carregarLista(){
   var tbody=g('certTbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="8"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="9"><div class="cert-tabela-vazia">⏳ Carregando...</div></td></tr>';
   google.script.run
     .withSuccessHandler(function(lista){
       _lista=Array.isArray(lista)?lista:[];
@@ -5228,11 +5381,15 @@ function initInterno(){
         clearTimeout(_buscaTimer); _buscaTimer = setTimeout(cert_aplicarFiltros, 250);
       });
     });
-  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte','certFiltroEnvio','certFiltroEnviadoPor'].forEach(function(id){
+  ['certFiltroPeriodo','certFiltroDataDe','certFiltroDataAte','certFiltroEmissao','certFiltroEnvio','certFiltroEnviadoPor'].forEach(function(id){
     if(g(id)) g(id).addEventListener('change', cert_aplicarFiltros);
   });
   if(g('certLimparFiltros')) g('certLimparFiltros').addEventListener('click', cert_limparFiltros);
-  if(g('certThFunc')) g('certThFunc').addEventListener('click', cert_ordenarFuncionario);
+  if(g('certThFunc')) g('certThFunc').addEventListener('click', function(ev){
+    if(ev.target && ev.target.closest && ev.target.closest('.cert-col-f')) return;  /* o ▾ abre o filtro, não troca a ordem */
+    cert_ordenarFuncionario();
+  });
+  certColLigar();
   if(g('certChips')) g('certChips').addEventListener('click', function(ev){
     var c = ev.target && ev.target.closest ? ev.target.closest('.cert-pf-chip') : null; if(!c) return;
     var el = g(c.getAttribute('data-filtro')); if(el){ el.value=''; el.classList.remove('ativo'); }

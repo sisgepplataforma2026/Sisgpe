@@ -47,7 +47,7 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela", "jsdom não instalado"); b.r
 
   b.passo("3. Enviado: 'Emitido: …' e '✔ Enviado: … por … · para …'");
   const c1 = txt(tr("BOLSA-2026-100001").querySelector(".c-sit .cert-env"));
-  b.ok(/Emitido: 24\/11\/2026 08:12/.test(c1), "diz quando foi emitido", c1);
+  b.ok(/24\/11\/2026\s*08:12/.test(txt(tr("BOLSA-2026-100001").querySelector(".c-emi"))), "diz quando foi emitido (coluna Emissão, desde 27/11/2026)", txt(tr("BOLSA-2026-100001").querySelector(".c-emi")));
   b.ok(/✔ Enviado: \d\d\/\d\d\/\d{4} \d\d:\d\d/.test(c1), "diz quando foi enviado, com o rótulo", c1);
   b.ok(/por marcela · para assoc@exemplo\.com/.test(c1), "por quem e para onde", c1);
 
@@ -55,11 +55,11 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela", "jsdom não instalado"); b.r
   const c2 = txt(tr("BOLSA-2026-100002").querySelector(".c-sit .cert-env"));
   /* 26/11/2026 (desenho aprovado): emitido e sem envio de uma solicitação com a situação sindical EM BRANCO mostra o aviso no lugar de
    "Ainda não enviado"; com ASSOCIADO mostra "✉ Aguardando envio por e-mail" (coberto em t293). Esta linha do teste tem a situação em branco. */
-  b.ok(/Emitido: 24\/11\/2026 08:12/.test(c2) && /Situação sindical em branco — defina para saber como entregar/.test(c2), "emissão à vista e o aviso de situação sindical em branco", c2);
+  b.ok(/24\/11\/2026\s*08:12/.test(txt(tr("BOLSA-2026-100002").querySelector(".c-emi"))) && /Situação sindical em branco — defina para saber como entregar/.test(c2), "emissão à vista e o aviso de situação sindical em branco", c2);
 
   b.passo("5. Nunca emitido: sem 'Emitido:' (não afirma o que não houve)");
   const c3 = txt(tr("BOLSA-2026-100003").querySelector(".c-sit .cert-env"));
-  b.ok(!/Emitido:/.test(c3) && /Ainda não enviado/.test(c3), "só 'Ainda não enviado'", c3);
+  b.ok(txt(tr("BOLSA-2026-100003").querySelector(".c-emi")) === "—" && /Ainda não enviado/.test(c3), "coluna Emissão com '—' e só 'Ainda não enviado'", c3);
 
   b.passo("6. O CSV exportado separa Solicitado em / Emitido em / Enviado em");
   const fonte = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "Scripts_Certificado.html"), "utf8");

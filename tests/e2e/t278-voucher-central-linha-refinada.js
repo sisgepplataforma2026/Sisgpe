@@ -52,8 +52,8 @@ if (!dom.jsdomDisponivel()) { b.naoTestavel("tela da Central", "jsdom não insta
   b.igual(linhas.length, 6, "as seis solicitações foram desenhadas");
   const ths = doc.querySelectorAll(".cert-tabela thead tr:first-child th");
   /* 26/11/2026 (refino aprovado): Nível e Período viraram duas colunas e os filtros saíram do cabeçalho para o painel #certPainelFiltros. */
-  b.igual(ths.length, 8, "cabeçalho com 8 colunas: checkbox, Nº da bolsa, Funcionário, Escola, Nível, Período, Situação, Ação", Array.from(ths).map(txt).join(" | "));
-  b.ok(linhas.every((tr) => tr.querySelectorAll("td").length === 8), "toda linha tem 8 células");
+  b.igual(ths.length, 9, "cabeçalho com 9 colunas: checkbox, Nº da bolsa, Funcionário, Escola, Nível, Período, Situação, Emissão, Ação (a coluna Emissão nasceu em 27/11/2026)", Array.from(ths).map(txt).join(" | "));
+  b.ok(linhas.every((tr) => tr.querySelectorAll("td").length === 9), "toda linha tem 9 células");
   ["Protocolo", "Solicitante", "Escola", "Curso", "Modalidade", "Periodo", "Status", "Envio", "EnviadoPor"].forEach((n) =>
     b.ok(!!doc.querySelector("#certPainelFiltros #certFiltro" + n), "filtro de " + n + " continua no painel de filtros"));
   b.ok(!!doc.getElementById("certFiltroDataDe") && !!doc.getElementById("certFiltroDataAte") && !!doc.getElementById("certBusca"), "busca geral e filtro de data continuam");
