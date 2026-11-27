@@ -85,6 +85,10 @@ const p = (...a) => console.log(...a);
       const feito = await pg.evaluate((d) => {
         const g = id => document.getElementById(id), dg = x => String(x || "").replace(/\D/g, "");
         const set = (id, v) => { const e = g(id); if (!e) return false; e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); return true; };
+        /* 27/11/2026 — TIPO PRIMEIRO, COM O EVENTO "change". O formulário ajusta as regras (CPF obrigatório ou não) quando o tipo muda pelo seletor; o robô trocava o
+           valor por código, sem avisar a página, e ela seguia com a regra do tipo padrão: "Informe o CPF do comprador". Escolher o tipo ANTES dos campos (a busca por CPF
+           é que zera o formulário) e disparar o "change" faz a página aplicar a regra do tipo, como numa pessoa. */
+        const sel0 = g("popup-tipo-ingresso"); if (sel0) { sel0.value = d.cat; sel0.dispatchEvent(new Event("input", { bubbles: true })); sel0.dispatchEvent(new Event("change", { bubbles: true })); }
         set("popup-buyer-nome", d.nome); if (d.email) set("popup-buyer-email", d.email); if (d.cpf) set("popup-buyer-cpf", d.cpf);
         if (d.fone) set("popup-buyer-telefone", d.fone); if (d.cidade) set("popup-buyer-cidade", d.cidade); if (d.escola) set("popup-buyer-observacao", d.escola);
         const sel = g("popup-tipo-ingresso"); if (sel) sel.value = d.cat;
@@ -115,6 +119,8 @@ const p = (...a) => console.log(...a);
       pg.off("console", aoConsole); pg.off("pageerror", aoErro);
       p("DIAGNÓSTICO · texto novo na tela depois do clique:", JSON.stringify(novasLinhas), "· erros de JS:", JSON.stringify(consolas.slice(0, 4)));
       pg.off("response", ouvir); pg.off("dialog", aoDialogo);
+      const infoTipo = await pg.evaluate(() => { const e = document.getElementById("popup-tipo-ingresso"); return e ? { valor: e.value, onchange: String(e.getAttribute("onchange") || "").slice(0, 80), opcoes: [...e.options].map(o => o.value).join("|") } : null; }).catch(() => null);
+      p("DIAGNÓSTICO · seletor de tipo:", JSON.stringify(infoTipo));
       p("DIAGNÓSTICO · caixas do navegador:", JSON.stringify(dialogos), "· camadas na tela:", JSON.stringify(sobrepostos));
       p("DIAGNÓSTICO · avisos na tela:", JSON.stringify(avisosTela), "· campos:", obrig.join(" "), "· respostas:", JSON.stringify(respostas.slice(0, 4)));
       await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
