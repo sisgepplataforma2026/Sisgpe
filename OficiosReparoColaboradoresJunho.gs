@@ -70,18 +70,28 @@ function ofrReparoJunho_(aplicar) {
 }
 
 /* TRAVA: só roda no EDITOR, pelo dono do projeto. De uma tela (google.script.run) quem dispara é o visitante — vazio ou outra
-   pessoa —, e então recusa. Sem isto, qualquer sessão poderia chamar uma função de escrita direto. */
+   pessoa —, e então recusa. Sem isto, qualquer sessão poderia chamar uma função de escrita direto.
+   27/11/2026: quando a trava recusava, NADA aparecia no Registro e parecia que a função "não fez nada". Agora ela SEMPRE escreve o
+   motivo (com o e-mail mascarado), para o usuário ver por que recusou. */
+function ofrReparoMascara_(e) { e = String(e || ""); return e ? e.slice(0, 3) + "***@" + (e.split("@")[1] || "?") : "(vazio)"; }
 function ofrReparoDonoNoEditor_() {
   var ativo = "", efetivo = "";
   try { ativo = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e1) {}
   try { efetivo = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
-  return !!ativo && ativo === efetivo;
+  var ok = !!ativo && ativo === efetivo;
+  Logger.log("Reparo Colaborador(es): quem executa = " + ofrReparoMascara_(ativo) + " · conta do projeto = " + ofrReparoMascara_(efetivo) + " → " + (ok ? "liberado" : "RECUSADO"));
+  return ok;
+}
+function ofrReparoRecusa_() {
+  var msg = "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto. Veja a linha acima no Registro: 'quem executa' precisa ser igual a 'conta do projeto'.";
+  Logger.log(msg);
+  return { erro: true, mensagem: msg };
 }
 function oficiosReparoColaboradoresJunhoConferirSISGEP() {
-  if (!ofrReparoDonoNoEditor_()) return { erro: true, mensagem: "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto." };
+  if (!ofrReparoDonoNoEditor_()) return ofrReparoRecusa_();
   return ofrReparoJunho_(false);
 }
 function oficiosReparoColaboradoresJunhoAplicarSISGEP() {
-  if (!ofrReparoDonoNoEditor_()) return { erro: true, mensagem: "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto." };
+  if (!ofrReparoDonoNoEditor_()) return ofrReparoRecusa_();
   return ofrReparoJunho_(true);
 }

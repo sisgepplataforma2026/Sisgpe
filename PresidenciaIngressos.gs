@@ -42,16 +42,24 @@ function presAcesso_(k) {
   return ac;
 }
 function presNegado_() { return { ok: false, negado: true, mensagem: PRES_MSG_NEGADO }; }
+function presMascara_(e) { e = String(e || ""); return e ? e.slice(0, 3) + "***@" + (e.split("@")[1] || "?") : "(vazio)"; }
 function presDonoNoEditor_() {
   var a = "", ef = "";
   try { a = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e1) {}
   try { ef = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e2) {}
-  return !!a && a === ef;
+  var ok = !!a && a === ef;
+  Logger.log("Presidência: quem executa = " + presMascara_(a) + " · conta do projeto = " + presMascara_(ef) + " → " + (ok ? "liberado" : "RECUSADO"));
+  return ok;
+}
+function presRecusaEditor_() {
+  var msg = "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto. Veja a linha acima no Registro: 'quem executa' precisa ser igual a 'conta do projeto'.";
+  Logger.log(msg);
+  return { erro: true, mensagem: msg };
 }
 
 /** EDITOR: cria um link novo para cada pessoa (os antigos deixam de valer). Mostra os endereços UMA vez no Registro. */
 function presidenciaGerarLinksSISGEP() {
-  if (!presDonoNoEditor_()) return { erro: true, mensagem: "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto." };
+  if (!presDonoNoEditor_()) return presRecusaEditor_();
   PropertiesService.getScriptProperties().deleteProperty(PRES_PROP);
   var base = "";
   try { base = String(ScriptApp.getService().getUrl() || ""); } catch (e) {}
@@ -61,7 +69,7 @@ function presidenciaGerarLinksSISGEP() {
   return L;
 }
 function presidenciaRevogarLinksSISGEP() {
-  if (!presDonoNoEditor_()) return { erro: true, mensagem: "Sem permissão: só roda no editor do Apps Script, pelo dono do projeto." };
+  if (!presDonoNoEditor_()) return presRecusaEditor_();
   PropertiesService.getScriptProperties().deleteProperty(PRES_PROP);
   Logger.log("Todos os links da Presidência foram cancelados.");
   return "ok";
