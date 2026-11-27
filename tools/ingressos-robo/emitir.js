@@ -38,12 +38,20 @@ const p = (...a) => console.log(...a);
     const jaNaRodada = {};
     for (const it of itens) {
       const cpf = cpf11(it.cpf), nome = String(it.nome || "").trim(), cat = String(it.categoria || "");
-      if (!nome || !cpfValido(cpf) || CATEGORIAS.indexOf(cat) < 0) { await registrar(it.pedido, "FALHOU", "pedido sem nome, sem CPF válido (11 dígitos com dígito verificador) ou com categoria que o TickOne não tem: NÃO emiti"); continue; }
-      if (jaNaRodada[cpf]) { await registrar(it.pedido, "FALHOU", "CPF repetido nesta fila: NÃO emiti"); continue; }
+      /* CONVITE e ACOMPANHANTE não precisam de CPF (usuário, 27/11/2026). Sem CPF, a identidade do ingresso é o NOME (sem acento,
+         sem maiúsculas): a pesquisa "já tem?" e a conferência "apareceu 1 linha nova" passam a usar o nome. Se vier CPF, ele manda. */
+      const semCpfOk = cat === "convite" || cat === "acompanhante";
+      const chaveNome = String(nome).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      const usaNome = !cpf && semCpfOk;
+      if (!nome || CATEGORIAS.indexOf(cat) < 0 || (cpf ? !cpfValido(cpf) : !semCpfOk)) { await registrar(it.pedido, "FALHOU", "pedido sem nome, com CPF inválido (ou sem CPF numa categoria que exige) ou com categoria que o TickOne não tem: NÃO emiti"); continue; }
+      const chaveRodada = usaNome ? "N:" + chaveNome : cpf;
+      if (jaNaRodada[chaveRodada]) { await registrar(it.pedido, "FALHOU", (usaNome ? "nome repetido nesta fila (sem CPF)" : "CPF repetido nesta fila") + ": NÃO emiti"); continue; }
       const antes = await ler(pg);
       if (!antes) { await registrar(it.pedido, "FALHOU", "não achei a tabela de ingressos"); process.exitCode = 1; break; }
-      const ja = antes.linhas.find(l => l.cpf === cpf);
-      if (ja) { await registrar(it.pedido, "FALHOU", "este CPF já tem ingresso (código " + ja.codigo + "): NÃO emiti de novo"); continue; }
+      const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      const mesma = l => usaNome ? norm(l.nome) === chaveNome : l.cpf === cpf;
+      const ja = antes.linhas.find(mesma);
+      if (ja) { await registrar(it.pedido, "FALHOU", (usaNome ? "já existe ingresso com este nome (código " : "este CPF já tem ingresso (código ") + ja.codigo + "): NÃO emiti de novo"); continue; }
       /* um lugar LIVRE da grade */
       const abriu = await pg.evaluate(() => {
         const b = [...document.querySelectorAll("button[onclick*='abrirPopUpAssentoAdmin']")].find(x => /text-emerald-400/.test(x.className || "") && !/rose-/.test(x.className || ""));
@@ -62,17 +70,17 @@ const p = (...a) => console.log(...a);
          qualquer campo não bater, NÃO clica e nada é emitido. */
       let fone = dig(it.telefone || "");   // máscara do campo: DDD + número (11 dígitos); o "55" virava DDD e cortava o fim
       if (fone.length >= 12 && fone.slice(0, 2) === "55") fone = fone.slice(2);
-      jaNaRodada[cpf] = true;
+      jaNaRodada[chaveRodada] = true;
       const feito = await pg.evaluate((d) => {
         const g = id => document.getElementById(id), dg = x => String(x || "").replace(/\D/g, "");
         const set = (id, v) => { const e = g(id); if (!e) return false; e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); return true; };
-        set("popup-buyer-nome", d.nome); if (d.email) set("popup-buyer-email", d.email); set("popup-buyer-cpf", d.cpf);
+        set("popup-buyer-nome", d.nome); if (d.email) set("popup-buyer-email", d.email); if (d.cpf) set("popup-buyer-cpf", d.cpf);
         if (d.fone) set("popup-buyer-telefone", d.fone); if (d.cidade) set("popup-buyer-cidade", d.cidade); if (d.escola) set("popup-buyer-observacao", d.escola);
         const sel = g("popup-tipo-ingresso"); if (sel) sel.value = d.cat;
         const falhas = [];
         if (!g("popup-buyer-nome") || g("popup-buyer-nome").value.trim() !== d.nome) falhas.push("nome");
         if (d.email && g("popup-buyer-email").value !== d.email) falhas.push("e-mail");
-        if (dg(g("popup-buyer-cpf").value) !== d.cpf) falhas.push("CPF");
+        if (d.cpf && dg(g("popup-buyer-cpf").value) !== d.cpf) falhas.push("CPF");
         if (d.fone && dg(g("popup-buyer-telefone").value) !== d.fone) falhas.push("telefone");
         if (d.cidade && g("popup-buyer-cidade").value !== d.cidade) falhas.push("cidade");
         if (d.escola && g("popup-buyer-observacao").value !== d.escola) falhas.push("observação");
@@ -89,9 +97,9 @@ const p = (...a) => console.log(...a);
       await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForSelector("table tbody tr", { timeout: 8000 }).catch(() => {});
       const depois = await ler(pg);
-      const novas = depois ? depois.linhas.filter(l => l.cpf === cpf) : [];
+      const novas = depois ? depois.linhas.filter(mesma) : [];
       if (!depois || novas.length !== 1 || depois.linhas.length !== antes.linhas.length + 1) {
-        await registrar(it.pedido, "FALHOU", "cliquei em Emitir, mas não apareceu exatamente uma linha nova com este CPF (" + novas.length + " linha(s)): a execução parou e NÃO tentei de novo");
+        await registrar(it.pedido, "FALHOU", "cliquei em Emitir, mas não apareceu exatamente uma linha nova com este "+(usaNome ? "nome" : "CPF")+" (" + novas.length + " linha(s)): a execução parou e NÃO tentei de novo");
         process.exitCode = 1; break;
       }
       const nv = novas[0], avisos = [];

@@ -481,7 +481,7 @@
   function conferir(auto){
     lerDom();
     var v=validas();
-    if(!v.lista.length){ g('ciRes').innerHTML='<div class="ci-erro">Preencha ao menos o nome e o CPF de uma pessoa antes de conferir.</div>'; aviso('Preencha ao menos uma pessoa.',true); return; }
+    if(!v.lista.length){ g('ciRes').innerHTML='<div class="ci-erro">Preencha ao menos o nome de uma pessoa antes de conferir.</div>'; aviso('Preencha ao menos uma pessoa.',true); return; }
     g('ciRes').innerHTML='<div class="ci-vazio">Pesquisando na base do TickOne…</div>';
     rodar('compassoIngressos_conferir',[v.lista],function(r){
       if(!r.ok){ g('ciRes').innerHTML='<div class="ci-erro">'+esc(r.mensagem)+'</div>'; return; }

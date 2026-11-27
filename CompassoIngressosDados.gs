@@ -373,7 +373,7 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       var k = cingNomeChave_(l.nome);
       if (k) (porNome[k] = porNome[k] || []).push(l);
     });
-    var vistos = {}, idade = cingIdadeMin_(base.lidoEm), res = [], pdfsMemo = null;
+    var vistos = {}, vistosNome = {}, idade = cingIdadeMin_(base.lidoEm), res = [], pdfsMemo = null;
     function pdfsDe() { if (!pdfsMemo) pdfsMemo = cingPdfs_(); return pdfsMemo; }   // só lista a pasta do Drive se ALGUÉM já tem ingresso
     lista.forEach(function (it, i) {
       it = it || {};
@@ -387,7 +387,16 @@ function compassoIngressos_conferir(lista, tokenSessao) {
       if (!cat) motivos.push("Categoria inválida (use: " + CING_CATEGORIAS.map(function (c) { return c.rotulo; }).join(", ") + ").");
       if (!assoc) {
         if (!nome) motivos.push("Falta o nome.");
-        if (!cingCpfValido_(cpf)) motivos.push("CPF inválido ou ausente.");
+        /* CONVITE e ACOMPANHANTE: CPF NÃO é obrigatório (usuário, 27/11/2026: "tira a obrigação do CPF para convidado e acompanhante").
+           Se vier preenchido, tem que ser válido. Cortesia e Pago continuam exigindo. */
+        var cpfOpcional = (cat === "convite" || cat === "acompanhante");
+        if (cpfOpcional && cpf && !cingCpfValido_(cpf)) motivos.push("CPF informado é inválido: corrija ou deixe em branco.");
+        else if (!cpfOpcional && !cingCpfValido_(cpf)) motivos.push("CPF inválido ou ausente.");
+        if (cpfOpcional && !cpf && nome) {
+          var chaveLista = cingNomeChave_(nome);
+          if (vistosNome[chaveLista] != null) motivos.push("Nome repetido na lista (linha " + (vistosNome[chaveLista] + 1) + "): sem CPF, confira se são pessoas diferentes.");
+          else vistosNome[chaveLista] = i;
+        }
       }
       if (cingCpfValido_(cpf)) {
         if (vistos[cpf] != null) motivos.push("CPF repetido na lista (linha " + (vistos[cpf] + 1) + ").");
@@ -402,7 +411,7 @@ function compassoIngressos_conferir(lista, tokenSessao) {
         var mesmoNome = nome ? (porNome[cingNomeChave_(nome)] || []) : [];
         if (mesmoNome.length) {
           o.situacao = "conferir";
-          motivos.push("Já existe ingresso com este nome na base (código " + mesmoNome[0].codigo + "), mas com outro CPF. Confira se é a mesma pessoa.");
+          motivos.push("Já existe ingresso com este nome na base (código " + mesmoNome[0].codigo + ")" + (cpf ? ", mas com outro CPF" : "") + ". Confira se é a mesma pessoa.");
         }
       }
       if (assoc && o.situacao !== "ja_tem") {
@@ -631,10 +640,10 @@ function compassoIngressos_pedirEmissao(lista, confirmado, tokenSessao) {
     if (!lock.tryLock(15000)) return { ok: false, mensagem: "Outra pessoa está pedindo emissão agora. Tente de novo." };
     try {
       var abertos = {};
-      cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingCpf11_(o.CPF)] = true; });
+      cingEmissoes_().forEach(function (o) { if (o.STATUS === "PEDIDO") abertos[cingCpf11_(o.CPF) || ("N:" + cingNomeChave_(o.NOME))] = true; });
       var sh = cingAbaEmis_(), n = 0, quem = cingQuem_(sessao), agora = new Date(), linhas = [];
       cf.resultados.forEach(function (r, i) {
-        if (r.situacao !== "novo" || abertos[r.cpf]) return;
+        if (r.situacao !== "novo" || abertos[r.cpf || ("N:" + cingNomeChave_(r.nome))]) return;
         var id = "E" + Utilities.formatDate(agora, "America/Sao_Paulo", "yyyyMMddHHmmss") + "-" + (i + 1);
         linhas.push([id, r.nome, r.cpf, r.email, r.telefone || r.telefoneDigitado, r.cidade, r.escola, r.categoria, agora, quem, "PEDIDO", "", "", ""]);
         n++;
