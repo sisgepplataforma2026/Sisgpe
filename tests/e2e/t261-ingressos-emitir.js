@@ -91,6 +91,7 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   const NODE_PATH = [process.env.NODE_PATH || "", raizGlobal].filter(Boolean).join(path.delimiter);
   try { require(require.resolve("playwright", { paths: NODE_PATH.split(path.delimiter) })); } catch (e) { b.naoTestavel("o robô de emissão", "playwright/Chromium não disponível aqui"); b.resumo(); return; }
   b.fluxo("EMISSÃO · o robô contra um TickOne FALSO");
+  let modoBotaoNovo = false;   /* 27/11/2026: o TickOne tirou a grade de lugares e ganhou o botão "Emitir ingresso" */
   let linhas = [{ nome: "Ja Existe Fictícia", cpf: "529.982.247-25", cod: "EXI-0001" }];
   let ocupados = new Set([1, 2]); const LIVRES = [3, 4, 5, 6, 7]; const emissoes = []; const outras = []; let seq = 0;
   const srv = http.createServer((req, res) => {
@@ -111,11 +112,11 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
     const livre = "seat-fluid bg-slate-850 border border-slate-700/80 text-emerald-400 hover:x", ocup = "seat-fluid bg-rose-500/20 text-rose-400 border border-rose-500/40";
     res.end('<h1>Gestão</h1><table><thead><tr><th></th><th>Cliente</th><th>CPF</th><th>Telefone</th><th>Código</th><th>Tipo</th><th>Escola</th><th>Cidade</th><th>Ações</th></tr></thead><tbody>' +
       linhas.map(l => `<tr><td></td><td>${l.nome}</td><td>${l.cpf}</td><td>t</td><td>${l.cod}</td><td>Associado</td><td>E</td><td>C</td><td><button title="Enviar o ingresso (PDF) pelo WhatsApp" onclick="fetch('/index.php?action=whats')">w</button><a title="Reemitir (PDF)" href="index.php?page=ticket&ref=REF-${l.cod}">p</a><button title="Excluir ingresso" onclick="fetch('/index.php?action=excluir')">x</button></td></tr>`).join("") + '</tbody></table>' +
-      [1, 2].concat(LIVRES).map(n => `<button class="${ocupados.has(n) ? ocup : livre}" onclick="abrirPopUpAssentoAdmin(${n})">${n}</button>`).join("") +
+      (modoBotaoNovo ? '<button onclick="emitirNovoIngressoAdmin(17)">Emitir ingresso</button>' : [1, 2].concat(LIVRES).map(n => `<button class="${ocupados.has(n) ? ocup : livre}" onclick="abrirPopUpAssentoAdmin(${n})">${n}</button>`).join("")) +
       '<div id="pop" style="display:none"><select id="popup-tipo-ingresso"><option value="pago">Pago</option><option value="cortesia">Cortesia</option><option value="convite">Convite</option><option value="associado">Associado</option><option value="acompanhante">Acompanhante Associado</option></select>' +
       '<input id="popup-buyer-nome"><input id="popup-buyer-email"><input id="popup-buyer-cpf"><input id="popup-buyer-telefone"><input id="popup-buyer-cidade"><textarea id="popup-buyer-observacao"></textarea>' +
       '<button onclick="fetch(\'/index.php?action=salvar\')">Salvar Dados</button><button onclick="fetch(\'/index.php?action=excluir\')">Excluir</button><button id="emit" onclick="emitir()">Emitir Ingresso</button></div>' +
-      '<script>var seat=0;function abrirPopUpAssentoAdmin(n){seat=n;["popup-buyer-nome","popup-buyer-email","popup-buyer-cpf","popup-buyer-telefone","popup-buyer-cidade","popup-buyer-observacao"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("pop").style.display="block"}' +
+      '<script>var seat=0;function emitirNovoIngressoAdmin(){abrirPopUpAssentoAdmin(0)}function abrirPopUpAssentoAdmin(n){seat=n;["popup-buyer-nome","popup-buyer-email","popup-buyer-cpf","popup-buyer-telefone","popup-buyer-cidade","popup-buyer-observacao"].forEach(function(i){document.getElementById(i).value=""});document.getElementById("pop").style.display="block"}' +
       'function emitir(){var v=function(i){return document.getElementById(i).value};fetch("/index.php?action=emitir",{method:"POST",body:JSON.stringify({seat:seat,tipo:v("popup-tipo-ingresso"),nome:v("popup-buyer-nome"),email:v("popup-buyer-email"),cpf:v("popup-buyer-cpf"),telefone:v("popup-buyer-telefone"),cidade:v("popup-buyer-cidade"),escola:v("popup-buyer-observacao")})}).then(function(r){if(r.ok)location.reload()})}<\/script>');
   });
   await new Promise(r => srv.listen(0, "127.0.0.1", r));
@@ -163,6 +164,7 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.ok(emissoes.length === 4 && linhas.length === 4, "o TickOne recebeu 4 pedidos de emissão (P1, P1b, P4 e o P5 recusado) e ganhou 3 linhas");
   b.ok(outras.length === 0, "nenhum WhatsApp, e-mail, salvar nem excluir foi tocado", outras.join(","));
   b.ok(!/Teste Fictício|16899535009|168\.995/.test(r.saida), "o log não tem nome nem CPF");
+  modoBotaoNovo = true;   // daqui em diante a página é a NOVA: sem grade de lugares, só o botão "Emitir ingresso"
   b.passo("7. CONVITE e ACOMPANHANTE sem CPF (27/11/2026): a identidade é o NOME");
   const antes7 = emissoes.length;
   const r3 = await rodar([

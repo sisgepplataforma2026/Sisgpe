@@ -52,12 +52,16 @@ const p = (...a) => console.log(...a);
       const mesma = l => usaNome ? norm(l.nome) === chaveNome : l.cpf === cpf;
       const ja = antes.linhas.find(mesma);
       if (ja) { await registrar(it.pedido, "FALHOU", (usaNome ? "já existe ingresso com este nome (código " : "este CPF já tem ingresso (código ") + ja.codigo + "): NÃO emiti de novo"); continue; }
-      /* um lugar LIVRE da grade */
+      /* ABRE O FORMULÁRIO. 27/11/2026: o TickOne tirou a grade de lugares (a de 16/11 tinha 2.994; hoje só há os botões de editar dos já emitidos)
+         e ganhou o botão "Emitir ingresso" (emitirNovoIngressoAdmin), que abre o MESMO formulário, vazio, sem escolher lugar. Sonda de 27/11 provou.
+         Usa o botão novo; só se ele não existir cai no jeito antigo (um lugar LIVRE da grade). */
       const abriu = await pg.evaluate(() => {
+        const novo = [...document.querySelectorAll("button")].find(x => /emitirNovoIngressoAdmin/.test(x.getAttribute("onclick") || ""));
+        if (novo) { novo.scrollIntoView(); novo.click(); return "botao"; }
         const b = [...document.querySelectorAll("button[onclick*='abrirPopUpAssentoAdmin']")].find(x => /text-emerald-400/.test(x.className || "") && !/rose-/.test(x.className || ""));
-        if (!b) return false; b.scrollIntoView(); b.click(); return true;
+        if (!b) return false; b.scrollIntoView(); b.click(); return "grade";
       });
-      if (!abriu) { await registrar(it.pedido, "FALHOU", "não achei lugar livre na grade: NÃO emiti"); process.exitCode = 1; break; }
+      if (!abriu) { await registrar(it.pedido, "FALHOU", "não achei o botão 'Emitir ingresso' nem lugar livre na grade: NÃO emiti"); process.exitCode = 1; break; }
       await pg.waitForSelector("#popup-buyer-nome", { state: "visible", timeout: 6000 }).catch(() => null);
       const vazio = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-cpf"].every(id => { const e = document.getElementById(id); return e && e.offsetParent !== null && !(e.value || "").trim(); }));
       if (!vazio) { await registrar(it.pedido, "FALHOU", "o pop-up do lugar não estava vazio (lugar já usado?): NÃO emiti"); process.exitCode = 1; break; }
