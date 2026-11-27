@@ -504,9 +504,9 @@ function el(id) { return doc.getElementById(id); }
 
   b.passo("26. Com modal aberto, o aviso sai por toast — visível");
   t.clicar("#certBtnNova");
+  await t.assentar(40);
   const antesToast = t.avisos.length;
   t.escolher("#certNvSituacao", "ASSOCIADO");
-  const antesToast = t.avisos.length;
   el("certNvCpf").value = "123";                 // inválido de propósito
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(80);

@@ -40,6 +40,7 @@ async function payload() {
   cards().forEach((c, i) => { t.escolher(c.querySelector(".js-quem"), "FILHO_" + (i + 2)); c.querySelector(".js-nome").value = "DEP" + i;
     t.escolher(c.querySelector(".js-modalidade"), "ENSINO_FUNDAMENTAL"); c.querySelector(".js-curso").value = "F"; });
   await t.assentar(120);
+  if(!el("certNvSituacao").value) t.escolher("#certNvSituacao", "ASSOCIADO");
   t.clicar("#certNvSalvarAprovar"); await t.assentar(400);
   return t.chamadas.filter(c => c.fn === "voucherCriarSolicitacoesEmLote").pop().args[0].beneficiarios.slice(1);
 }
