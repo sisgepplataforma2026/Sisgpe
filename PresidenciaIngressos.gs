@@ -13,7 +13,7 @@
 var PRES_PROP = "PRES_ACESSOS";
 var PRES_LIMITE_DIA = 100;          // ingressos por dia, somando os três (decisão do usuário: sugestão 100)
 var PRES_MAX_POR_PEDIDO = 50;
-var PRES_PESSOAS = ["Presidente", "Wanderson", "Marcela"];
+var PRES_PESSOAS = ["Leonil", "Wanderson", "Marcelha"];   // os três que usam (nomes como o usuário escreveu, 27/11/2026)
 var PRES_MSG_NEGADO = "Sem permissão: link inválido ou cancelado. Peça um novo link.";
 
 function presHash_(k) {
@@ -31,16 +31,20 @@ function presRegistrarAcesso_(nome, tokenFixo) {
   PropertiesService.getScriptProperties().setProperty(PRES_PROP, JSON.stringify(a));
   return token;
 }
-/** Devolve {nome} do dono do link, ou null. Conta tentativas inválidas (bloqueio de 10 min depois de 30). */
+/** Devolve {nome} de quem usa, ou null se o link não vale. Conta tentativas inválidas (bloqueio de 10 min depois de 30).
+ *  O argumento é "TOKEN" ou "TOKEN|Nome". LINK ÚNICO (27/11/2026): o token vale para os três (nome "*" guardado); quem usa é declarado depois do "|" e tem que
+ *  ser um dos três; sem isso, devolve nome "" (a tela pergunta "Quem está usando?"). Link pessoal antigo (nome fixo) continua valendo. */
 function presAcesso_(k) {
   var cache = CacheService.getScriptCache(), n = 0;
   try { n = Number(cache.get("PRES_FALHAS") || 0); } catch (e) {}
   if (n >= 30) return null;
-  k = String(k || "");
-  var ac = k.length >= 20 ? presAcessos_()[presHash_(k)] : null;
+  var partes = String(k || "").split("|"), token = partes[0], quem = String(partes[1] || "").trim();
+  var ac = token.length >= 20 ? presAcessos_()[presHash_(token)] : null;
   if (!ac) { try { cache.put("PRES_FALHAS", String(n + 1), 600); } catch (e2) {} return null; }
+  if (ac.nome === "*") return { nome: PRES_PESSOAS.indexOf(quem) >= 0 ? quem : "", unico: true };
   return ac;
 }
+function presEscolha_() { return { ok: false, escolher: true, mensagem: "Escolha quem está usando." }; }
 function presNegado_() { return { ok: false, negado: true, mensagem: PRES_MSG_NEGADO }; }
 function presMascara_(e) { e = String(e || ""); return e ? e.slice(0, 3) + "***@" + (e.split("@")[1] || "?") : "(vazio)"; }
 function presDonoNoEditor_() {
@@ -57,14 +61,17 @@ function presRecusaEditor_() {
   return { erro: true, mensagem: msg };
 }
 
-/** EDITOR: cria um link novo para cada pessoa (os antigos deixam de valer). Mostra os endereços UMA vez no Registro. */
+/** EDITOR: cria UM link novo para os três (Leonil, Wanderson e Marcelha). Os antigos deixam de valer. Mostra o endereço UMA vez no Registro. */
 function presidenciaGerarLinksSISGEP() {
   if (!presDonoNoEditor_()) return presRecusaEditor_();
   PropertiesService.getScriptProperties().deleteProperty(PRES_PROP);
   var base = "";
-  try { base = String(ScriptApp.getService().getUrl() || ""); } catch (e) {}
-  var L = ["═══ LINKS DA PRESIDÊNCIA — guarde; não serão mostrados de novo ═══"];
-  PRES_PESSOAS.forEach(function (nome) { L.push(nome + ": " + base + "?page=presidencia&k=" + presRegistrarAcesso_(nome)); });
+  try { base = String((typeof getSistemaUrlBase === "function" ? getSistemaUrlBase() : ScriptApp.getService().getUrl()) || ""); } catch (e) {}
+  base = base.replace(/\/dev(\?.*)?$/, "/exec");   // o /dev é a versão de TESTE e não abre para o presidente
+  var L = ["═══ LINK DA PRESIDÊNCIA (um só, para os três) — guarde; não será mostrado de novo ═══",
+           base + "?page=presidencia&k=" + presRegistrarAcesso_("*"),
+           "Ao abrir, a tela pergunta: " + PRES_PESSOAS.join(", ") + "."];
+  if (!/\/exec$/.test(base)) L.push("⚠ O endereço não termina em /exec — confira a propriedade SISGEP_URL_BASE antes de enviar.");
   Logger.log(L.join("\n"));
   return L;
 }
@@ -92,6 +99,7 @@ function presCategoriaValida_(c) { c = String(c || ""); return (c === "convite" 
 function presidencia_estado(k) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return { ok: true, precisaEscolher: true, pessoas: PRES_PESSOAS };
     var exc = cingExclusaoPorCodigo_();   // cancelado (ou cancelando) não conta como emitido
     var emitidos = cingEmissoes_().filter(function (o) {
       if (!presDoArea_(o) || o.STATUS !== "EMITIDO") return false;
@@ -107,6 +115,7 @@ function presidencia_estado(k) {
 function presidencia_conferir(k, itens) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return presEscolha_();
     itens = Array.isArray(itens) ? itens.slice(0, PRES_MAX_POR_PEDIDO) : [];
     if (!itens.length) return { ok: false, mensagem: "Adicione pelo menos um nome." };
     var base = cingLerBase_();
@@ -137,6 +146,7 @@ function presidencia_conferir(k, itens) {
 function presidencia_gerar(k, itens, confirmado) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return presEscolha_();
     if (confirmado !== true) return { ok: false, mensagem: "Confirme que isto cria ingresso de verdade." };
     var cf = presidencia_conferir(k, itens);
     if (!cf.ok) return cf;
@@ -168,6 +178,7 @@ function presidencia_gerar(k, itens, confirmado) {
 function presidencia_meus(k) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return presEscolha_();
     try { cingSincronizarEmissoes_(); } catch (e1) {}
     try { cingSincronizarResultado_(); } catch (e2) {}
     var pdfs = {}; try { pdfs = cingPdfs_(); } catch (e3) {}
@@ -195,6 +206,7 @@ function presLinhaDaArea_(codigo) {
 function presidencia_cancelar(k, codigo, motivo, confirmado) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return presEscolha_();
     if (confirmado !== true) return { ok: false, mensagem: "Confirme que entende que o cancelamento não tem volta." };
     var o = presLinhaDaArea_(codigo);
     if (!o) return { ok: false, mensagem: "Este ingresso não é da Presidência (ou já foi cancelado)." };
@@ -222,6 +234,7 @@ function presidencia_cancelar(k, codigo, motivo, confirmado) {
 function presidencia_pdf(k, codigo) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
+    if (!ac.nome) return presEscolha_();
     var o = presLinhaDaArea_(codigo);
     if (!o) return { ok: false, mensagem: "Este ingresso não é da Presidência." };
     var url = (cingPdfs_()[cingNomeChave_(o.NOME)] || "");

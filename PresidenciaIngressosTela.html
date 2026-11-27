@@ -67,9 +67,20 @@
 <div class="of-modulo-header"><small>SindEducação-ES · Compasso da Vida 2026</small><div class="of-modulo-header-title" id="oi">Olá!</div><div class="of-modulo-header-sub">Gerencie seus convidados e ingressos.</div></div>
 <div class="wrap">
 
+  <div class="tela" id="tQuem">
+    <div class="of-card"><div class="of-card-body">
+      <div class="lbl" style="margin-top:0">Quem está usando?</div>
+      <button class="btn btn-navy" data-quem="Leonil">Leonil</button>
+      <button class="btn btn-navy" data-quem="Wanderson">Wanderson</button>
+      <button class="btn btn-navy" data-quem="Marcelha">Marcelha</button>
+      <div class="vazio" style="padding:6px 0 0">O celular lembra a sua escolha.</div>
+    </div></div>
+  </div>
+
   <div class="tela on" id="tInicio">
     <button class="btn btn-green" id="bAdd">＋ Adicionar convidados</button>
     <button class="btn btn-navy" id="bMeus">🎟 Meus ingressos</button>
+    <div class="vazio" style="padding:4px 0"><a href="#" id="bTrocar" style="color:var(--g500)">Não é você? Trocar</a></div>
   </div>
 
   <div class="tela" id="tAdd">
@@ -103,7 +114,9 @@
 <script>
 (function(){
   'use strict';
-  var K='__PRES_K__', LISTA=[], CAT='convite', CONF=null, MEUS=[], TIMER=null;
+  var KB='__PRES_K__', LISTA=[], CAT='convite', CONF=null, MEUS=[], TIMER=null, QUEM='';
+  try { QUEM = window.localStorage.getItem('pres_quem') || ''; } catch(e) {}
+  function K(){ return KB + (QUEM ? '|' + QUEM : ''); }
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function api(fn,args,ok,falha){
@@ -111,7 +124,7 @@
       if(x&&x.negado){ document.body.innerHTML='<div style="padding:30px;text-align:center;font-family:sans-serif"><h2>SindEducação-ES</h2><p>'+esc(x.mensagem)+'</p></div>'; return; }
       ok(x||{});
     }).withFailureHandler(function(e){ if(falha) falha(e); else toast('Erro: '+((e&&e.message)||'tente de novo'),true); });
-    r[fn].apply(r,[K].concat(args||[]));
+    r[fn].apply(r,[K()].concat(args||[]));
   }
   function toast(t,erro){ var e=$('toast'); e.textContent=t; e.className=erro?'err':''; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){ e.style.display='none'; },4200); }
   function ir(id){
@@ -124,9 +137,18 @@
   function pergunta(t,p,sim,fn){ $('ovT').textContent=t; $('ovP').textContent=p; $('ovSim').textContent=sim; $('ov').classList.add('on'); $('ovSim').onclick=function(){ $('ov').classList.remove('on'); fn(); }; }
   $('ovNao').onclick=function(){ $('ov').classList.remove('on'); };
 
+  function escolher(){
+    [].forEach.call(document.querySelectorAll('.tela'),function(t){ t.classList.toggle('on',t.id==='tQuem'); });
+    document.querySelector('.nav').style.display='none'; $('oi').textContent='Olá!';
+  }
   function estado(){ api('presidencia_estado',[],function(r){
-    if(!r.ok){ toast(r.mensagem||'Não consegui carregar.',true); return; }
-    $('oi').textContent='Olá, '+(r.nome==='Presidente'?'presidente':r.nome)+'!'; }); }
+    if(r.ok && r.precisaEscolher){ escolher(); return; }
+    if(!r.ok){ if(r.escolher){ escolher(); return; } toast(r.mensagem||'Não consegui carregar.',true); return; }
+    document.querySelector('.nav').style.display='';
+    if($('tQuem').classList.contains('on')) ir('tInicio');
+    $('oi').textContent='Olá, '+(r.nome==='Leonil'||r.nome==='Presidente'?'presidente':r.nome)+'!'; }); }
+  $('tQuem').addEventListener('click',function(ev){ var b=ev.target.closest('[data-quem]'); if(!b) return; QUEM=b.getAttribute('data-quem'); try{ window.localStorage.setItem('pres_quem',QUEM); }catch(e){} estado(); });
+  $('bTrocar').addEventListener('click',function(ev){ ev.preventDefault(); QUEM=''; try{ window.localStorage.removeItem('pres_quem'); }catch(e){} escolher(); });
 
   function pintaLista(){
     $('aQtd').textContent=LISTA.length; $('aConf').disabled=!LISTA.length;

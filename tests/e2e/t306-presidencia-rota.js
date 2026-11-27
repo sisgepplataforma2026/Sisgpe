@@ -15,7 +15,7 @@ const TOK = "t".repeat(32);
 g.presRegistrarAcesso_("Presidente", TOK);
 b.fluxo("PRESIDÊNCIA · rota");
 const ok = out(g.doGet({ parameter: { page: "presidencia", k: TOK } }));
-b.ok(ok.indexOf("Compasso da Vida 2026") > 0 && ok.indexOf("var K='" + TOK + "'") > 0 && ok.indexOf("__PRES_K__") < 0, "link válido: entrega a página, com o link no lugar do marcador");
+b.ok(ok.indexOf("Compasso da Vida 2026") > 0 && ok.indexOf("var KB='" + TOK + "'") > 0 && ok.indexOf("__PRES_K__") < 0, "link válido: entrega a página, com o link no lugar do marcador");
 for (const [nome, par] of [["inválido", { page: "presidencia", k: "z".repeat(32) }], ["ausente", { page: "presidencia" }], ["curto", { page: "presidencia", k: "abc" }]]) {
   const r = out(g.doGet({ parameter: par }));
   b.ok(/não é válido/.test(r) && !/Adicionar convidados/.test(r) && r.indexOf(TOK) < 0, "link " + nome + ": só a recusa, sem botão e sem o link");
