@@ -77,6 +77,8 @@ const p = (...a) => console.log(...a);
       jaNaRodada[chaveRodada] = true;
       const respostas = []; const ouvir = async r => { try { const rq = r.request(); if (rq.method() === "GET" && !/emitir|ticket|salvar/i.test(r.url())) return; const t = (await r.text()).replace(/\s+/g, " ").slice(0, 140); respostas.push(rq.method() + " " + new URL(r.url()).pathname.split("/").pop() + new URL(r.url()).search.slice(0, 40) + " → " + r.status() + " " + t); } catch (e) {} };
       pg.on("response", ouvir);
+      const dialogos = []; const aoDialogo = d => { dialogos.push(d.type() + ": " + String(d.message()).replace(/\s+/g, " ").slice(0, 140)); d.dismiss().catch(() => {}); };   // só REGISTRA; segue recusando como antes
+      pg.on("dialog", aoDialogo);
       const feito = await pg.evaluate((d) => {
         const g = id => document.getElementById(id), dg = x => String(x || "").replace(/\D/g, "");
         const set = (id, v) => { const e = g(id); if (!e) return false; e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); return true; };
@@ -103,7 +105,9 @@ const p = (...a) => console.log(...a);
       await pg.waitForTimeout(2500);
       const avisosTela = await pg.evaluate(() => [...document.querySelectorAll("[role=alert],[role=dialog],.swal2-popup,.swal2-html-container,#toast,.toast,.alert,[class*=toast],[class*=error],[class*=erro]")].filter(e => e.offsetParent !== null).map(e => (e.innerText || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 4)).catch(() => []);
       const obrig = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-email", "popup-buyer-cpf", "popup-buyer-telefone", "popup-buyer-cidade"].map(i => { const e = document.getElementById(i); return i.replace("popup-buyer-", "") + ":" + (e ? (e.required ? "obrigatório" : "livre") + (e.validationMessage ? "(" + e.validationMessage.slice(0, 40) + ")" : "") : "ausente"); })).catch(() => []);
-      pg.off("response", ouvir);
+      const sobrepostos = await pg.evaluate(() => [...document.querySelectorAll("div,section,dialog")].filter(e => e.offsetParent !== null && /fixed|z-50|z-\[/.test(String(e.className || "")) && (e.innerText || "").trim().length > 0 && (e.innerText || "").length < 400).map(e => (e.innerText || "").replace(/\s+/g, " ").trim().slice(0, 140)).slice(0, 4)).catch(() => []);
+      pg.off("response", ouvir); pg.off("dialog", aoDialogo);
+      p("DIAGNÓSTICO · caixas do navegador:", JSON.stringify(dialogos), "· camadas na tela:", JSON.stringify(sobrepostos));
       p("DIAGNÓSTICO · avisos na tela:", JSON.stringify(avisosTela), "· campos:", obrig.join(" "), "· respostas:", JSON.stringify(respostas.slice(0, 4)));
       await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
       await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
