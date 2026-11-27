@@ -29,7 +29,7 @@ b.passo("1. Só com confirmação, só com pesquisa limpa e base recente");
 b.ok(g.compassoIngressos_pedirEmissao([NOVO], false, TOKEN).ok === false, "sem confirmar 'cria ingresso de verdade', não pede");
 b.ok(g.compassoIngressos_pedirEmissao([NOVO], true, "token-invalido").ok === false, "sem sessão válida, não pede");
 b.ok(/Ninguém novo/.test(g.compassoIngressos_pedirEmissao([{ nome: "Maria Existente Fictícia", cpf: "529.982.247-25", categoria: "Associado" }], true, TOKEN).mensagem), "quem já tem ingresso não é pedido de novo");
-b.ok(/Corrija/.test(g.compassoIngressos_pedirEmissao([NOVO, { nome: "Sem CPF", cpf: "", categoria: "Convite" }], true, TOKEN).mensagem), "com uma linha em 'Conferir', nada é pedido");
+b.ok(/Corrija/.test(g.compassoIngressos_pedirEmissao([NOVO, { nome: "Sem CPF", cpf: "", categoria: "Cortesia" }], true, TOKEN).mensagem), "com uma linha em 'Conferir', nada é pedido");
 b.ok(/Corrija/.test(g.compassoIngressos_pedirEmissao([{ nome: "Assoc Incompleto", cpf: "390.533.447-05", categoria: "Associado" }], true, TOKEN).mensagem), "Associado com campo faltando não passa");
 lidoEm = new Date(Date.now() - 40 * 60000).toISOString();
 b.ok(!/mais de 15 minutos/.test(g.compassoIngressos_pedirEmissao([NOVO], true, TOKEN).mensagem), "base com 40 min: NÃO barra mais o pedido (o robô confere ao vivo na hora de emitir)");
@@ -155,7 +155,7 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.ok(e1.tipo === "acompanhante" && e1.nome === "Teste Fictício da Silva" && e1.cpf === "16899535009" && e1.email === "teste@exemplo.com" && e1.cidade === "Cariacica" && e1.escola === "UVV" && e1.seat === 3, "preencheu categoria, nome, CPF, e-mail, cidade e escola, num lugar LIVRE (o 3; 1 e 2 são ocupados)", JSON.stringify(e1));
   b.ok(st.P1b && st.P1b.status === "EMITIDO" && emissoes.find(x => x.nome === "Zero Inicial Fictício").cpf === "01234567890", "P1b (CPF veio com 10 dígitos, o zero da frente se perdeu): o robô completa para 01234567890 e emite", JSON.stringify(st.P1b));
   b.ok(st.P2 && st.P2.status === "FALHOU" && /já tem ingresso/.test(st.P2.detalhe) && !emissoes.some(x => x.cpf === "52998224725"), "P2 (CPF já na lista): pesquisa antes, NÃO emitiu de novo");
-  b.ok(st.P3b && st.P3b.status === "FALHOU" && /CPF válido/.test(st.P3b.detalhe) && !emissoes.some(x => /1111111111/.test(x.cpf)), "P3b (CPF que não fecha o dígito verificador, nem completando o zero): NÃO emite");
+  b.ok(st.P3b && st.P3b.status === "FALHOU" && /CPF inválido/.test(st.P3b.detalhe) && !emissoes.some(x => /1111111111/.test(x.cpf)), "P3b (CPF que não fecha o dígito verificador, nem completando o zero): NÃO emite");
   b.ok(st.P3 && st.P3.status === "FALHOU" && /categoria/.test(st.P3.detalhe), "P3 (categoria que o TickOne não tem): não emite");
   b.ok(st.P4 && st.P4.status === "EMITIDO" && st.P4.codigo === "TST-0003" && emissoes.find(x => x.cpf === "45317828791").seat === 5, "P4: emitido no PRÓXIMO lugar livre (5), pois o 3 e o 4 foram usados");
   b.ok(st.P5 && st.P5.status === "FALHOU" && /NÃO tentei de novo/.test(st.P5.detalhe) && r.codigo === 1, "P5 (TickOne recusou): para e NÃO tenta de novo");
@@ -163,6 +163,20 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
   b.ok(emissoes.length === 4 && linhas.length === 4, "o TickOne recebeu 4 pedidos de emissão (P1, P1b, P4 e o P5 recusado) e ganhou 3 linhas");
   b.ok(outras.length === 0, "nenhum WhatsApp, e-mail, salvar nem excluir foi tocado", outras.join(","));
   b.ok(!/Teste Fictício|16899535009|168\.995/.test(r.saida), "o log não tem nome nem CPF");
+  b.passo("7. CONVITE e ACOMPANHANTE sem CPF (27/11/2026): a identidade é o NOME");
+  const antes7 = emissoes.length;
+  const r3 = await rodar([
+    { pedido: "S1", nome: "Sem Cpf Fictício", telefone: "27999990001", categoria: "convite" },
+    { pedido: "S1b", nome: "SEM CPF FICTICIO", categoria: "convite" },
+    { pedido: "S2", nome: "Cortesia Sem Cpf", categoria: "cortesia" },
+    { pedido: "S3", nome: "Acompanhante Sem Cpf", categoria: "acompanhante" }
+  ]);
+  const st3 = {}; r3.resultado.forEach(x => { st3[x.pedido] = x; });
+  b.ok(st3.S1 && st3.S1.status === "EMITIDO", "S1 (convite sem CPF): emitido", JSON.stringify(st3.S1));
+  b.ok(st3.S1b && st3.S1b.status === "FALHOU" && /nome/.test(st3.S1b.detalhe), "S1b (mesmo nome, sem acento/maiúscula): NÃO emite de novo", JSON.stringify(st3.S1b));
+  b.ok(st3.S2 && st3.S2.status === "FALHOU" && /CPF/.test(st3.S2.detalhe), "S2 (cortesia sem CPF): continua exigindo CPF", JSON.stringify(st3.S2));
+  b.ok(st3.S3 && st3.S3.status === "EMITIDO", "S3 (acompanhante sem CPF): emitido", JSON.stringify(st3.S3));
+  b.ok(emissoes.length === antes7 + 2, "o TickOne recebeu só os 2 emitidos", String(emissoes.length - antes7));
   srv.close(); fs.rmSync(tmp, { recursive: true, force: true });
   b.resumo();
   process.exit(process.exitCode || 0);   // a tela acompanha o pedido por timer; o teste termina por aqui
