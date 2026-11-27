@@ -708,3 +708,16 @@ A partir de 2026-08-03, **toda implementação nova ou alterada de tela deve seg
 **Antes de editar uma tela existente:** ler o arquivo completo, identificar toda função/ID/seletor consumido pelo `.gs` correspondente, e nunca misturar refino visual com mudança de regra de negócio no mesmo commit (ver "Proteção do que já funciona" na skill de auditoria).
 
 **Relatório completo** (inventário das 59 telas, ranking, inconsistências, plano faseado): artifact linkado acima. Releia antes de padronizar um módulo que ainda não foi tratado.
+
+## 👑 ÁREA DA PRESIDÊNCIA NO CELULAR — DECISÕES DE 27/11/2026 (em desenho, NADA implementado)
+
+Mockups: docs/mock-presidencia-celular-v2.png. O presidente (Leonil) e **quem ele indicar** emitem ingressos pelo celular, **sem passar por Wanderson/Marcela**:
+- **Só nome e categoria** (Convidado ou Acompanhante de associado). Sem CPF, sem telefone, sem colar texto (a lista do Zap fica só na tela administrativa).
+- **Só 3 categorias no sistema:** Associado, Acompanhante de associado, Convidado (valor interno de Convidado = `convite`, tipo do TickOne). Cortesia e Pago foram removidos (commit 9f49ca4, não publicado).
+- Emissão pelo robô no TickOne (nunca emitiu de verdade; **antes de ligar, testar UM ingresso só com nome e telefone**). Não é instantâneo: "gerando… alguns minutos". Imediato só com API do TickOne (não confirmada).
+- **Ver o PDF na tela do celular** (botão principal "Ver ingresso"); depois Compartilhar (share do celular, sem telefone), Baixar PDF, Imagem. Robô emite e em seguida baixa o PDF (ligar as duas execuções).
+- **Cancelar e Corrigir nome:** "Corrigir nome" = **cancelar e emitir de novo** (o QR antigo deixa de valer; só se não houve check-in). **Não** há edição direta (robô nunca clica em Salvar Dados). Cancelar: confirmação "não tem volta", robô confere código + nome (sem CPF), nunca exclui quem fez check-in, relê e confere.
+- **Quem cancela: o presidente e todos os autorizados cancelam qualquer ingresso da área.** Ingresso de associado nunca aparece nessa tela.
+- Acesso por **link pessoal secreto e revogável** (um por autorizado; o presidente cadastra e cancela as pessoas). Limite diário e registro de quem emitiu o quê (limite a definir; exemplo 100). PWA (ícone na tela) junto.
+- Tela inicial mostra Emitidos e Compareceram (o SISGEP não sabe quem recebeu, pois o envio é pelo celular dele); sem "Enviados".
+- **Pré-requisitos do usuário:** (1) chave do GitHub `INGRESSOS_GH_TOKEN` colada em 🤖 Robô, uma por ambiente; (2) teste real de 1 ingresso sem CPF; (3) definir o limite diário. Só implementar depois do "pode" dele.
