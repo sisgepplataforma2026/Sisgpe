@@ -36,15 +36,19 @@ const p = (...a) => console.log(...a);
   try {
     if (!(await entrar(pg, BASE, USUARIO, SENHA))) { p("FALHA: o login não entrou. Nada foi excluído."); process.exitCode = 1; return; }
     for (const it of itens) {
-      const cpf = cpf11(it.cpf), cod = String(it.codigo || "").trim();
-      if (!cpf || !cod) { await registrar(it.pedido, "FALHOU", "pedido sem código ou CPF"); continue; }
+      const cpf = cpf11(it.cpf), cod = String(it.codigo || "").trim(), nome = String(it.nome || "").trim();
+      /* Ingresso SEM CPF (Convidado/Acompanhante, 27/11/2026): a identidade passa a ser CÓDIGO + NOME (sem acento nem maiúscula). Com CPF, nada muda. */
+      const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      const usaNome = !cpf && !!nome;
+      if ((!cpf && !nome) || !cod) { await registrar(it.pedido, "FALHOU", "pedido sem código ou sem CPF/nome"); continue; }
+      const confere = l => l.codigo.toLowerCase() === cod.toLowerCase() && (usaNome ? norm(l.nome) === norm(nome) : l.cpf === cpf);
       const est = await ler(pg);
       if (!est) { await registrar(it.pedido, "FALHOU", "não achei a tabela de ingressos"); process.exitCode = 1; break; }
-      const achadas = est.linhas.filter(l => l.codigo.toLowerCase() === cod.toLowerCase() && l.cpf === cpf);
+      const achadas = est.linhas.filter(confere);
       const mesmoCodigo = est.linhas.filter(l => l.codigo.toLowerCase() === cod.toLowerCase());
-      if (!achadas.length) { await registrar(it.pedido, "FALHOU", mesmoCodigo.length ? "o código existe, mas com outro CPF: NÃO excluí" : "ingresso não encontrado (já excluído?)"); continue; }
-      if (achadas.length > 1) { await registrar(it.pedido, "FALHOU", "mais de uma linha com o mesmo código e CPF: NÃO excluí"); continue; }
-      if (est.checkins.some(c => (c.cpf && c.cpf === cpf) || (c.ingresso && c.ingresso.toLowerCase() === cod.toLowerCase()))) { await registrar(it.pedido, "JA_ENTROU", "já passou na portaria: não excluí"); continue; }
+      if (!achadas.length) { await registrar(it.pedido, "FALHOU", mesmoCodigo.length ? "o código existe, mas com outro " + (usaNome ? "nome" : "CPF") + ": NÃO excluí" : "ingresso não encontrado (já excluído?)"); continue; }
+      if (achadas.length > 1) { await registrar(it.pedido, "FALHOU", "mais de uma linha com o mesmo código e " + (usaNome ? "nome" : "CPF") + ": NÃO excluí"); continue; }
+      if (est.checkins.some(c => (cpf && c.cpf && c.cpf === cpf) || (c.ingresso && c.ingresso.toLowerCase() === cod.toLowerCase()))) { await registrar(it.pedido, "JA_ENTROU", "já passou na portaria: não excluí"); continue; }
       const lixeira = await pg.evaluateHandle((i) => {
         const t = [...document.querySelectorAll("table")].find(x => /Cliente/.test(x.innerText) && /Código/.test(x.innerText));
         const tr = t && t.querySelectorAll("tbody tr")[i]; const bs = tr ? [...tr.querySelectorAll("button")].filter(b => /excluir/i.test(b.title || "")) : [];
@@ -81,7 +85,7 @@ const p = (...a) => console.log(...a);
       if (!dialogoAceito) { await registrar(it.pedido, "FALHOU", dialogoOutro ? "o TickOne perguntou outra coisa ('" + dialogoOutro + "'): NÃO excluí" : "o TickOne não pediu a confirmação esperada ('Excluir este ingresso'): NÃO excluí"); process.exitCode = 1; break; }
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForTimeout(1500);
       const depois = await ler(pg);
-      const aindaLa = depois && depois.linhas.some(l => l.codigo.toLowerCase() === cod.toLowerCase() && l.cpf === cpf);
+      const aindaLa = depois && depois.linhas.some(confere);
       if (aindaLa) { await registrar(it.pedido, "FALHOU", "cliquei em excluir e confirmar, mas a linha continua na lista"); process.exitCode = 1; break; }
       await registrar(it.pedido, "EXCLUIDO", "conferido: a linha saiu da lista do TickOne");
     }
