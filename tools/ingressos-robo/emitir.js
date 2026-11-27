@@ -75,6 +75,8 @@ const p = (...a) => console.log(...a);
       let fone = dig(it.telefone || "");   // máscara do campo: DDD + número (11 dígitos); o "55" virava DDD e cortava o fim
       if (fone.length >= 12 && fone.slice(0, 2) === "55") fone = fone.slice(2);
       jaNaRodada[chaveRodada] = true;
+      const respostas = []; const ouvir = async r => { try { const rq = r.request(); if (rq.method() === "GET" && !/emitir|ticket|salvar/i.test(r.url())) return; const t = (await r.text()).replace(/\s+/g, " ").slice(0, 140); respostas.push(rq.method() + " " + new URL(r.url()).pathname.split("/").pop() + new URL(r.url()).search.slice(0, 40) + " → " + r.status() + " " + t); } catch (e) {} };
+      pg.on("response", ouvir);
       const feito = await pg.evaluate((d) => {
         const g = id => document.getElementById(id), dg = x => String(x || "").replace(/\D/g, "");
         const set = (id, v) => { const e = g(id); if (!e) return false; e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); return true; };
@@ -97,6 +99,12 @@ const p = (...a) => console.log(...a);
         return { ok: true, falhas: [] };
       }, { nome, email: String(it.email || ""), cpf, fone, cidade: String(it.cidade || ""), escola: String(it.escola || ""), cat });
       if (!feito.ok) { await registrar(it.pedido, "FALHOU", "o pop-up não ficou como pedido (" + feito.falhas.join(", ") + "): NÃO emiti"); process.exitCode = 1; break; }
+      /* DIAGNÓSTICO (27/11/2026): o TickOne não emitiu e não disse por quê. Lê o que ele mostra na tela (aviso, caixa de erro) e as respostas de rede do clique. Sem dado pessoal. */
+      await pg.waitForTimeout(2500);
+      const avisosTela = await pg.evaluate(() => [...document.querySelectorAll("[role=alert],[role=dialog],.swal2-popup,.swal2-html-container,#toast,.toast,.alert,[class*=toast],[class*=error],[class*=erro]")].filter(e => e.offsetParent !== null).map(e => (e.innerText || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 4)).catch(() => []);
+      const obrig = await pg.evaluate(() => ["popup-buyer-nome", "popup-buyer-email", "popup-buyer-cpf", "popup-buyer-telefone", "popup-buyer-cidade"].map(i => { const e = document.getElementById(i); return i.replace("popup-buyer-", "") + ":" + (e ? (e.required ? "obrigatório" : "livre") + (e.validationMessage ? "(" + e.validationMessage.slice(0, 40) + ")" : "") : "ausente"); })).catch(() => []);
+      pg.off("response", ouvir);
+      p("DIAGNÓSTICO · avisos na tela:", JSON.stringify(avisosTela), "· campos:", obrig.join(" "), "· respostas:", JSON.stringify(respostas.slice(0, 4)));
       await pg.screenshot({ path: "/tmp/popup-erro.png" }).catch(() => {});
       await pg.waitForLoadState("networkidle", { timeout: 6000 }).catch(() => {});
       await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForSelector("table tbody tr", { timeout: 8000 }).catch(() => {});
