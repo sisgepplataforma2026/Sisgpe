@@ -34,6 +34,21 @@ const p = (...a) => console.log(...a);
     p("classes distintas:", r.nClasses);
     r.exemplos.forEach(([k, n]) => p("  ", n, "×", k));
     p("controles que parecem paginação/filtro:", JSON.stringify(r.controles));
+    /* 2) O BOTÃO NOVO "Emitir ingresso" (emitirNovoIngressoAdmin): abre o formulário SEM escolher lugar? Só abre e mede; NUNCA clica em "Emitir Ingresso" do formulário. */
+    const clicou = await pg.evaluate(() => { const b = [...document.querySelectorAll("button")].find(x => /emitirNovoIngressoAdmin/.test(x.getAttribute("onclick") || "")); if (!b) return false; b.click(); return true; });
+    p("botão 'Emitir ingresso' encontrado e clicado:", clicou);
+    await pg.waitForTimeout(2500);
+    const pop = await pg.evaluate(() => {
+      const vis = e => e && e.offsetParent !== null;
+      const campos = ["popup-tipo-ingresso", "popup-buyer-nome", "popup-buyer-email", "popup-buyer-cpf", "popup-buyer-telefone", "popup-buyer-cidade", "popup-buyer-observacao"].map(i => i + ":" + (vis(document.getElementById(i)) ? "visível" : (document.getElementById(i) ? "oculto" : "ausente")));
+      const botoes = [...document.querySelectorAll("button")].filter(vis).map(b => (b.innerText || "").trim()).filter(Boolean).slice(-12);
+      const tipo = document.getElementById("popup-tipo-ingresso"); const opcoes = tipo ? [...tipo.options].map(o => o.value + "=" + o.textContent.trim()) : [];
+      const vazio = ["popup-buyer-nome", "popup-buyer-cpf", "popup-buyer-telefone"].map(i => { const e = document.getElementById(i); return i.replace("popup-buyer-", "") + ":" + (e && (e.value || "").trim() ? "preenchido" : "vazio"); });
+      const titulo = [...document.querySelectorAll("h1,h2,h3,h4")].filter(vis).map(h => (h.innerText || "").trim().slice(0, 50)).slice(-3);
+      return { campos, vazio, botoes, opcoes, titulo };
+    });
+    p("formulário aberto pelo botão novo:", JSON.stringify(pop));
+    await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
   } catch (e) { p("ERRO:", String(e.message).slice(0, 160)); process.exitCode = 1; }
   finally { await br.close(); }
 })();
