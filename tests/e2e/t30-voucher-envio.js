@@ -221,11 +221,13 @@ zerarCaixa();
 const env = g.voucherEnviarPorEmail(PROTOCOLO, {}, ADM);
 b.ok(env && env.ok === true, "envio devolve ok", String(env && env.mensagem || ""));
 const m1 = ultimoEmail();
-b.ok(!!m1, "um e-mail foi de fato entregue ao MailApp");
+b.ok(!!m1, "um e-mail foi de fato entregue ao GmailApp");
 b.igual(m1 && m1.to, "beatriz@exemplo.com", "destinatário é o associado");
 b.igual(m1 && m1.cc, "secretaria@ieses.edu.br", "instituição vai em CÓPIA, não no destinatário");
 b.ok(String(m1 && m1.subject || "").indexOf(PROTOCOLO) > -1, "assunto traz o protocolo");
-b.ok(String(m1 && m1.htmlBody || "").indexOf("A1B2C3D4") > -1, "corpo traz o código de validação");
+/* O código de validação SAIU do corpo por pedido do usuário (23/11/2026);
+ * continua no PDF anexado. O teste agora trava o contrário: não volta sem querer. */
+b.ok(String(m1 && m1.htmlBody || "").indexOf("A1B2C3D4") === -1, "corpo NÃO traz o código de validação (fica no PDF)");
 
 b.passo("15. Desligar a cópia para a instituição");
 /* enviarInstituicao:false existe porque o associado pode preferir levar o
@@ -333,4 +335,3 @@ const reemitido = g.voucherPrepararEnvio(PROTOCOLO, ADM);
 b.igual(reemitido.codigo, "Z9Y8X7W6", "pega o código da reemissão, não o da primeira via");
 
 b.resumo();
-process.exit(0);

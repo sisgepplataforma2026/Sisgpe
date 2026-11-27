@@ -1,36 +1,36 @@
 {
-  "medidoEm": "2026-08-17",
-  "totalPublicas": 854,
-  "protegidas": 522,
+  "medidoEm": "2026-11-27",
+  "totalPublicas": 1134,
+  "protegidas": 857,
   "expostas": [
-    {
-      "nome": "validarCPF",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterDataLiberadaOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "listarHorariosOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "reservarHorarioOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "buscarAssociadosOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoEstado",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscricaoPreencher",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_inscrever",
+      "arquivo": "BingoInscricao.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_estadoPublico",
+      "arquivo": "BingoLinks.gs",
+      "escreve": false
+    },
+    {
+      "nome": "bingo_realtimeInfoPublico",
+      "arquivo": "BingoRealtime.gs",
       "escreve": false
     },
     {
@@ -57,11 +57,6 @@
       "nome": "setupCentralFinanceiraIA",
       "arquivo": "CentralFinanceiraIA.gs",
       "escreve": true
-    },
-    {
-      "nome": "chatSISGEP",
-      "arquivo": "ChatIACore.gs",
-      "escreve": false
     },
     {
       "nome": "doPost",
@@ -154,11 +149,6 @@
       "escreve": true
     },
     {
-      "nome": "getDashboardOficiosDataV2",
-      "arquivo": "DashboardOficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "setupModuloDespesas",
       "arquivo": "Despesas.gs",
       "escreve": true
@@ -224,8 +214,23 @@
       "escreve": false
     },
     {
-      "nome": "montarEmailHTML",
-      "arquivo": "EmailOficios.gs",
+      "nome": "diagnosticoFilaOficiosSISGEP",
+      "arquivo": "DiagnosticoFilaOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "pingSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoLatenciaSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoCaminhosSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
       "escreve": false
     },
     {
@@ -234,24 +239,24 @@
       "escreve": false
     },
     {
+      "nome": "compasso_inscricaoEstado",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscricaoPreencher",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
+      "nome": "compasso_inscrever",
+      "arquivo": "EventosInscricaoPublica.gs",
+      "escreve": false
+    },
+    {
       "nome": "processarFilaEnvioOficios",
       "arquivo": "FilaOficios.gs",
       "escreve": true
-    },
-    {
-      "nome": "instalarTriggerFilaEnvioOficios",
-      "arquivo": "FilaOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "dashboardFilaEnvioResumo",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardFilaEnvioGraficos",
-      "arquivo": "FilaOficios.gs",
-      "escreve": false
     },
     {
       "nome": "finClassificarDespesaIA",
@@ -299,11 +304,6 @@
       "escreve": true
     },
     {
-      "nome": "buscarPrestadorGuiaPagamento",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
       "nome": "listarRelatorioGuiasPagamento",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -312,16 +312,6 @@
       "nome": "listarHistoricoGuias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
-    },
-    {
-      "nome": "limparCachePrestadoresFixos",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "cadastrarNovoPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
     },
     {
       "nome": "marcarGuiaComoPaga",
@@ -339,26 +329,6 @@
       "escreve": false
     },
     {
-      "nome": "listarTodosPrestadores",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "excluirPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarPrestadoresDoHistorico",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterDashboardPendencias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -374,33 +344,18 @@
       "escreve": false
     },
     {
-      "nome": "listarPrestadoresSemEmail",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarEmailPrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterStatusLeituraEmail",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
     },
     {
-      "nome": "salvarEmailETelefonePrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "invalidarCacheTemplatesOficios",
-      "arquivo": "HelperOficios.gs",
+      "nome": "iaAssistente",
+      "arquivo": "IACore.gs",
       "escreve": false
     },
     {
-      "nome": "iaAssistente",
-      "arquivo": "IACore.gs",
+      "nome": "agenteEscolasVersao",
+      "arquivo": "IA_AgentEscolas.gs",
       "escreve": false
     },
     {
@@ -447,6 +402,11 @@
       "nome": "removerTriggerExpurgoLGPD",
       "arquivo": "LgpdRetencao.gs",
       "escreve": true
+    },
+    {
+      "nome": "lpLimpezaDiaria",
+      "arquivo": "LimpezaPropriedades.gs",
+      "escreve": false
     },
     {
       "nome": "gerarHashInicialUsuarios123456",
@@ -559,29 +519,9 @@
       "escreve": false
     },
     {
-      "nome": "instalarTriggerConfirmacoes",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "removerTriggerConfirmacoes",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
       "nome": "verificarConfirmacoesRecebimento",
       "arquivo": "MonitoramentoOficios.gs",
       "escreve": false
-    },
-    {
-      "nome": "instalarTriggerFalhasEntrega",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
-    },
-    {
-      "nome": "removerTriggerFalhasEntrega",
-      "arquivo": "MonitoramentoOficios.gs",
-      "escreve": true
     },
     {
       "nome": "verificarFalhasEntregaOficios",
@@ -589,39 +529,9 @@
       "escreve": false
     },
     {
-      "nome": "dashboardResumo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "dashboardGraficos",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "verificarCodigoPublico",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
       "nome": "validarPublico",
       "arquivo": "Oficios.gs",
       "escreve": false
-    },
-    {
-      "nome": "getTemplateConteudo",
-      "arquivo": "Oficios.gs",
-      "escreve": false
-    },
-    {
-      "nome": "oficiosDiagnostico_diagnosticarModulo",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": false
-    },
-    {
-      "nome": "instalarTriggerConfirmacoesOficios",
-      "arquivo": "OficiosDiagnostico.gs",
-      "escreve": true
     },
     {
       "nome": "pcHospedesPrepararLink",
@@ -654,19 +564,9 @@
       "escreve": false
     },
     {
-      "nome": "cadastrarReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterResumoReceitas",
       "arquivo": "Receita.gs",
       "escreve": false
-    },
-    {
-      "nome": "excluirReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
     },
     {
       "nome": "gerarCodigoVerificacao",
@@ -682,16 +582,6 @@
       "nome": "buscarBeneficiariosPorEmpresa",
       "arquivo": "Recibo.gs",
       "escreve": false
-    },
-    {
-      "nome": "importarBeneficiariosReciboPadrao",
-      "arquivo": "Recibo.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarBeneficiariosReciboDaPlanilha",
-      "arquivo": "Recibo.gs",
-      "escreve": true
     },
     {
       "nome": "gerarPlanilhaAlvara",
@@ -744,6 +634,21 @@
       "escreve": true
     },
     {
+      "nome": "limparSessoesExpiradasDiario",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "instalarTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
+      "nome": "removerTriggerLimpezaSessoes",
+      "arquivo": "Sessao.gs",
+      "escreve": true
+    },
+    {
       "nome": "configurarAbaSindicalizacao",
       "arquivo": "Sindicalizacao.gs",
       "escreve": true
@@ -772,11 +677,6 @@
       "nome": "enviarOTPSindicalizacao",
       "arquivo": "SindicalizacaoEmails.gs",
       "escreve": true
-    },
-    {
-      "nome": "diagnosticarDeParaEscolas",
-      "arquivo": "SindicalizacaoOficio.gs",
-      "escreve": false
     },
     {
       "nome": "listarAbasDaPlanilha",
@@ -884,31 +784,6 @@
       "escreve": false
     },
     {
-      "nome": "cancelarEnvioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": true
-    },
-    {
-      "nome": "reenviarFalhasTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusFilaTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterStatusTaxaAssistencialDashboard",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
-      "nome": "previewOficioTaxaAssistencial",
-      "arquivo": "TaxaAssistencial.gs",
-      "escreve": false
-    },
-    {
       "nome": "abrirEmissaoTeste",
       "arquivo": "Teste.gs",
       "escreve": false
@@ -940,11 +815,6 @@
     },
     {
       "nome": "validarCpfComFeedback",
-      "arquivo": "Utils.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterArquivoDriveBase64",
       "arquivo": "Utils.gs",
       "escreve": false
     },
@@ -1079,5 +949,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 117
+  "inconclusivas": 88
 }

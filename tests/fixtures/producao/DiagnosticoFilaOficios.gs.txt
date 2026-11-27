@@ -1,0 +1,142 @@
+/**
+ * POR QUE OS OFICIOS DE ONTEM NAO SAIRAM — SO LEITURA. NAO ESCREVE NADA.
+ * ============================================================================
+ *
+ * ARQUIVO TEMPORARIO. Cole na PRODUCAO, rode `diagnosticoFilaOficios`, mande
+ * o log de volta, e APAGUE o arquivo.
+ *
+ * O QUE ELE RESPONDE, na ordem em que as causas costumam aparecer:
+ *
+ *   1. A COTA DIARIA DE E-MAIL. O suspeito numero um. A fila tem uma guarda
+ *      que, quando a cota nao cobre o lote, PAUSA SEM MARCAR NADA
+ *      (FilaOficios.gs:249): as linhas ficam PENDENTE, nenhuma tentativa e
+ *      gasta, e o unico rastro e um Logger.log que ninguem le. Do lado de
+ *      fora, e indistinguivel de "o sistema parou". Numa conta gmail.com
+ *      comum o teto do Apps Script e 100 DESTINATARIOS por dia — e cada
+ *      oficio consome um destinatario por endereco em EMAILS_TODOS, entao
+ *      vinte oficios para escolas com cinco contatos ja estouram.
+ *
+ *   2. O GATILHO. A fila so anda porque `processarFilaEnvioOficios` roda de
+ *      5 em 5 minutos. Gatilho apagado, ou instalado por outra conta, e a
+ *      fila para sem erro nenhum.
+ *
+ *   3. AS LINHAS EM SI. Status, tentativas e ULTIMO_ERRO de cada item preso.
+ *      Tres tentativas esgotadas viram ERRO permanente e a linha nunca mais
+ *      e tentada.
+ *
+ * NAO ESCREVE NADA: sem setValue, sem appendRow, sem envio de e-mail, sem
+ * criar ou apagar gatilho. So le a aba da fila e escreve no Logger.
+ */
+
+var DIAGFILA_DIAS = 3;   /* quantos dias para tras detalhar linha a linha */
+
+function diagnosticoFilaOficios() {
+  var L = [];
+  L.push("DIAGNOSTICO DA FILA DE OFICIOS — " + new Date().toISOString());
+  L.push("");
+
+  /* ── 1. a cota ────────────────────────────────────────────────────────── */
+  L.push("1. COTA DIARIA DE E-MAIL — o suspeito numero um");
+  var quota = null;
+  try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {
+    L.push("   !! nao consegui ler a cota: " + e);
+  }
+  if (quota !== null) {
+    L.push("   destinatarios restantes hoje ..... " + quota);
+    if (quota < 5) {
+      L.push("   >> ESTOURADA. A fila esta PAUSADA e nao marca erro nenhum:");
+      L.push("      as linhas ficam PENDENTE e retomam sozinhas quando a cota");
+      L.push("      renovar. Isto explica 'os e-mails de ontem nao sairam'.");
+    } else if (quota < 30) {
+      L.push("   >> BAIXA. Um lote grande hoje volta a travar.");
+    } else {
+      L.push("   >> Folgada AGORA. Atencao: a cota renova a cada 24h, entao");
+      L.push("      ela pode ter estourado ONTEM e estar liberada hoje — o que");
+      L.push("      seria exatamente o sintoma relatado. Confira o item 3.");
+    }
+  }
+  L.push("");
+
+  /* ── 2. o gatilho ─────────────────────────────────────────────────────── */
+  L.push("2. GATILHOS INSTALADOS NESTE PROJETO");
+  try {
+    var ts = ScriptApp.getProjectTriggers();
+    var achouFila = false;
+    if (!ts.length) L.push("   !! NENHUM gatilho instalado — a fila nunca anda sozinha");
+    ts.forEach(function (t) {
+      var fn = t.getHandlerFunction();
+      if (fn === "processarFilaEnvioOficios") achouFila = true;
+      L.push("   - " + fn + "  (" + t.getEventType() + ")");
+    });
+    if (ts.length && !achouFila) {
+      L.push("   >> processarFilaEnvioOficios NAO ESTA NA LISTA.");
+      L.push("      A fila so anda se alguem apertar o botao. Esta e a causa.");
+    }
+  } catch (e) { L.push("   !! nao consegui listar gatilhos: " + e); }
+  L.push("");
+
+  /* ── 3. as linhas ─────────────────────────────────────────────────────── */
+  L.push("3. O QUE ESTA NA FILA");
+  var sh;
+  try {
+    sh = SpreadsheetApp.openById(typeof getPlanilhaId === "function" ? getPlanilhaId() : PLANILHA_ID)
+          .getSheetByName(typeof ABA_FILA_OFICIOS !== "undefined" ? ABA_FILA_OFICIOS : "Fila_Envio_Oficios");
+  } catch (e) { sh = null; }
+  if (!sh) {
+    try { sh = obterOuCriarAbaFilaOficios_(); } catch (e2) {}
+  }
+  if (!sh || sh.getLastRow() < 2) {
+    L.push("   fila vazia ou aba nao encontrada");
+    var txtV = L.join("\n"); Logger.log(txtV); return txtV;
+  }
+
+  var hm     = getHeaderMap_(sh);
+  var cSt    = hm["STATUS"], cNum = hm["NUMERO_OFICIO"], cEsc = hm["ESCOLA"];
+  var cTent  = hm["TENTATIVAS"], cErr = hm["ULTIMO_ERRO"];
+  var cEmails= hm["EMAILS_TODOS"] || hm["EMAIL_PRINCIPAL"];
+  var cData  = hm["DATA_CRIACAO"] || hm["CRIADO_EM"] || hm["DATA"];
+
+  var dados = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
+  var porStatus = {}, destinatariosPresos = 0;
+
+  dados.forEach(function (l) {
+    var st = String(l[cSt - 1] || "").trim().toUpperCase() || "(vazio)";
+    porStatus[st] = (porStatus[st] || 0) + 1;
+    if (st === "PENDENTE" && cEmails) {
+      destinatariosPresos += String(l[cEmails - 1] || "").split(/[;,]/)
+        .filter(function (x) { return x.trim(); }).length;
+    }
+  });
+
+  L.push("   total de linhas .................. " + dados.length);
+  for (var s in porStatus) L.push("     " + s + ": " + porStatus[s]);
+  L.push("   destinatarios presos em PENDENTE .. " + destinatariosPresos);
+  if (quota !== null && destinatariosPresos > quota) {
+    L.push("   >> O QUE ESTA PRESO NAO CABE NA COTA DE HOJE (" + quota + ").");
+    L.push("      A fila vai enviar ate acabar a cota e pausar de novo.");
+  }
+  L.push("");
+
+  L.push("4. LINHAS QUE NAO SAIRAM — detalhe");
+  var limite = new Date().getTime() - DIAGFILA_DIAS * 24 * 60 * 60 * 1000;
+  var mostradas = 0;
+  for (var i = 0; i < dados.length && mostradas < 40; i++) {
+    var st = String(dados[i][cSt - 1] || "").trim().toUpperCase();
+    if (st === "ENVIADO") continue;
+    if (cData) {
+      var d = dados[i][cData - 1];
+      if (d instanceof Date && d.getTime() < limite) continue;
+    }
+    mostradas++;
+    L.push("   linha " + (i + 2) + " · " + st +
+           " · oficio " + String(dados[i][cNum - 1] || "-") +
+           " · " + String(dados[i][cEsc - 1] || "-").substring(0, 40));
+    L.push("       tentativas: " + (cTent ? dados[i][cTent - 1] : "?") +
+           "   ultimo erro: " + (cErr ? String(dados[i][cErr - 1] || "(nenhum)").substring(0, 120) : "?"));
+  }
+  if (!mostradas) L.push("   nenhuma linha parada nos ultimos " + DIAGFILA_DIAS + " dias");
+
+  var txt = L.join("\n");
+  Logger.log(txt);
+  return txt;
+}

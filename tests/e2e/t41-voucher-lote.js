@@ -27,7 +27,7 @@ const CPF = "11144477735";
 
 function comuns(extra) {
   return Object.assign({
-    cpf: CPF, nome: "PAI DE FAMILIA", email: "pai@exemplo.com",
+    situacaoSindical: "ASSOCIADO", cpf: CPF, nome: "PAI DE FAMILIA", email: "pai@exemplo.com",
     telefone: "27999990000", escola: "COLEGIO ONDE TRABALHA",
     periodo: "2040/1", regime: "SEMESTRAL", aprovar: true
   }, extra || {});
@@ -252,4 +252,3 @@ b.naoTestavel("A tela de renovação em lote",
   "o bloco repetível ainda não existe — este arquivo cobre só o backend");
 
 b.resumo();
-process.exit(0);

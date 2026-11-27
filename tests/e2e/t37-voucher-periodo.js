@@ -59,7 +59,7 @@ function mudarStatus(protocolo, novo) {
   sh.getRange(l.__linha, cab.indexOf("STATUS_SOLICITACAO") + 1).setValue(novo);
 }
 function criar(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira", email: "marcelo@exemplo.com",
     escola: "COLEGIO SAO JOSE", instituicao: "MULTIVIX",
     modalidade: "GRADUACAO", area: "HUMANAS", curso: "Administracao",
@@ -220,7 +220,7 @@ const f4 = criar({ curso: "", modalidade: "ENSINO_FUNDAMENTAL", regime: "ANUAL",
 b.ok(f4.ok, "a Carla entra no mesmo fundamental da Ana, no mesmo ano", f4.mensagem);
 
 b.passo("14. Outro associado, mesmo curso, mesma janela: passa");
-const o1 = g.voucherCriarSolicitacao({
+const o1 = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_O, nome: "Joana Ribeiro", modalidade: "GRADUACAO", area: "HUMANAS",
   curso: "Administracao", regime: "SEMESTRAL", periodo: "2026/1",
   percentual: 70, aprovar: true
@@ -296,7 +296,7 @@ b.fluxo("PERÍODO · O incerto avisa e deixa passar");
 b.passo("23. Uma anterior sem semestre não impede a gravação");
 const CPF_I = "35374350770";
 function criarI(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_I, nome: "Rita Souza", modalidade: "GRADUACAO", area: "SAUDE",
     curso: "Enfermagem", regime: "SEMESTRAL", periodo: "2026", percentual: 50,
     aprovar: true
@@ -324,7 +324,7 @@ b.fluxo("PERÍODO · A exceção autorizada");
 
 const CPF_X = "15350946056";
 function criarX(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_X, nome: "Paulo Dias", modalidade: "GRADUACAO", area: "ENGENHARIA",
     curso: "Civil", regime: "SEMESTRAL", periodo: "2026/1", percentual: 60,
     aprovar: true
@@ -355,7 +355,7 @@ abaU.getRange(abaU.getLastRow() + 1, 1, 1, 8).setValues([[
   "USUARIO", "ATIVO", "NAO", "beneficios"
 ]]);
 const COMUM = b.logar(g, "marcela");
-const porComum = g.voucherCriarSolicitacao({
+const porComum = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_X, nome: "Paulo Dias", modalidade: "GRADUACAO", area: "ENGENHARIA",
   curso: "Civil", regime: "SEMESTRAL", periodo: "2026/1", percentual: 60,
   aprovar: true, excecao: { justificativa: "a faculdade perdeu o documento e pediu outro" }
@@ -452,6 +452,7 @@ function el(id) { return doc.getElementById(id); }
   await t.assentar(30);
   b.ok(!!el("certNvTrava"), "existe #certNvTrava");
   b.igual(el("certNvTrava").innerHTML, "", "e começa vazia — não acusa antes de saber");
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   b.igual(el("certNvSalvarAprovar").disabled, false, "com os botões liberados");
 
   b.passo("29. Preenchido um caso duplicado, a trava aparece");
@@ -480,6 +481,7 @@ function el(id) { return doc.getElementById(id); }
    * Isso prova que a regra está no código de nvSalvar, não no atributo. */
   const antesTela = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length;
   el("certNvSalvarAprovar").disabled = false;
+  if(!el("certNvSituacao").value) t.escolher("#certNvSituacao", "ASSOCIADO");
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(60);
   b.igual(t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length, antesTela,
@@ -488,6 +490,7 @@ function el(id) { return doc.getElementById(id); }
   b.passo("32. Trocar para um período livre solta a trava");
   t.escolher("#certNvPeriodoAno", "2027");
   await t.assentar(420);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   b.igual(el("certNvSalvarAprovar").disabled, false, "botão liberado de novo");
   b.ok(!/cert-nv-trava/.test(el("certNvTrava").innerHTML), "e a trava sumiu");
 
@@ -502,6 +505,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certNvCancelar");
   t.clicar("#certBtnNova");
   await t.assentar(60);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   b.igual(el("certNvSalvarAprovar").disabled, false,
     "o próximo atendimento abre com os botões valendo");
   b.igual(el("certNvTrava").innerHTML, "", "e sem a caixa vermelha de outro caso");
@@ -549,12 +553,14 @@ function el(id) { return doc.getElementById(id); }
   t.digitar("#certNvExcecaoTexto", "a faculdade extraviou e exigiu segunda via");
   t.clicar("#certNvExcecaoConfirmar");
   await t.assentar(30);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   b.igual(el("certNvSalvarAprovar").disabled, false, "liberado");
   b.ok(/cert-nv-trava/.test(el("certNvTrava").innerHTML),
     "e a caixa vermelha CONTINUA à vista — é o lembrete de que isto é exceção");
 
   b.passo("40. E a justificativa viaja junto no salvamento");
   const antesExc = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length;
+  if(!el("certNvSituacao").value) t.escolher("#certNvSituacao", "ASSOCIADO");
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(120);
   const chamada = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").pop();
@@ -570,6 +576,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(60);
   b.igual(el("certNvTrava").innerHTML, "", "caixa limpa");
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   b.igual(el("certNvSalvarAprovar").disabled, false, "botões valendo");
   /* A justificativa anterior descrevia OUTRA duplicata. Se sobrevivesse, o
    * próximo caso seria gravado com um motivo que não é o dele. */
@@ -595,6 +602,7 @@ function el(id) { return doc.getElementById(id); }
   t.digitar("#certNvCpf", CPF_M);
   t.digitar("#certNvNome", "Marcelo Alves de Oliveira");
   const antesVal = t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length;
+  if(!el("certNvSituacao").value) t.escolher("#certNvSituacao", "ASSOCIADO");
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(60);
   b.igual(t.chamadas.filter(c => c.fn === "voucherCriarSolicitacao").length, antesVal,
@@ -610,6 +618,7 @@ function el(id) { return doc.getElementById(id); }
   t.escolher("#certNvPeriodoAno", "2027");
   t.escolher("#certNvPeriodoSem", "2");
   await t.assentar(420);
+  if(!el("certNvSituacao").value) t.escolher("#certNvSituacao", "ASSOCIADO");
   t.clicar("#certNvSalvarAnalise");
   await t.assentar(120);
   b.igual(el("certNvModalidade").style.borderColor, "",
@@ -644,5 +653,5 @@ function el(id) { return doc.getElementById(id); }
     (el("certMsgBox").textContent || "").slice(0, 60));
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

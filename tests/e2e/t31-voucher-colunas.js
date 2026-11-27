@@ -159,4 +159,3 @@ b.igual(ANTIGO.filter(h => cabBoa.indexOf(h) === -1), [], "nenhum nome perdido e
 b.igual(desalinhadas(boa), [], "nenhuma coluna fora do lugar em 4 rodadas");
 
 b.resumo();
-process.exit(0);

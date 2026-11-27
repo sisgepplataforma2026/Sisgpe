@@ -90,7 +90,7 @@ function uploadDocumentoRH(dados, tokenSessao) {
     var blob = Utilities.newBlob(bytes, tipoArq, nomeFinal);
     var pasta = rh_obterPastaDocumentos_();
     var arquivo = pasta.createFile(blob);
-    try { arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (eShare) {}
+    try { arquivoAplicarPolitica_(arquivo, "RHDocumentos.gs"); } catch (eShare) {}
 
     var link = "https://drive.google.com/file/d/" + arquivo.getId() + "/view";
     var quem = sessao.nome || sessao.usuario || "SISGEP";
@@ -147,7 +147,7 @@ function excluirDocumentoRH(id, tokenSessao) {
           try { DriveApp.getFileById(fileId).setTrashed(true); }
           catch (eTrash) { Logger.log("excluirDocumentoRH: não consegui mover pra lixeira (" + fileId + "): " + eTrash.message); }
         }
-        sh.deleteRow(i + 2);
+        lixeiraMover_(sh, i + 2, { origem: "excluirDocumentoRH" });
         return { ok: true, mensagem: "Documento excluído com sucesso." };
       }
     }

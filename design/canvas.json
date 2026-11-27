@@ -1,0 +1,18 @@
+{
+  "artboards": [
+    { "file": "Arquitetura.dc.html", "x": 0, "y": 0, "w": 1440, "h": 1180, "title": "0 · Arquitetura — os quatro submódulos" },
+    { "file": "Eventos.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "1 · Eventos — a lista do módulo" },
+    { "file": "Main.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "2 · Painel do evento" },
+    { "file": "Pessoas.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 900, "title": "3 · Inscrições — uma tela só" },
+    { "file": "Inscricoes.dc.html", "x": 3120, "y": 1360, "w": 1440, "h": 900, "title": "descartada · a versão com abas por estado" },
+    { "file": "Ingressos.dc.html", "x": 4680, "y": 1360, "w": 1440, "h": 900, "title": "descartada · a fila de envio separada" }
+  ],
+  "annotations": [
+    { "id": "nota-arquitetura", "x": 0, "y": -164, "w": 520, "text": "0 · ARQUITETURA\nO usuário: \"tem submódulos aí que não é daí\" e \"só deve ficar em Eventos o que é realmente dele\". Dos quinze do prompt mestre sobram QUATRO — o resto tem dono em outro módulo, e o evento apenas referencia por id." },
+    { "id": "nota-eventos", "x": 1560, "y": -164, "w": 520, "text": "1 · EVENTOS\nClicar em Eventos no menu cai AQUI, não dentro de um evento. É a lista: Festa, Assembleia, Curso — cada um um registro. A tela que hoje não existe, e é ela que torna o módulo vendável." },
+    { "id": "nota-painel", "x": 3120, "y": -164, "w": 520, "text": "2 · PAINEL DO EVENTO\nAbriu a Festa Compasso da Vida, chega aqui. Mostra o que fazer AGORA: lotação, ritmo de chegada e as filas — cada card é um filtro clicável que abre a lista já recortada." },
+    { "id": "nota-pessoas", "x": 4680, "y": -164, "w": 520, "text": "3 · INSCRIÇÕES — UMA TELA SÓ\nA mesma lista do começo ao fim. O estado deixou de ser aba e virou COLUNA, e a coluna é um BOTÃO: clicar abre reenviar, reemitir, editar, cancelar, excluir." },
+    { "id": "nota-descartadas", "x": 3120, "y": 1196, "w": 700, "text": "DESCARTADAS — ficam aqui como registro da decisão.\nEram duas telas separadas: uma para analisar, outra para enviar. O usuário apontou que é a mesma lista de pessoas, então trocar de aba para saber se o ingresso da Maria saiu é trabalho que o sistema está criando. Viraram a tela 3." }
+  ],
+  "launch": { "view": "focused", "file": "Arquitetura.dc.html" }
+}

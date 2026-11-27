@@ -1,0 +1,184 @@
+<script>
+/* REENVIO DE OFÍCIO — "+ INCLUIR" E-MAIL E AVISO DE ENDEREÇOS QUE FALHARAM (25/11/2026)
+ *
+ * Pedido do usuário, com o desenho docs/mock-reenvio-incluir-email.png: ao reenviar um ofício, incluir e-mail na hora (com o
+ * botão "+ Incluir", que confere o formato antes de entrar na lista) e, quando todos os endereços da escola já falharam, um
+ * aviso dizendo isso — em vez de deixar a pessoa clicar em Reenviar sem destino.
+ *
+ * REGRA Nº -3 (função que funciona não se altera): este arquivo NÃO edita nenhuma função existente de OficiosScripts nem de
+ * OficiosFormulario. Ele ENVOLVE dois métodos do Historico (reenviar e _reenvioMontar), chamando o original SEM mexer nele, e
+ * injeta os elementos novos na janela por JavaScript. Os e-mails incluídos entram como caixas de classe hist-reenv-dest, que é
+ * o que o envio já lê (_reenvioEscolhidos) — o envio não muda. O campo de texto antigo continua valendo: quem digita e clica
+ * direto em Reenviar tem o mesmo resultado de antes.
+ */
+(function () {
+  if (typeof window === "undefined" || !window.Historico) return;
+  var H = window.Historico;
+  var g = function (id) { return document.getElementById(id); };
+  var RX = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+  var semMarcadoInicial = false;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* Monta, uma vez, o que o desenho tem a mais: o aviso, o espaço dos e-mails incluídos, o botão e a mensagem de erro. */
+  function garantirUI() {
+    var extra = g("histReenvExtra"), lista = g("histReenvDestinos");
+    if (!extra || !lista) return false;
+    if (g("histReenvNovos")) return true;
+
+    var alvo = lista.parentNode;
+    var aviso = document.createElement("div");
+    aviso.id = "histReenvAvisoTodos";
+    aviso.style.cssText = "display:none;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#fffbeb;border:1.5px solid #d97706;color:#92400e;font-size:12px;";
+    aviso.innerHTML = "<strong>⚠ Todos os endereços desta escola já falharam ou não têm histórico.</strong><br>" +
+      "Inclua um endereço que receba, ou desmarque a falha só se tiver certeza.";
+    alvo.insertBefore(aviso, lista);
+
+    var novos = document.createElement("div");
+    novos.id = "histReenvNovos";
+    novos.style.cssText = "margin-bottom:4px;";
+    alvo.insertBefore(novos, lista);   // no desenho (B) o e-mail incluído aparece NO TOPO, acima dos endereços do cadastro
+
+    var label = extra.parentNode;
+    var linha = document.createElement("div");
+    linha.style.cssText = "display:flex;gap:8px;align-items:center;margin-top:4px;";
+    label.appendChild(linha);
+    linha.appendChild(extra);
+    extra.style.margin = "0"; extra.style.flex = "1"; extra.style.width = "auto";
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.id = "histReenvIncluirBtn"; btn.className = "btn-navy";
+    btn.style.cssText = "padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:700;white-space:nowrap;";
+    btn.textContent = "+ Incluir";
+    linha.appendChild(btn);
+    extra.placeholder = "digite o e-mail (vários: separe por vírgula)";
+    var erro = document.createElement("div");
+    erro.id = "histReenvIncluirMsg";
+    erro.style.cssText = "display:none;margin-top:4px;font-size:11.5px;font-weight:400;";
+    label.appendChild(erro);
+    var nota = document.createElement("div");
+    nota.id = "histReenvIncluirNota";
+    nota.style.cssText = "display:none;margin-top:2px;font-size:11px;font-weight:400;color:#94a3b8;";
+    nota.textContent = "E-mail já na lista não é incluído de novo; ele só é recusado se estiver com o formato errado.";
+    label.appendChild(nota);
+
+    btn.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); incluir(); });
+    extra.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); incluir(); } });
+    /* qualquer marcação ou digitação reavalia o botão Reenviar e o aviso */
+    var ov = g("histReenvOverlay");
+    if (ov) {
+      ov.addEventListener("change", reavaliar);
+      ov.addEventListener("input", reavaliar);
+    }
+    return true;
+  }
+
+  function mostrarMsg(texto, ruim) {
+    var m = g("histReenvIncluirMsg"); if (!m) return;
+    m.textContent = texto || "";
+    m.style.display = texto ? "block" : "none";
+    m.style.color = ruim ? "#dc2626" : "#0f8a5f";
+    var nt = g("histReenvIncluirNota"); if (nt) nt.style.display = (texto && ruim) ? "block" : "none";
+  }
+
+  function marcados() {
+    return Array.prototype.filter.call(document.querySelectorAll(".hist-reenv-dest"), function (c) { return c.checked; }).length;
+  }
+  function textoValido() {
+    var e = g("histReenvExtra"); if (!e) return false;
+    return String(e.value || "").split(/[;,]/).some(function (x) { return RX.test(String(x).trim()); });
+  }
+
+  /* O sistema não tem estilo de botão desabilitado: sem isto o Reenviar desativado ficaria igual ao ativo (no desenho ele é cinza). */
+  function estiloOk(desativado) {
+    var ok = g("histReenvOk"); if (!ok) return;
+    ok.disabled = desativado;
+    ok.style.opacity = desativado ? ".45" : "";
+    ok.style.cursor = desativado ? "not-allowed" : "";
+  }
+
+  /* O Reenviar só fica ativo com ao menos um destino; o aviso some quando há destino marcado. */
+  function reavaliar() {
+    var n = marcados(), tem = n > 0 || textoValido();
+    estiloOk(!tem);
+    var av = g("histReenvAvisoTodos");
+    var ligado = semMarcadoInicial && !tem;
+    if (av) av.style.display = ligado ? "block" : "none";
+    var campo = g("histReenvExtra");
+    if (campo) { campo.style.borderColor = ligado ? "#d97706" : ""; campo.style.boxShadow = ligado ? "0 0 0 3px rgba(217,119,6,.18)" : ""; }
+  }
+
+  function jaNaLista(email) {
+    var achou = null, k = String(email).toLowerCase();
+    Array.prototype.forEach.call(document.querySelectorAll(".hist-reenv-dest"), function (c) {
+      if (String(c.getAttribute("data-email") || "").toLowerCase() === k) achou = c;
+    });
+    return achou;
+  }
+
+  function incluir() {
+    if (!garantirUI()) return;
+    var campo = g("histReenvExtra");
+    var partes = String(campo.value || "").split(/[;,]/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!partes.length) { mostrarMsg("Digite o e-mail a incluir.", true); return; }
+    var invalidos = [], repetidos = [], novos = 0;
+    partes.forEach(function (e) {
+      if (!RX.test(e)) { invalidos.push(e); return; }
+      var existente = jaNaLista(e);
+      if (existente) { existente.checked = true; repetidos.push(e); return; }
+      var caixa = g("histReenvNovos");
+      var row = document.createElement("label");
+      row.style.cssText = "display:flex;gap:8px;align-items:flex-start;padding:6px 8px;margin-top:4px;cursor:pointer;background:#ecfdf5;border-radius:10px;";
+      row.innerHTML = '<input type="checkbox" class="hist-reenv-dest" data-novo="1" data-email="' + esc(e) + '" checked style="margin-top:3px;">' +
+        "<span><strong>" + esc(e) + '</strong> <span style="margin-left:4px;padding:1px 7px;border-radius:999px;background:#ede9fe;color:#5b21b6;font-size:10.5px;font-weight:800;">NOVO</span><br>' +
+        '<span style="color:#0f8a5f;font-size:11px;font-weight:700;">✚ digitado agora por você</span> ' +
+        '<button type="button" class="hist-reenv-remover" style="border:0;background:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">remover</button></span>';
+      row.querySelector(".hist-reenv-remover").addEventListener("click", function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        if (row.parentNode) row.parentNode.removeChild(row);
+        reavaliar();
+      });
+      caixa.appendChild(row);
+      novos++;
+    });
+    if (invalidos.length) {
+      /* o que está certo entra; o que está errado fica no campo, para corrigir */
+      campo.value = invalidos.join(", ");
+      mostrarMsg("“" + invalidos.join(", ") + "” não é um e-mail válido — confira antes de incluir.", true);
+    } else {
+      campo.value = "";
+      mostrarMsg(repetidos.length ? repetidos.join(", ") + " já estava na lista — marcado." : "", false);
+    }
+    reavaliar();
+  }
+
+  /* ENVOLVE reenviar: limpa o que esta janela acrescentou, depois chama o original, intacto. */
+  var origReenviar = H.reenviar;
+  H.reenviar = function () {
+    if (garantirUI()) {
+      var n = g("histReenvNovos"); if (n) n.innerHTML = "";
+      mostrarMsg("", false);
+      semMarcadoInicial = false;
+      var av = g("histReenvAvisoTodos"); if (av) av.style.display = "none";
+      estiloOk(true);   // só ativa quando a lista carregar com destino
+    }
+    return origReenviar.apply(this, arguments);
+  };
+
+  /* ENVOLVE _reenvioMontar: depois de o original desenhar a lista, avalia o aviso e o botão. */
+  var origMontar = H._reenvioMontar;
+  H._reenvioMontar = function (r) {
+    var ret = origMontar.apply(this, arguments);
+    try {
+      garantirUI();
+      var lista = (r && r.ok && r.destinatarios) || [];
+      semMarcadoInicial = lista.length > 0 && !lista.some(function (d) { return d && d.marcado; });
+      reavaliar();
+    } catch (e) { /* o aviso é um auxílio: nunca derruba a janela de reenvio */ }
+    return ret;
+  };
+})();
+</script>

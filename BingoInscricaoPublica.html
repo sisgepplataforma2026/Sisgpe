@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* Paleta do Design System — OficiosStyles.html. Aqui os tokens são
+       declarados localmente porque esta é uma PÁGINA PÚBLICA, servida fora do
+       index.html: ela não recebe o include do CSS mestre. Os valores são os
+       mesmos; não é paleta nova. */
+    :root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--gold:#C9A84C;
+          --ok:#0f8a5f;--alerta:#d97706;--erro:#dc2626;--linha:#e1e8f0;--cinza:#64748b}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f4f7fb;color:#172033;
+         font-family:'Plus Jakarta Sans',Arial,sans-serif;line-height:1.6}
+    .topo{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;
+          padding:26px 16px 30px;text-align:center}
+    .selo{display:inline-block;background:rgba(255,255,255,.16);
+          border:1px solid rgba(255,255,255,.28);border-radius:999px;
+          padding:6px 14px;font-size:11px;font-weight:800;letter-spacing:.04em}
+    .titulo{font-size:24px;font-weight:900;margin:12px 0 0;line-height:1.25}
+    .wrap{max-width:620px;margin:auto;padding:14px 14px 40px}
+    .card{background:#fff;border:1px solid var(--linha);border-radius:16px;
+          padding:18px;box-shadow:0 4px 16px rgba(0,30,80,.06);margin-bottom:14px}
+    .convite{white-space:pre-wrap;font-size:14px}
+    .h{font-size:12px;font-weight:900;text-transform:uppercase;
+       letter-spacing:.06em;color:var(--cinza);margin:0 0 10px}
+    .premios{list-style:none;padding:0;margin:0}
+    .premios li{padding:9px 0;border-bottom:1px solid var(--linha);font-weight:700}
+    .premios li:last-child{border-bottom:0}
+    .crono div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
+               border-bottom:1px solid var(--linha);font-size:13px}
+    .crono div:last-child{border-bottom:0}
+    .crono b{white-space:nowrap}
+    .vagas{background:#eef4ff;border:1px solid #c7dbff;border-radius:12px;
+           padding:12px 14px;font-weight:800;color:#1e40af;text-align:center}
+    .vagas.pouca{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .campo{margin-bottom:13px}
+    label{display:block;font-size:12px;font-weight:800;margin-bottom:5px}
+    input{width:100%;padding:12px;border:1.5px solid var(--linha);border-radius:10px;
+          font-size:15px;font-family:inherit}
+    input:focus{outline:none;border-color:var(--blue)}
+    input.ruim{border-color:var(--erro);background:#fef2f2}
+    .dica{font-size:11px;color:var(--ok);font-weight:700;margin-top:4px;display:none}
+    .dica.on{display:block}
+    .erroCampo{font-size:11px;color:var(--erro);font-weight:700;margin-top:4px;display:none}
+    .erroCampo.on{display:block}
+    .termo{background:#f8fafc;border:1px solid var(--linha);border-radius:12px;
+           padding:14px;max-height:210px;overflow-y:auto;font-size:12.5px;
+           white-space:pre-wrap;margin-bottom:12px}
+    .aceite{display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:700}
+    .aceite input{width:20px;height:20px;flex:0 0 20px;margin-top:1px}
+    .btn{width:100%;padding:15px;border:0;border-radius:12px;font-size:16px;
+         font-weight:900;font-family:inherit;cursor:pointer;
+         background:var(--navy);color:#fff;margin-top:14px}
+    .btn:disabled{background:#94a3b8;cursor:not-allowed}
+    .btn.live{background:var(--erro);display:block;text-align:center;
+              text-decoration:none;margin-top:10px}
+    .btn.cartela{background:var(--ok);display:block;text-align:center;
+                 text-decoration:none}
+    .aviso{border-radius:12px;padding:13px 15px;font-size:13px;font-weight:700;
+           margin-bottom:12px}
+    .aviso.erro{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+    .aviso.atencao{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+    .ok{text-align:center}
+    .ok h2{color:var(--ok);font-size:22px;margin:0 0 8px}
+    .rodape{text-align:center;font-size:11px;color:var(--cinza);margin-top:18px}
+  </style>
+</head>
+<body>
+
+<div class="topo">
+  <span class="selo" id="selo">SindEducação-ES</span>
+  <h1 class="titulo" id="titulo">Carregando…</h1>
+</div>
+
+<div class="wrap" id="app">
+  <div class="card" id="carregando">Abrindo a inscrição…</div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSCRIÇÃO PÚBLICA DO BINGO
+
+   Esta tela NÃO decide nada. Ela mostra o que o servidor manda e manda de
+   volta o que a pessoa digitou. Teto de vagas, prazo, CPF válido, duplicata e
+   aceite do termo são conferidos em BingoInscricao.gs — porque validação que
+   mora só no navegador é sugestão, não regra.
+
+   O CONVITE VEM DA CONFIGURAÇÃO, não daqui. Título, texto, prêmios e
+   cronograma mudam a cada sorteio (Dia dos Pais, Dia das Mães) e são editados
+   no painel. Nenhum texto de evento está cravado neste arquivo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var EVENTO = new URLSearchParams(location.search).get('bingo-inscricao') || '';
+var ESTADO = null;
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+/* Data ISO → "quarta-feira, 05/08/2026, às 12h". O servidor manda ISO; quem
+   traduz para leitura humana é a tela. */
+function quando(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return String(iso);
+  var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var p=function(n){return String(n).padStart(2,'0')};
+  var hora = d.getMinutes() ? p(d.getHours())+'h'+p(d.getMinutes()) : p(d.getHours())+'h';
+  return dias[d.getDay()]+', '+p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+', às '+hora;
+}
+
+function abrir(){
+  if(!EVENTO){ falha('Link de inscrição inválido.'); return; }
+  google.script.run
+    .withSuccessHandler(function(s){
+      if(!s || !s.ok){ falha((s&&s.mensagem)||'Inscrição indisponível.', s&&s.encerrada); return; }
+      ESTADO = s;
+      montar(s);
+    })
+    .withFailureHandler(function(){ falha('Não foi possível abrir a inscrição. Tente novamente.'); })
+    .bingo_inscricaoEstado(EVENTO);
+}
+
+function falha(msg, encerrada){
+  el('titulo').textContent = encerrada ? 'Inscrições encerradas' : 'Inscrição indisponível';
+  el('app').innerHTML = '<div class="card"><div class="aviso erro">'+esc(msg)+'</div>'+
+    '<p style="font-size:13px;color:#64748b">Em caso de dúvida, procure o SindEducação-ES.</p></div>';
+}
+
+function montar(s){
+  el('titulo').textContent = s.titulo;
+  if(s.selo) el('selo').textContent = '🔒 ' + s.selo;
+
+  var h = '';
+
+  if(s.conviteTexto)
+    h += '<div class="card"><div class="convite">'+esc(s.conviteTexto)+'</div></div>';
+
+  if(s.premios && s.premios.length){
+    h += '<div class="card"><p class="h">🎁 Prêmios</p><ul class="premios">';
+    s.premios.forEach(function(p){ h += '<li>'+esc(p)+'</li>'; });
+    h += '</ul></div>';
+  }
+
+  if(s.inscricoesAte || s.sorteioEm || s.youtubeCanal){
+    h += '<div class="card"><p class="h">📅 Cronograma</p><div class="crono">';
+    if(s.inscricoesAte) h += '<div><span>🔴 Encerramento das inscrições</span><b>'+esc(quando(s.inscricoesAte))+'</b></div>';
+    if(s.sorteioEm)     h += '<div><span>🎥 Sorteio ao vivo</span><b>'+esc(quando(s.sorteioEm))+'</b></div>';
+    if(s.youtubeCanal)  h += '<div><span>📍 Transmissão</span><b>'+esc(s.youtubeCanal)+'</b></div>';
+    h += '</div></div>';
+  }
+
+  /* Esgotado: mostra o convite inteiro, mas sem formulário. A pessoa entende
+     por que não pode se inscrever, em vez de achar que a página quebrou. */
+  if(s.esgotado){
+    h += '<div class="card"><div class="aviso erro">As '+s.limite+' vagas deste sorteio já foram preenchidas.</div></div>';
+    el('app').innerHTML = h;
+    return;
+  }
+
+  h += '<div class="card">'+
+       '<div class="vagas'+(s.vagas<=30?' pouca':'')+'">Restam <b>'+s.vagas+'</b> de '+s.limite+' vagas</div>'+
+       '<div style="height:14px"></div>'+
+       '<div class="campo"><label>1️⃣ CPF</label>'+
+         '<input id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">'+
+         '<div class="dica" id="dicaCpf">✓ Encontramos seu cadastro — confira os dados abaixo</div>'+
+         '<div class="erroCampo" id="erroCpf"></div></div>'+
+       '<div class="campo"><label>2️⃣ Nome completo</label>'+
+         '<input id="nome" autocomplete="name"><div class="erroCampo" id="erroNome"></div></div>'+
+       '<div class="campo"><label>3️⃣ E-mail</label>'+
+         '<input id="email" type="email" autocomplete="email"><div class="erroCampo" id="erroEmail"></div></div>'+
+       '<div class="campo"><label>4️⃣ Escola / Instituição onde trabalha</label>'+
+         '<input id="escola"><div class="erroCampo" id="erroEscola"></div></div>'+
+       '<div class="campo"><label>5️⃣ Cidade onde trabalha</label>'+
+         '<input id="cidade"><div class="erroCampo" id="erroCidade"></div></div>'+
+       '<div class="campo"><label>6️⃣ WhatsApp (com DDD)</label>'+
+         '<input id="whatsapp" inputmode="numeric" maxlength="15" placeholder="(27) 90000-0000">'+
+         '<div class="erroCampo" id="erroWhatsapp"></div></div>'+
+       '</div>'+
+
+       '<div class="card"><p class="h">📜 Termo de compromisso digital</p>'+
+       '<div class="termo">'+esc(s.termoTexto)+'</div>'+
+       '<label class="aceite"><input type="checkbox" id="termo">'+
+         '<span>👉 Declaro que li e concordo com os termos acima.</span></label>'+
+       '<div class="erroCampo" id="erroTermo"></div>'+
+       '<button class="btn" id="enviar">Quero minha cartela</button>'+
+       '</div>'+
+       '<p class="rodape">SindEducação-ES · Somos todos educadores 📚💙</p>';
+
+  el('app').innerHTML = h;
+
+  el('cpf').addEventListener('input', mascaraCpf);
+  el('cpf').addEventListener('blur', preencher);
+  el('whatsapp').addEventListener('input', mascaraTel);
+  el('enviar').addEventListener('click', enviar);
+}
+
+function mascaraCpf(e){
+  var v = e.target.value.replace(/\D/g,'').slice(0,11);
+  e.target.value = v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2')
+                    .replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+}
+function mascaraTel(e){
+  var v = e.target.value.replace(/\D/g,'').slice(0,11);
+  e.target.value = v.length>10 ? v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3')
+                               : v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3').replace(/-$/,'');
+}
+
+/* REGRA Nº 0.6: o que o sindicato já sabe, a pessoa não redigita.
+   Preenche SUGERINDO — os campos seguem editáveis, e a dica diz de onde o
+   dado veio, para não passar impressão de conferido. */
+function preencher(){
+  var cpf = el('cpf').value.replace(/\D/g,'');
+  if(cpf.length !== 11) return;
+  google.script.run.withSuccessHandler(function(a){
+    if(!a || !a.ok){
+      /* Teto de consultas estourado: dizer, em vez de não fazer nada. Campo
+         que simplesmente não preenche parece sistema quebrado. */
+      if(a && a.erro){ marcarErro('cpf', a.erro); }
+      return;
+    }
+    ['nome','email','cidade','whatsapp'].forEach(function(k){
+      var campo = el(k);
+      if(campo && !campo.value && a[k]) campo.value = a[k];
+    });
+    /* CONTATO VEM MASCARADO desde 21/08/2026 (ver PrivacidadeCore.gs).
+       Duas consequências para esta tela:
+
+       1. NÃO passar o WhatsApp pela máscara de telefone daqui: ela tira os
+          não-dígitos e transformaria "(27) •••••-5432" em "(27) 5432";
+       2. EXPLICAR o pontinho. Campo com • e sem explicação parece defeito, e
+          a pessoa apaga tudo e redigita — perdendo justamente a facilidade
+          que o preenchimento existe para dar. */
+    if(!a.mascarado && el('whatsapp').value) mascaraTel({target: el('whatsapp')});
+    el('dicaCpf').classList.add('on');
+    if(a.mascarado){
+      var d = el('dicaCpf');
+      if(d) d.textContent = 'Encontramos seu cadastro. E-mail e WhatsApp aparecem ' +
+        'parcialmente ocultos por segurança — se estiverem certos, é só deixar ' +
+        'como está. Para trocar, apague o campo e digite o novo.';
+    }
+  }).bingo_inscricaoPreencher(cpf);
+}
+
+function limparErros(){
+  ['Cpf','Nome','Email','Escola','Cidade','Whatsapp','Termo'].forEach(function(c){
+    var e = el('erro'+c); if(e){ e.classList.remove('on'); e.textContent=''; }
+    var i = el(c.toLowerCase()); if(i) i.classList.remove('ruim');
+  });
+}
+
+function marcarErro(campo, msg){
+  var nome = campo ? campo.charAt(0).toUpperCase()+campo.slice(1) : '';
+  var e = el('erro'+nome);
+  if(e){ e.textContent = msg; e.classList.add('on'); }
+  var i = el(campo);
+  if(i){ i.classList.add('ruim'); i.focus(); i.scrollIntoView({block:'center',behavior:'smooth'}); }
+  if(!e && !i) alert(msg);
+}
+
+function enviar(){
+  limparErros();
+  var btn = el('enviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){
+        btn.disabled = false;
+        btn.textContent = 'Quero minha cartela';
+        marcarErro(r && r.campo, (r && r.mensagem) || 'Não foi possível concluir.');
+        if(r && r.esgotado) abrir();
+        return;
+      }
+      confirmado(r);
+    })
+    .withFailureHandler(function(){
+      btn.disabled = false;
+      btn.textContent = 'Quero minha cartela';
+      alert('Falha de conexão. Tente novamente.');
+    })
+    .bingo_inscrever({
+      eventoId: EVENTO,
+      cpf:      el('cpf').value,
+      nome:     el('nome').value,
+      email:    el('email').value,
+      escola:   el('escola').value,
+      cidade:   el('cidade').value,
+      whatsapp: el('whatsapp').value,
+      aceiteTermo: el('termo').checked
+    });
+}
+
+/* A CARTELA APARECE AQUI, não só no e-mail. É a razão de a inscrição ser
+   página própria e não Google Forms: quem se inscreve sai da tela com a
+   cartela na mão. O e-mail é a cópia de segurança. */
+function confirmado(r){
+  var h = '<div class="card ok">'+
+          '<h2>✅ '+(r.jaExistia ? 'Você já estava inscrito' : 'Inscrição confirmada!')+'</h2>'+
+          '<p style="font-size:14px">'+esc(r.mensagem)+'</p>';
+
+  if(r.avisoEmail)
+    h += '<div class="aviso atencao">'+esc(r.avisoEmail)+'</div>';
+  else if(r.emailEnviado)
+    h += '<p style="font-size:12px;color:#64748b">Enviamos o link também para o seu e-mail.</p>';
+
+  if(r.temCartela){
+    h += '<a class="btn cartela" href="'+r.urlCartela+'">🎲 Abrir minha cartela</a>';
+  } else {
+    /* Sem rodada aberta ainda: a inscrição VALE, e a cartela sai depois. Dizer
+       isso é melhor do que mostrar um botão que não leva a lugar nenhum. */
+    h += '<div class="aviso atencao">Sua inscrição está garantida. A cartela '+
+         'será gerada e enviada por e-mail antes do sorteio.</div>';
+  }
+
+  if(r.youtubeUrl)
+    h += '<a class="btn live" href="'+esc(r.youtubeUrl)+'" target="_blank">🔴 Assistir à transmissão</a>';
+
+  h += '<div class="aviso atencao" style="margin-top:14px;text-align:left">'+
+       '<b>Importante:</b> para ser contemplado(a), é preciso estar online '+
+       'acompanhando a transmissão no momento do sorteio.</div>'+
+       '</div><p class="rodape">SindEducação-ES · Somos todos educadores 📚💙</p>';
+
+  el('app').innerHTML = h;
+  window.scrollTo(0,0);
+}
+
+abrir();
+</script>
+</body>
+</html>

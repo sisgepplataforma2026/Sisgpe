@@ -19,7 +19,7 @@ const dom = require("./dom");
 if (!dom.jsdomDisponivel()) {
   b.fluxo("VOUCHER · Tela de nova solicitação");
   b.naoTestavel("tela de nova solicitação", "jsdom não instalado");
-  b.resumo(); process.exit(0);
+  b.resumo(); process.exit(process.exitCode || 0);
 }
 
 const { g } = b.subir({});
@@ -31,7 +31,7 @@ g.setupVoucherModuleFase1();
 const CPF_M = "11144477735";
 
 /* Marcelo já pediu uma vez: Multivix, Administração, Humanas, 70%. */
-g.voucherCriarSolicitacao({
+g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_M, nome: "Marcelo Alves de Oliveira", email: "marcelo@exemplo.com",
   telefone: "(27) 99111-2233", escola: "COLEGIO SAO JOSE",
   instituicao: "MULTIVIX", cnpjInstituicao: "31344800000100",
@@ -229,6 +229,7 @@ function el(id) { return doc.getElementById(id); }
 
   b.passo("11. Salvar em análise grava ANALISE");
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
   /* JANELA LIVRE, e não a do seed. Período obrigatório desde 13/08/2026; e
@@ -250,6 +251,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -292,6 +294,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -331,6 +334,7 @@ function el(id) { return doc.getElementById(id); }
   b.igual(el("certNvBoxIR").style.display, "none", "IR continua escondida (é filho, não enteado)");
 
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   el("certNvBeneficiario").value = "Pedro";
   el("certNvIdade").value = "8";
@@ -387,6 +391,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -437,7 +442,7 @@ function el(id) { return doc.getElementById(id); }
    * porque sem período a trava de "um por pessoa, por curso, por janela" não
    * tem janela para comparar e deixa a mesma pessoa passar duas vezes. O
    * teste é que estava desatualizado, não a regra nova. */
-  const nova = g.voucherCriarSolicitacao({
+  const nova = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
     periodo: "2029/1", aprovar: false
@@ -473,7 +478,7 @@ function el(id) { return doc.getElementById(id); }
    *
    * A asserção do protocolo criado fica de pé pelo motivo de sempre: sem
    * ela, um "aprovou" sobre protocolo inexistente passaria despercebido. */
-  const naoAss = g.voucherCriarSolicitacao({
+  const naoAss = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: "52998224725", nome: "Nao Associado", modalidade: "GRADUACAO",
     area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO",
     periodo: "2026/2", aprovar: false
@@ -501,6 +506,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   const antesToast = t.avisos.length;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvCpf").value = "123";                 // inválido de propósito
   t.clicar("#certNvSalvarAprovar");
   await t.assentar(80);
@@ -517,7 +523,7 @@ function el(id) { return doc.getElementById(id); }
   await t.assentar(60);
   /* Período obrigatório desde 13/08/2026 — e num período ainda livre, senão
      a trava de duplicidade recusa a criação e o resto do passo não acontece. */
-  const emAnalise = g.voucherCriarSolicitacao({
+  const emAnalise = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
     periodo: "2031/1", aprovar: false
@@ -538,10 +544,22 @@ function el(id) { return doc.getElementById(id); }
 
     t.clicar("#certBtnAprovar");
     await t.assentar(700);
-    b.ok(el("certModalOverlay").classList.contains("ativo"),
-      "continua aberto depois de aprovar");
-    b.ok(el("certModalEmissaoArea").style.display !== "none",
-      "e a área de emissão apareceu, pronta para gerar o certificado");
+    /* FECHA DEPOIS DE APROVAR — decisão revista pelo usuário em 16/09/2026:
+       "quando aprovar tem que fechar essa tela".
+
+       Esta asserção exigia o CONTRÁRIO, e por uma razão que não era boba:
+       aprovar e emitir vêm colados, a área de emissão está neste mesmo modal,
+       e o modal se reabria sozinho para emendar os dois passos. A trava
+       cumpriu o papel — reprovou e me obrigou a reconhecer que eu estava
+       desfazendo uma escolha anterior, em vez de a mudança passar batida.
+
+       Quem analisa trinta solicitações seguidas fecharia a mesma janela trinta
+       vezes. A aprovação continua gravada e a lista se recarrega; quem quiser
+       emitir abre a linha, que agora está APROVADO. */
+    b.ok(!el("certModalOverlay").classList.contains("ativo"),
+      "o modal FECHA depois de aprovar");
+    b.igual(el("certModalOverlay").style.display, "none",
+      "e sai da tela de verdade, não só perde a classe");
   } else {
     b.aviso("lista vazia no teste", "passo 27 não pôde rodar");
   }
@@ -625,10 +643,17 @@ function el(id) { return doc.getElementById(id); }
     ["ESC-000002", "COLEGIO SAO JOSE", "SAO JOSE", "98765432000188", "Vitoria", "ES"],
     ["ESC-000003", "COLEGIO ANCHIETA", "ANCHIETA", "11222333000144", "Serra", "ES"]
   ]);
-  /* O cadastro de escolas fica 5 min em CacheService — sem limpar, a busca
-   * responderia com a lista de antes desta linha e o teste mediria o cache,
-   * não o código. */
-  try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_); } catch (e) {}
+  /* O cadastro de escolas fica 6 HORAS em CacheService, em fatias — sem
+   * limpar, a busca responderia com a lista de antes desta linha e o teste
+   * mediria o cache, não o código.
+   *
+   * Aqui se limpava a chave pelo nome (`CACHE_KEY_ESCOLAS_CADASTRO_`). Em
+   * 24/09/2026 a lista passou a ser gravada em várias chaves, e remover uma
+   * só deixou de limpar coisa alguma: estes cinco passos reprovaram com dado
+   * da semeadura anterior. Chamar a função de invalidação de verdade é o
+   * certo de qualquer forma — ela é quem sabe onde o cache mora, e é a mesma
+   * que a produção chama ao salvar uma escola. */
+  try { g.invalidarCacheEscolas_(); } catch (e) {}
   try { g.CacheService.getScriptCache().remove("sisgep_escolas_lista_v2"); } catch (e) {}
   try { g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_); } catch (e) {}
 
@@ -700,5 +725,5 @@ function el(id) { return doc.getElementById(id); }
   b.igual(quantosAvisos, 1, "e só naquela linha");
 
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 })();

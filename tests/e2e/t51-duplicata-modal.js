@@ -40,7 +40,7 @@ b.fluxo("OFÍCIOS · Aviso de duplicata no padrão do sistema");
 if (!dom.jsdomDisponivel || !dom.jsdomDisponivel()) {
   b.naoTestavel("Modal de duplicata na tela", "jsdom não instalado (npm install)");
   b.resumo();
-  process.exit(0);
+  process.exit(process.exitCode || 0);
 }
 
 const g = b.subir({}).g;

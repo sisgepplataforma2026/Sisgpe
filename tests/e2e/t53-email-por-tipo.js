@@ -10,15 +10,15 @@
  * A resposta medida foi: adaptado sim, MENOS em um — e justo o que estava
  * sem cobertura nenhuma.
  *
- *     Filiação .................. texto próprio, Cláusula 56ª
- *     Desfiliação ............... texto próprio, Cláusula 56ª
- *     Taxa Negocial ............. texto próprio, Cláusula 57ª
- *     Taxa Assistencial ......... texto próprio, Cláusula 58ª
+ *     Filiação .................. texto próprio, Cláusula 38ª
+ *     Desfiliação ............... texto próprio, Cláusula 38ª
+ *     Taxa Negocial ............. texto próprio, Cláusula 40ª
+ *     Taxa Assistencial ......... texto próprio, Cláusula 38ª – Assistência Médica
  *     Ofício Livre .............. texto genérico (correto: o texto está no PDF)
  *     Oposição à Taxa Negocial .. CORPO VAZIO
  *
  * A escola recebia um e-mail com cabeçalho, selo do tipo e assinatura — e
- * NENHUMA linha de texto. O motivo: montarEmailHTML tinha um if/else por
+ * NENHUMA linha de texto. O motivo: montarEmailHTML_ tinha um if/else por
  * assuntoTipo e "Oposição à Taxa Negocial" não tinha ramo, então
  * textoPrincipal ficava string vazia e ninguém reclamava.
  *
@@ -43,7 +43,7 @@ const TIPOS = ["Filiação", "Desfiliação", "Taxa Negocial",
 
 /** Texto puro do e-mail, sem as tags. */
 function corpo(tipo, quantidade) {
-  const html = g.montarEmailHTML(tipo, "280/2026", tipo, quantidade || 3, "");
+  const html = g.montarEmailHTML_(tipo, "280/2026", tipo, quantidade || 3, "");
   return String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
@@ -77,9 +77,9 @@ b.fluxo("E-MAIL · A cláusula citada é a do tipo");
 
 b.passo("3");
 const CLAUSULA = {
-  "Filiação": "56", "Desfiliação": "56",
-  "Taxa Negocial": "57", "Oposição à Taxa Negocial": "57",
-  "Taxa Assistencial": "58"
+  "Filiação": "38", "Desfiliação": "38",
+  "Taxa Negocial": "40", "Oposição à Taxa Negocial": "40",
+  "Taxa Assistencial": "38"
 };
 Object.keys(CLAUSULA).forEach(t => {
   const c = corpo(t);
@@ -172,7 +172,7 @@ b.ok(/fichas de filiação/i.test(corpo("Filiação", 3)),
    outra coisa sem avisar. É o pior tipo de defeito.
    ═══════════════════════════════════════════════════════════ */
 b.passo("9");
-const custom = g.montarEmailHTML("Taxa Negocial", "280/2026", "Taxa Negocial", 3,
+const custom = g.montarEmailHTML_("Taxa Negocial", "280/2026", "Taxa Negocial", 3,
   "Texto escrito pela secretaria, bem diferente do padrão.");
 b.ok(String(custom).indexOf("Texto escrito pela secretaria") > -1,
   "o texto digitado pelo atendente é o que vai no e-mail");
@@ -221,8 +221,8 @@ b.igual(new Set(TIPOS_DOC.map(t => corposDoc[t])).size, 5,
    institucional de um texto genérico com o nome do tipo trocado. */
 b.passo("12");
 const CLAUSULA_DOC = {
-  "Filiação": "56", "Desfiliação": "56", "Taxa Negocial": "57",
-  "Oposição à Taxa Negocial": "57", "Taxa Assistencial": "58"
+  "Filiação": "38", "Desfiliação": "38", "Taxa Negocial": "40",
+  "Oposição à Taxa Negocial": "40", "Taxa Assistencial": "38"
 };
 TIPOS_DOC.forEach(t => {
   b.ok(corposDoc[t].indexOf("Cláusula " + CLAUSULA_DOC[t]) > -1,

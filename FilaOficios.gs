@@ -56,7 +56,7 @@ function criarFilaEnvioOficio_(dadosFila) {
   var emailsTodos       = String(dadosFila.emailsTodos || "").trim();
   var assunto           = String(dadosFila.assunto || "").trim();
   var htmlBodyOriginal  = String(dadosFila.htmlBody || "").trim();
-  var usuario           = String(dadosFila.usuario || "financeiro@sindeducacao.com").trim();
+  var usuario           = String(dadosFila.usuario || "secretaria@sindeducacao.com").trim();
   var codigoVerificacao = String(dadosFila.codigoVerificacao || "").trim();
   var anexos            = Array.isArray(dadosFila.anexos) ? dadosFila.anexos : [];
 
@@ -106,7 +106,12 @@ function criarFilaEnvioOficio_(dadosFila) {
     "ASSUNTO": assunto,
     "HTML_BODY": htmlBody,
     "ANEXOS_JSON": JSON.stringify(anexos),
-    "STATUS": "PENDENTE",
+    /* NASCE AGUARDANDO CONFERÊNCIA — 02/09/2026, a pedido do usuário: os
+       destinatários passam a ser conferidos entre emitir e enviar, sempre.
+       A fila só processa PENDENTE e ERRO (ver o filtro mais abaixo), então
+       este status a faz ignorar a linha sem uma linha de mudança no motor de
+       envio. Quem promove para PENDENTE é o liberarEnvioOficio. */
+    "STATUS": OFDEST_STATUS_AGUARDANDO,
     "TENTATIVAS": 0,
     "ULTIMO_ERRO": "",
     "DATA_ULTIMA_TENTATIVA": "",
@@ -143,7 +148,41 @@ function normalizarOrigemFilaOficio_(tipo) {
   return "OFICIO";
 }
 
+/* LIMITE DO GMAIL NÃO É ERRO DO OFÍCIO — 10/09/2026
+   ══════════════════════════════════════════════════════════════════════════
+
+   O usuário: *"Se a cota estourou ele deve aparecer quando for iniciada"*.
+   Está certo, e o sistema não fazia isso. A intenção existia — a trava de
+   cota logo abaixo pausa sem gastar tentativa — mas ela mede o contador
+   ERRADO, e por isso nunca protegeu contra a falha que de fato acontece.
+
+   `MailApp.getRemainingDailyQuota()` conta DESTINATÁRIOS. O que estourou em
+   09/09 foi o limite de CHAMADAS ao serviço Gmail. Às 11h53 o medidor dizia
+   "96 restantes"; às 11h56 o envio morreu (item 77). A trava deixava passar,
+   o `send()` levantava exceção, e a partir daí:
+
+     1. classificarErroEnvio_ não conhecia a mensagem -> devolvia "ERRO";
+     2. "ERRO" soma UMA TENTATIVA;
+     3. o gatilho roda de 5 em 5 minutos e MAX_TENTATIVAS é 3;
+     4. em QUINZE MINUTOS o ofício queimava as três e virava ERRO_PERMANENTE;
+     5. no dia seguinte, com a cota renovada, ele NÃO era reenviado.
+
+   Um apagão de quinze minutos condenava o ofício para sempre. E em silêncio:
+   a linha fica com "Máximo de 3 tentativas atingido", que descreve o sintoma
+   e esconde a causa — quem lê procura e-mail inválido, não limite do Google.
+
+   POR ISSO O LIMITE TEM VEREDITO PRÓPRIO, "COTA", e ele não é um terceiro
+   tipo de erro: é a AUSÊNCIA de veredito. Não se aprendeu nada sobre este
+   ofício, então nada muda na linha dele — nem status, nem tentativa, nem
+   último erro. Ele continua exatamente como estava, esperando a cota voltar.
+
+   Mesma regra que a conferência da caixa de Enviados passou a seguir ontem, e
+   o mesmo reconhecedor (oficio_ehLimiteDoGmail_): ler e enviar saem do mesmo
+   orçamento, e os dois lados precisam chamar a mesma coisa pelo mesmo nome. */
 function classificarErroEnvio_(mensagemErro) {
+  if (typeof oficio_ehLimiteDoGmail_ === "function" &&
+      oficio_ehLimiteDoGmail_(mensagemErro)) return "COTA";
+
   var msg = String(mensagemErro || "").toLowerCase();
   var permanentes = [
     "invalid email", "e-mail inválido", "user unknown", "no such user",
@@ -201,6 +240,27 @@ function _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha,
 /* ============================================================
    processarFilaEnvioOficios
    ============================================================ */
+/* ══════════════════════════════════════════════════════════════════════════
+   POR QUE ESTA FICA PUBLICA E SEM PORTA — decidido em 01/09/2026, frente A
+
+   Isto e HANDLER DE GATILHO: o Apps Script chama a funcao PELO NOME, entao
+   ela nao pode virar privada. E a porta dupla, que resolveu o caso das
+   ferramentas de editor, aqui e o remedio errado: o exigirAdminOuSessao_
+   (AcessoModulos.gs:188) identifica quem executa por
+   Session.getActiveUser().getEmail(), e num gatilho por tempo esse e-mail
+   pode voltar VAZIO. Quando volta, a porta recusa — e o gatilho para.
+
+   Parar este gatilho para a operacao que esta VIVA no sindicato. Nao vale a
+   troca, e o que se ganharia e pouco: a funcao devolve so contadores (processados, enviados, erros), nao
+   devolve dado de escola nenhum, e nao permite enfileirar nada — quem
+   enfileira e o gerarOficioWeb, que tem porta. O que um anonimo
+   conseguiria e adiantar o envio de oficio que JA foi legitimamente
+   enfileirado, e a propria funcao ja protege a cota diaria de e-mail.
+
+   Fica publica, entao, e fica ANOTADA no teto de exposicao. Nao e aprovacao —
+   e o registro de uma decisao que se reabre se aparecer um jeito de
+   identificar o contexto de gatilho com seguranca.
+   ══════════════════════════════════════════════════════════════════════════ */
 function processarFilaEnvioOficios() {
   var LIMITE_POR_EXECUCAO   = 5;
   var PAUSA_ENTRE_ENVIOS_MS = 4000;
@@ -208,15 +268,7 @@ function processarFilaEnvioOficios() {
 
   if (typeof getAmbienteAtual === "function" &&
       getAmbienteAtual() === "homologacao") {
-    Logger.log("[HOMOLOGACAO] processarFilaEnvioOficios bloqueado: ambiente de homologação.");
-    return {
-      ok: true,
-      homologacao: true,
-      mensagem: "Envio de ofícios bloqueado em ambiente de homologação.",
-      processados: 0,
-      enviados: 0,
-      erros: 0
-    };
+    Logger.log("[HOMOLOGACAO] Fila ativa sob a política segura de destinatário único.");
   }
 
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
@@ -243,6 +295,11 @@ function processarFilaEnvioOficios() {
   }
 
   var headerMap            = getHeaderMap_(sh);
+  /* colId entrou na lista de obrigatórias em 20/08/2026 (commit 731ed4e) sem
+     ser declarada aqui — só na outra função que aquele commit tocou. O efeito
+     era ReferenceError logo abaixo, ao montar `obrigatorias`: a fila de envio
+     de ofícios parava antes de processar a primeira linha. */
+  var colId                = headerMap["ID"];
   var colNumero            = headerMap["NUMERO_OFICIO"];
   var colTipo              = headerMap["TIPO"];
   var colEscola            = headerMap["ESCOLA"];
@@ -263,6 +320,7 @@ function processarFilaEnvioOficios() {
   var colStatusRecebimento = headerMap["STATUS_RECEBIMENTO"];
 
   var obrigatorias = {
+    ID: colId,
     NUMERO_OFICIO: colNumero,
     TIPO: colTipo,
     ESCOLA: colEscola,
@@ -295,6 +353,14 @@ function processarFilaEnvioOficios() {
   var enviados     = 0;
   var erros        = 0;
   var pendentes    = 0;
+  var cotaAcabou   = false;
+  /* A RODADA NAO ENCERRA UM OFICIO EM SILENCIO - 10/09/2026.
+     Esgotar as tentativas e a morte do oficio: a partir dali a fila nao tenta
+     mais sozinha, nunca. Isso acontecia sem aparecer em lugar nenhum - a
+     rodada devolvia "Processamento concluido." e zero erros, porque condenar
+     nao contava como erro. Quem lia o retorno concluia que nao havia nada
+     para fazer, exatamente quando havia. */
+  var condenados   = 0;
 
   for (var i = 0; i < dados.length; i++) {
     var linha         = dados[i];
@@ -323,6 +389,7 @@ function processarFilaEnvioOficios() {
         "Máximo de " + MAX_TENTATIVAS + " tentativas atingido."
       );
 
+      condenados++;
       continue;
     }
 
@@ -355,6 +422,7 @@ function processarFilaEnvioOficios() {
       tentativas = parseInt(valoresLinha[colTentativas - 1], 10) || 0;
       if (tentativas >= MAX_TENTATIVAS) {
         _gravarResultadoFila_(sh, linhaPlanilha, totalCols, valoresLinha, colStatus, colTentativas, colUltimoErro, colDataUltimaTent, "ERRO_PERMANENTE", tentativas, "Máximo de " + MAX_TENTATIVAS + " tentativas atingido.");
+        condenados++;
         continue;
       }
 
@@ -402,25 +470,20 @@ function processarFilaEnvioOficios() {
         anexos.push(blob);
       });
 
-      var opcoes = montarOpcoesEmailSISGEP_(
+      var envio = enviarEmailOficio_(
         usuarioEnvio,
         htmlBody,
         anexos,
         assunto,
-        validacaoEmails.todos
+        validacaoEmails.todos,
+        "Segue ofício em anexo."
       );
 
-      GmailApp.sendEmail(opcoes.to, opcoes.subject, "Segue ofício em anexo.", {
-        htmlBody: opcoes.htmlBody,
-        attachments: opcoes.attachments || [],
-        name: opcoes.name,
-        from: opcoes.from,
-        replyTo: opcoes.replyTo,
-        bcc: opcoes.bcc
-      });
-
       valoresLinha[colDataEnvio - 1] = new Date();
-      valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+      /* O ID REAL da mensagem, no lugar do texto fixo "GMAILAPP_SEM_ID" que
+         ficava aqui — ver a nota grande em EmailOficios.gs. Sem ele não havia
+         como, da linha da planilha, achar o e-mail e provar que saiu. */
+      valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
       valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
       _gravarResultadoFila_(
@@ -441,7 +504,7 @@ function processarFilaEnvioOficios() {
       _atualizarRegistroOficioEnviado_(ss, numeroOficio);
 
       try {
-        registrarLogSistema({
+        registrarLogSistema_({
           usuario: usuarioEnvio,
           numero: numeroOficio + " (FILA)",
           tipo: tipo,
@@ -459,6 +522,39 @@ function processarFilaEnvioOficios() {
 
     } catch (e) {
       var tipoErro = classificarErroEnvio_(e.message);
+
+      /* COTA: a linha fica INTACTA e a rodada para aqui. Ver a nota em
+         classificarErroEnvio_. Gravar seria registrar sobre este ofício um
+         fato que é do dia inteiro; e seguir para os próximos quatro só
+         gastaria as tentativas deles pelo mesmo motivo. */
+      if (tipoErro === "COTA") {
+        cotaAcabou = true;
+
+        /* DEVOLVER O STATUS É O QUE FAZ A RETOMADA EXISTIR — e foi o teste que
+           me obrigou a escrever isto. A linha foi marcada PROCESSANDO antes do
+           envio, sob lock. Só sair do laço deixaria ela ali; e o filtro de
+           elegibilidade (logo acima) só aceita PENDENTE e ERRO. PROCESSANDO
+           nunca mais seria tentado: o ofício ficaria parado para sempre, que é
+           exatamente o dano que este conserto existe para impedir — trocado de
+           roupa.
+
+           Volta para o status que a linha TINHA (PENDENTE ou ERRO), não para
+           um valor fixo: um ofício que já falhara antes continua ERRO, com o
+           histórico dele preservado. TENTATIVAS e ULTIMO_ERRO não se tocam. */
+        try {
+          var vRestaura = sh.getRange(linhaPlanilha, 1, 1, totalCols).getValues()[0];
+          vRestaura[colStatus - 1] = statusAtualFila || "PENDENTE";
+          sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([vRestaura]);
+          SpreadsheetApp.flush();
+        } catch (eRestaura) {
+          Logger.log("⚠ Não consegui devolver a linha " + linhaPlanilha +
+                     " para " + statusAtualFila + ": " + eRestaura.message);
+        }
+
+        Logger.log("⏸ Limite diário do Gmail atingido na linha " + linhaPlanilha +
+                   ". Nenhuma tentativa gasta; a fila retoma quando a cota renovar.");
+        break;
+      }
 
       _gravarResultadoFila_(
         sh,
@@ -482,15 +578,35 @@ function processarFilaEnvioOficios() {
   SpreadsheetApp.flush();
   _atualizarBadgeMonitoramento_(pendentes);
 
+  var mensagem = cotaAcabou
+    ? "O limite diário de e-mail do Google se esgotou na conta que envia. " +
+      "Os ofícios que faltam continuam intactos na fila, sem nenhuma " +
+      "tentativa gasta — a fila retoma sozinha quando o limite zerar, " +
+      "amanhã. Não é preciso refazer nada."
+    : "Processamento concluído.";
+
+  /* O aviso diz o que fazer, e nao so o que aconteceu: encerrado nao volta
+     sozinho, e a pessoa precisa saber que existe uma acao dela do outro lado
+     disto. Sem a segunda frase, "encerrado" se le como "acabou", e o oficio
+     fica parado esperando uma fila que nunca mais vai pega-lo. */
+  if (condenados > 0) {
+    mensagem += " ATENÇÃO: " + condenados + " ofício(s) esgotaram as " +
+      MAX_TENTATIVAS + " tentativas e foram encerrados. A fila não tenta mais " +
+      "sozinha. Para reenviar, devolva o status para PENDENTE no Histórico — " +
+      "as tentativas voltam a zero e o ofício sai na próxima rodada.";
+  }
+
   return {
     ok: true,
-    mensagem: "Processamento concluído.",
+    mensagem: mensagem,
     processados: processados,
     enviados: enviados,
-    erros: erros
+    erros: erros,
+    condenados: condenados,
+    cotaAcabou: cotaAcabou
   };
 }
-function enviarOficioDaFilaAgora(numero, tokenSessao) {
+function enviarOficioDaFilaAgora(numero, tokenSessao, filaId) {
   var sessaoDocumentos = exigirModulo_(tokenSessao, "documentos", false);
   if (!numero) return { ok: false, mensagem: "Número do ofício não informado." };
 
@@ -503,6 +619,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var headerMap = getHeaderMap_(sh);
 
+  var colId                  = headerMap["ID"];
   var colNumero              = headerMap["NUMERO_OFICIO"];
   var colEmailPrincipal      = headerMap["EMAIL_PRINCIPAL"];
   var colEmailsTodos         = headerMap["EMAILS_TODOS"];
@@ -548,21 +665,55 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var totalCols = sh.getLastColumn();
   var dados = sh.getRange(2, 1, sh.getLastRow() - 1, totalCols).getValues();
   var linhaIdx = -1;
+  var linhaIdxFallback = -1;
+  var numeroBuscado = String(numero).trim();
+  var filaIdBuscado = String(filaId || "").trim();
 
-  for (var i = 0; i < dados.length; i++) {
-    if (String(dados[i][colNumero - 1] || "").trim() === String(numero).trim()) {
-      linhaIdx = i;
-      break;
+  // Caminho principal: o ID é único e identifica exatamente a linha criada
+  // nesta emissão. Isso elimina ambiguidades quando dois ambientes possuem o
+  // mesmo NUMERO_OFICIO (ex.: histórico de Produção copiado para HML).
+  if (filaIdBuscado) {
+    for (var i = dados.length - 1; i >= 0; i--) {
+      if (String(dados[i][colId - 1] || "").trim() === filaIdBuscado) {
+        linhaIdx = i;
+        break;
+      }
     }
-  }
 
-  if (linhaIdx === -1) {
-    return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Registro da fila não encontrado para o ID informado." };
+    }
+
+    var numeroDoId = String(dados[linhaIdx][colNumero - 1] || "").trim();
+    if (numeroBuscado && numeroDoId !== numeroBuscado) {
+      return { ok: false, mensagem: "O ID da fila não corresponde ao número do ofício informado." };
+    }
+  } else {
+    // Compatibilidade com chamadas antigas: sem filaId, usa o número e
+    // prioriza o registro acionável mais recente.
+    for (var j = dados.length - 1; j >= 0; j--) {
+      if (String(dados[j][colNumero - 1] || "").trim() !== numeroBuscado) continue;
+
+      var statusCandidato = String(dados[j][colStatus - 1] || "").trim().toUpperCase();
+      if (statusCandidato === "PENDENTE" || statusCandidato === "ERRO" || statusCandidato === "PROCESSANDO") {
+        linhaIdx = j;
+        break;
+      }
+
+      if (linhaIdxFallback === -1) linhaIdxFallback = j;
+    }
+
+    if (linhaIdx === -1) linhaIdx = linhaIdxFallback;
+
+    if (linhaIdx === -1) {
+      return { ok: false, mensagem: "Ofício " + numero + " não encontrado na fila." };
+    }
   }
 
   var linha = dados[linhaIdx];
   var linhaPlanilha = linhaIdx + 2;
   var status = String(linha[colStatus - 1] || "").trim().toUpperCase();
+  Logger.log("[ENVIO_AGORA] Selecionado ofício " + numero + " na linha " + linhaPlanilha + " com status " + status + ".");
 
   if (status === "ENVIADO") {
     return { ok: true, mensagem: "E-mail já foi enviado anteriormente." };
@@ -577,7 +728,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
   var emailPrincipal = String(linha[colEmailPrincipal - 1] || "").trim();
   var anexosJson     = String(linha[colAnexosJson - 1] || "").trim();
   var tentativas     = parseInt(linha[colTentativas - 1], 10) || 0;
-  var usuarioEnvio   = "financeiro@sindeducacao.com";
+  var usuarioEnvio   = "secretaria@sindeducacao.com";
 
   var validacaoEmails = validarListaEmails_(emailsTodos || emailPrincipal || "");
 
@@ -587,8 +738,21 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   var valoresLinha;
   var lockEnvioAgora = LockService.getScriptLock();
-  if (!lockEnvioAgora.tryLock(5000)) {
-    return { ok: false, mensagem: "Fila ocupada. Tente novamente em alguns segundos." };
+  var lockObtido = false;
+
+  // O SISGEP possui vários módulos no mesmo projeto. Um lock global curto de
+  // 5 s fazia o botão "Enviar agora" desistir durante operações paralelas,
+  // sem sequer registrar uma tentativa. Aguarda um pouco mais, mantendo a
+  // proteção contra envio duplicado.
+  try {
+    lockObtido = lockEnvioAgora.tryLock(15000);
+  } catch (eLock) {
+    Logger.log("[ENVIO_AGORA] Falha ao obter lock para o ofício " + numero + ": " + (eLock.message || eLock));
+  }
+
+  if (!lockObtido) {
+    Logger.log("[ENVIO_AGORA] Fila permaneceu ocupada para o ofício " + numero + " após 15 s.");
+    return { ok: false, mensagem: "Fila ocupada. Aguarde alguns segundos e tente novamente." };
   }
 
   try {
@@ -607,7 +771,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([valoresLinha]);
     SpreadsheetApp.flush();
   } finally {
-    lockEnvioAgora.releaseLock();
+    if (lockObtido) lockEnvioAgora.releaseLock();
   }
 
   try {
@@ -632,25 +796,18 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
       }
     }
 
-    var opcoes = montarOpcoesEmailSISGEP_(
+    var envio = enviarEmailOficio_(
       usuarioEnvio,
       htmlBody,
       anexos,
       assunto,
-      validacaoEmails.todos
+      validacaoEmails.todos,
+      "Segue ofício em anexo."
     );
 
-    GmailApp.sendEmail(opcoes.to, opcoes.subject, "Segue ofício em anexo.", {
-      htmlBody: opcoes.htmlBody,
-      attachments: opcoes.attachments || [],
-      name: opcoes.name,
-      from: opcoes.from,
-      replyTo: opcoes.replyTo,
-      bcc: opcoes.bcc
-    });
-
     valoresLinha[colDataEnvio - 1] = new Date();
-    valoresLinha[colMensagemId - 1] = "GMAILAPP_SEM_ID";
+    /* O ID REAL da mensagem — ver a nota em EmailOficios.gs. */
+    valoresLinha[colMensagemId - 1] = (envio && envio.mensagemId) || "";
     valoresLinha[colStatusRecebimento - 1] = "ENVIADO";
 
     _gravarResultadoFila_(
@@ -672,7 +829,7 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     _atualizarRegistroOficioEnviado_(ss, numero);
 
     try {
-      registrarLogSistema({
+      registrarLogSistema_({
         usuario: usuarioEnvio,
         numero: numero,
         tipo: tipo,
@@ -689,6 +846,36 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
 
   } catch (e) {
     var tipoErro = classificarErroEnvio_(e.message);
+
+    /* COTA: nada é gravado — nem status, nem tentativa. Aqui tem gente
+       olhando a tela, então a mensagem precisa dizer as três coisas que
+       decidem o que ela faz em seguida: o ofício NÃO saiu, ele está
+       intacto, e tentar de novo agora só gasta o que ainda resta. */
+    if (tipoErro === "COTA") {
+      /* Mesma devolução do laço: a linha está em PROCESSANDO desde antes do
+         envio, e PROCESSANDO é o único status que nem o gatilho nem o botão
+         voltam a tentar. Sem isto, o ofício ficaria travado — e o botão diria
+         "já está sendo processado" para sempre. */
+      try {
+        var vDevolve = sh.getRange(linhaPlanilha, 1, 1, totalCols).getValues()[0];
+        vDevolve[colStatus - 1] = statusAtualEnvio || "PENDENTE";
+        sh.getRange(linhaPlanilha, 1, 1, totalCols).setValues([vDevolve]);
+        SpreadsheetApp.flush();
+      } catch (eDevolve) {
+        Logger.log("⚠ Não consegui devolver o ofício " + numero +
+                   " para " + statusAtualEnvio + ": " + eDevolve.message);
+      }
+
+      return {
+        ok: false,
+        cotaAcabou: true,
+        mensagem: "O ofício " + numero + " NÃO foi enviado: o limite diário " +
+                  "de e-mail do Google se esgotou na conta que envia. Ele " +
+                  "continua intacto na fila e nenhuma tentativa foi gasta — " +
+                  "tente de novo amanhã, quando o limite zera. Tentar agora " +
+                  "só gasta o que ainda resta."
+      };
+    }
 
     _gravarResultadoFila_(
       sh,
@@ -709,7 +896,12 @@ function enviarOficioDaFilaAgora(numero, tokenSessao) {
     return { ok: false, mensagem: "Erro ao enviar: " + (e.message || e) };
   }
 }
-function sincronizarStatusOficiosEnviados() {
+function sincronizarStatusOficiosEnviados(tokenSessao) {
+  /* PORTA DUPLA EM 01/09/2026 — frente A do Modulo 03. Escreve na planilha
+     e nao tinha checagem nenhuma. E dupla porque isto e ferramenta que se
+     roda do EDITOR, onde nao existe token: fechar so com token tiraria o
+     unico jeito de usa-la. Mesmo padrao dos gatilhos (t121). */
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Sincronizacao de status dos oficios enviados", true);
   var ss    = SpreadsheetApp.openById(PLANILHA_ID);
   var sh    = obterOuCriarAbaFilaOficios_();
   var shReg = ss.getSheetByName(PLANILHA_REGISTRO);
@@ -768,7 +960,8 @@ function sincronizarStatusOficiosEnviados() {
   if (naoEncontrados.length) Logger.log("⚠️ Não encontrados: " + naoEncontrados.join(", "));
 }
 
-function instalarTriggerFilaEnvioOficios() {
+function instalarTriggerFilaEnvioOficios(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Instalação do gatilho da fila de Ofícios", true);
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === "processarFilaEnvioOficios") ScriptApp.deleteTrigger(t);
   });
@@ -777,7 +970,8 @@ function instalarTriggerFilaEnvioOficios() {
   return { ok: true, mensagem: "Trigger instalado com sucesso." };
 }
 
-function removerTriggerFilaEnvioOficios() {
+function removerTriggerFilaEnvioOficios(tokenSessao) {
+  exigirAdminOuSessao_(tokenSessao, "documentos", "Remoção do gatilho da fila de Ofícios", true);
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === "processarFilaEnvioOficios") ScriptApp.deleteTrigger(t);
   });
@@ -786,7 +980,12 @@ function removerTriggerFilaEnvioOficios() {
 
 /* ── Dashboard da fila ── */
 
-function dashboardFilaEnvioResumo() {
+function dashboardFilaEnvioResumo(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
   if (!sh || sh.getLastRow() < 2) {
@@ -817,7 +1016,12 @@ function dashboardFilaEnvioResumo() {
   };
 }
 
-function dashboardFilaEnvioGraficos() {
+function dashboardFilaEnvioGraficos(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
   if (!sh || sh.getLastRow() < 2) {
@@ -843,7 +1047,12 @@ function dashboardFilaEnvioGraficos() {
   return { status: status, tipos: tipos };
 }
 
-function dashboardFilaEnvioErrosRecentes() {
+function dashboardFilaEnvioErrosRecentes(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var LIMITE = 20;
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");
@@ -883,7 +1092,12 @@ function dashboardFilaEnvioErrosRecentes() {
     .slice(0, LIMITE);
 }
 
-function dashboardFilaPendenciasCriticas() {
+function dashboardFilaPendenciasCriticas(tokenSessao) {
+  /* PORTA ACRESCENTADA EM 01/09/2026 — frente A da auditoria do Modulo 03.
+     Devolve dado de escola (razao social, CNPJ, e-mails) e nao tinha checagem
+     nenhuma. No Apps Script toda funcao global e endpoint para QUALQUER pagina
+     do projeto, inclusive as anonimas que o Code.gs serve. Ver a nota do t125. */
+  exigirModulo_(tokenSessao, "documentos", false);
   var LIMITE = 20;
   var ss = SpreadsheetApp.openById(PLANILHA_ID);
   var sh = ss.getSheetByName("FILA_ENVIO_OFICIOS");

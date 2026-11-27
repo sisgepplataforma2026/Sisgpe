@@ -1471,7 +1471,7 @@ function listarReservasParaAutorizacaoParqueChina(parametros, tokenSessao) {
     });
     lista.sort(function(a,b){return pcDataDia_(a.dataEntrada)-pcDataDia_(b.dataEntrada)||String(a.nomeSolicitante).localeCompare(String(b.nomeSolicitante));});
     var config=obterConfigParqueChina_();
-    return {ok:true,reservas:lista,emailParque:String(config.EMAIL_CHINA_PARK||""),emailsDisponiveis:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK||"secretaria@sindeducacao.com;financeiro@sindeducacao.com;contato@chinapark.com.br"),emailCc:String(config.EMAIL_CC_CHINA_PARK||""),emailCco:String(config.EMAIL_CCO_CHINA_PARK||""),comunicacao:{horarioCheckin:String(config.HORARIO_CHECKIN||"14:00"),horarioCheckout:String(config.HORARIO_CHECKOUT||"12:00"),endereco:String(config.ENDERECO_CHINA_PARK||""),linkMapa:String(config.LINK_MAPA_CHINA_PARK||""),emailResposta:String(config.EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")},dataInicio:Utilities.formatDate(inicio,PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd"),dataFim:Utilities.formatDate(new Date(fim.getTime()-86400000),PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd"),proximoNumero:typeof preverProximoNumeroOficio==="function"?preverProximoNumeroOficio():""};
+    return {ok:true,reservas:lista,emailParque:String(config.EMAIL_CHINA_PARK||""),emailsDisponiveis:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK||"secretaria@sindeducacao.com;financeiro@sindeducacao.com;contato@chinapark.com.br"),emailCc:String(config.EMAIL_CC_CHINA_PARK||""),emailCco:String(config.EMAIL_CCO_CHINA_PARK||""),comunicacao:{horarioCheckin:String(config.HORARIO_CHECKIN||"14:00"),horarioCheckout:String(config.HORARIO_CHECKOUT||"12:00"),endereco:String(config.ENDERECO_CHINA_PARK||""),linkMapa:String(config.LINK_MAPA_CHINA_PARK||""),emailResposta:String(config.EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")},dataInicio:Utilities.formatDate(inicio,PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd"),dataFim:Utilities.formatDate(new Date(fim.getTime()-86400000),PARQUE_CHINA_CONFIG.TIMEZONE,"yyyy-MM-dd"),proximoNumero:typeof preverProximoNumeroOficio_==="function"?preverProximoNumeroOficio_():""};
   } catch(erro){Logger.log(erro);return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
@@ -1542,7 +1542,7 @@ function pcMontarHtmlOficioAutorizacao_(reservas,dados,numero,isPreview) {
 
 function previewOficioAutorizacaoParqueChina(dados, tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
-  try{pcExigirAdmin_(tokenSessao);dados=dados||{};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],String(dados.tipoEmissao||"").toUpperCase()==="RETIFICACAO");if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva."};var numero=typeof preverProximoNumeroOficio==="function"?preverProximoNumeroOficio():"PRÉVIA";return {ok:true,html:pcMontarHtmlOficioAutorizacao_(reservas,dados,"PRÉVIA · "+numero,true),proximoNumero:numero};}catch(erro){return {ok:false,mensagem:String(erro.message||erro)};}
+  try{pcExigirAdmin_(tokenSessao);dados=dados||{};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],String(dados.tipoEmissao||"").toUpperCase()==="RETIFICACAO");if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva."};var numero=typeof preverProximoNumeroOficio_==="function"?preverProximoNumeroOficio_():"PRÉVIA";return {ok:true,html:pcMontarHtmlOficioAutorizacao_(reservas,dados,"PRÉVIA · "+numero,true),proximoNumero:numero};}catch(erro){return {ok:false,mensagem:String(erro.message||erro)};}
 }
 
 function pcRegistrarOficioProcessando_(numero,codigo,reservas,dados,responsavel) {
@@ -1580,11 +1580,11 @@ function emitirOficioAutorizacaoParqueChina(dados, tokenSessao) {
     var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};
     var destinos=pcNormalizarDestinatariosOficio_(dados,obterConfigParqueChina_()),emailsParque=destinos.para;if(!emailsParque.length)return {ok:false,mensagem:"Selecione pelo menos um destinatário principal (Para)."};dados.emailParque=emailsParque.join(",");dados.emailCc=destinos.cc.join(",");dados.emailCco=destinos.cco.join(",");
     var tipo=String(dados.tipoEmissao||"SEMANAL").toUpperCase(),permitir=tipo==="RETIFICACAO";
-    if(typeof gerarProximoNumeroSeguro!=="function")throw new Error("A função oficial gerarProximoNumeroSeguro não foi encontrada.");
+    if(typeof gerarProximoNumeroSeguro_!=="function")throw new Error("A função oficial gerarProximoNumeroSeguro_ não foi encontrada.");
     var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],permitir);if(!reservas.length)throw new Error("Selecione pelo menos uma reserva.");
     var codigo="",registroReservado=false;
     for(var tentativa=0;tentativa<3&&!registroReservado;tentativa++){
-      numero=gerarProximoNumeroSeguro();
+      numero=gerarProximoNumeroSeguro_();
       var lock=LockService.getScriptLock();if(!lock.tryLock(15000))throw new Error("CONCORRENCIA");
       try{
         if(pcNumeroOficioJaRegistrado_(numero))continue;
@@ -1678,7 +1678,7 @@ function pcMontarEmailTesteParque_(reservas,proximoNumero) {
 
 function enviarTesteEmailAutorizacaoParqueChina(dados,tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
-  try{var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};var destinos=pcNormalizarDestinatariosOficio_(dados,obterConfigParqueChina_());if(!destinos.para.length)return {ok:false,mensagem:"Selecione pelo menos um destinatário principal (Para)."};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],true);if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva para compor o teste."};var proximo=typeof preverProximoNumeroOficio==="function"?preverProximoNumeroOficio():"—",assunto="[TESTE — NÃO É OFÍCIO] Autorização China Park — prévia "+proximo,opcoes={htmlBody:pcMontarEmailTesteParque_(reservas,proximo),name:"SindEducação-ES | SISGEP",replyTo:String(obterConfigParqueChina_().EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")};if(destinos.cc.length)opcoes.cc=destinos.cc.join(",");if(destinos.cco.length)opcoes.bcc=destinos.cco.join(",");GmailApp.sendEmail(destinos.para.join(","),assunto,"TESTE SISGEP — esta mensagem não é um ofício e não autoriza entrada.",opcoes);pcRegistrarComunicacao_("","PRÉVIA "+proximo,"EMAIL_TESTE_PARQUE",destinos.para.join(","),"ENVIADO",responsavel,"CC: "+destinos.cc.join(",")+" · CCO: "+destinos.cco.join(","));pcAuditar_("","EMAIL_TESTE_AUTORIZACAO_CHINA_PARK","","ENVIADO",responsavel,"",{proximoNumeroNaoReservado:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco,reservas:reservas.map(function(r){return r.idReserva;})});return {ok:true,mensagem:"E-mail de teste enviado. Nenhum número de ofício foi consumido.",proximoNumero:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco};}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
+  try{var sessao=pcExigirAdmin_(tokenSessao),responsavel=sessao.nome||sessao.usuario||sessao.email||"SISGEP";dados=dados||{};var destinos=pcNormalizarDestinatariosOficio_(dados,obterConfigParqueChina_());if(!destinos.para.length)return {ok:false,mensagem:"Selecione pelo menos um destinatário principal (Para)."};var reservas=pcSelecionarReservasAutorizacao_(dados.idsReservas||[],true);if(!reservas.length)return {ok:false,mensagem:"Selecione pelo menos uma reserva para compor o teste."};var proximo=typeof preverProximoNumeroOficio_==="function"?preverProximoNumeroOficio_():"—",assunto="[TESTE — NÃO É OFÍCIO] Autorização China Park — prévia "+proximo,opcoes={htmlBody:pcMontarEmailTesteParque_(reservas,proximo),name:"SindEducação-ES | SISGEP",replyTo:String(obterConfigParqueChina_().EMAIL_RESPOSTA_BENEFICIOS||"financeiro@sindeducacao.com")};if(destinos.cc.length)opcoes.cc=destinos.cc.join(",");if(destinos.cco.length)opcoes.bcc=destinos.cco.join(",");GmailApp.sendEmail(destinos.para.join(","),assunto,"TESTE SISGEP — esta mensagem não é um ofício e não autoriza entrada.",opcoes);pcRegistrarComunicacao_("","PRÉVIA "+proximo,"EMAIL_TESTE_PARQUE",destinos.para.join(","),"ENVIADO",responsavel,"CC: "+destinos.cc.join(",")+" · CCO: "+destinos.cco.join(","));pcAuditar_("","EMAIL_TESTE_AUTORIZACAO_CHINA_PARK","","ENVIADO",responsavel,"",{proximoNumeroNaoReservado:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco,reservas:reservas.map(function(r){return r.idReserva;})});return {ok:true,mensagem:"E-mail de teste enviado. Nenhum número de ofício foi consumido.",proximoNumero:proximo,para:destinos.para,cc:destinos.cc,cco:destinos.cco};}catch(erro){return {ok:false,mensagem:pcMensagemErro_(erro)};}
 }
 
 function enviarConfirmacoesHospedesParqueChina(dados, tokenSessao) {
@@ -1792,12 +1792,12 @@ function validarIntegracaoAutorizacoesParqueChina(tokenSessao) {
   exigirModulo_(tokenSessao, "beneficios", false);
   try {
     var faltando=[];
-    ["gerarProximoNumeroSeguro","preverProximoNumeroOficio","gerarHtmlOficioCompleto_","oficios_converterHtmlParaPdf_","criarFilaEnvioOficio_","enviarOficioDaFilaAgora","appendRowByHeader_","getHeaderMap_"].forEach(function(nome){
+    ["gerarProximoNumeroSeguro_","preverProximoNumeroOficio_","gerarHtmlOficioCompleto_","oficios_converterHtmlParaPdf_","criarFilaEnvioOficio_","enviarOficioDaFilaAgora","appendRowByHeader_","getHeaderMap_"].forEach(function(nome){
       try { if (typeof globalThis[nome] !== "function") faltando.push(nome); }
       catch(e) { if (eval("typeof "+nome) !== "function") faltando.push(nome); }
     });
     var config=obterConfigParqueChina_();
-    var resultado={ok:faltando.length===0,estruturaReservas:pcValidarMapaColunas_(),dependenciasFaltando:faltando,emailParqueConfigurado:pcEmailsValidos_(config.EMAIL_CHINA_PARK).length>0,seletorDestinatariosConfigurado:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK).length>0,opcoesDestinatarios:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK),proximoNumero:faltando.indexOf("preverProximoNumeroOficio")===-1?preverProximoNumeroOficio():"",mensagem:faltando.length?"Existem dependências pendentes.":"Integração de autorizações pronta para homologação."};
+    var resultado={ok:faltando.length===0,estruturaReservas:pcValidarMapaColunas_(),dependenciasFaltando:faltando,emailParqueConfigurado:pcEmailsValidos_(config.EMAIL_CHINA_PARK).length>0,seletorDestinatariosConfigurado:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK).length>0,opcoesDestinatarios:pcEmailsValidos_(config.EMAILS_DESTINATARIOS_CHINA_PARK),proximoNumero:faltando.indexOf("preverProximoNumeroOficio_")===-1?preverProximoNumeroOficio_():"",mensagem:faltando.length?"Existem dependências pendentes.":"Integração de autorizações pronta para homologação."};
     Logger.log(JSON.stringify(resultado));
     return resultado;
   } catch(erro){return {ok:false,mensagem:String(erro.message||erro)};}
