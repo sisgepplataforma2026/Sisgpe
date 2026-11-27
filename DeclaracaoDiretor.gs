@@ -1210,6 +1210,38 @@ function declEnviarEmail(numero, emails, tokenSessao) {
   }
 }
 
+/**
+ * O TEXTO DO WHATSAPP DA DECLARAÇÃO — escrito pelo usuário (27/11/2026), usado palavra por palavra; só os dados variam. Quem recebe é o
+ * PRÓPRIO DIRETOR. Linha sem dado some, em vez de sair vazia. Sem link (o PDF não abre por link), o bloco do documento vira
+ * "O documento segue por e-mail." — o link de um arquivo privado do Drive não abriria no celular do diretor.
+ */
+function declTextoWhatsapp_(p) {
+  p = p || {};
+  var nome = (typeof voucherPrimeiroNome_ === "function") ? voucherPrimeiroNome_(p.nome) : String(p.nome || "").split(/\s+/)[0];
+  var l = [];
+  l.push("Olá" + (nome ? ", " + nome : "") + "! Tudo bem? 😊");
+  l.push("");
+  l.push("Aqui é do *SindEducação-ES*.");
+  l.push("");
+  l.push("✅ Sua *Declaração de Liberação Sindical* foi emitida com sucesso!");
+  l.push("");
+  if (p.numero) l.push("📄 *Declaração:* nº " + p.numero);
+  if (p.escola) l.push("🏫 *Instituição de ensino:* " + p.escola);
+  if (p.dataLiberacao) l.push("📅 *Data da liberação:* " + p.dataLiberacao);
+  if (p.periodoRotulo) l.push("🕒 *Período:* " + p.periodoRotulo);
+  l.push("");
+  if (p.link) { l.push("📥 *Acesse sua declaração:*"); l.push(p.link); }
+  else l.push("📥 *O documento segue por e-mail.*");
+  l.push("");
+  l.push("Guarde este documento e apresente-o à direção da instituição de ensino, quando solicitado.");
+  l.push("");
+  l.push("Desejamos um excelente e abençoado dia!");
+  l.push("");
+  l.push("*SindEducação-ES*");
+  l.push("Compromisso com os educadores.");
+  return l.join("\n");
+}
+
 function declPrepararWhatsapp(numero, tokenSessao) {
   var sessao = exigirModulo_(tokenSessao, "documentos", false), achado = declAcharEmissao_(numero);
   if (!achado) return { ok: false, mensagem: "Declaração não encontrada." };
@@ -1219,11 +1251,27 @@ function declPrepararWhatsapp(numero, tokenSessao) {
   if (fone.length < 10) return { ok: false, mensagem: "O diretor não possui celular válido em Associados." };
   if (fone.length <= 11) fone = "55" + fone;
   var urlPdf = declTexto_(achado.valores[achado.hm.PDF_URL - 1]);
-  var msg = "Olá! A declaração " + numero + " foi emitida para ciência. PDF: " + urlPdf;
+  /* SÓ LEITURA: o link entra na mensagem apenas se o arquivo JÁ abre por link. Esta função não altera compartilhamento de arquivo nenhum. */
+  var link = "";
+  var pdfId = declTexto_(achado.valores[achado.hm.PDF_ID - 1]);
+  if (pdfId && urlPdf) {
+    try {
+      var arq = DriveApp.getFileById(pdfId);
+      if (/^ANYONE/.test(String(arq.getSharingAccess()))) link = urlPdf;   // lê; "ANYONE_WITH_LINK" ou "ANYONE" = abre por link
+    } catch (eLink) { Logger.log("Declaração " + numero + ": não consegui ler o compartilhamento do PDF — " + eLink.message); }
+  }
+  var msg = declTextoWhatsapp_({
+    nome: declTexto_(achado.valores[achado.hm.DIRETOR_NOME - 1]),
+    numero: numero,
+    escola: declTexto_(achado.valores[achado.hm.ESCOLA_NOME - 1]),
+    dataLiberacao: declDataBR_(achado.valores[achado.hm.DATA_LIBERACAO - 1]),
+    periodoRotulo: (DECL_PERIODOS[declTexto_(achado.valores[achado.hm.PERIODO - 1])] || DECL_PERIODOS[""]).rotulo,
+    link: link
+  });
   achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_STATUS).setValue("PREPARADO");
   achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_EM).setValue(new Date());
   achado.sh.getRange(achado.linha, achado.hm.WHATSAPP_POR).setValue(declQuem_(sessao));
-  return { ok: true, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(msg), mensagem: msg };
+  return { ok: true, url: "https://wa.me/" + fone + "?text=" + encodeURIComponent(msg), mensagem: msg, linkAberto: !!link };
 }
 
 function declConfirmarWhatsapp(numero, tokenSessao) {
