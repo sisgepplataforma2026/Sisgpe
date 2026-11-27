@@ -48,6 +48,18 @@ const p = (...a) => console.log(...a);
       return { campos, vazio, botoes, opcoes, titulo };
     });
     p("formulário aberto pelo botão novo:", JSON.stringify(pop));
+    /* 3) O CÓDIGO DA PÁGINA sobre o tipo e o CPF (só LEITURA do texto dos scripts; nada pessoal). 27/11/2026: o tipo volta para "associado" e o CPF vira obrigatório. */
+    const trechos = await pg.evaluate(() => {
+      const out = [];
+      const fontes = [...document.querySelectorAll("script")].map(x => x.textContent || "").filter(t => /popup-tipo-ingresso|Informe o CPF/.test(t));
+      fontes.forEach(t => {
+        [/Informe o CPF/g, /emitirNovoIngressoAdmin\s*\(/g, /popup-tipo-ingresso/g].forEach(re => {
+          let m, n = 0; while ((m = re.exec(t)) && n < 3) { out.push(re.source.slice(0, 20) + " @" + m.index + ": " + t.slice(Math.max(0, m.index - 220), m.index + 260).replace(/\s+/g, " ")); n++; }
+        });
+      });
+      return out.slice(0, 9);
+    }).catch(() => []);
+    trechos.forEach(t => p("TRECHO", t.slice(0, 560)));
     await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
   } catch (e) { p("ERRO:", String(e.message).slice(0, 160)); process.exitCode = 1; }
   finally { await br.close(); }
