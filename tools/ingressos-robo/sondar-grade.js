@@ -53,11 +53,11 @@ const p = (...a) => console.log(...a);
       const out = [];
       const fontes = [...document.querySelectorAll("script")].map(x => x.textContent || "").filter(t => /popup-tipo-ingresso|Informe o CPF/.test(t));
       fontes.forEach(t => {
-        [/Informe o CPF/g, /emitirNovoIngressoAdmin\s*\(/g, /popup-tipo-ingresso/g].forEach(re => {
+        [/baixarModeloImportacao\s*\(/g, /importar[A-Z]\w*\s*\(/g, /CPF[^"\x27]{0,40}obrigat/gi, /admin_import\w*/g].forEach(re => {
           let m, n = 0; while ((m = re.exec(t)) && n < 3) { out.push(re.source.slice(0, 20) + " @" + m.index + ": " + t.slice(Math.max(0, m.index - 220), m.index + 260).replace(/\s+/g, " ")); n++; }
         });
       });
-      return out.slice(0, 9);
+      return out.slice(0, 12);
     }).catch(() => []);
     trechos.forEach(t => p("TRECHO", t.slice(0, 560)));
     await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
