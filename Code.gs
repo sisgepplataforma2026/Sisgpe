@@ -132,6 +132,12 @@ function doGet(e) {
       return compassoIngressoCartao_pagina_(String(p.c || ""));
     }
 
+    // ── ÁREA DA PRESIDÊNCIA NO CELULAR (27/11/2026): ?page=presidencia&k=<link pessoal>. Toda a validação está em PresidenciaIngressos.gs;
+    // link inválido ou cancelado devolve uma página sem dado nenhum. Esta rota só entrega a página.
+    if (p.page === "presidencia") {
+      return presidencia_pagina_(String(p.k || ""));
+    }
+
     if (p.page === "ingresso") {
       Logger.log("[COMPASSO] Ingresso publico por token");
       return compasso_paginaIngressoPublica_(String(p.t || ""));
