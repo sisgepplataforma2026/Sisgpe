@@ -20,10 +20,9 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0;background:var(--bg);color:var(--g800);font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;padding-bottom:84px}
   .of-modulo-header{background:linear-gradient(135deg,#001f4d 0%,#002f6c 50%,#1565C0 100%);padding:22px 18px 18px;color:#fff}
-  .of-modulo-header{display:flex;align-items:center;gap:14px}
-  .of-modulo-header .txt{flex:1;min-width:0}
-  .logo{display:none;height:60px;width:auto;max-width:118px;background:#fff;border-radius:12px;padding:6px 8px;object-fit:contain;flex:0 0 auto}
-  .logo.ok{display:block}
+  .faixa-logo{display:none;background:#fff;text-align:center;padding:12px 16px 10px;border-bottom:3px solid var(--gold)}
+  .faixa-logo.ok{display:block}
+  .logo{height:66px;width:auto;max-width:78%;object-fit:contain}
   .of-modulo-header small{display:block;color:var(--gold2);font-weight:800;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
   .of-modulo-header-title{font-size:21px;font-weight:800;margin:4px 0 2px}
   .of-modulo-header-sub{font-size:13px;color:rgba(255,255,255,.7)}
@@ -64,7 +63,8 @@
 </style>
 </head>
 <body>
-<div class="of-modulo-header"><img id="logo" class="logo" alt="SindEducação-ES" src="__PRES_LOGO__"><div class="txt"><small>SindEducação-ES · Compasso da Vida 2026</small><div class="of-modulo-header-title" id="oi">Olá!</div><div class="of-modulo-header-sub">Gerencie seus convidados e ingressos.</div></div></div>
+<div class="faixa-logo" id="faixaLogo"><img id="logo" class="logo" alt="SindEducação-ES" src="__PRES_LOGO__"></div>
+<div class="of-modulo-header"><small>SindEducação-ES · Compasso da Vida 2026</small><div class="of-modulo-header-title" id="oi">Olá!</div><div class="of-modulo-header-sub">Gerencie seus convidados e ingressos.</div></div>
 <div class="wrap">
 
   <div class="tela on" id="tInicio">
@@ -217,7 +217,7 @@
   document.querySelector('.nav').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(b) ir(b.getAttribute('data-t')); });
   $('bAdd').onclick=function(){ ir('tAdd'); }; $('bMeus').onclick=function(){ ir('tMeus'); };
   /* O logo oficial vem embutido (data URI). Sem ele, o cabeçalho segue de pé só com o texto. */
-  (function(){ var l=$('logo'); if(l&&/^data:image\//.test(l.getAttribute('src')||'')) l.className='logo ok'; })();
+  (function(){ var l=$('logo'); if(l&&/^data:image\//.test(l.getAttribute('src')||'')) $('faixaLogo').className='faixa-logo ok'; })();
   pintaLista(); estado();
 })();
 </script>
