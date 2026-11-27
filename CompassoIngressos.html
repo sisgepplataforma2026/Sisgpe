@@ -133,11 +133,18 @@
 <div id="ciPSolicitar" hidden>
   <div class="ci-passos"><i class="on" id="ciPasso1"></i><i id="ciPasso2"></i><i id="ciPasso3"></i></div>
   <div class="ci-passos-t" id="ciPassoT"><b>1 Dados</b> · 2 Conferência · 3 Confirmar</div>
-  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> Cada pessoa é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Associado: todos os campos; os demais: só nome e CPF.</div>
+  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> Cada pessoa é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Associado: todos os campos; Convidado e Acompanhante: só o nome; Cortesia e Pago: nome e CPF.</div>
   <div id="ciPessoas"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
     <button class="ci-btn ci-nv" data-ci="addPessoa">+ Adicionar pessoa</button>
     <button class="ci-btn ci-ol" data-ci="togPlan">📄 Subir planilha</button>
+    <button class="ci-btn ci-ol" data-ci="togZap">📋 Colar do WhatsApp</button>
+  </div>
+  <div class="ci-box" id="ciBoxZap" hidden>
+    <b>Lista do WhatsApp</b> <span style="font-size:12px;color:#64748b">— cole o texto do jeito que chegou: só nome e telefone. O SISGEP separa cada pessoa.</span>
+    <textarea id="ciZapTxt" placeholder="Ademir Carlos Pin 27 99913-9936&#10;Zenair: Zenaide Borges, Claudimar Matheus 27999154910"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center"><label style="font-size:12px;font-weight:700">Categoria da lista</label><select id="ciZapCat"><option value="convite">Convidado</option><option value="acompanhante">Acompanhante</option></select><button class="ci-btn ci-nv" data-ci="lerZap">Organizar lista</button></div>
+    <div id="ciZapRes" style="font-size:12px;margin-top:6px"></div>
   </div>
   <div class="ci-box" id="ciBoxPlan" hidden>
     <b>Planilha</b> <span style="font-size:12px;color:#64748b">— salve como CSV (colunas: Nome;Email;CPF;Telefone;Cidade;Escola;Tipo) ou cole aqui</span>
@@ -462,6 +469,22 @@
     for(var i=0;i<CATS.length;i++){ if(c===CATS[i].valor||c===CATS[i].rotulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')) return CATS[i].valor; }
     return '';
   }
+  /* LISTA COLADA DO WHATSAPP (27/11/2026): o servidor separa nome e telefone; cada pessoa entra no cartão de sempre, com a
+     categoria da lista, e segue o mesmo caminho: Só pesquisar → Gerar ingresso. Nada é emitido aqui. */
+  function lerZap(){
+    var txt=g('ciZapTxt').value;
+    if(!txt.trim()){ aviso('Cole o texto da lista primeiro.',true); return; }
+    rodar('compassoIngressos_organizarTexto',[txt,g('ciZapCat').value],function(r){
+      if(!r||!r.ok){ g('ciZapRes').innerHTML='<span style="color:#dc2626">'+esc((r&&r.mensagem)||'Não consegui ler a lista.')+'</span>'; return; }
+      lerDom();
+      if(LISTA.length===1&&vazia(LISTA[0])) LISTA=[];
+      r.itens.forEach(function(it){ LISTA.push({nome:it.nome,telefone:mTel(it.telefone||''),categoria:it.categoria,cpf:'',email:'',escola:'',cidade:''}); });
+      RESULT={}; g('ciZapTxt').value=''; g('ciBoxZap').hidden=true; g('ciZapRes').innerHTML='';
+      desenharPessoas();
+      aviso(r.mensagem+' Confira a lista e toque em Só pesquisar.');
+      if(r.ignoradas&&r.ignoradas.length) aviso('Não entendi: '+r.ignoradas.slice(0,3).join(' | '),true);
+    });
+  }
   function lerPlan(){
     var arq=g('ciArq').files&&g('ciArq').files[0];
     function usar(t){
@@ -538,7 +561,7 @@
   /* ══ eventos ══ */
   /* AÇÕES QUE FALAM COM O SERVIDOR: o botão trava no 1º toque, mostra "⏳ …" na hora e ignora toques repetidos
      (antes, tocar 2 ou 3 vezes parecia gerar 2 ou 3 pedidos). Destrava quando a resposta chega, certa ou errada. */
-  var OCUPADAS={emisPedir:'Pedindo…',exclPedir:'Pedindo…',conferir:'Pesquisando…',gerar:'Gerando…',zap:'Abrindo…',confirmar:'Registrando…',cancEmis:'Cancelando…',cancExcl:'Cancelando…',lerPlan:'Lendo…'};
+  var OCUPADAS={emisPedir:'Pedindo…',exclPedir:'Pedindo…',conferir:'Pesquisando…',gerar:'Gerando…',zap:'Abrindo…',confirmar:'Registrando…',cancEmis:'Cancelando…',cancExcl:'Cancelando…',lerPlan:'Lendo…',lerZap:'Organizando…'};
   document.getElementById('compassoIngressos').addEventListener('click',function(ev){
     var t=ev.target.closest('[data-ci]'); if(!t) return; var a=t.getAttribute('data-ci'), arg=t.getAttribute('data-arg');
     if(t.disabled) return;
@@ -565,6 +588,8 @@
     else if(a==='addPessoa') addPessoa(); else if(a==='addApos') addPessoa(Number(arg)); else if(a==='delPessoa') tirarPessoa(Number(arg));
     else if(a==='togPlan'){ var bx=g('ciBoxPlan'); bx.hidden=!bx.hidden; }
     else if(a==='lerPlan') lerPlan();
+    else if(a==='togZap'){ var bz=g('ciBoxZap'); bz.hidden=!bz.hidden; }
+    else if(a==='lerZap') lerZap();
     else if(a==='limpar'){ LISTA=[{}]; RESULT={}; ULTIMA=null; g('ciRes').innerHTML=''; g('ciEmis').hidden=true; passos(1); desenharPessoas(); }
     else if(a==='conferir') conferir(false); else if(a==='gerar') conferir(true);
     else if(a==='emisAbrir') emisAbrir(); else if(a==='emisVoltar'){ g('ciEmis').hidden=true; passos(2); }
