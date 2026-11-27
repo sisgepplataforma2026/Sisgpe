@@ -65,5 +65,5 @@ g.ScriptApp.getService = () => ({ getUrl: () => "https://script.google.com/macro
 b.ok(g.cingCartaoBase_() === "", "mesmo com o app publicado, enquanto desligado, não monta link do cartão");
 // 18/11/2026: a TickOne escreve "Acompanhante do Associado"; sem reconhecer, o PDF ia para a pasta principal e o texto saía de associado.
 b.ok(["Acompanhante do Associado", "Acompanhante de Associado", "Acompanhante Associado", "acompanhante", "ACOMPANHANTE DO ASSOCIADO"].every((r) => g.cingCategoria_(r) === "acompanhante"), "'Acompanhante do/de Associado' e variações = acompanhante");
-b.ok(g.cingCategoria_("Associado") === "associado" && g.cingCategoria_("Convite") === "convite" && g.cingCategoria_("Convidado") === "convite" && g.cingCategoria_("Cortesia") === "cortesia" && g.cingCategoria_("Pago") === "pago" && g.cingCategoria_("") === "", "as outras categorias seguem iguais");
+b.ok(g.cingCategoria_("Associado") === "associado" && g.cingCategoria_("Convite") === "convite" && g.cingCategoria_("Convidado") === "convite" && g.cingCategoria_("Cortesia") === "" && g.cingCategoria_("Pago") === "" && g.cingCategoria_("") === "", "as outras categorias seguem iguais");
 b.resumo();

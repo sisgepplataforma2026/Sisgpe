@@ -32,7 +32,8 @@ b.passo("1. CPF, telefone e categoria");
 b.ok(g.cingCpfValido_("529.982.247-25") && !g.cingCpfValido_("111.111.111-11") && !g.cingCpfValido_("123"), "CPF com dígito verificador");
 b.ok(g.cingFone_("(27) 99999-0001") === "5527999990001" && g.cingFone_("5527999990001") === "5527999990001" && g.cingFone_("99999-0002") === "" && g.cingFone_("(27) 3333-4444") === "552733334444", "telefone: põe o 55, recusa sem DDD");
 b.ok(g.cingCategoria_("Acompanhante Associado") === "acompanhante" && g.cingCategoria_("Acompanhante de Associado") === "acompanhante" && g.cingCategoria_("Convite") === "convite" && g.cingCategoria_("xyz") === "", "as 5 categorias do TickOne");
-b.ok(g.CING_CATEGORIAS.length === 5, "cinco categorias");
+b.ok(g.CING_CATEGORIAS.length === 3 && g.CING_CATEGORIAS.map(c => c.rotulo).join("|") === "Associado|Acompanhante de associado|Convidado", "três categorias (27/11/2026): Associado, Acompanhante de associado, Convidado");
+b.ok(g.cingCategoria_("Cortesia") === "" && g.cingCategoria_("Pago") === "" && g.cingCategoria_("Convite") === "convite" && g.cingCategoria_("Convidado") === "convite" && g.cingCategoria_("Acompanhante do Associado") === "acompanhante", "Cortesia e Pago não existem mais; Convite do TickOne e Convidado são a mesma categoria");
 
 b.fluxo("INGRESSOS · enviar (base do TickOne)");
 b.passo("2. Estado e lista");

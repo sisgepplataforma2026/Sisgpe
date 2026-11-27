@@ -55,12 +55,13 @@ var CING_ARQ_FILA_EMIS = "emissoes-fila.json";
 var CING_ARQ_RES_EMIS = "emissoes-resultado.json";
 var CING_IDADE_MAX_MIN = 15;   // a base precisa ser recente para pedir ingresso novo
 var CING_URL_TICKET = "https://ingressos.sindeducacao.com.br/index.php?page=ticket&ref=";
+/* SÓ TRÊS CATEGORIAS (usuário, 27/11/2026: "só temos 3 categorias: associado, acompanhante de associado e convidado").
+   O valor interno de "Convidado" continua "convite" — é o tipo do TickOne que o robô usa; só o NOME na tela mudou.
+   Cortesia e Pago saíram da tela e das listas: cingCategoria_ não os reconhece mais ("Categoria inválida"). */
 var CING_CATEGORIAS = [
   { valor: "associado", rotulo: "Associado" },
-  { valor: "acompanhante", rotulo: "Acompanhante Associado" },
-  { valor: "convite", rotulo: "Convite" },
-  { valor: "cortesia", rotulo: "Cortesia" },
-  { valor: "pago", rotulo: "Pago" }
+  { valor: "acompanhante", rotulo: "Acompanhante de associado" },
+  { valor: "convite", rotulo: "Convidado" }
 ];
 
 function cingSoDigitos_(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }

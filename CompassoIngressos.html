@@ -133,7 +133,7 @@
 <div id="ciPSolicitar" hidden>
   <div class="ci-passos"><i class="on" id="ciPasso1"></i><i id="ciPasso2"></i><i id="ciPasso3"></i></div>
   <div class="ci-passos-t" id="ciPassoT"><b>1 Dados</b> · 2 Conferência · 3 Confirmar</div>
-  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> Cada pessoa é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Associado: todos os campos; Convidado e Acompanhante: só o nome; Cortesia e Pago: nome e CPF.</div>
+  <div class="ci-aviso"><b>Pesquisar antes de pedir.</b> Cada pessoa é comparada com a base do TickOne pelo CPF e pelo nome. Quem já tem ingresso aparece com o código e <b>nunca é pedido de novo</b>. Associado: todos os campos; Convidado e Acompanhante de associado: só o nome.</div>
   <div id="ciPessoas"></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
     <button class="ci-btn ci-nv" data-ci="addPessoa">+ Adicionar pessoa</button>
@@ -143,7 +143,7 @@
   <div class="ci-box" id="ciBoxZap" hidden>
     <b>Lista do WhatsApp</b> <span style="font-size:12px;color:#64748b">— cole o texto do jeito que chegou: só nome e telefone. O SISGEP separa cada pessoa.</span>
     <textarea id="ciZapTxt" placeholder="Ademir Carlos Pin 27 99913-9936&#10;Zenair: Zenaide Borges, Claudimar Matheus 27999154910"></textarea>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center"><label style="font-size:12px;font-weight:700">Categoria da lista</label><select id="ciZapCat"><option value="convite">Convidado</option><option value="acompanhante">Acompanhante</option></select><button class="ci-btn ci-nv" data-ci="lerZap">Organizar lista</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center"><label style="font-size:12px;font-weight:700">Categoria da lista</label><select id="ciZapCat"><option value="convite">Convidado</option><option value="acompanhante">Acompanhante de associado</option></select><button class="ci-btn ci-nv" data-ci="lerZap">Organizar lista</button></div>
     <div id="ciZapRes" style="font-size:12px;margin-top:6px"></div>
   </div>
   <div class="ci-box" id="ciBoxPlan" hidden>
