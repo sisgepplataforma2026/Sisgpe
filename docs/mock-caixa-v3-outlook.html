@@ -1,0 +1,119 @@
+<!DOCTYPE html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caixa de E-mails — opções</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--blue-lt:#eff6ff;--gold:#C9A84C;--g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g400:#94a3b8;--g500:#64748b;--g600:#475569;--g800:#1e293b;--green-lt:#ecfdf5}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:'Plus Jakarta Sans',sans-serif;background:#eef2f7;color:var(--g800);font-size:13px;display:flex;flex-direction:column}
+.esc{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--g200);padding:8px 14px}
+.esc b{color:var(--navy)}.seg{display:inline-flex;border:1px solid var(--g200);border-radius:9px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:7px 13px;font:inherit;font-weight:700;color:var(--g600);cursor:pointer}.seg button.on{background:var(--navy);color:#fff}
+.esc small{color:var(--g500)}
+.app{flex:1;min-height:0;display:flex;flex-direction:column;background:#fff;margin:10px;border:1px solid var(--g200);border-radius:12px;overflow:hidden}
+/* UMA faixa só: título + busca */
+.top{background:linear-gradient(135deg,var(--navy),var(--navy2) 60%,#1058b0);color:#fff;display:flex;align-items:center;gap:14px;padding:9px 16px}
+.top .t{font-weight:800;font-size:14px;white-space:nowrap}.top .t small{font-weight:500;opacity:.75;margin-left:8px;font-size:11.5px}
+.top .bus{flex:1;max-width:520px;margin:0 auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:7px 12px;color:#dbe7ff;font-size:12.5px}
+/* faixa de comandos, como a do Outlook */
+.rib{display:flex;align-items:center;gap:2px;padding:6px 10px;border-bottom:1px solid var(--g200);background:var(--g50);flex-wrap:wrap}
+.rb{display:flex;align-items:center;gap:6px;border:0;background:none;padding:7px 10px;border-radius:7px;font:inherit;font-weight:600;color:var(--g800);cursor:pointer;white-space:nowrap}
+.rb:hover{background:var(--g200)}.rb.pri{background:var(--navy);color:#fff;font-weight:700}.rb.rob{color:#065f46}
+.sp{width:1px;height:22px;background:var(--g200);margin:0 6px}
+.corpo{flex:1;min-height:0;display:grid;grid-template-columns:210px 360px 1fr}
+.col{min-height:0;overflow:auto;border-right:1px solid var(--g200)}
+.nav{padding:8px;background:var(--g50)}.sec{font-size:10.5px;letter-spacing:.08em;font-weight:800;color:var(--g500);margin:12px 8px 4px}
+.it{display:flex;justify-content:space-between;align-items:center;padding:6px 9px;border-radius:7px;font-weight:600;cursor:pointer}
+.it:hover{background:var(--g200)}.it.on{background:var(--blue-lt);color:var(--navy);font-weight:800}.it b{font-size:11.5px;color:var(--blue)}
+.it .dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:7px}
+.lh{display:flex;align-items:center;gap:14px;padding:9px 12px;border-bottom:1px solid var(--g200);position:sticky;top:0;background:#fff;z-index:2}
+.lh .tab{font-weight:700;color:var(--g500);padding-bottom:3px;cursor:pointer}.lh .tab.on{color:var(--navy);border-bottom:2px solid var(--navy)}
+.lh .ord{margin-left:auto;color:var(--g500);font-size:12px}
+.dia{font-size:11.5px;font-weight:800;color:var(--g600);padding:8px 12px 4px;background:var(--g50)}
+.m{padding:9px 12px;border-bottom:1px solid var(--g100);cursor:pointer;position:relative}
+.m:hover{background:var(--g50)}.m.on{background:var(--blue-lt);box-shadow:inset 3px 0 0 var(--blue)}
+.m .r{display:flex;justify-content:space-between;gap:8px}.m .de{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m.n .de,.m.n .as{font-weight:800}.m.n .as{color:var(--blue)}
+.m .h{font-size:11.5px;color:var(--g500);white-space:nowrap}.m .as{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .pv{font-size:12px;color:var(--g500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:1px 6px;margin-top:3px;margin-right:4px}
+.ler{display:flex;flex-direction:column;min-height:0;border-right:0}
+.lc{padding:16px 22px 12px;border-bottom:1px solid var(--g100)}
+.lc h2{margin:0 0 10px;font-size:18px;color:var(--navy);font-weight:800}
+.pes{display:flex;gap:12px;align-items:center}.av{width:40px;height:40px;border-radius:50%;background:var(--navy2);color:#fff;display:grid;place-items:center;font-weight:800}
+.pes .n{font-weight:700}.pes .e{font-size:12px;color:var(--g500)}.pes .dt{margin-left:auto;font-size:12px;color:var(--g500)}
+.qa{display:flex;gap:4px;margin-top:10px}.qa .rb{border:1px solid var(--g200);background:#fff;padding:5px 10px}
+.rob{margin:12px 22px 0;background:var(--green-lt);border:1px solid #a7f3d0;border-radius:9px;padding:8px 12px;font-size:12.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rob button{border:1px solid #6ee7b7;background:#fff;border-radius:7px;padding:5px 10px;font:inherit;font-weight:700;color:#065f46;cursor:pointer}
+.tx{padding:18px 22px;line-height:1.7;font-size:14px;flex:1;overflow:auto}.tx p{margin:0 0 12px}
+.rp{margin:0 22px 16px;border:1px solid var(--g200);border-radius:10px;padding:10px 14px;color:var(--g500);display:flex;justify-content:space-between;align-items:center}
+.rp span b{color:#065f46}
+/* B: leitura embaixo */
+body.B .corpo{grid-template-columns:210px 1fr;grid-template-rows:minmax(0,38%) minmax(0,62%)}
+body.B .nav{grid-row:1/3}body.B .lista{border-right:0;border-bottom:1px solid var(--g200)}body.B .ler{grid-column:2}
+/* C: foco */
+body.C .corpo{grid-template-columns:210px 1fr}body.C .ler{display:none}body.C .lista{border-right:0}
+body.C.aberto .lista{display:none}body.C.aberto .ler{display:flex}
+.volta{display:none}body.C .volta{display:inline-flex}
+body.C .m{display:grid;grid-template-columns:220px 1fr 90px;gap:12px;align-items:center}body.C .m .r{display:contents}body.C .m .pv{display:none}
+.nota{padding:8px 14px;font-size:12.5px;color:var(--g600);background:#fffbeb;border-bottom:1px solid #fde68a}
+</style></head><body class="A">
+<div class="esc"><b>Escolha uma opção:</b>
+ <span class="seg" id="op"><button class="on" data-o="A">A · Outlook (e-mail à direita)</button><button data-o="B">B · Outlook (e-mail embaixo)</button><button data-o="C">C · Foco (lista inteira, e-mail em tela cheia)</button></span>
+ <small>Dados fictícios — é só o desenho. Clique nos e-mails e nas opções.</small></div>
+<div class="nota" id="nota"></div>
+<div class="app">
+ <div class="top"><div class="t">📬 Caixa de E-mails <small>secretaria@sindeducacao.com · 89 a tratar</small></div><div class="bus">🔎 Buscar remetente, assunto, escola ou texto…</div></div>
+ <div class="rib">
+  <button class="rb pri">✏ Novo e-mail</button><span class="sp"></span>
+  <button class="rb volta" onclick="document.body.classList.remove('aberto')">← Voltar à lista</button>
+  <button class="rb">↩ Responder</button><button class="rb">↩↩ Responder a todos</button><button class="rb">↪ Encaminhar</button><span class="sp"></span>
+  <button class="rb">✓ Resolver</button><button class="rb">📁 Mover ▾</button><button class="rb">🏷 Categoria ▾</button><button class="rb">⭐</button><button class="rb">🗑 Lixeira</button><span class="sp"></span>
+  <button class="rb rob">🤖 Ações do sindicato ▾</button>
+  <button class="rb" style="margin-left:auto">📐 Painel de leitura ▾</button><button class="rb">↻</button>
+ </div>
+ <div class="corpo">
+  <div class="col nav">
+   <div class="it on"><span>📥 Caixa de entrada</span><b>89</b></div><div class="it"><span>⭐ Com estrela</span></div><div class="it"><span>📤 Itens enviados</span></div><div class="it"><span>📝 Rascunhos</span></div><div class="it"><span>🗑 Lixeira</span></div><div class="it"><span>🚫 Spam</span></div>
+   <div class="sec">CATEGORIAS (o robô separa)</div>
+   <div class="it"><span><i class="dot" style="background:#C9A84C"></i>Voucher</span><b>3</b></div>
+   <div class="it"><span><i class="dot" style="background:#1565C0"></i>Ofício de filiação</span><b>5</b></div>
+   <div class="it"><span><i class="dot" style="background:#1565C0"></i>Ofício de desfiliação</span><b>2</b></div>
+   <div class="it"><span><i class="dot" style="background:#1565C0"></i>Oposição à taxa</span><b>1</b></div>
+   <div class="it"><span><i class="dot" style="background:#0891b2"></i>Filiação</span><b>8</b></div>
+   <div class="it"><span><i class="dot" style="background:#d97706"></i>Contribuições</span><b>45</b></div>
+   <div class="it"><span><i class="dot" style="background:#64748b"></i>Notas fiscais</span><b>2</b></div>
+   <div class="it"><span><i class="dot" style="background:#64748b"></i>Contas</span><b>7</b></div>
+   <div class="it" style="color:var(--g500)"><span>… mais 5</span></div>
+   <div class="sec">PASTAS</div>
+   <div class="it"><span>📁 ABRIR</span><b>2</b></div><div class="it"><span>📁 ALMIR</span><b>1</b></div><div class="it"><span>📁 CERTIFICADO 2027-1</span></div><div class="it"><span>📁 FILIAÇÃO</span></div><div class="it"><span>📁 JURÍDICO</span></div><div class="it" style="color:var(--g500)"><span>… mais 20</span></div>
+  </div>
+  <div class="col lista">
+   <div class="lh"><span class="tab on">Todos</span><span class="tab">Não lidos</span><span class="tab">A tratar</span><span class="ord">Por data ▾</span></div>
+   <div class="dia">Hoje</div>
+   <div class="m n on"><div class="r"><span class="de">Fulana de Souza</span><span class="h">15:37</span></div><div class="as">Solicitação de sindicalização – Desconto educacional</div><div class="pv">Boa tarde! Meu nome é Fulana de Souza, trabalho na…</div><span class="tg" style="background:#cffafe;color:#155e75">Filiação</span></div>
+   <div class="m n"><div class="r"><span class="de">Colégio Exemplo · RH</span><span class="h">14:02</span></div><div class="as">Ficha de filiação — professora Beta</div><div class="pv">Segue a ficha assinada da professora…</div><span class="tg" style="background:#dbeafe;color:#1e40af">Ofício de filiação</span><span class="tg" style="background:var(--g100);color:var(--g600)">📎 2</span></div>
+   <div class="dia">Ontem</div>
+   <div class="m"><div class="r"><span class="de">Escola Alfa · Financeiro</span><span class="h">qua 16:48</span></div><div class="as">Mensalidade outubro + taxa negocial</div><div class="pv">Prezados, solicitamos os boletos de outubro…</div><span class="tg" style="background:#fef3c7;color:#92400e">Contribuições</span></div>
+   <div class="m"><div class="r"><span class="de">Prestador Gama</span><span class="h">qua 16:34</span></div><div class="as">NFS-e 2031 — serviço de outubro</div><div class="pv">Boa tarde, segue a nota fiscal referente…</div><span class="tg" style="background:var(--g100);color:var(--g600)">Nota fiscal</span><span class="tg" style="background:var(--g100);color:var(--g600)">📎 1</span></div>
+   <div class="m"><div class="r"><span class="de">Maria Silva</span><span class="h">qua 16:18</span></div><div class="as">Voucher 2027/1 — Enfermagem</div><div class="pv">Bom dia, envio os documentos para o voucher…</div><span class="tg" style="background:#fdf8ec;color:#7c5e10">Voucher · falta doc</span></div>
+   <div class="dia">Semana passada</div>
+   <div class="m"><div class="r"><span class="de">Jurídico Delta</span><span class="h">06/11</span></div><div class="as">Audiência marcada — processo 0012</div><div class="pv">Informamos que a audiência foi designada…</div><span class="tg" style="background:var(--g100);color:var(--g600)">Jurídico</span></div>
+   <div class="m"><div class="r"><span class="de">Escola Ômega</span><span class="h">05/11</span></div><div class="as">Relação nominal de novembro</div><div class="pv">Segue em anexo a relação dos sindicalizados…</div><span class="tg" style="background:#fef3c7;color:#92400e">Contribuições</span></div>
+  </div>
+  <div class="col ler">
+   <div class="lc"><h2>Solicitação de sindicalização – Desconto educacional</h2>
+    <div class="pes"><div class="av">FS</div><div><div class="n">Fulana de Souza</div><div class="e">fulana@faculdade.exemplo.br · para secretaria@sindeducacao.com</div></div><div class="dt">qui 12/11/2026 15:37</div></div>
+    <div class="qa"><button class="rb">↩ Responder</button><button class="rb">↩↩ Responder a todos</button><button class="rb">↪ Encaminhar</button></div></div>
+   <div class="rob">🤖 <b>O robô sugere:</b> <button>📱 Avisar o diretor da visita</button><button>✨ Responder com o modelo da visita</button><span style="color:var(--g500);margin-left:auto">pedido de sindicalização · escola achada pelo e-mail</span></div>
+   <div class="tx"><p>Boa tarde!</p><p>Meu nome é Fulana de Souza, trabalho na Faculdade Exemplo, campus Vitória, no setor de Relacionamento, exercendo a função de Auxiliar de Relacionamento.</p><p>Gostaria de obter informações sobre o processo de sindicalização para ter acesso ao benefício de desconto educacional.</p><p>Poderiam, por gentileza, me informar quais são os procedimentos necessários e os documentos que preciso apresentar para realizar a sindicalização?</p><p>Desde já, agradeço pela atenção e aguardo o retorno.</p><p>Atenciosamente,<br>Fulana de Souza</p></div>
+   <div class="rp"><span>✨ <b>Resposta pronta do robô</b> — "Fulana, boa tarde! Tudo bem? Agradecemos seu contato…"</span><span><button class="rb" style="border:1px solid var(--g200)">Ver e editar</button></span></div>
+  </div>
+ </div>
+</div>
+<script>
+var N={A:"<b>A · Outlook, e-mail à direita.</b> Uma faixa só no topo. Barra de comandos igual à do Outlook (Responder, Responder a todos, Encaminhar, Mover…). As categorias saem do meio e vão para a coluna da esquerda, junto das pastas. O e-mail ocupa a altura toda.",
+B:"<b>B · Outlook, e-mail embaixo.</b> Mesmo desenho, mas a lista fica em cima (mais larga) e o e-mail embaixo, com mais da metade da tela.",
+C:"<b>C · Foco.</b> A lista ocupa a largura toda, uma linha por e-mail (como o Gmail). Clicou, o e-mail abre em tela cheia; '← Voltar à lista' retorna."};
+function nota(o){document.getElementById('nota').innerHTML=N[o]}
+document.querySelectorAll('#op button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#op button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');document.body.className=b.getAttribute('data-o');nota(b.getAttribute('data-o'))}});
+document.querySelectorAll('.m').forEach(function(m){m.onclick=function(){document.querySelectorAll('.m').forEach(function(x){x.classList.remove('on')});m.classList.add('on');document.body.classList.add('aberto')}});
+nota('A');
+</script></body></html>

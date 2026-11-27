@@ -20,7 +20,7 @@ function getCockpit(tokenSessao) {
     var inicio = new Date().getTime();
 
     // 1. Dados do usuário
-    var usuario = getCockpitUsuario_();
+    var usuario = getCockpitUsuario_(tokenSessao);
 
     // 2. E-mails (inbox, últimos 30 dias)
     var emails = getCockpitEmails_();
@@ -63,15 +63,18 @@ function getCockpit(tokenSessao) {
 /* ─────────────────────────────────────────────────────────────────
    USUÁRIO
 ───────────────────────────────────────────────────────────────── */
-function getCockpitUsuario_() {
+function getCockpitUsuario_(tokenSessao) {
+  /* COM O TOKEN — 21/10/2026. Sem ele getSessaoUsuario devolve null, e o
+     Cockpit caía no e-mail da conta executora: qualquer pessoa logada era
+     saudada pelo nome do Financeiro. */
   try {
-    var sessao = getSessaoUsuario ? getSessaoUsuario() : null;
+    var sessao = getSessaoUsuario ? getSessaoUsuario(tokenSessao) : null;
     if (sessao) return sessao;
   } catch(e) {}
 
   // fallback: dados do script
   return {
-    nome:    Session.getActiveUser().getEmail().split("@")[0] || "Wanderson",
+    nome:    "",
     email:   Session.getActiveUser().getEmail(),
     perfil:  "Administrador",
     sindicato: "SindEducação-ES"
@@ -272,7 +275,7 @@ function getCockpitSugestoes_(emails, resumoDia) {
 function getCockpitGreeting_(usuario, resumoDia) {
   var hora = new Date().getHours();
   var saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
-  var nome = (usuario && (usuario.nome || usuario.usuario) || "").split(" ")[0] || "Wanderson";
+  var nome = (usuario && (usuario.nome || usuario.usuario) || "").split(" ")[0] || "";
 
   // Monta o subtítulo inteligente
   var acoes = [];

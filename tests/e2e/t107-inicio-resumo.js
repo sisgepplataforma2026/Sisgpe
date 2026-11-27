@@ -99,7 +99,7 @@ aba(
 );
 // listarEscolasCadastro_interno_ guarda 5 min em CacheService. Sem limpar, a
 // lista vazia lida antes do seed venceria — e o teste mediria o cache, não a regra.
-g.CacheService.getScriptCache().remove(g.CACHE_KEY_ESCOLAS_CADASTRO_);
+g.invalidarCacheEscolas_();
 
 const contaEscolas = g.inicio_contarEscolasCadastroIncompleto_(TOKEN_ADMIN);
 b.igual(contaEscolas, 3, "conta 3 escolas incompletas de 4 (sem CNPJ, CNPJ curto, sem e-mail)");

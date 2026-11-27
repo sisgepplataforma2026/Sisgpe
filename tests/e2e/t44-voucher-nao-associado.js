@@ -82,7 +82,7 @@ b.ok(!rBranco.presencial, "e não marca presencial");
 b.fluxo("BALCÃO · O atendimento presencial acontece do início ao fim");
 
 b.passo("4. Cria, aprova e emite — os três passos que antes travavam");
-const criado = g.voucherCriarSolicitacao({
+const criado = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_NAO, nome: "NAO FILIADO DE TESTE",
   email: "nf@teste.com",
   situacaoSindical: "NAO_ASSOCIADO",
@@ -190,7 +190,7 @@ b.ok(doProtocolo.some(function (l) {
 b.passo("8. O associado continua recebendo por e-mail");
 /* A metade que ninguém pede para testar e que é onde o estrago aconteceria:
  * bloquear o envio de todo mundo passaria em todas as asserções acima. */
-const cSim = g.voucherCriarSolicitacao({
+const cSim = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_SIM, nome: "FILIADO DE TESTE", email: "f@teste.com",
   situacaoSindical: "ASSOCIADO",
   escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
@@ -453,7 +453,7 @@ if (!dom.jsdomDisponivel()) {
     "na cor institucional, não na de alerta (#d97706)");
 
   b.passo("22. O canal entra como PAPEL, e o rastro vai para o histórico");
-  const cPapel = g.voucherCriarSolicitacao({
+  const cPapel = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_NAO, nome: "NAO FILIADO DE TESTE",
     situacaoSindical: "NAO_ASSOCIADO",
     escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
@@ -482,7 +482,7 @@ if (!dom.jsdomDisponivel()) {
     "e quando");
 
   b.passo("23. Associado NÃO vira PAPEL — a metade que prova a separação");
-  const cMail = g.voucherCriarSolicitacao({
+  const cMail = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_SIM, nome: "FILIADO DE TESTE", situacaoSindical: "ASSOCIADO",
     escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL",
     instituicao: "INST Y", curso: "9 ANO",
@@ -512,7 +512,7 @@ if (!dom.jsdomDisponivel()) {
   /* Pessoa NOVA de propósito: CPF_SIM já acumulou bolsas nos passos
      anteriores, e a trava de "um por janela" recusaria — o que faria este
      passo falhar por um motivo que não é o que ele investiga. */
-  var cEnv = g.voucherCriarSolicitacao({
+  var cEnv = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: "52998224725", nome: "PESSOA DO ENVIO", email: "envio@teste.com",
     situacaoSindical: "ASSOCIADO",
     escola: "ESCOLA X", modalidade: "GRADUACAO", area: "SAUDE",

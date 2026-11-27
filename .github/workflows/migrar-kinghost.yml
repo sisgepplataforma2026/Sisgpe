@@ -1,0 +1,52 @@
+# CÓPIA DE TODA A CAIXA secretaria@ DA KINGHOST PARA O GMAIL DA SECRETARIA
+# (12/11/2026). O usuário: "tem que copiar todos os e-mails", "e todas as
+# pastas também", "tudo no King deve aparecer no SISGEP".
+#
+# tools/kinghost-migrar/migrar.py lê a KingHost SÓ LEITURA e deixa os e-mails
+# em lotes no Drive; o leitor da Secretaria põe no Gmail, na pasta de mesmo
+# nome (leitorMigracaoKingHost_). O modo vem do arquivo
+# tools/kinghost-migrar/MODO: "conferir" (só conta, por pasta) ou "migrar".
+# Retoma de onde parou: rodar de novo continua a cópia.
+#
+# A senha fica SÓ no segredo do GitHub (KINGHOST_SECRETARIA_SENHA).
+
+name: Migrar KingHost para o Gmail da Secretaria
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/kinghost-migrar/**'
+      - '.github/workflows/migrar-kinghost.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrar-kinghost
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Testar (KingHost e Drive falsos)
+        run: python3 tools/kinghost-migrar/teste_migrar.py
+
+      - name: Ler a KingHost e entregar ao leitor
+        env:
+          KINGHOST_SECRETARIA_SENHA: ${{ secrets.KINGHOST_SECRETARIA_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          LIMITE_S: '19800'
+          MEDIR_TAMANHO: '1'
+        run: |
+          MODO="$(tr -d '[:space:]' < tools/kinghost-migrar/MODO)"
+          if [ "$MODO" = "migrar" ]; then export SO_CONFERIR=0; else export SO_CONFERIR=1; fi
+          echo "Modo: $MODO"
+          python3 -u tools/kinghost-migrar/migrar.py

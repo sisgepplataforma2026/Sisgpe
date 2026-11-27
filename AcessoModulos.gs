@@ -66,6 +66,9 @@ var ACESSO_MODULOS_CATALOGO = [
   { chave: "governanca",       rotulo: "Governança e Mandatos", sensivel: true  },
   { chave: "auditoria",        rotulo: "Auditoria e Compliance",sensivel: true  },
   { chave: "comunicacao",      rotulo: "Central de Comunicação",sensivel: false },
+  // Caixa da Secretaria (29/10/2026): NÃO vale por "TODOS" — só o
+  // administrador e quem tem esta chave escrita na lista (CaixaSecretaria.gs).
+  { chave: "caixaSecretaria",  rotulo: "Caixa da Secretaria",   sensivel: true  },
   { chave: "eventos",          rotulo: "Eventos",               sensivel: false },
   { chave: "relatorios",       rotulo: "Relatórios",            sensivel: false },
   { chave: "radio",            rotulo: "Rádio SindEducação",    sensivel: false },

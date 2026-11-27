@@ -105,6 +105,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   b.igual(cards().length, 0, "o bloco veio limpo do atendimento anterior");
 
   el("certNvCpf").value = CPF;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "PAI DE FAMILIA";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -123,6 +124,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "PAI DE FAMILIA";
   t.escolher("#certNvQuem", "FILHO_1");
   el("certNvBeneficiario").value = "ANA MARIA";
@@ -172,6 +174,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "PAI DE FAMILIA";
   t.escolher("#certNvQuem", "FILHO_1");
   el("certNvBeneficiario").value = "ANA MARIA";
@@ -229,7 +232,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   [["ANA CLARA", "FILHO", "1", "ENSINO_FUNDAMENTAL", "Fundamental", "COLEGIO SAO JOSE", 100],
    ["BRENO LUIS", "FILHO", "2", "GRADUACAO", "Engenharia", "MULTIVIX", 60]
   ].forEach(function (d) {
-    g.voucherCriarSolicitacao({
+    g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
       cpf: CPF_FAM, nome: "MAE DA FAMILIA", email: "mae@exemplo.com",
       escola: "COLEGIO ONDE TRABALHA", instituicao: d[5],
       tipoBeneficiario: d[1], beneficiario: d[0], ordemFilho: d[2],
@@ -246,6 +249,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   b.igual(el("certNvRenov").style.display, "none", "a faixa começa escondida");
 
   t.digitar("#certNvCpf", CPF_FAM);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   await t.assentar(500);
   b.ok(el("certNvRenov").style.display !== "none", "a faixa apareceu");
   b.ok(/Encontrei 2/.test(el("certNvRenovTit").textContent),
@@ -289,6 +293,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
     t.digitar("#certNvCpf", "11144477735");
     await t.assentar(400);
     t.digitar("#certNvCpf", CPF_FAM);
+    t.escolher("#certNvSituacao", "ASSOCIADO");
     await t.assentar(500);
   }
 
@@ -338,6 +343,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   t.digitar("#certNvCpf", CPF_FAM);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   await t.assentar(500);
   const caixas = doc.querySelectorAll("#certNvRenovLista .js-renov");
   caixas[1].checked = false;
@@ -352,6 +358,7 @@ function campo(card, classe) { return card.querySelector("." + classe); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   t.digitar("#certNvCpf", CPF_FAM);
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   await t.assentar(500);
   b.ok(el("certNvRenov").style.display !== "none", "a faixa está aberta");
   t.clicar("#certNvRenovarNao");

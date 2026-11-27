@@ -1,0 +1,39 @@
+# SONDA SÓ DE LEITURA DO POP-UP DE EMISSÃO (15/11/2026): o pop-up de confirmação da exclusão (Confirmar com pointer-events:none).
+# Abre o pop-up de confirmação de UMA linha e o descreve. NUNCA confirma, emite, salva, exclui nem envia. Dispara por push em tools/ingressos-robo/sondar-exclusao.js. Segredos: INGRESSOS_USUARIO/SENHA.
+name: Ingressos — sondar o pop-up de exclusão
+
+on:
+  push:
+    branches: [integracao/sisgep-homologacao]
+    paths:
+      - 'tools/ingressos-robo/sondar-exclusao.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingressos-sondar-exclusao
+  cancel-in-progress: false
+
+jobs:
+  sondar:
+    if: github.ref == 'refs/heads/integracao/sisgep-homologacao'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar o navegador do robô
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Sondar (só leitura, sem dado pessoal)
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/sondar-exclusao.js

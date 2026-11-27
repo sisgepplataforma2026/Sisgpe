@@ -335,7 +335,7 @@ function setStatus(txt){var el=g("ckStatusTxt");if(el)el.textContent=txt;}
 function aplicarGreeting(greeting){
   if(!greeting)return;
   var el=g("ckGreetingTxt");
-  if(el) el.textContent=(greeting.saudacao||"Bom dia")+", "+(greeting.nome||"Wanderson")+"! 👋";
+  if(el) el.textContent=(greeting.saudacao||"Bom dia")+(greeting.nome?", "+greeting.nome:"")+"! 👋";
 
   var sub=g("ckGreetingSubtxt");
   if(sub&&greeting.subtitulo) sub.textContent=greeting.subtitulo;
@@ -378,7 +378,7 @@ window.ckInit = function() {
   // greeting imediato (saudação sem dados)
   var h=new Date().getHours();
   var saud=h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
-  var el=g("ckGreetingTxt"); if(el) el.textContent=saud+", Wanderson! 👋";
+  var el=g("ckGreetingTxt"); if(el) el.textContent=saud+(window.SISGEP_USUARIO_PRIMEIRO_NOME?", "+window.SISGEP_USUARIO_PRIMEIRO_NOME:"")+"! 👋";
 
   // loading na lista
   var lista=g("ckEmailList");
@@ -436,7 +436,7 @@ window.ckInit = function() {
 function ckCarregarEmailsFallback(){
   var h=new Date().getHours();
   var saud=h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
-  var el=g("ckGreetingTxt"); if(el) el.textContent=saud+", Wanderson! 👋";
+  var el=g("ckGreetingTxt"); if(el) el.textContent=saud+(window.SISGEP_USUARIO_PRIMEIRO_NOME?", "+window.SISGEP_USUARIO_PRIMEIRO_NOME:"")+"! 👋";
   ckCarregarEmails();
 }
 

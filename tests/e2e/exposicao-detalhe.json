@@ -1,33 +1,8 @@
 {
-  "medidoEm": "2026-09-08",
-  "totalPublicas": 975,
-  "protegidas": 688,
+  "medidoEm": "2026-11-27",
+  "totalPublicas": 1134,
+  "protegidas": 857,
   "expostas": [
-    {
-      "nome": "validarCPF",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "obterDataLiberadaOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "listarHorariosOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "reservarHorarioOftalmoPublico",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
-    {
-      "nome": "buscarAssociadosOftalmo",
-      "arquivo": "AgendOftalm.gs",
-      "escreve": false
-    },
     {
       "nome": "beneficiosPrepararLinkInteresse",
       "arquivo": "BeneficiosLinkInteresse.gs",
@@ -239,6 +214,26 @@
       "escreve": false
     },
     {
+      "nome": "diagnosticoFilaOficiosSISGEP",
+      "arquivo": "DiagnosticoFilaOficios.gs",
+      "escreve": false
+    },
+    {
+      "nome": "pingSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoLatenciaSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
+      "nome": "diagnosticoCaminhosSISGEP",
+      "arquivo": "DiagnosticoLatencia.gs",
+      "escreve": false
+    },
+    {
       "nome": "inicializarModuloEscolas",
       "arquivo": "Escolas.gs",
       "escreve": false
@@ -309,11 +304,6 @@
       "escreve": true
     },
     {
-      "nome": "buscarPrestadorGuiaPagamento",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
       "nome": "listarRelatorioGuiasPagamento",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -322,16 +312,6 @@
       "nome": "listarHistoricoGuias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
-    },
-    {
-      "nome": "limparCachePrestadoresFixos",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "cadastrarNovoPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
     },
     {
       "nome": "marcarGuiaComoPaga",
@@ -349,26 +329,6 @@
       "escreve": false
     },
     {
-      "nome": "listarTodosPrestadores",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "excluirPrestador",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarPrestadoresDoHistorico",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterDashboardPendencias",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
@@ -384,24 +344,9 @@
       "escreve": false
     },
     {
-      "nome": "listarPrestadoresSemEmail",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": false
-    },
-    {
-      "nome": "salvarEmailPrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterStatusLeituraEmail",
       "arquivo": "GuiasPagamento.gs",
       "escreve": false
-    },
-    {
-      "nome": "salvarEmailETelefonePrestadorRapido",
-      "arquivo": "GuiasPagamento.gs",
-      "escreve": true
     },
     {
       "nome": "iaAssistente",
@@ -619,19 +564,9 @@
       "escreve": false
     },
     {
-      "nome": "cadastrarReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
-    },
-    {
       "nome": "obterResumoReceitas",
       "arquivo": "Receita.gs",
       "escreve": false
-    },
-    {
-      "nome": "excluirReceita",
-      "arquivo": "Receita.gs",
-      "escreve": true
     },
     {
       "nome": "gerarCodigoVerificacao",
@@ -647,16 +582,6 @@
       "nome": "buscarBeneficiariosPorEmpresa",
       "arquivo": "Recibo.gs",
       "escreve": false
-    },
-    {
-      "nome": "importarBeneficiariosReciboPadrao",
-      "arquivo": "Recibo.gs",
-      "escreve": true
-    },
-    {
-      "nome": "importarBeneficiariosReciboDaPlanilha",
-      "arquivo": "Recibo.gs",
-      "escreve": true
     },
     {
       "nome": "gerarPlanilhaAlvara",
@@ -1024,5 +949,5 @@
       "escreve": false
     }
   ],
-  "inconclusivas": 83
+  "inconclusivas": 88
 }

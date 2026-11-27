@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#001f4d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Presidência">
+<title>Compasso da Vida 2026 — Presidência</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  /* Design System do SISGEP (OficiosStyles.html): mesmos tokens, tipografia, cabeçalho, card, botão e toast. */
+  :root{
+    --navy:#001f4d; --navy2:#002f6c; --blue:#1565C0; --blue-lt:#e8f0fe; --gold:#C9A84C; --gold2:#f0c843; --gold-lt:#fdf6e3;
+    --bg:#f0f4f9; --surface:#fff; --g100:#f1f5f9; --g200:#e2e8f0; --g300:#cbd5e1; --g400:#94a3b8; --g500:#64748b; --g700:#334155; --g800:#1e293b;
+    --green:#059669; --green-lt:#d1fae5; --green-dk:#065f46; --red:#dc2626; --red-lt:#fee2e2; --amber:#d97706; --amber-lt:#fef3c7;
+    --rad:12px; --rad-lg:20px; --sh-sm:0 2px 8px rgba(0,20,60,.07),0 1px 3px rgba(0,20,60,.05); --sh-md:0 6px 24px rgba(0,20,60,.10),0 2px 8px rgba(0,20,60,.06);
+    --border:1px solid var(--g200);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--g800);font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;padding-bottom:84px}
+  .of-modulo-header{background:linear-gradient(135deg,#001f4d 0%,#002f6c 50%,#1565C0 100%);padding:22px 18px 18px;color:#fff}
+  .faixa-logo{display:none;background:#fff;text-align:center;padding:12px 16px 10px;border-bottom:3px solid var(--gold)}
+  .faixa-logo.ok{display:block}
+  .logo{height:66px;width:auto;max-width:78%;object-fit:contain}
+  .of-modulo-header small{display:block;color:var(--gold2);font-weight:800;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .of-modulo-header-title{font-size:21px;font-weight:800;margin:4px 0 2px}
+  .of-modulo-header-sub{font-size:13px;color:rgba(255,255,255,.7)}
+  .wrap{max-width:560px;margin:0 auto;padding:14px 14px 0}
+  .of-card{background:var(--surface);border:var(--border);border-radius:var(--rad-lg);box-shadow:var(--sh-sm);margin-bottom:14px;overflow:hidden}
+  .of-card-body{padding:16px}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .kpi{background:var(--surface);border:var(--border);border-radius:var(--rad);padding:12px;text-align:center;box-shadow:var(--sh-sm)}
+  .kpi b{display:block;font-size:26px;font-weight:800;color:var(--navy)}.kpi span{font-size:12px;color:var(--g500);font-weight:600}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;padding:0 18px;border:none;border-radius:var(--rad);cursor:pointer;font-family:inherit;font-size:16px;font-weight:800;margin-bottom:10px;transition:all .18s}
+  .btn:active{transform:scale(.98)}.btn[disabled]{opacity:.42;pointer-events:none}
+  .btn-navy{background:linear-gradient(135deg,var(--navy2) 0%,#0d52b5 100%);color:#fff;box-shadow:0 4px 14px rgba(0,47,108,.26)}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-outline{background:var(--surface);color:var(--navy);border:1.5px solid var(--g300)}
+  .btn-red{background:var(--surface);color:var(--red);border:1.5px solid #fecaca}
+  .btn-sm{min-height:42px;font-size:14px;width:auto;flex:1;margin:0}
+  label,.lbl{display:block;font-size:12px;font-weight:800;color:var(--g500);text-transform:uppercase;margin:12px 0 5px}
+  input[type=text]{width:100%;padding:14px;border:1.5px solid var(--g300);border-radius:var(--rad);font-size:17px;font-family:inherit;background:#fff}
+  input[type=text]:focus{outline:none;border-color:var(--blue)}
+  .seg{display:flex;gap:8px}.seg button{flex:1;min-height:48px;border:1.5px solid var(--g300);background:#fff;border-radius:var(--rad);font:700 14px inherit;font-family:inherit;color:var(--g700);padding:6px}
+  .seg button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .linha{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--g100)}
+  .linha:last-child{border-bottom:none}.linha b{font-size:15px}.linha small{display:block;color:var(--g400);font-size:12px}
+  .tag{font-size:11px;font-weight:800;border-radius:99px;padding:4px 10px;white-space:nowrap}
+  .t-ok{background:var(--green-lt);color:var(--green-dk)}.t-w{background:var(--amber-lt);color:var(--amber)}.t-g{background:var(--g100);color:var(--g500)}.t-r{background:var(--red-lt);color:var(--red)}
+  .x{border:none;background:var(--g100);color:var(--g500);border-radius:99px;width:34px;height:34px;font-size:16px;font-weight:800}
+  .aviso{border-left:4px solid var(--gold);background:var(--gold-lt);padding:10px 12px;border-radius:8px;font-size:13px;color:#7a5c10;margin:10px 0}
+  .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:var(--border);padding-bottom:env(safe-area-inset-bottom)}
+  .nav button{flex:1;border:none;background:none;padding:12px 0;font:800 12px inherit;font-family:inherit;color:var(--g400)}.nav button.on{color:var(--navy)}
+  .tela{display:none}.tela.on{display:block}
+  #toast{position:fixed;left:14px;right:14px;bottom:92px;background:var(--navy);color:#fff;padding:13px 16px;border-radius:var(--rad);font-weight:700;font-size:14px;box-shadow:var(--sh-md);display:none;z-index:20}
+  #toast.err{background:var(--red)}
+  .ov{position:fixed;inset:0;background:rgba(0,20,60,.55);display:none;align-items:flex-end;justify-content:center;z-index:30}.ov.on{display:flex}
+  .ov .caixa{background:#fff;border-radius:20px 20px 0 0;padding:20px 18px 26px;width:100%;max-width:560px}
+  .ov h3{margin:0 0 8px;font-size:18px}.ov p{margin:0 0 14px;color:var(--g700);font-size:14px}
+  .vazio{text-align:center;color:var(--g400);padding:22px 8px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="faixa-logo" id="faixaLogo"><img id="logo" class="logo" alt="SindEducação-ES" src="__PRES_LOGO__"></div>
+<div class="of-modulo-header"><small>SindEducação-ES · Compasso da Vida 2026</small><div class="of-modulo-header-title" id="oi">Olá!</div><div class="of-modulo-header-sub">Gerencie seus convidados e ingressos.</div></div>
+<div class="wrap">
+
+  <div class="tela" id="tQuem">
+    <div class="of-card"><div class="of-card-body">
+      <div class="lbl" style="margin-top:0">Quem está usando?</div>
+      <button class="btn btn-navy" data-quem="Leonil">Leonil</button>
+      <button class="btn btn-navy" data-quem="Wanderson">Wanderson</button>
+      <button class="btn btn-navy" data-quem="Marcelha">Marcelha</button>
+      <div class="vazio" style="padding:6px 0 0">O celular lembra a sua escolha.</div>
+    </div></div>
+  </div>
+
+  <div class="tela on" id="tInicio">
+    <button class="btn btn-green" id="bAdd">＋ Adicionar convidados</button>
+    <button class="btn btn-navy" id="bMeus">🎟 Meus ingressos</button>
+    <div class="vazio" style="padding:4px 0"><a href="#" id="bTrocar" style="color:var(--g500)">Não é você? Trocar</a></div>
+  </div>
+
+  <div class="tela" id="tAdd">
+    <div class="of-card"><div class="of-card-body">
+      <div class="lbl" style="margin-top:0">Nome completo</div>
+      <input type="text" id="aNome" placeholder="Nome do convidado" autocomplete="off" autocapitalize="words">
+      <div class="lbl">Telefone (WhatsApp)</div>
+      <input type="text" id="aTel" placeholder="(27) 99999-9999" inputmode="tel" autocomplete="off" maxlength="16">
+      <div class="lbl">Categoria</div>
+      <div class="seg" id="aCat"><button type="button" data-v="convite" class="on">Convidado</button><button type="button" data-v="acompanhante">Acompanhante de associado</button></div>
+      <button class="btn btn-navy" id="aAdd" style="margin-top:14px">＋ Adicionar à lista</button>
+    </div></div>
+    <div class="of-card"><div class="of-card-body"><div class="lbl" style="margin-top:0">Na lista (<span id="aQtd">0</span>)</div><div id="aLista"><div class="vazio">Nenhum nome ainda.</div></div>
+      <button class="btn btn-green" id="aConf" style="margin-top:10px" disabled>Conferir e gerar</button></div></div>
+  </div>
+
+  <div class="tela" id="tConf">
+    <div class="of-card"><div class="of-card-body"><div class="lbl" style="margin-top:0" id="cTit">Conferência</div><div id="cLista"></div>
+      <div class="aviso">Quem já tem ingresso nunca é pedido de novo. Se o nome for igual ao de alguém da base, você decide.</div>
+      <button class="btn btn-green" id="cGerar" disabled>Gerar</button>
+      <button class="btn btn-outline" id="cVolta">Voltar</button></div></div>
+  </div>
+
+  <div class="tela" id="tMeus">
+    <div class="of-card"><div class="of-card-body"><div class="lbl" style="margin-top:0" id="mTit">Meus ingressos</div><div id="mLista"><div class="vazio">Carregando…</div></div></div></div>
+  </div>
+</div>
+
+<div class="nav"><button class="on" data-t="tInicio">Início</button><button data-t="tAdd">Adicionar</button><button data-t="tMeus">Meus ingressos</button></div>
+<div id="toast"></div>
+<div class="ov" id="ov"><div class="caixa"><h3 id="ovT"></h3><p id="ovP"></p><button class="btn btn-green" id="ovSim">Sim</button><button class="btn btn-outline" id="ovNao">Voltar</button></div></div>
+
+<script>
+(function(){
+  'use strict';
+  var KB='__PRES_K__', LISTA=[], CAT='convite', CONF=null, MEUS=[], TIMER=null, QUEM='';
+  try { QUEM = window.localStorage.getItem('pres_quem') || ''; } catch(e) {}
+  function K(){ return KB + (QUEM ? '|' + QUEM : ''); }
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function api(fn,args,ok,falha){
+    var r=google.script.run.withSuccessHandler(function(x){
+      if(x&&x.negado){ document.body.innerHTML='<div style="padding:30px;text-align:center;font-family:sans-serif"><h2>SindEducação-ES</h2><p>'+esc(x.mensagem)+'</p></div>'; return; }
+      ok(x||{});
+    }).withFailureHandler(function(e){ if(falha) falha(e); else toast('Erro: '+((e&&e.message)||'tente de novo'),true); });
+    r[fn].apply(r,[K()].concat(args||[]));
+  }
+  function toast(t,erro){ var e=$('toast'); e.textContent=t; e.className=erro?'err':''; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){ e.style.display='none'; },4200); }
+  function ir(id){
+    [].forEach.call(document.querySelectorAll('.tela'),function(t){ t.classList.toggle('on',t.id===id); });
+    var nav=id==='tConf'?'tAdd':id;
+    [].forEach.call(document.querySelectorAll('.nav button'),function(b){ b.classList.toggle('on',b.getAttribute('data-t')===nav); });
+    window.scrollTo(0,0);
+    if(id==='tMeus') meus(); if(id==='tInicio') estado();
+  }
+  function pergunta(t,p,sim,fn){ $('ovT').textContent=t; $('ovP').textContent=p; $('ovSim').textContent=sim; $('ov').classList.add('on'); $('ovSim').onclick=function(){ $('ov').classList.remove('on'); fn(); }; }
+  $('ovNao').onclick=function(){ $('ov').classList.remove('on'); };
+
+  function escolher(){
+    [].forEach.call(document.querySelectorAll('.tela'),function(t){ t.classList.toggle('on',t.id==='tQuem'); });
+    document.querySelector('.nav').style.display='none'; $('oi').textContent='Olá!';
+  }
+  function estado(){ api('presidencia_estado',[],function(r){
+    if(r.ok && r.precisaEscolher){ escolher(); return; }
+    if(!r.ok){ if(r.escolher){ escolher(); return; } toast(r.mensagem||'Não consegui carregar.',true); return; }
+    document.querySelector('.nav').style.display='';
+    if($('tQuem').classList.contains('on')) ir('tInicio');
+    $('oi').textContent='Olá, equipe!';  /* um nome que vale para os três (Leonil, Wanderson e Marcelha) — pedido do usuário, 27/11/2026 */ }); }
+  $('tQuem').addEventListener('click',function(ev){ var b=ev.target.closest('[data-quem]'); if(!b) return; QUEM=b.getAttribute('data-quem'); try{ window.localStorage.setItem('pres_quem',QUEM); }catch(e){} estado(); });
+  $('bTrocar').addEventListener('click',function(ev){ ev.preventDefault(); QUEM=''; try{ window.localStorage.removeItem('pres_quem'); }catch(e){} escolher(); });
+
+  function fmtTel(t){ t=String(t||'').replace(/\D/g,''); return t.length>=10 ? '('+t.slice(0,2)+') '+t.slice(2,t.length-4)+'-'+t.slice(-4) : ''; }
+  function pintaLista(){
+    $('aQtd').textContent=LISTA.length; $('aConf').disabled=!LISTA.length;
+    $('aLista').innerHTML=LISTA.length?LISTA.map(function(p,i){ return '<div class="linha"><div><b>'+esc(p.nome)+'</b><small>'+(p.categoria==='acompanhante'?'Acompanhante de associado':'Convidado')+' · '+fmtTel(p.telefone)+'</small></div><button class="x" data-i="'+i+'" aria-label="Tirar">✕</button></div>'; }).join(''):'<div class="vazio">Nenhum nome ainda.</div>';
+  }
+  $('aLista').addEventListener('click',function(ev){ var b=ev.target.closest('[data-i]'); if(!b) return; LISTA.splice(Number(b.getAttribute('data-i')),1); pintaLista(); });
+  $('aCat').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; CAT=b.getAttribute('data-v'); [].forEach.call($('aCat').children,function(x){ x.classList.toggle('on',x===b); }); });
+  $('aTel').addEventListener('input',function(){ var d=this.value.replace(/\D/g,'').slice(0,11), o=''; if(d.length>0) o='('+d.slice(0,2); if(d.length>=3) o+=') '+d.slice(2,d.length>10?7:6); if(d.length>(d.length>10?7:6)) o+='-'+d.slice(d.length>10?7:6); this.value=o; });
+  $('aAdd').onclick=function(){
+    var n=$('aNome').value.replace(/\s+/g,' ').trim();
+    if(n.replace(/[^A-Za-zÀ-ÿ]/g,'').length<3){ toast('Escreva o nome completo.',true); return; }
+    var tel=$('aTel').value.replace(/\D/g,''); if(tel.length>11&&tel.slice(0,2)==='55') tel=tel.slice(2);
+    if(tel.length<10||tel.length>11){ toast('Informe o telefone com DDD.',true); $('aTel').focus(); return; }
+    LISTA.push({nome:n,telefone:tel,categoria:CAT}); $('aNome').value=''; $('aTel').value=''; pintaLista(); $('aNome').focus();
+  };
+  $('aConf').onclick=function(){
+    var btn=$('aConf'); btn.disabled=true;
+    api('presidencia_conferir',[LISTA],function(r){
+      btn.disabled=!LISTA.length;
+      if(!r.ok){ toast(r.mensagem||'Não consegui conferir.',true); return; }
+      CONF=r; pintaConf(); ir('tConf');
+    },function(){ btn.disabled=false; toast('Erro ao conferir. Tente de novo.',true); });
+  };
+  function pintaConf(){
+    var r=CONF; $('cTit').textContent=r.resultados.length+' nome(s) · '+r.contagem.novo+' novo(s)';
+    $('cLista').innerHTML=r.resultados.map(function(x,i){
+      var tag=x.situacao==='novo'?'<span class="tag t-ok">novo</span>':x.situacao==='conferir'?'<label style="margin:0;display:flex;gap:6px;align-items:center;text-transform:none"><input type="checkbox" data-f="'+i+'"> emitir mesmo</label>':'<span class="tag t-g">'+(x.situacao==='ja_pedido'?'já pedido':'corrigir')+'</span>';
+      return '<div class="linha"><div><b>'+esc(x.nome)+'</b><small>'+esc(x.motivo||(x.categoria==='acompanhante'?'Acompanhante de associado':'Convidado'))+'</small></div>'+tag+'</div>';
+    }).join('');
+    contaGerar();
+  }
+  function contaGerar(){
+    var n=0; CONF.resultados.forEach(function(x,i){ if(x.situacao==='novo') n++; else if(x.situacao==='conferir'){ var c=document.querySelector('[data-f="'+i+'"]'); if(c&&c.checked) n++; } });
+    var b=$('cGerar'); b.textContent='Gerar '+n+' ingresso'+(n===1?'':'s'); b.disabled=!n; b.setAttribute('data-n',n);
+  }
+  $('cLista').addEventListener('change',contaGerar);
+  $('cVolta').onclick=function(){ ir('tAdd'); };
+  $('cGerar').onclick=function(){
+    var n=Number($('cGerar').getAttribute('data-n')||0);
+    pergunta('Gerar '+n+' ingresso'+(n===1?'':'s')+'?','Isto cria ingresso de verdade no TickOne. Leva alguns minutos.','Sim, gerar',function(){
+      var itens=LISTA.map(function(p,i){ var c=document.querySelector('[data-f="'+i+'"]'); return {nome:p.nome,telefone:p.telefone,categoria:p.categoria,forcar:!!(c&&c.checked)}; });
+      $('cGerar').disabled=true;
+      api('presidencia_gerar',[itens,true],function(r){
+        if(!r.ok){ $('cGerar').disabled=false; toast(r.mensagem||'Não consegui gerar.',true); return; }
+        LISTA=[]; pintaLista(); toast(r.mensagem); ir('tMeus');
+      },function(){ $('cGerar').disabled=false; toast('Erro ao gerar. Confira em Meus ingressos antes de tentar de novo.',true); });
+    });
+  };
+
+  function meus(){
+    api('presidencia_meus',[],function(r){
+      if(!r.ok){ $('mLista').innerHTML='<div class="vazio">'+esc(r.mensagem||'Não consegui carregar.')+'</div>'; return; }
+      MEUS=r.ingressos; var gerando=0;
+      $('mTit').textContent='Meus ingressos';
+      $('mLista').innerHTML=MEUS.length?MEUS.map(function(x,i){
+        if(x.estado==='gerando'||x.estado==='cancelando') gerando++;
+        var tag={pronto:'<span class="tag t-ok">pronto</span>',gerando:'<span class="tag t-w">gerando…</span>',falhou:'<span class="tag t-r">falhou</span>',cancelando:'<span class="tag t-w">cancelando…</span>',cancelado:'<span class="tag t-g">cancelado</span>'}[x.estado]||'';
+        var acoes='';
+        if(x.estado==='pronto') acoes='<div class="acoes"><button class="btn btn-navy btn-sm" data-a="ver" data-i="'+i+'">👁 Ver ingresso</button>'+(x.zap?'<a class="btn btn-green btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(x.zap)+'">💬 WhatsApp</a>':'')+'<button class="btn btn-outline btn-sm" data-a="comp" data-i="'+i+'">📲 Compartilhar</button><button class="btn btn-outline btn-sm" data-a="baixa" data-i="'+i+'">⬇ PDF</button><button class="btn btn-red btn-sm" data-a="corrige" data-i="'+i+'">✏ Corrigir nome</button><button class="btn btn-red btn-sm" data-a="cancela" data-i="'+i+'">🗑 Cancelar</button></div>';
+        else if(x.estado==='falhou') acoes='<div class="aviso">'+esc(x.detalhe||'O ingresso não foi gerado. Tente de novo.')+'</div>';
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--g100)"><div class="linha" style="border:none;padding:0"><div><b>'+esc(x.nome)+'</b><small>'+esc(x.rotulo)+(x.telefone?' · '+esc(x.telefone):'')+(x.codigo?' · '+esc(x.codigo):'')+'</small></div>'+tag+'</div>'+acoes+'</div>';
+      }).join(''):'<div class="vazio">Nenhum ingresso ainda.</div>';
+      clearTimeout(TIMER); if(gerando && $('tMeus').classList.contains('on')) TIMER=setTimeout(meus,20000);
+    });
+  }
+  $('mLista').addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-a]'); if(!b) return; var x=MEUS[Number(b.getAttribute('data-i'))], a=b.getAttribute('data-a'); if(!x) return;
+    if(a==='ver'){ window.open(x.pdf,'_blank'); }
+    else if(a==='comp'||a==='baixa'){
+      b.disabled=true;
+      api('presidencia_pdf',[x.codigo],function(r){
+        b.disabled=false; if(!r.ok){ toast(r.mensagem||'Não consegui abrir o PDF.',true); return; }
+        var bin=atob(r.base64), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+        var f=new File([arr],r.nome,{type:'application/pdf'});
+        if(a==='comp'&&navigator.canShare&&navigator.canShare({files:[f]})){ navigator.share({files:[f],title:'Ingresso — Compasso da Vida 2026'}).catch(function(){}); }
+        else { var u=URL.createObjectURL(f), l=document.createElement('a'); l.href=u; l.download=r.nome; document.body.appendChild(l); l.click(); l.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },4000); if(a==='comp') toast('Este celular não abre o Compartilhar direto: o PDF foi baixado.'); }
+      },function(){ b.disabled=false; toast('Erro ao abrir o PDF.',true); });
+    }
+    else if(a==='cancela'||a==='corrige'){
+      var corrige=a==='corrige';
+      pergunta(corrige?'Corrigir o nome?':'Cancelar este ingresso?',(corrige?'O ingresso de '+x.nome+' será cancelado e você digita o nome certo para gerar outro. ':'')+'O ingresso e o QR Code deixam de valer. Isto não tem volta.',corrige?'Sim, cancelar e corrigir':'Sim, cancelar',function(){
+        api('presidencia_cancelar',[x.codigo,corrige?'Correção de nome':'Cancelado pela Presidência',true],function(r){
+          if(!r.ok){ toast(r.mensagem||'Não consegui cancelar.',true); return; }
+          toast(r.mensagem);
+          if(corrige){ $('aNome').value=x.nome; CAT=x.categoria==='acompanhante'?'acompanhante':'convite'; [].forEach.call($('aCat').children,function(c){ c.classList.toggle('on',c.getAttribute('data-v')===CAT); }); ir('tAdd'); toast('Cancelamento pedido. Corrija o nome e adicione.'); }
+          else meus();
+        });
+      });
+    }
+  });
+  document.querySelector('.nav').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(b) ir(b.getAttribute('data-t')); });
+  $('bAdd').onclick=function(){ ir('tAdd'); }; $('bMeus').onclick=function(){ ir('tMeus'); };
+  /* O logo oficial vem embutido (data URI). Sem ele, o cabeçalho segue de pé só com o texto. */
+  (function(){ var l=$('logo'); if(l&&/^data:image\//.test(l.getAttribute('src')||'')) $('faixaLogo').className='faixa-logo ok'; })();
+  pintaLista(); estado();
+})();
+</script>
+</body>
+</html>

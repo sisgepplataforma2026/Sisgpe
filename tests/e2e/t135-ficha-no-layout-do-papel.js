@@ -140,7 +140,7 @@ b.ok(/CONTATO PARA RECADO[\s\S]{0,90}r\.TELEFONE_2/.test(htmlPdf),
 b.passo("13. o texto da autorização ficou o COMPLETO");
 /* O papel cita só o Art. 545. Encurtar texto de documento com valor legal
    por questão de layout não se faz. */
-["Art. 545 da CLT", "Cláusula 56", "Assembleia Geral", "Edital",
+["Art. 545 da CLT", "Cláusula 38ª", "Assembleia Geral", "Edital",
  "2% (dois por cento)"].forEach(function (t) {
   b.ok(htmlPdf.indexOf(t) >= 0, "mantém: " + t);
 });

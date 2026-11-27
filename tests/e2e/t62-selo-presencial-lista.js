@@ -146,8 +146,10 @@ if (!dom.jsdomDisponivel()) {
   b.ok(!!seloNao,
     "a linha do NÃO ASSOCIADO traz o selo presencial",
     "sem ele a secretaria liga cobrando um e-mail que, por decisão, não foi enviado");
-  b.ok(seloNao && /presencial/i.test(seloNao.textContent),
-    "com a palavra 'presencial' escrita",
+  /* 26/11/2026 (desenho aprovado): a etiqueta passou a dizer "NÃO ASSOCIADO"; "presencial" fica no title e no quadro
+     "Só impresso — retirada presencial na sede" da coluna de envio (t293). */
+  b.ok(seloNao && /não associado/i.test(seloNao.textContent),
+    "com 'não associado' escrito",
     seloNao && seloNao.textContent);
 
   b.passo("5");

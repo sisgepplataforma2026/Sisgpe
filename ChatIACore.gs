@@ -6,6 +6,35 @@
 
 var CHAT_MODEL_ = "claude-haiku-4-5-20251001";
 var CHAT_MAX_TOKENS_ = 1500;
+/* PROMPT CACHING — 05/11/2026 ("como fazer o meu projeto gastar menos?" →
+ * "Sofia não gasta?" → "Clarooo"). Tudo o que vem ANTES desta marca no
+ * prompt de sistema é sempre igual (as regras, a CCT inteira, o Estatuto
+ * inteiro): vai num bloco com cache_control, e a IA cobra ~10% dele quando
+ * se repete em poucos minutos — a pergunta seguinte da conversa, a segunda
+ * leitura, outra pessoa logo depois. O que vem depois (memória escolhida
+ * pela pergunta, dados do sistema, data) muda a cada pergunta e vai sem
+ * cache. A marca nunca chega à IA: chatSistemaEmBlocos_ a retira. */
+var CHAT_MARCA_CACHE_ = "\n<<<SISGEP_FIM_DA_PARTE_FIXA>>>\n";
+
+/* O prompt de sistema em blocos: o fixo com cache, o resto sem. Sem a marca,
+ * um bloco só, sem cache — como era antes. */
+/* DESLIGADO POR PADRÃO (05/11/2026, auditoria de custo): gravar no cache
+ * custa 25% a mais e só compensa com perguntas em sequência. Fica desligado
+ * até a aba IA_Uso mostrar o padrão de uso; liga com a propriedade do script
+ * SOFIA_CACHE = SIM. Desligado, o texto enviado é o mesmo de antes. */
+function chatCacheLigado_() {
+  try { return String(PropertiesService.getScriptProperties().getProperty("SOFIA_CACHE") || "").toUpperCase() === "SIM"; }
+  catch (e) { return false; }
+}
+function chatSistemaEmBlocos_(prompt) {
+  var p = String(prompt || ""), i = p.indexOf(CHAT_MARCA_CACHE_);
+  if (i < 0) return [{ type: "text", text: p }];
+  var fixo = p.substring(0, i), resto = p.substring(i + CHAT_MARCA_CACHE_.length);
+  if (!chatCacheLigado_()) return [{ type: "text", text: fixo + "\n" + resto }];
+  var blocos = [{ type: "text", text: fixo, cache_control: { type: "ephemeral" } }];
+  if (resto) blocos.push({ type: "text", text: resto });
+  return blocos;
+}
 
 /* ═══════════════════════════════════════════════════════
    TEXTO DA CCT 2026/2027 — CLÁUSULAS RELEVANTES
@@ -61,8 +90,8 @@ function chatSISGEP(payload, tokenSessao) {
     };
 
     var perguntar = function (prompt) {
-      requestBody.system = prompt;
-      var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+      requestBody.system = chatSistemaEmBlocos_(prompt);
+      var resp = iaFetch_("sofia", {
         method: "post",
         contentType: "application/json",
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
@@ -241,6 +270,13 @@ function extrairConteudoAnexoIA_(anexo) {
 /* ═══════════════════════════════════════════════════════
    ANEXO ENVIADO PELA HOME (SOFIA) — upload direto do usuário
 ═══════════════════════════════════════════════════════ */
+/* 10/11/2026 (auditoria): a tela (📎 da Home) chamava analisarAnexoSofiaHome_
+   — o Apps Script NÃO deixa o navegador chamar função terminada em "_", então o
+   anexo nunca funcionou. Esta é a porta pública; a sessão continua conferida
+   dentro (exigirSessaoDocumentos_). */
+function analisarAnexoSofiaHome(base64, nome, tipo, tokenSessao) {
+  return analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao);
+}
 function analisarAnexoSofiaHome_(base64, nome, tipo, tokenSessao) {
   try {
     exigirSessaoDocumentos_(tokenSessao, false);
@@ -1195,7 +1231,7 @@ var prompt =
     conteudoCCT +
     "\n" +
     conteudoEstatuto +
-    "\n" +
+    CHAT_MARCA_CACHE_ +
     memoriaRelevante +
 
     "━━━ DADOS REAIS DO SISTEMA — " + hoje + " ━━━\n\n";
@@ -1334,7 +1370,7 @@ var prompt =
     "4. Quando listar urgentes para cobrança, destaque os que têm email cadastrado.\n" +
     "5. Status: AGUARDANDO, CONFIRMADO, PENDENTE_30D, COBRANCA_ENVIADA, REGULARIZADO, DESFILIADO.\n" +
     "6. O usuário já está autenticado no SISGEP. Nunca pergunte quem ele é, seu cargo ou setor. Continue a tarefa usando o contexto da conversa.\n" +
-    "7. Quando relevante, mencione o prazo de repasse da Cláusula 56 (dia 10 do mês seguinte).\n" +
+    "7. Quando relevante, mencione o prazo de repasse da Cláusula 38 (dia 10 do mês seguinte).\n" +
     "8. CCT e Estatuto chegam em TRECHOS, nunca inteiros. Nunca diga que um artigo ou cláusula não existe: diga que não veio nos trechos e ofereça buscar pelo número.\n" +
     "9. Ao citar inciso, alínea ou parágrafo, transcreva o texto entre aspas junto do número. Sem o texto à vista, cite só o artigo.";
 

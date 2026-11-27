@@ -107,6 +107,47 @@ function arquivoAplicarPolitica_(file) {
   return file;
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   EXCEÇÕES NOMEADAS À POLÍTICA
+
+   A política é PRIVATE. Uma exceção só existe aqui, com NOME, MOTIVO e DATA da
+   decisão — nunca como um setSharing solto em outro módulo (o t71 barra isso, e
+   também limita esta lista às chaves esperadas, para ela não crescer em silêncio).
+
+   ingresso_festa — decisão do usuário em 15/11/2026: o PDF do ingresso da festa
+   é enviado pelo WhatsApp como LINK para baixar/salvar, e "qualquer pessoa que
+   acessar, ele abre", "porque a gente só vai enviar para quem solicitou". Esse
+   PDF tem nome, CPF e QR Code: quem tiver o link o abre. Risco aceito de forma
+   explícita; vale SÓ para os PDFs copiados para a pasta INGRESSOS FESTA COMPASSO
+   2026 (CompassoIngressosDados.gs). Para encerrar: apagar esta chave (os novos
+   PDFs voltam a nascer privados) e revogar os links dos já copiados.
+   ════════════════════════════════════════════════════════════════════════════ */
+var ARQUIVO_EXCECOES = {
+  ingresso_festa: {
+    acesso:    "ANYONE_WITH_LINK",
+    permissao: "VIEW",
+    motivo:    "PDF do ingresso enviado por link no WhatsApp (decisão do usuário, 15/11/2026)."
+  }
+};
+
+/**
+ * Aplica uma exceção NOMEADA (ARQUIVO_EXCECOES) a um arquivo. Chave desconhecida
+ * não abre nada: cai na política (PRIVATE). Não estoura; registra a falha.
+ */
+function arquivoAplicarExcecao_(file, chave, contexto) {
+  if (!file) return file;
+  var exc = ARQUIVO_EXCECOES[String(chave || "")];
+  if (!exc) return arquivoAplicarPolitica_(file, contexto || ("chave sem exceção: " + chave));
+  try {
+    file.setSharing(DriveApp.Access[exc.acesso], DriveApp.Permission[exc.permissao]);
+  } catch (e) {
+    var aviso = "ArquivoDrive: não consegui aplicar a exceção '" + chave + "' em " + (contexto || "arquivo") + " — " + e.message;
+    Logger.log(aviso);
+    try { if (typeof registrarAuditoria === "function") registrarAuditoria("ARQUIVO_EXCECAO_FALHOU", aviso); } catch (e2) {}
+  }
+  return file;
+}
+
 /**
  * Grava um blob numa pasta e já devolve o arquivo com a política aplicada.
  *

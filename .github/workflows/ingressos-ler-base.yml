@@ -9,6 +9,7 @@ on:
     branches: [integracao/sisgep-homologacao]
     paths:
       - 'tools/ingressos-robo/ler-base.js'
+      - 'tools/ingressos-robo/baixar-pdfs.js'
       - 'tools/ingressos-robo/PEDIDO-LEITURA'
       - '.github/workflows/ingressos-ler-base.yml'
   workflow_dispatch:
@@ -41,3 +42,11 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
           NODE_PATH: /tmp/robo/node_modules
         run: node tools/ingressos-robo/ler-base.js
+      - name: Baixar os PDFs dos ingressos novos (só leitura, sem dado pessoal)
+        if: always()
+        env:
+          INGRESSOS_USUARIO: ${{ secrets.INGRESSOS_USUARIO }}
+          INGRESSOS_SENHA: ${{ secrets.INGRESSOS_SENHA }}
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/ingressos-robo/baixar-pdfs.js

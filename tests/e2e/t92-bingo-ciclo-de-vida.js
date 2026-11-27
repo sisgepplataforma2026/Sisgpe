@@ -95,29 +95,55 @@ ok(/^bingo_hml_/.test(col), "as coleções do Bingo carregam o ambiente no nome:
    "é o que impede uma rodada de teste aparecer no telão da festa — " +
    "e é justamente o que o Compasso NÃO faz (ver o relatório)");
 
-/* ─── E AQUI SAI UM ACHADO QUE SÓ A EXECUÇÃO ENTREGA ───────────────────────
-   A MESMA propriedade `SISGEP_AMBIENTE` é lida com duas convenções de caixa
-   diferentes, em dois lugares do sistema:
+/* ─── UM ACHADO QUE SÓ A EXECUÇÃO ENTREGOU, E QUE FOI FECHADO EM 09/09/2026 ──
 
-     getAmbienteAtual()            compara com 'homologacao' (minúsculo)
+   O QUE ESTE BLOCO ACHOU, quando foi escrito. A MESMA propriedade
+   `SISGEP_AMBIENTE` era lida com duas convenções de caixa diferentes:
+
+     getAmbienteAtual()            comparava com 'homologacao' (minúsculo)
      compasso_repeticaoLiberada_() converte para MAIÚSCULO e compara
 
-   Com a propriedade em 'HOMOLOGACAO', o Compasso se reconhece em homologação
-   e o Bingo NÃO: ele cai no padrão e passa a gravar em bingo_prd_*.
-   Nada quebra, nada avisa. É o pior tipo de defeito de ambiente. */
+   Com a propriedade em 'HOMOLOGACAO', o Compasso se reconhecia em homologação
+   e o Bingo NÃO: caía no padrão e gravava em bingo_prd_*. A mesma chave, duas
+   leituras, dois ambientes ao mesmo tempo — e nada quebrava, nada avisava.
+
+   Este teste registrou o defeito afirmando o comportamento ERRADO (`bingo_prd_`
+   era o esperado). Documentar assim tem um preço: a asserção passa a defender o
+   defeito, e conserta-lo derruba o teste. Foi o que aconteceu.
+
+   O QUE FECHOU. Ao montar o acervo de ingressos da festa (EventosArquivoIngresso.gs),
+   o mesmo defeito reapareceu com consequência maior: o ingresso da homologação
+   iria para a pasta de PRODUÇÃO no Drive, misturado aos 2.000 reais, e a trava
+   do AmbienteRecursos.gs não pegaria — ela só dispara quando o ambiente É
+   homologação, e aqui ele se declarava produção. `getAmbienteAtual` passou a
+   normalizar com trim + minúsculas (SistemaConfig.gs).
+
+   O que NÃO mudou: valor desconhecido continua caindo em produção. Homologação
+   se declara — é a convenção do sistema, medida no t149. */
 props.setProperty("SISGEP_AMBIENTE", "HOMOLOGACAO");
 g.getAmbienteAtual._cache = undefined;
 const colMaiuscula = g.bingo_colecao_("rodadas");
-ok(/^bingo_prd_/.test(colMaiuscula),
-   "com SISGEP_AMBIENTE='HOMOLOGACAO' (maiúsculo) o Bingo grava em PRODUÇÃO: " +
-   colMaiuscula,
-   "getAmbienteAtual compara com 'homologacao' minúsculo e cai no padrão " +
-   "'producao'; o Compasso lê a mesma propriedade em maiúsculo e se acha em " +
-   "homologação. A mesma chave, duas leituras, dois ambientes ao mesmo tempo.");
+ok(/^bingo_hml_/.test(colMaiuscula),
+   "com SISGEP_AMBIENTE='HOMOLOGACAO' (maiúsculo) o Bingo agora grava em " +
+   "HOMOLOGAÇÃO: " + colMaiuscula,
+   "antes de 09/09/2026 isto devolvia bingo_prd_*: a caixa da propriedade " +
+   "decidia o ambiente, e ninguém era avisado");
+
+props.setProperty("SISGEP_AMBIENTE", "  Homologacao  ");
+g.getAmbienteAtual._cache = undefined;
+igual(g.bingo_colecao_("rodadas"), col,
+      "  e espaço sobrando ou caixa trocada também resolvem para homologação",
+      "espaço colado ao copiar e colar era outro caminho para o mesmo silêncio");
+
+props.setProperty("SISGEP_AMBIENTE", "qualquer-coisa");
+g.getAmbienteAtual._cache = undefined;
+ok(/^bingo_prd_/.test(g.bingo_colecao_("rodadas")),
+   "  mas valor desconhecido continua caindo em PRODUÇÃO",
+   "normalizar não é adivinhar: homologação se declara (mesma regra do t149)");
 
 props.setProperty("SISGEP_AMBIENTE", "homologacao");
 g.getAmbienteAtual._cache = undefined;
-igual(g.bingo_colecao_("rodadas"), col, "  em minúsculo os dois concordam");
+igual(g.bingo_colecao_("rodadas"), col, "  em minúsculo, como sempre foi");
 
 /* ══════════════════════════════════════════════════════════════════════════
    2 · CRIAR E CONFIGURAR A RODADA

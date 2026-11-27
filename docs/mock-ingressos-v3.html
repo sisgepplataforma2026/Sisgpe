@@ -1,0 +1,69 @@
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--gold:#C9A84C;--ok:#0f8a5f;--warn:#d97706;--err:#dc2626;--bg:#f4f6fa;--bd:#dde3ee}
+*{box-sizing:border-box}body{margin:0;font-family:"Plus Jakarta Sans",system-ui,sans-serif;background:var(--bg);color:#1b2433}
+.m{width:390px;min-height:780px;background:var(--bg);position:relative;padding-bottom:84px}
+.top{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:12px 14px 14px;position:sticky;top:0}
+.top b{font-size:16px}.top small{display:block;opacity:.75;font-size:11px;margin-bottom:8px}
+.busca{background:#fff;border-radius:12px;padding:11px 13px;color:#64748b;font-size:14px;display:flex;gap:8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#e8ecf4;border-radius:12px;margin:12px 12px 8px;padding:3px}
+.seg span{text-align:center;padding:9px;border-radius:10px;font-size:13px;font-weight:700;color:#556}.seg .on{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.chips{display:flex;gap:6px;padding:4px 12px 8px;overflow:auto}.chip{white-space:nowrap;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:6px 12px;font-size:12px;font-weight:700;color:#475569}.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.card{background:#fff;border:1px solid var(--bd);border-radius:16px;margin:0 12px 10px;padding:14px}
+.card h4{margin:0;font-size:16px}.card p{margin:2px 0 8px;font-size:12px;color:#64748b}
+.b{display:inline-block;border-radius:12px;padding:3px 10px;font-size:11px;font-weight:800}.n{background:#e7f1ff;color:var(--blue)}.j{background:#e3f6ee;color:var(--ok)}.c{background:#fff1dc;color:var(--warn)}.e{background:#eee;color:#555}
+.btn{border:0;border-radius:12px;font:inherit;font-weight:800;font-size:15px;padding:14px;width:100%;margin-top:8px}
+.wa{background:#1fa855;color:#fff}.ol{background:#fff;border:1.5px solid var(--blue);color:var(--blue)}.dg{background:#fff;border:1.5px solid #fecaca;color:var(--err)}.nv{background:var(--navy);color:#fff}
+.duo{display:grid;grid-template-columns:1fr 1fr 56px;gap:8px}.duo .btn{margin-top:8px}
+.veredito{border-radius:16px;margin:12px;padding:16px;background:#e3f6ee;border:1.5px solid #86d1b3}.veredito b{font-size:16px;color:var(--ok)}
+.fix{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);padding:10px 12px}
+.passo{display:flex;gap:6px;padding:0 12px 6px}.passo i{flex:1;height:5px;border-radius:3px;background:#d5dbe8}.passo i.on{background:var(--ok)}
+.rot{font:800 12px system-ui;color:#556;padding:10px 4px;text-align:center}
+.wrap{display:flex;gap:28px;padding:20px;align-items:flex-start;flex-wrap:wrap}
+.desk{width:1100px;background:var(--bg);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.dtop{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}th{background:#eef2f9;text-align:left;padding:9px 12px;font-size:12px;color:#445}td{padding:11px 12px;border-top:1px solid #edf0f6;vertical-align:middle}
+.sb{border:0;border-radius:10px;padding:8px 12px;font:inherit;font-weight:800;font-size:12px}
+</style></head><body><div class="wrap">
+
+<div><div class="rot">A · CELULAR — Enviar ingressos (lista)</div><div class="m">
+<div class="top"><small>Eventos › Festa › Ingressos</small><b>No Compasso da Vida</b>
+<div class="busca" style="margin-top:8px">🔎 Buscar nome, CPF ou escola</div></div>
+<div class="seg"><span class="on">📱 Enviar</span><span>➕ Pedir ingresso</span></div>
+<div class="chips"><span class="chip on">Falta enviar · 494</span><span class="chip">Enviados · 0</span><span class="chip">Faltam dados · 3</span><span class="chip">Excluídos · 0</span></div>
+<div class="card"><h4>Andréia de Souza Machado</h4><p>FAESA · Vitória · Associado</p><span class="b n">Falta enviar</span> <span class="b e">XSMW-VXSW</span>
+<button class="btn wa">📱 Enviar no WhatsApp</button>
+<div class="duo"><button class="btn ol">📎 PDF</button><button class="btn ol">🎟️ Ingresso</button><button class="btn ol" style="padding:14px 0">⋯</button></div></div>
+<div class="card"><h4>Andrezza Garcia de Orem</h4><p>Colégio Batista Brasil · Vila Velha · Associado</p><span class="b c">Falta telefone</span>
+<button class="btn" style="background:#e2e8f0;color:#94a3b8">📱 WhatsApp (corrija o telefone)</button>
+<div class="duo"><button class="btn ol">📎 PDF</button><button class="btn ol">🎟️ Ingresso</button><button class="btn ol" style="padding:14px 0">⋯</button></div></div>
+<div class="fix"><button class="btn nv" style="margin:0">➕ Pedir ingresso para alguém novo</button></div></div></div>
+
+<div><div class="rot">B · CELULAR — depois de "Conferir": a pessoa JÁ TEM ingresso</div><div class="m">
+<div class="top"><small>Eventos › Festa › Ingressos</small><b>Pedir ingresso</b></div>
+<div class="passo"><i class="on"></i><i class="on"></i><i></i></div>
+<div style="padding:0 14px 4px;font-size:12px;color:#64748b">1 Dados · <b style="color:var(--navy)">2 Conferência</b> · 3 Confirmar</div>
+<div class="veredito"><b>🎟️ Esta pessoa já tem ingresso</b><p style="margin:6px 0 0;font-size:13px">Não precisa emitir de novo. Você pode enviar ou baixar o que já existe.</p></div>
+<div class="card"><h4>Wanderson Nascimento Castelo</h4><p>UVV · Cariacica · Associado · CPF 085.***.***-80</p><span class="b j">Código AB12-CD34</span>
+<button class="btn wa">📱 Enviar no WhatsApp</button><div class="duo" style="grid-template-columns:1fr 1fr"><button class="btn ol">📎 Baixar PDF</button><button class="btn ol">🎟️ Abrir no TickOne</button></div></div>
+<div class="fix" style="display:flex;gap:8px"><button class="btn ol" style="margin:0">Voltar</button><button class="btn nv" style="margin:0">Nova pessoa</button></div></div></div>
+
+<div><div class="rot">C · CELULAR — pessoa NOVA: confirmar a emissão (folha de baixo)</div><div class="m">
+<div class="top"><small>Eventos › Festa › Ingressos</small><b>Pedir ingresso</b></div>
+<div class="passo"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+<div style="padding:0 14px 4px;font-size:12px;color:#64748b">1 Dados · 2 Conferência · <b style="color:var(--navy)">3 Confirmar</b></div>
+<div class="veredito" style="background:#e7f1ff;border-color:#9ec3f0"><b style="color:var(--blue)">✅ Nova pessoa — pode emitir</b><p style="margin:6px 0 0;font-size:13px">A pesquisa na base do TickOne (há 3 min) não achou este CPF.</p></div>
+<div class="card"><h4>TESTE Maria Exemplo</h4><p>Acompanhante Associado · CPF 123.***.***-00</p><span class="b n">Novo</span></div>
+<div class="fix"><div style="font-size:12px;color:#92400e;background:#fff7e0;border:1px solid var(--gold);border-radius:10px;padding:8px 10px;margin-bottom:8px">⚠ Isto cria um ingresso de verdade no TickOne.</div>
+<button class="btn" style="background:var(--ok);color:#fff;margin:0">🎟️ Emitir 1 ingresso</button></div></div></div>
+
+<div><div class="rot">D · COMPUTADOR — a mesma lista, colunas fixas, ações à direita</div><div class="desk">
+<div class="dtop"><div><b style="font-size:18px">Ingressos — No Compasso da Vida</b><br><small style="opacity:.75">Base do TickOne lida há 3 min</small></div>
+<div style="background:#fff;border-radius:10px;padding:9px 14px;color:#64748b;width:340px">🔎 Buscar nome, CPF ou escola</div></div>
+<div style="display:flex;gap:8px;padding:12px 16px;background:#fff"><span class="chip on">Falta enviar · 494</span><span class="chip">Enviados · 0</span><span class="chip">Faltam dados · 3</span><span class="chip">Excluídos · 0</span><span style="flex:1"></span><button class="sb" style="background:var(--navy);color:#fff">➕ Pedir ingresso</button></div>
+<table><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Situação</th><th style="text-align:right">Ações</th></tr>
+<tr><td><b>Andréia de Souza Machado</b><br><small style="color:#64748b">FAESA · Vitória · Associado</small></td><td>095.***.***-06</td><td>(27) 98845-7452</td><td><span class="b n">Falta enviar</span></td><td style="text-align:right;white-space:nowrap"><button class="sb" style="background:#1fa855;color:#fff">📱 WhatsApp</button> <button class="sb" style="background:#fff;border:1.5px solid var(--blue);color:var(--blue)">📎 PDF</button> <button class="sb" style="background:#fff;border:1.5px solid var(--bd);color:#556">⋯</button></td></tr>
+<tr><td><b>Antonio Marcos do Rosário Alves</b><br><small style="color:#64748b">Multivix · Vitória · Associado</small></td><td>054.***.***-40</td><td>(27) 99289-8911</td><td><span class="b n">Falta enviar</span></td><td style="text-align:right;white-space:nowrap"><button class="sb" style="background:#1fa855;color:#fff">📱 WhatsApp</button> <button class="sb" style="background:#fff;border:1.5px solid var(--blue);color:var(--blue)">🎟️ Ingresso</button> <button class="sb" style="background:#fff;border:1.5px solid var(--bd);color:#556">⋯</button></td></tr>
+</table></div></div>
+
+</div></body></html>

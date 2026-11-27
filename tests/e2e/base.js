@@ -145,4 +145,13 @@ function resumo() {
   return c;
 }
 
-module.exports = { subir, seedUsuarios, logar, fluxo, passo, ok, igual, aviso, naoTestavel, bloqueia, resumo, RESULTADOS };
+/* Mês/ano relativo a HOJE ("MM/AAAA"). Os testes do voucher foram escritos
+   em outubro de 2026 com o contracheque fixo em "09/2026"; em novembro ele
+   passou a ser "não é o último" (regra certa) e a suíte caiu. Mês do
+   documento é sempre relativo: mes(-1) = mês passado. */
+function mes(delta) {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + (delta || 0));
+  return ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
+}
+
+module.exports = { mes, subir, seedUsuarios, logar, fluxo, passo, ok, igual, aviso, naoTestavel, bloqueia, resumo, RESULTADOS };

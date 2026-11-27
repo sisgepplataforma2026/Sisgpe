@@ -1,0 +1,55 @@
+# TESTE DA ÁREA DA PRESIDÊNCIA NA PRODUÇÃO (27/11/2026). Só por disparo manual (workflow_dispatch). Abre a página no navegador do GitHub, SEM login,
+# como o presidente abriria. O link (k) entra como entrada e é mascarado no log; depois do teste, REGENERAR os links no editor.
+#   modo=abrir → só abre e confere. modo=emitir → cria UM ingresso de teste ("TESTE SISGEP APAGAR…") e acompanha. modo=cancelar → cancela esse ingresso.
+name: Presidência — teste na produção
+
+on:
+  workflow_dispatch:
+    inputs:
+      k:
+        description: "link pessoal (k, 64 caracteres)"
+        required: true
+      modo:
+        description: "abrir | emitir | cancelar"
+        required: true
+        default: "abrir"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: presidencia-teste
+  cancel-in-progress: false
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Mascarar o link no log
+        run: echo "::add-mask::${{ inputs.k }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Navegador do teste
+        run: |
+          mkdir -p /tmp/robo && cd /tmp/robo && npm init -y >/dev/null && npm i playwright >/dev/null 2>&1
+          cd /tmp/robo && npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Rodar o teste
+        env:
+          PRES_K: ${{ inputs.k }}
+          MODO: ${{ inputs.modo }}
+          NODE_PATH: /tmp/robo/node_modules
+        run: node tools/presidencia-teste/teste.js
+      - name: Capturas de tela (sem dado pessoal)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: presidencia-capturas
+          path: |
+            /tmp/pres-inicio.png
+            /tmp/pres-meus.png
+            /tmp/pres-falha.png
+          if-no-files-found: ignore
+          retention-days: 2

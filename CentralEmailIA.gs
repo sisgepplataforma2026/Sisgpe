@@ -1018,7 +1018,7 @@ var payload = {
     messages:   [{ role: "user", content: String(prompt) }]
   };
 
-  var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+  var resp = iaFetch_("central-email", {
     method:          "post",
     contentType:     "application/json",
     headers: {
@@ -1068,7 +1068,7 @@ function sisgepPreCategorizarEmailsIA_CentralLegacy(emails) {
       messages: [{ role: "user", content: prompt }]
     };
 
-    var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+    var resp = iaFetch_("central-email-legado", {
       method: "post",
       contentType: "application/json",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
@@ -1215,7 +1215,7 @@ function sisgepParsearComprovanteMensalidade(messageId) {
       messages: [{ role: "user", content: prompt }]
     };
 
-    var resp = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", {
+    var resp = iaFetch_("comprovante-mensalidade", {
       method: "post",
       contentType: "application/json",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },

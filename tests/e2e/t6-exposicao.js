@@ -73,7 +73,11 @@ publicas.forEach(fn => {
     else resultado.inconclusiva.push(Object.assign({ motivo: erro.slice(0, 60) }, fn));
     return;
   }
-  if (r && typeof r === "object" && r.ok === false && BLOQUEIO.test(String(r.mensagem || ""))) {
+  /* A recusa pode vir em formatos diferentes: {ok:false}, {erro:true} (Receita.gs), {sucesso:false}.
+     Até 20/11/2026 só {ok:false} contava, e cadastrarReceita/excluirReceita — que JÁ exigem sessão —
+     apareciam como expostas. O que decide é a mensagem falar de sessão/permissão. */
+  const recusou = r && typeof r === "object" && (r.ok === false || r.erro === true || r.sucesso === false || r.success === false);
+  if (recusou && BLOQUEIO.test(String(r.mensagem || r.erro || r.message || ""))) {
     resultado.protegida.push(fn); return;
   }
   // Devolveu algo sem reclamar de sessão. Só conta como exposta se veio

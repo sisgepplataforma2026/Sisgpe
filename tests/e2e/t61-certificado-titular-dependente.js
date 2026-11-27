@@ -62,6 +62,10 @@ const titular = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
   rg: "213.360.487-19",
   reg: {
     NOME_SOLICITANTE: "NATHALIA BATISTA DOS SANTOS",
+    /* CPF DE TESTE, não o do papel: os modelos trazem o CPF de pessoas
+       reais, e ele não tem por que viver num arquivo de teste. O que
+       importa medir é a oração, não o número. */
+    CPF_SOLICITANTE: "11144477735",
     TIPO_BENEFICIARIO: "TITULAR",
     CURSO: "BIOMEDICINA", PERIODO_REFERENCIA: "2026/2",
     ESCOLA_FANTASIA: "MULTIVIX – VITÓRIA",
@@ -75,6 +79,7 @@ const dependente = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
   reg: {
     NOME_SOLICITANTE: "ATILA HENRIQUE DE OLIVEIRA GONÇALVES",
     NOME_BENEFICIARIO: "ISABELA CRISTINA MICAELLA DOS ANJOS PEREIRA",
+    CPF_SOLICITANTE: "52998224725",
     TIPO_BENEFICIARIO: "DEPENDENTE",
     CURSO: "Biomedicina", PERIODO_REFERENCIA: "2026/2",
     ESCOLA_FANTASIA: "MULTIVIX – VITÓRIA",
@@ -93,8 +98,11 @@ b.ok(titular.indexOf("atende aos requisitos estabelecidos para a concessão") > 
   "com o verbo 'atende aos requisitos estabelecidos'");
 b.ok(titular.indexOf("semestralidade/anuidade escolar") > -1,
   "e o desconto sobre 'semestralidade/anuidade escolar'");
-b.ok(titular.indexOf("do Curso de BIOMEDICINA semestre 2026/2") > -1,
-  "o período escrito como no papel: 'Curso de X semestre 2026/2'",
+/* O PAPEL DO TITULAR TERMINA NO CURSO — 23/09/2026, no modelo marcado
+   "Titular": "...escolar do Curso de ADMINISTRAÇÃO." Não há período nenhum
+   nessa frase, e o que havia aqui era texto que o papel não tem. */
+b.ok(/do Curso de BIOMEDICINA\s*\./.test(titular),
+  "o titular termina no curso, sem período — como no modelo",
   (titular.match(/do Curso de [^.]*/) || ["(não achou)"])[0]);
 b.ok(titular.indexOf("A presente certificação destina-se à comprovação") > -1,
   "e o fecho do titular");
@@ -108,6 +116,37 @@ b.ok(dependente.indexOf("dependente de ATILA HENRIQUE DE OLIVEIRA GONÇALVES") >
   "nomeando de quem ele é dependente");
 b.ok(dependente.indexOf("referente ao semestre letivo de 2026/2") > -1,
   "o período escrito como no papel dele: 'referente ao semestre letivo de'");
+
+/* E O DO TITULAR NÃO TEM ESSA ORAÇÃO — conferido nos dois papéis que você
+   fotografou em 30/09/2026.
+
+   O do dependente (EDUARDO / BRUNA, Darwin) termina "...do PRÉ VESTIBULAR,
+   referente ao semestre letivo de 2026, após verificação...". O do titular
+   (LAYSA, Multivix) termina "...do Curso de GESTÃO DE RECURSOS HUMANOS." e
+   acabou — sem período, sem "após verificação".
+
+   Está aqui porque a ausência PARECE esquecimento: quem ler os dois lado a
+   lado vai querer "completar" o do titular, e isso afastaria o documento do
+   papel que o sindicato usa. A diferença é dos modelos, não do código. */
+b.ok(titular.indexOf("semestre letivo") === -1,
+  "e o do TITULAR não traz o período — o papel dele termina no nome do curso",
+  "conferido na foto do certificado da LAYSA, 30/09/2026");
+
+/* ═══════════════════════════════════════════════════════════
+   A ÚNICA DIVERGÊNCIA DELIBERADA EM RELAÇÃO AO PAPEL
+
+   "Única coisa que muda é a flexibilização" — o usuário, 30/09/2026.
+
+   Os dois modelos reais se contradizem, cada um para um lado: o da LAYSA
+   (mulher) diz "portador … empregada"; o do EDUARDO/BRUNA (titular mulher)
+   diz "portadora … empregado". Cada um flexiona uma palavra e esquece a
+   outra — preenchimento manual, não regra.
+
+   Como não há original correto a copiar, o usuário decidiu que o sistema
+   flexiona AS DUAS. Isto fica travado aqui para que a regra de "texto fixo
+   idêntico ao modelo" não seja usada um dia para reverter a decisão: ela
+   vale para todo o resto, e não para a concordância.
+   ═══════════════════════════════════════════════════════════ */
 b.ok(dependente.indexOf("após verificação do atendimento aos requisitos exigidos") > -1,
   "e a oração de verificação, que só existe no papel do dependente");
 b.ok(dependente.indexOf("pessoal, individual e intransferível") > -1,
@@ -150,13 +189,200 @@ b.ok(dependente.indexOf("A presente certificação") === -1,
    Identificar a criança por documento não diria nada à faculdade.
    ═══════════════════════════════════════════════════════════ */
 b.passo("5");
-b.ok(dependente.indexOf("2.288.609/SPTC-ES") > -1,
-  "o RG que aparece no do dependente é o do titular");
-b.ok(/dependente de ATILA[^,]*, portador da carteira de identidade/.test(dependente),
-  "e vem logo depois do nome do titular, não do nome da criança",
+/* A IDENTIFICAÇÃO PASSOU A SER PELO CPF — 23/09/2026. Os dois modelos que o
+   usuário marcou identificam o titular por "portador do CPF nº" e não citam
+   RG em lugar nenhum. O que este passo mede continua sendo o mesmo e é o que
+   importa: o documento é do TITULAR, e a oração vem logo depois do nome
+   dele, não do nome da criança. */
+b.ok(/dependente de ATILA[^,]*, portador\(a\) do CPF nº/.test(dependente),
+  "a identificação vem logo depois do nome do titular, não do da criança",
   "a ordem das orações é o que diz de quem é o documento");
-b.ok(dependente.indexOf("empregado da instituição MULTIVIX") > -1,
-  "o vínculo de emprego também é o do titular");
+b.ok(!/carteira de identidade/.test(dependente),
+  "e o RG não aparece — os modelos não o citam");
+/* A PALAVRA FLEXIONA, O VÍNCULO NÃO MUDA DE DONO — 30/09/2026.
+   Esta asserção cravava "empregado" no masculino e reprovou quando a palavra
+   passou a flexionar por sexo, a seu pedido. O que ela quer provar continua
+   valendo, e é outra coisa: a oração de emprego é a do TITULAR, não a da
+   criança. Aqui o titular está sem sexo gravado, então sai "empregado(a)" —
+   a mesma forma que o "portador(a)" logo acima. */
+b.ok(/empregado\(a\) da instituição MULTIVIX/.test(dependente),
+  "o vínculo de emprego também é o do titular, e a palavra acompanha o sexo dele",
+  (dependente.match(/portador[^,]*,\s*empregado[^,]*/) || [""])[0]);
+
+/* ═══════════════════════════════════════════════════════════
+   3b. "Portador" ou "portadora", conforme o associado
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, pedido do usuário: "flexibiliza no sexo". Os dois modelos
+   reais flexionam — "portadora do CPF nº" no da associada, "portador" no
+   do associado. Sem o dado, a forma neutra: tratar uma associada no
+   masculino num papel que leva o nome dela é pior, e deduzir pelo primeiro
+   nome erra com qualquer "Darci" sem ninguém perceber.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5b");
+function comSexo(sexo) {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           SEXO_SOLICITANTE: sexo, CURSO: "Biomedicina",
+           MODALIDADE: "GRADUACAO", PERIODO_REFERENCIA: "2026/2",
+           ESCOLA_FANTASIA: "MONTE ALVO" }
+  })));
+}
+const comF = comSexo("F"), comM = comSexo("M"), semSexo = comSexo("");
+
+b.ok(/portadora do CPF nº/.test(comF),
+  "associada mulher: 'portadora do CPF nº'",
+  (comF.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+b.ok(!/portador do CPF/.test(comF) && !/portador\(a\)/.test(comF),
+  "sem o masculino nem a forma neutra sobrando na mesma frase");
+b.ok(/portador do CPF nº/.test(comM),
+  "associado homem: 'portador do CPF nº'",
+  (comM.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+b.ok(/portador\(a\) do CPF nº/.test(semSexo),
+  "sexo não informado: forma neutra, nunca um chute",
+  (semSexo.match(/portador[^ ]* do CPF/) || ["(não achou)"])[0]);
+
+/* E AS DUAS PALAVRAS FLEXIONAM, não só o "portador" — 30/09/2026.
+   A correção de 23/09 parou no "portador" e deixou "empregado" cravado no
+   masculino: o papel de uma associada saía "PORTADORA do CPF … EMPREGADO da
+   instituição". Estas asserções medem a ORAÇÃO, e não a palavra — foi medir
+   a palavra que deixou o defeito passar por uma semana. */
+b.ok(/portadora do CPF[^,]*,\s*empregada da institui/.test(comF),
+  "associada: 'portadora … empregada' — as duas concordam na mesma frase",
+  (comF.match(/portadora[^,]*,\s*empregad\S*/) || ["(não achou)"])[0]);
+b.ok(comF.indexOf("empregado da") === -1,
+  "e não sobra nenhum masculino solto no documento dela");
+b.ok(/portador do CPF[^,]*,\s*empregado da institui/.test(comM),
+  "associado: 'portador … empregado'",
+  (comM.match(/portador[^,]*,\s*empregad\S*/) || ["(não achou)"])[0]);
+b.ok(/empregado\(a\) da institui/.test(semSexo),
+  "sexo não informado: 'empregado(a)', do mesmo jeito que o 'portador(a)'");
+
+/* ═══════════════════════════════════════════════════════════
+   3c. "Curso/Ensino" da creche ao ensino médio
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026: "de ensino infantil a ensino médio - colocar curso/ensino".
+   Criança de educação infantil não está matriculada num "curso"; e usar só
+   o nome da modalidade obrigava o artigo a mudar com a palavra ("da
+   Creche", "do Ensino Fundamental"), concordância a mais para errar.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5c");
+function comModalidade(mod, curso) {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           MODALIDADE: mod, CURSO: curso, PERIODO_REFERENCIA: "2026",
+           ESCOLA_FANTASIA: "MONTE ALVO" }
+  })));
+}
+/* O QUE SAI ESCRITO É O QUE A PESSOA PEDIU, não o nome da modalidade —
+   23/09/2026: "Curso/Ensino: o que ele solicitar. Ex: Curso/Ensino:
+   Infantil". Quem pede bolsa para o filho escreve "Infantil", "6ª série",
+   "3º ano", e é isso que a escola confere contra a matrícula. */
+[["CRECHE", "Maternal II"],
+ ["EDUCACAO_INFANTIL", "Infantil"],
+ ["ENSINO_FUNDAMENTAL", "6ª série"],
+ ["ENSINO_MEDIO", "3º ano"]].forEach(function (par) {
+  const t = comModalidade(par[0], par[1]);
+  b.ok(t.indexOf("do Curso/Ensino " + par[1]) > -1,
+    par[0] + " sai com o que foi pedido: 'do Curso/Ensino " + par[1] + "'",
+    (t.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+  b.ok(t.indexOf("do Curso/Ensino " + par[0].replace(/_/g, " ")) === -1,
+    "e não repete o nome da modalidade");
+});
+
+/* RESERVA: linha antiga sem curso preenchido não perde a oração inteira. */
+const semCurso = comModalidade("EDUCACAO_INFANTIL", "");
+b.ok(semCurso.indexOf("do Curso/Ensino EDUCAÇÃO INFANTIL") > -1,
+  "sem curso digitado, a modalidade ocupa o lugar — melhor que a oração sumir",
+  (semCurso.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+
+/* CONTRAPROVA: da graduação para cima continua "do Curso de", com o curso
+   que a pessoa digitou — é o que o modelo do dependente traz. */
+const superior = comModalidade("GRADUACAO", "Biomedicina");
+b.ok(superior.indexOf("do Curso de Biomedicina") > -1,
+  "graduação continua 'do Curso de Biomedicina', com o curso digitado",
+  (superior.match(/semestralidade[^,]*/) || ["(não achou)"])[0]);
+b.ok(superior.indexOf("Curso/Ensino") === -1,
+  "e sem o 'Curso/Ensino', que é só do ensino básico");
+
+/* ═══════════════════════════════════════════════════════════
+   3d. O CNPJ e a mantenedora, buscados na hora de emitir
+   ═══════════════════════════════════════════════════════════
+
+   23/09/2026, você olhando a prévia do Bernardo: "tem ajustar". A frase
+   pulava de "empregado da instituição UVV - VILA VELHA" direto para
+   "encontra-se", sem a mantenedora e sem o CNPJ — porque aquela solicitação
+   foi gravada com "Escola não localizada no cadastro de escolas".
+
+   O dado é copiado para a solicitação na entrada, mas ali ele é uma foto do
+   cadastro NAQUELE dia: escola cadastrada ou corrigida depois nunca chegava
+   ao certificado, e o documento saía incompleto para sempre.
+   ═══════════════════════════════════════════════════════════ */
+b.passo("5d");
+const ssT61 = g.SpreadsheetApp.openById(g.PLANILHA_ID);
+let shEsc = ssT61.getSheetByName("Escolas");
+if (!shEsc) {
+  shEsc = ssT61.insertSheet("Escolas");
+  shEsc.appendRow(["NomeEscola", "Unidade", "CNPJ", "Municipio"]);
+}
+shEsc.appendRow(["DAMASIO CAMPANA EDUCACAO LTDA", "MONTE ALVO", "56169513000185", "Vitória"]);
+
+function semCnpjNaSolicitacao() {
+  return texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+    reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+           NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+           TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+           /* A solicitação guarda só o nome da escola — sem CNPJ, como a do
+              Bernardo em produção. */
+           ESCOLA_SELECIONADA: "DAMASIO CAMPANA EDUCACAO LTDA",
+           MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+           PERIODO_REFERENCIA: "2026" }
+  })));
+}
+const completado = semCnpjNaSolicitacao();
+b.ok(completado.indexOf("56.169.513/0001-85") > -1,
+  "o CNPJ é buscado no cadastro de Escolas e sai formatado no certificado",
+  (completado.match(/instituição[^.]*/) || ["(não achou)"])[0]);
+b.ok(completado.indexOf("inscrita no CNPJ: sob nº") > -1,
+  "com a oração inteira, como no papel");
+
+/* CONTRAPROVA: o que JÁ está gravado na solicitação não é sobrescrito. O
+   certificado de uma bolsa não pode mudar porque alguém editou o cadastro da
+   escola depois. */
+const jaGravado = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+  reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+         NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+         TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+         ESCOLA_SELECIONADA: "DAMASIO CAMPANA EDUCACAO LTDA",
+         CNPJ_ESCOLA: "01936248000121",
+         MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+         PERIODO_REFERENCIA: "2026" }
+})));
+b.ok(jaGravado.indexOf("01.936.248/0001-21") > -1,
+  "o CNPJ gravado na solicitação continua valendo",
+  (jaGravado.match(/CNPJ[^,]*/) || ["(não achou)"])[0]);
+b.ok(jaGravado.indexOf("56.169.513/0001-85") === -1,
+  "e o do cadastro NÃO o sobrescreve — o certificado de uma bolsa não muda sozinho");
+
+/* Escola que não está no cadastro continua sem a oração, em vez de imprimir
+   "CNPJ: sob nº —" num documento oficial. */
+const semCadastro = texto(g.gerarHtmlDocumentoVoucher_(Object.assign({}, BASE, {
+  reg: { NOME_SOLICITANTE: "JOANA DA SILVA VELTEN MARQUES",
+         NOME_BENEFICIARIO: "ANA CECILIA MARQUES VELTEN",
+         TIPO_BENEFICIARIO: "FILHO", CPF_SOLICITANTE: "52998224725",
+         ESCOLA_SELECIONADA: "ESCOLA QUE NAO EXISTE NO CADASTRO",
+         MODALIDADE: "EDUCACAO_INFANTIL", CURSO: "Infantil",
+         PERIODO_REFERENCIA: "2026" }
+})));
+b.ok(semCadastro.indexOf("CNPJ") === -1,
+  "sem cadastro, a oração do CNPJ some — melhor que imprimir um traço");
+b.ok(semCadastro.indexOf("ESCOLA QUE NAO EXISTE NO CADASTRO") > -1,
+  "e o nome que a pessoa informou continua no documento");
 
 /* ═══════════════════════════════════════════════════════════
    4. O que é IGUAL nos dois, e tem que continuar igual
@@ -170,9 +396,15 @@ b.passo("6");
     "o percentual por extenso no " + nome);
   b.ok(t.indexOf("01.936.248/0001-21") > -1,
     "o CNPJ formatado no " + nome);
-  b.ok(t.indexOf("CNPJ: sob") === -1,
-    "sem os dois-pontos do original no " + nome,
-    "decisão do usuário em 18/08/2026: erro de digitação do papel não se reproduz");
+  /* O DOIS-PONTOS VOLTOU — 23/09/2026. Em 18/08 eu o tratei como erro de
+     digitação do papel e o usuário concordou em removê-lo; agora ele mandou
+     o contrário, com os dois modelos na mão: "a parte fixa do texto tem que
+     ser idêntica a essa que te passei na foto". Idêntico é idêntico,
+     inclusive na pontuação que eu acharia errada — e os dois papéis trazem
+     "inscrita no CNPJ: sob nº". */
+  b.ok(t.indexOf("CNPJ: sob") > -1,
+    "com os dois-pontos do original no " + nome,
+    "os modelos de 23/09/2026 trazem 'inscrita no CNPJ: sob nº'");
   b.ok(t.indexOf("Leonil Dias da Silva") > -1,
     "e quem assina o " + nome + " é o presidente");
 });

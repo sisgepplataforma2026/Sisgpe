@@ -1,0 +1,133 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Caixa de E-mails — desenho</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#001f4d;--navy2:#002f6c;--blue:#1565C0;--blue-lt:#eff6ff;--gold:#C9A84C;--gold-lt:#fdf8ec;--g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g400:#94a3b8;--g500:#64748b;--g600:#475569;--g800:#1e293b;--green:#059669;--green-lt:#ecfdf5;--amber:#d97706;--amber-lt:#fffbeb}
+*{box-sizing:border-box}body{margin:0;font-family:'Plus Jakarta Sans',sans-serif;background:#eef2f7;color:var(--g800);font-size:13px}
+.app{display:grid;grid-template-rows:56px 1fr;height:100vh;padding:12px;gap:10px}
+.topo{background:linear-gradient(135deg,var(--navy),var(--navy2) 60%,#1058b0);border-radius:12px;color:#fff;display:flex;align-items:center;gap:14px;padding:0 16px}
+.topo .t{font-weight:800;font-size:14px;white-space:nowrap}.topo .s{font-size:11.5px;opacity:.75;white-space:nowrap}
+.busca{flex:1;max-width:560px;margin:0 auto;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:10px;padding:8px 12px;color:#dbe7ff;font-size:12.5px}
+.btn{border:0;border-radius:9px;padding:8px 13px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer}
+.gold{background:var(--gold);color:var(--navy)}.white{background:#fff;color:var(--navy)}.navy{background:var(--navy);color:#fff}.out{background:#fff;border:1px solid var(--g200);color:var(--g800)}
+.corpo{display:grid;grid-template-columns:196px 410px 1fr;gap:10px;min-height:0}
+.painel{background:#fff;border:1px solid var(--g200);border-radius:12px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pastas{padding:8px}.pasta{display:flex;justify-content:space-between;padding:7px 10px;border-radius:8px;font-weight:600;color:var(--g800)}
+.pasta.on{background:var(--blue-lt);color:var(--navy);font-weight:800}.pasta small{background:var(--g100);border-radius:99px;padding:0 7px;font-size:11px;color:var(--g600)}
+.sec{font-size:10px;letter-spacing:.08em;font-weight:800;color:var(--g500);margin:10px 10px 3px}
+.chips{display:flex;gap:6px;padding:10px 10px 6px;flex-wrap:wrap;border-bottom:1px solid var(--g100)}
+.chip{border:1px solid var(--g200);border-radius:99px;padding:4px 10px;font-size:11.5px;font-weight:700;color:var(--g600);background:#fff;white-space:nowrap}
+.chip b{color:var(--navy);margin-left:3px}.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}.chip.on b{color:#fff}
+.chip.of{background:var(--blue-lt);border-color:#bfdbfe}.chip.vc{background:var(--gold-lt);border-color:var(--gold)}
+.barra{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:12px;color:var(--g600);border-bottom:1px solid var(--g100)}
+.barra .sel{border:1px solid var(--g200);border-radius:8px;padding:4px 8px;background:#fff}
+.lista{overflow:auto;flex:1}
+.item{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:9px 12px;border-bottom:1px solid var(--g100);position:relative}
+.item.novo .rem,.item.novo .ass{font-weight:800}.item.on{background:var(--blue-lt);box-shadow:inset 3px 0 0 var(--blue)}
+.av{width:30px;height:30px;border-radius:50%;background:var(--g100);display:grid;place-items:center;font-weight:800;color:var(--navy2);font-size:12px}
+.rem{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ass{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.prev{font-size:12px;color:var(--g500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.hora{font-size:11px;color:var(--g500);text-align:right;white-space:nowrap}.mini{display:inline-block;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px;margin-top:4px;background:var(--g100);color:var(--g600)}
+.mini.f{background:#e0f2fe;color:#075985}.mini.c{background:#fef3c7;color:#92400e}.mini.o{background:var(--blue-lt);color:var(--navy2)}
+.hov{position:absolute;right:10px;top:8px;display:flex;gap:4px;background:#fff;padding:2px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.hov span{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;font-size:13px}
+.ler{padding:0}.cab{padding:16px 20px 10px;border-bottom:1px solid var(--g100)}
+.cab h2{margin:0;font-size:17px;color:var(--navy);font-weight:800}
+.meta{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--g600)}
+.tag{border-radius:99px;padding:3px 10px;font-weight:700;font-size:11.5px}
+.acoes{display:flex;gap:6px;padding:10px 20px;border-bottom:1px solid var(--g100);align-items:center;flex-wrap:wrap}
+.robo{display:flex;align-items:center;gap:8px;margin:12px 20px 0;background:var(--green-lt);border:1px solid #a7f3d0;border-radius:10px;padding:8px 12px;font-size:12px}
+.robo .btn{padding:6px 11px}
+.conv{padding:14px 20px;overflow:auto;flex:1}
+.msg{border:1px solid var(--g200);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.msg .de{display:flex;justify-content:space-between;font-size:12px;color:var(--g600);margin-bottom:8px}.msg .de b{color:var(--g800)}
+.msg p{margin:0 0 6px;line-height:1.55;font-size:13px}
+.anx{display:flex;gap:8px;margin-top:8px}.anx div{border:1px solid var(--g200);border-radius:9px;padding:7px 10px;font-size:12px;font-weight:600;background:var(--g50)}
+.resp{margin:0 20px 16px;border:1.5px solid var(--blue);border-radius:12px;padding:12px 14px;background:#fff}
+.resp .r1{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--g600);margin-bottom:6px}
+.resp .txt{font-size:12.5px;color:var(--g800);line-height:1.5;max-height:58px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 55%,transparent)}
+.num{position:absolute;background:#dc2626;color:#fff;font-weight:800;font-size:12px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 3px #fff}
+
+.ctl{position:relative;z-index:11;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--g200);border-radius:12px;padding:8px 12px;margin:12px 12px 0;font-size:12.5px}
+.ctl b{color:var(--navy)}.seg{display:inline-flex;border:1px solid var(--g200);border-radius:9px;overflow:hidden}.seg button{border:0;background:#fff;padding:6px 11px;font:inherit;font-weight:700;color:var(--g600);cursor:pointer}
+.seg button.on{background:var(--navy);color:#fff}
+body.emb .corpo{grid-template-columns:196px 1fr;grid-template-rows:minmax(0,1fr) minmax(0,1.1fr)}body.emb .ler{grid-column:2}body.emb .pastas{grid-row:1/3}
+body.jan .corpo{grid-template-columns:196px 1fr}body.jan .ler{position:fixed !important;top:70px;left:140px;width:calc(100vw - 280px);height:calc(100vh - 100px);z-index:10;box-shadow:0 30px 80px rgba(0,20,60,.35)}
+body.jan .veu{display:block}.veu{display:none;position:fixed;inset:0;background:rgba(0,18,48,.45);z-index:9}
+.sel-cat{display:none;padding:10px;border-bottom:1px solid var(--g100);position:relative}
+.sel-cat .bt{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--g200);border-radius:10px;padding:8px 12px;font-weight:800;color:var(--navy);cursor:pointer;background:#fff}
+.sel-cat .menu{display:none;position:absolute;left:10px;right:10px;top:52px;background:#fff;border:1px solid var(--g200);border-radius:12px;box-shadow:0 12px 30px rgba(0,20,60,.15);z-index:5;padding:6px;max-height:330px;overflow:auto}
+.sel-cat.aberto .menu{display:block}.sel-cat .op{display:flex;justify-content:space-between;padding:7px 10px;border-radius:8px;font-weight:600}.sel-cat .op:hover{background:var(--g50)}
+.sel-cat .op b{color:var(--navy)}.sel-cat .gr{font-size:10px;letter-spacing:.08em;font-weight:800;color:var(--g500);margin:8px 10px 2px}
+body.dd .chips{display:none}body.dd .sel-cat{display:block}
+.zap{margin:10px 20px 0;border:1.5px solid #25d366;border-radius:12px;padding:12px 14px;background:#f0fdf4;display:none}
+body.zp .zap{display:block}.zap .dir{display:flex;gap:14px;margin:6px 0 8px;font-weight:700}.zap textarea{width:100%;height:120px;border:1px solid var(--g200);border-radius:9px;padding:8px;font:inherit;font-size:12.5px}
+.zap .ok{background:#25d366;color:#053}
+</style></head><body>
+<div class="veu"></div><div class="ctl"><b>Experimente:</b>
+<span>E-mail aberto: <span class="seg" id="segL"><button class="on" data-l="">Ao lado</button><button data-l="emb">Embaixo</button><button data-l="jan">Janela</button></span></span>
+<span>Categorias: <span class="seg" id="segC"><button class="on" data-c="">Faixa</button><button data-c="dd">Seletor ▾</button></span></span>
+<span>Aviso ao diretor: <span class="seg" id="segZ"><button class="on" data-z="zp">Mostrar</button><button data-z="">Esconder</button></span></span>
+<span style="color:var(--g500)">Dados fictícios — é só o desenho.</span></div><div class="app" style="height:calc(100vh - 60px)">
+ <div class="topo" style="position:relative">
+  <div><div class="t">📬 secretaria@sindeducacao.com</div><div class="s">88 a tratar · 170 respondidos</div></div>
+  <div class="busca">🔎 Buscar remetente, assunto, escola ou texto…</div>
+  <button class="btn gold">✏ Novo e-mail</button><button class="btn white">↻</button>
+  
+ </div>
+ <div class="corpo">
+  <div class="painel pastas" style="position:relative">
+   <div class="pasta on">📥 Caixa de entrada <small>88</small></div>
+   <div class="pasta">⭐ Com estrela</div><div class="pasta">📤 Enviados</div><div class="pasta">📝 Rascunhos</div><div class="pasta">📚 Todos</div>
+   <div class="sec">PASTAS</div>
+   <div class="pasta">📁 ABRIR</div><div class="pasta">📁 CERTIFICADO 2027-1 <small>1</small></div><div class="pasta">📁 FICHAS DE SINDICALIZ…</div><div class="pasta">📁 FILIAÇÃO</div><div class="pasta">📁 JURIDICO</div><div class="pasta">📁 NOTA FISCAL</div><div class="pasta" style="color:var(--g500)">… mais 18</div>
+   <div class="sec"></div><div class="pasta">🚫 Spam</div><div class="pasta">🗑 Lixeira</div>
+   
+  </div>
+  <div class="painel" style="position:relative">
+   <div class="chips">
+    <span class="chip on">Todos<b>85</b></span><span class="chip of">📄 Ofício filiação<b>5</b></span><span class="chip of">📄 Desfiliação<b>2</b></span><span class="chip of">📄 Oposição<b>1</b></span>
+    <span class="chip vc">🎓 Voucher<b>3</b></span><span class="chip">🪪 Filiação<b>8</b></span><span class="chip">🏫 Contribuições<b>44</b></span><span class="chip">🧾 NF<b>2</b></span><span class="chip">💳 Contas<b>7</b></span><span class="chip">+ 4</span>
+   </div>
+   <div class="sel-cat"><div class="bt" onclick="this.parentNode.classList.toggle('aberto')"><span>📚 Todos os e-mails · 85</span><span>▾</span></div>
+<div class="menu"><div class="op"><span>📚 Todos</span><b>85</b></div><div class="gr">OFÍCIOS</div><div class="op"><span>📄 Ofício de filiação</span><b>5</b></div><div class="op"><span>📄 Desfiliação</span><b>2</b></div><div class="op"><span>📄 Oposição à taxa</span><b>1</b></div><div class="op"><span>📄 Taxa negocial/assistencial</span><b>0</b></div>
+<div class="gr">CERTIFICADOS E DEMAIS</div><div class="op"><span>🎓 Voucher — a conferir</span><b>3</b></div><div class="op"><span>🪪 Filiação</span><b>8</b></div><div class="op"><span>🏫 Contribuições</span><b>44</b></div><div class="op"><span>🧾 Notas fiscais</span><b>2</b></div><div class="op"><span>💳 Contas</span><b>7</b></div><div class="op"><span>⚖ Jurídico</span><b>4</b></div><div class="op"><span>🤝 Negociação</span><b>2</b></div><div class="op"><span>🏛 Entidades</span><b>7</b></div><div class="op"><span>📅 Eventos</span><b>2</b></div><div class="op"><span>❓ Outros</span><b>1</b></div></div></div><div class="barra"><span class="sel">A tratar ▾</span><span class="sel">⚙ Filtros</span><span style="margin-left:auto">1–25 de 85 ‹ ›</span></div>
+   <div class="lista">
+    <div class="item novo on"><div class="av">LS</div><div style="min-width:0"><div class="rem">Fulana de Souza</div><div class="ass">Solicitação de sindicalização – Desconto educacional</div><div class="prev">Boa tarde! Gostaria de obter informações sobre o processo…</div><span class="mini f">🪪 Filiação</span></div><div class="hora">15:37</div></div>
+    <div class="item novo"><div class="av">CE</div><div style="min-width:0"><div class="rem">Colégio Exemplo · RH</div><div class="ass">Ofício de filiação Nº 619/2026</div><div class="prev">Segue a ficha assinada da professora…</div><span class="mini o">📄 Ofício de filiação</span> <span class="mini">📎 2</span></div><div class="hora">14:02</div>
+     <div class="hov"><span>✓</span><span>📦</span><span>⭐</span><span>🗑</span></div></div>
+    <div class="item"><div class="av">EA</div><div style="min-width:0"><div class="rem">Escola Alfa</div><div class="ass">Mensalidade outubro + taxa negocial</div><div class="prev">Prezados, solicitamos os boletos de outubro…</div><span class="mini c">🏫 Contribuições</span> <span class="mini">📄 também pede ofício</span></div><div class="hora">ontem</div></div>
+    <div class="item"><div class="av">PR</div><div style="min-width:0"><div class="rem">Prestador Beta</div><div class="ass">NFS-e 2031 — serviço de outubro</div><div class="prev">Boa tarde, segue a nota fiscal referente…</div><span class="mini">🧾 Nota fiscal</span> <span class="mini">📎 1</span></div><div class="hora">ontem</div></div>
+    <div class="item"><div class="av">MS</div><div style="min-width:0"><div class="rem">Maria Silva</div><div class="ass">Voucher 2027/1 — Enfermagem</div><div class="prev">Bom dia, envio os documentos para o voucher…</div><span class="mini" style="background:var(--gold-lt);color:#7c5e10">🎓 Voucher · falta doc</span></div><div class="hora">10/11</div></div>
+    <div class="item"><div class="av">JB</div><div style="min-width:0"><div class="rem">Jurídico Bravo</div><div class="ass">Audiência marcada — processo 0012</div><div class="prev">Informamos que a audiência foi designada para…</div><span class="mini">⚖ Jurídico</span></div><div class="hora">10/11</div></div>
+   </div>
+   
+  </div>
+  <div class="painel ler" style="position:relative">
+   <div class="cab"><h2>Solicitação de sindicalização – Desconto educacional</h2>
+    <div class="meta"><span class="tag" style="background:#e0f2fe;color:#075985">🪪 Filiação ▾</span><span class="tag" style="background:var(--g100);color:var(--g600)">🏫 Faculdade Exemplo — achada pelo e-mail</span><span style="margin-left:auto">⭐</span></div></div>
+   <div class="acoes"><button class="btn navy">↩ Responder</button><button class="btn out">↪ Encaminhar</button><button class="btn out">✓ Resolver</button><button class="btn out">📁 Mover</button><button class="btn out">🗑</button><button class="btn out" style="margin-left:auto">⋯ Mais ações</button></div>
+   <div class="robo">🤖 <b>Sugestão:</b> pedido de sindicalização → <button class="btn out">📱 Avisar o diretor da visita</button><button class="btn out">📄 Ofício de filiação</button><span style="color:var(--g500);margin-left:auto">pelo texto do e-mail</span></div>
+   <div class="zap"><b>📱 Avisar o diretor da visita</b><div class="dir"><label><input type="radio" name="d" checked> Jocimar Vila Real</label><label><input type="radio" name="d"> Lindolpho Gadelha</label></div>
+<textarea>Olá, Jocimar! Nova solicitação de sindicalização recebida por e-mail:
+• Nome: Fulana de Souza
+• Local de trabalho: Faculdade Exemplo — campus Vitória
+• Setor/função: Relacionamento — Auxiliar de Relacionamento
+• E-mail: fulana@faculdade.exemplo.br
+Pode entrar em contato para agendar a visita? Obrigado!</textarea>
+<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><button class="btn ok">Abrir no WhatsApp</button><span style="color:var(--g600);font-size:12px">abre o WhatsApp com a mensagem pronta; o envio é no seu clique</span></div></div><div class="conv">
+    <div class="msg"><div class="de"><span><b>Fulana de Souza</b> &lt;fulana@faculdade.exemplo.br&gt;</span><span>10/11/2026 15:37</span></div>
+     <p>Boa tarde!</p><p>Meu nome é Fulana de Souza, trabalho na Faculdade Exemplo, campus Vitória, no setor de Relacionamento.</p><p>Gostaria de obter informações sobre o processo de sindicalização para ter acesso ao benefício de desconto educacional. Quais são os procedimentos e os documentos necessários?</p><p>Atenciosamente,</p></div>
+   </div>
+   <div class="resp"><div class="r1"><span>✨ <b>Resposta proposta pelo robô</b> — modelo da visita do diretor</span><span><button class="btn out">✏ Editar</button> <button class="btn navy">Enviar</button></span></div>
+    <div class="txt">Fulana, boa tarde! Tudo bem? Agradecemos seu contato e o interesse em se associar ao SindEducação-ES. Informamos que o processo de sindicalização é realizado presencialmente, por meio de visita de um representante do sindicato ao local de trabalho…</div></div>
+   
+  </div>
+ </div>
+</div><script>
+function seg(id,attr,fn){document.querySelectorAll('#'+id+' button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#'+id+' button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');fn(b.getAttribute(attr))}})}
+seg('segL','data-l',function(v){document.body.classList.remove('emb','jan');if(v)document.body.classList.add(v)});
+seg('segC','data-c',function(v){document.body.classList.toggle('dd',!!v)});
+seg('segZ','data-z',function(v){document.body.classList.toggle('zp',!!v)});
+document.body.classList.add('zp');
+document.querySelector('.veu').onclick=function(){document.querySelector('#segL button').click()};
+</script></body></html>
