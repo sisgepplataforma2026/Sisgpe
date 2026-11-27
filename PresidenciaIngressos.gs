@@ -232,7 +232,13 @@ function presidencia_pagina_(k) {
     return HtmlService.createHtmlOutput('<meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:sans-serif;padding:28px;text-align:center"><h2>SindEducação-ES</h2><p>Este link não é válido ou foi cancelado.</p><p>Peça um novo link ao Wanderson.</p></body>')
       .setTitle("SindEducação-ES").addMetaTag("viewport", "width=device-width, initial-scale=1.0");
   }
-  var html = HtmlService.createHtmlOutputFromFile("PresidenciaIngressosTela").getContent().replace("__PRES_K__", String(k).replace(/[^A-Za-z0-9]/g, ""));
+  /* O LOGO OFICIAL do sindicato (o mesmo do certificado e do portal do Voucher), EMBUTIDO: imagem do Drive por URL não abre no celular de quem não está
+     logado. Falhar aqui não derruba a página: sem logo, o cabeçalho segue só com o texto. */
+  var logo = "";
+  try { logo = String(logoSindicatoVoucher_() || ""); } catch (eLogo) { Logger.log("Presidência: logo não carregou: " + eLogo.message); }
+  if (!/^data:image\/[a-z+.-]+;base64,[A-Za-z0-9+\/=]+$/.test(logo)) logo = "";
+  var html = HtmlService.createHtmlOutputFromFile("PresidenciaIngressosTela").getContent()
+    .replace("__PRES_K__", String(k).replace(/[^A-Za-z0-9]/g, "")).replace("__PRES_LOGO__", logo);
   return HtmlService.createHtmlOutput(html).setTitle("Compasso da Vida 2026 — Presidência")
     .addMetaTag("viewport", "width=device-width, initial-scale=1.0, viewport-fit=cover")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);

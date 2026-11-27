@@ -20,6 +20,14 @@ for (const [nome, par] of [["inválido", { page: "presidencia", k: "z".repeat(32
   const r = out(g.doGet({ parameter: par }));
   b.ok(/não é válido/.test(r) && !/Adicionar convidados/.test(r) && r.indexOf(TOK) < 0, "link " + nome + ": só a recusa, sem botão e sem o link");
 }
+g.logoSindicatoVoucher_ = () => "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==";
+const comLogo = out(g.doGet({ parameter: { page: "presidencia", k: TOK } }));
+b.ok(comLogo.indexOf('src="data:image/png;base64,iVBORw0KGgo') > 0 && comLogo.indexOf("__PRES_LOGO__") < 0, "o logo oficial vai embutido na página");
+g.logoSindicatoVoucher_ = () => { throw new Error("Drive fora do ar"); };
+const semLogo = out(g.doGet({ parameter: { page: "presidencia", k: TOK } }));
+b.ok(semLogo.indexOf("Compasso da Vida 2026") > 0 && semLogo.indexOf('src=""') > 0 && semLogo.indexOf("__PRES_LOGO__") < 0, "se o logo falhar, a página abre do mesmo jeito (sem imagem)");
+g.logoSindicatoVoucher_ = () => 'javascript:alert(1)';
+b.ok(out(g.doGet({ parameter: { page: "presidencia", k: TOK } })).indexOf("javascript:") < 0, "valor que não é imagem embutida é descartado");
 b.passo("as rotas que já existiam continuam iguais");
 g.compassoIngressoCartao_pagina_ = (c) => ({ getContent: () => "CARTAO:" + c });
 b.igual(out(g.doGet({ parameter: { page: "ingresso-festa", c: "ABC-1" } })), "CARTAO:ABC-1", "ingresso-festa chega no cartão");
