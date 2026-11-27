@@ -62,6 +62,7 @@ const cn = g.presidencia_cancelar(OUTRO, "AAAA-0300", "Correção de nome", true
 b.ok(cn.ok && robos.includes("excluir"), "qualquer um dos três cancela qualquer ingresso da área (decisão do usuário)", cn.mensagem);
 b.ok(g.presidencia_cancelar(TOK, "AAAA-0300", "x", true).ok === false, "cancelar de novo: recusa");
 b.ok(g.presidencia_meus(TOK).ingressos.filter(x => x.nome === "Ademir Carlos Pin")[0].estado === "cancelando", "estado: cancelando");
+b.igual(g.presidencia_estado(TOK).emitidos, 0, "o ingresso em cancelamento deixa de contar como emitido (só havia 1 emitido)");
 b.ok(g.presidencia_pdf(TOK, "AAAA-0002").ok === false, "PDF de ingresso que não é da área: recusa");
 b.ok(g.presidencia_pdf("x".repeat(40), "AAAA-0300").negado === true, "PDF sem link válido: recusa");
 b.resumo();

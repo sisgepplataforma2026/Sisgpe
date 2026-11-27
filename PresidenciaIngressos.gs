@@ -84,7 +84,12 @@ function presCategoriaValida_(c) { c = String(c || ""); return (c === "convite" 
 function presidencia_estado(k) {
   try {
     var ac = presAcesso_(k); if (!ac) return presNegado_();
-    var emitidos = cingEmissoes_().filter(function (o) { return presDoArea_(o) && o.STATUS === "EMITIDO"; }).length;
+    var exc = cingExclusaoPorCodigo_();   // cancelado (ou cancelando) não conta como emitido
+    var emitidos = cingEmissoes_().filter(function (o) {
+      if (!presDoArea_(o) || o.STATUS !== "EMITIDO") return false;
+      var x = o.CODIGO ? exc[String(o.CODIGO)] : null;
+      return !(x && (x.STATUS === "EXCLUIDO" || x.STATUS === "PEDIDO"));
+    }).length;
     var hoje = presQtdHoje_();
     return { ok: true, nome: ac.nome, emitidos: emitidos, hoje: hoje, limite: PRES_LIMITE_DIA, restante: Math.max(0, PRES_LIMITE_DIA - hoje) };
   } catch (e) { return { ok: false, mensagem: e.message }; }
