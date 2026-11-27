@@ -1487,6 +1487,8 @@
       <textarea class="cert-obs-area" id="certNvObs" placeholder="O que o e-mail do associado dizia, o que falta, o que foi combinado..."></textarea>
     </div>
 
+    <!-- Aviso do Salvar apagado (27/11/2026): quem está no fim do formulário não vê o campo "Situação sindical", que fica no começo. -->
+    <div id="certNvSindAviso" style="display:none;padding:8px 22px 0;font-size:12.5px;font-weight:700;color:#92400e;">Para salvar, escolha Associado ou Não associado no começo do formulário. <a href="#" id="certNvSindIr" style="color:var(--blue,#1565C0);font-weight:800;">Ir para o campo</a></div>
     <div class="cert-modal-foot">
       <button type="button" class="cert-btn cert-btn-secondary cert-btn-sm" id="certNvCancelar">Cancelar</button>
       <button type="button" class="cert-btn cert-btn-gold cert-btn-sm" id="certNvSalvarAnalise">Salvar em análise</button>
@@ -4330,6 +4332,7 @@ function nvSalvarHabilitar(){
      não acontecer. Um teste que só olhasse a função de salvar não veria. */
   var _sitOk = !!g('certNvSituacao') && (g('certNvSituacao').value==='ASSOCIADO' || g('certNvSituacao').value==='NAO_ASSOCIADO');
   var travado = (!!_nvBloqueio && !_nvExcecao && !nvBenefCards().length) || !_sitOk;
+  var _avSind = g('certNvSindAviso'); if(_avSind) _avSind.style.display = _sitOk ? 'none' : 'block';
   ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
     var b = g(id);
     if(!b) return;
@@ -5495,6 +5498,12 @@ function initInterno(){
      amarrada ao nvSugerir e só disparava ao escolher da lista de busca. */
   if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvPresencialSincronizar);
   if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvSindPintar);
+  if(g('certNvSindIr')) g('certNvSindIr').addEventListener('click', function(ev){
+    ev.preventDefault();
+    var bx = g('certNvSindBtns'); if(!bx) return;
+    if(bx.scrollIntoView) bx.scrollIntoView({ block:'center' });
+    bx.classList.add('falta');
+  });
   Array.prototype.forEach.call(document.querySelectorAll('#certNvSindBtns .cert-nv-sind-b'), function(b){
     b.addEventListener('click', function(){ nvSindEscolher(b.getAttribute('data-v')); });
   });
