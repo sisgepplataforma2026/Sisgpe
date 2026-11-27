@@ -37,7 +37,7 @@ if (!/^[0-9a-f]{64}$/.test(K)) { p("FALHA: o link (k) não veio ou não tem 64 c
     if (MODO === "abrir") return;
 
     if (MODO === "emitir") {
-      await fr.click("#bAdd"); await fr.fill("#aNome", NOME_TESTE); await fr.click("#aAdd");
+      await fr.click("#bAdd"); await fr.fill("#aNome", NOME_TESTE); await fr.fill("#aTel", "27999990001"); await fr.click("#aAdd");
       p("na lista:", await fr.evaluate(() => document.getElementById("aQtd").textContent));
       await fr.click("#aConf"); await fr.waitForSelector("#tConf.on", { timeout: 30000 });
       p("conferência:", await fr.evaluate(() => document.getElementById("cTit").textContent.trim()), "·", await fr.evaluate(() => document.getElementById("cGerar").textContent.trim()));

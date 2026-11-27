@@ -127,9 +127,11 @@ function presidencia_conferir(k, itens) {
     itens.forEach(function (it, i) {
       it = it || {};
       var nome = String(it.nome || "").replace(/\s+/g, " ").trim().substring(0, 120), cat = presCategoriaValida_(it.categoria);
-      var r = { i: i, nome: nome, categoria: cat, situacao: "novo", motivo: "" }, ch = cingNomeChave_(nome);
+      var fone = cingFone_(it.telefone);   // 27/11/2026: o TickOne exige CPF ou telefone; a Presidência não tem CPF, então o TELEFONE (com DDD) é obrigatório
+      var r = { i: i, nome: nome, categoria: cat, telefone: fone, situacao: "novo", motivo: "" }, ch = cingNomeChave_(nome);
       if (nome.replace(/[^A-Za-zÀ-ÿ]/g, "").length < 3) { r.situacao = "invalido"; r.motivo = "Escreva o nome completo."; }
       else if (!cat) { r.situacao = "invalido"; r.motivo = "Escolha Convidado ou Acompanhante de associado."; }
+      else if (!fone) { r.situacao = "invalido"; r.motivo = "Informe o telefone com DDD (o ingresso não é emitido sem ele)."; }
       else if (vistos[ch] != null) { r.situacao = "invalido"; r.motivo = "Nome repetido na lista."; }
       else if (abertos[ch]) { r.situacao = "ja_pedido"; r.motivo = "Já foi pedido e está sendo gerado."; }
       else if ((porNome[ch] || []).length) { r.situacao = "conferir"; r.codigo = porNome[ch][0].codigo; r.motivo = "Já existe ingresso com este nome (" + porNome[ch][0].codigo + "). Se é outra pessoa, marque para emitir mesmo."; }
@@ -162,7 +164,7 @@ function presidencia_gerar(k, itens, confirmado) {
       var sh = cingAbaEmis_(), agora = new Date(), linhas = [], quem = "PRES:" + ac.nome;
       emitir.forEach(function (r, n) {
         var id = "E" + Utilities.formatDate(agora, "America/Sao_Paulo", "yyyyMMddHHmmss") + "-P" + (n + 1);
-        linhas.push([id, r.nome, "", "", "", "", "", r.categoria, agora, quem, "PEDIDO", "", "", ""]);
+        linhas.push([id, r.nome, "", "", r.telefone, "", "", r.categoria, agora, quem, "PEDIDO", "", "", ""]);
       });
       var ini = sh.getLastRow() + 1;
       try { sh.getRange(ini, 3, linhas.length, 1).setNumberFormat("@"); sh.getRange(ini, 5, linhas.length, 1).setNumberFormat("@"); } catch (eF) {}
@@ -189,7 +191,10 @@ function presidencia_meus(k) {
       else if (o.STATUS === "EMITIDO") { pdf = pdfs[cingNomeChave_(o.NOME)] || ""; estado = pdf ? "pronto" : "gerando"; }
       if (x && x.STATUS === "EXCLUIDO") estado = "cancelado";
       else if (x && x.STATUS === "PEDIDO") estado = "cancelando";
+      var fone = cingFone_(o.TELEFONE), zap = "";
+      if (estado === "pronto" && fone) { try { zap = "https://wa.me/" + fone + "?text=" + encodeURIComponent(cingTextoWhats_(o.NOME, pdf, String(o.CATEGORIA))); } catch (eZ) {} }
       return { pedido: String(o.PEDIDO), nome: String(o.NOME), categoria: String(o.CATEGORIA), rotulo: cingRotuloCategoria_(String(o.CATEGORIA)), codigo: cod,
+               telefone: fone ? "(" + fone.substring(2, 4) + ") " + fone.substring(4, fone.length - 4) + "-" + fone.substring(fone.length - 4) : "", zap: zap,
                estado: estado, pdf: pdf, por: String(o.PEDIDO_POR || "").replace(/^PRES:/, ""), detalhe: o.STATUS === "FALHOU" ? String(o.RESULTADO || "").substring(0, 160) : "" };
     });
     return { ok: true, ingressos: lista, hoje: presQtdHoje_(), limite: PRES_LIMITE_DIA };

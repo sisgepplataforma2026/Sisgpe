@@ -87,6 +87,8 @@
     <div class="of-card"><div class="of-card-body">
       <div class="lbl" style="margin-top:0">Nome completo</div>
       <input type="text" id="aNome" placeholder="Nome do convidado" autocomplete="off" autocapitalize="words">
+      <div class="lbl">Telefone (WhatsApp)</div>
+      <input type="text" id="aTel" placeholder="(27) 99999-9999" inputmode="tel" autocomplete="off" maxlength="16">
       <div class="lbl">Categoria</div>
       <div class="seg" id="aCat"><button type="button" data-v="convite" class="on">Convidado</button><button type="button" data-v="acompanhante">Acompanhante de associado</button></div>
       <button class="btn btn-navy" id="aAdd" style="margin-top:14px">＋ Adicionar à lista</button>
@@ -150,16 +152,20 @@
   $('tQuem').addEventListener('click',function(ev){ var b=ev.target.closest('[data-quem]'); if(!b) return; QUEM=b.getAttribute('data-quem'); try{ window.localStorage.setItem('pres_quem',QUEM); }catch(e){} estado(); });
   $('bTrocar').addEventListener('click',function(ev){ ev.preventDefault(); QUEM=''; try{ window.localStorage.removeItem('pres_quem'); }catch(e){} escolher(); });
 
+  function fmtTel(t){ t=String(t||'').replace(/\D/g,''); return t.length>=10 ? '('+t.slice(0,2)+') '+t.slice(2,t.length-4)+'-'+t.slice(-4) : ''; }
   function pintaLista(){
     $('aQtd').textContent=LISTA.length; $('aConf').disabled=!LISTA.length;
-    $('aLista').innerHTML=LISTA.length?LISTA.map(function(p,i){ return '<div class="linha"><div><b>'+esc(p.nome)+'</b><small>'+(p.categoria==='acompanhante'?'Acompanhante de associado':'Convidado')+'</small></div><button class="x" data-i="'+i+'" aria-label="Tirar">✕</button></div>'; }).join(''):'<div class="vazio">Nenhum nome ainda.</div>';
+    $('aLista').innerHTML=LISTA.length?LISTA.map(function(p,i){ return '<div class="linha"><div><b>'+esc(p.nome)+'</b><small>'+(p.categoria==='acompanhante'?'Acompanhante de associado':'Convidado')+' · '+fmtTel(p.telefone)+'</small></div><button class="x" data-i="'+i+'" aria-label="Tirar">✕</button></div>'; }).join(''):'<div class="vazio">Nenhum nome ainda.</div>';
   }
   $('aLista').addEventListener('click',function(ev){ var b=ev.target.closest('[data-i]'); if(!b) return; LISTA.splice(Number(b.getAttribute('data-i')),1); pintaLista(); });
   $('aCat').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; CAT=b.getAttribute('data-v'); [].forEach.call($('aCat').children,function(x){ x.classList.toggle('on',x===b); }); });
+  $('aTel').addEventListener('input',function(){ var d=this.value.replace(/\D/g,'').slice(0,11), o=''; if(d.length>0) o='('+d.slice(0,2); if(d.length>=3) o+=') '+d.slice(2,d.length>10?7:6); if(d.length>(d.length>10?7:6)) o+='-'+d.slice(d.length>10?7:6); this.value=o; });
   $('aAdd').onclick=function(){
     var n=$('aNome').value.replace(/\s+/g,' ').trim();
     if(n.replace(/[^A-Za-zÀ-ÿ]/g,'').length<3){ toast('Escreva o nome completo.',true); return; }
-    LISTA.push({nome:n,categoria:CAT}); $('aNome').value=''; pintaLista(); $('aNome').focus();
+    var tel=$('aTel').value.replace(/\D/g,''); if(tel.length>11&&tel.slice(0,2)==='55') tel=tel.slice(2);
+    if(tel.length<10||tel.length>11){ toast('Informe o telefone com DDD.',true); $('aTel').focus(); return; }
+    LISTA.push({nome:n,telefone:tel,categoria:CAT}); $('aNome').value=''; $('aTel').value=''; pintaLista(); $('aNome').focus();
   };
   $('aConf').onclick=function(){
     var btn=$('aConf'); btn.disabled=true;
@@ -186,7 +192,7 @@
   $('cGerar').onclick=function(){
     var n=Number($('cGerar').getAttribute('data-n')||0);
     pergunta('Gerar '+n+' ingresso'+(n===1?'':'s')+'?','Isto cria ingresso de verdade no TickOne. Leva alguns minutos.','Sim, gerar',function(){
-      var itens=LISTA.map(function(p,i){ var c=document.querySelector('[data-f="'+i+'"]'); return {nome:p.nome,categoria:p.categoria,forcar:!!(c&&c.checked)}; });
+      var itens=LISTA.map(function(p,i){ var c=document.querySelector('[data-f="'+i+'"]'); return {nome:p.nome,telefone:p.telefone,categoria:p.categoria,forcar:!!(c&&c.checked)}; });
       $('cGerar').disabled=true;
       api('presidencia_gerar',[itens,true],function(r){
         if(!r.ok){ $('cGerar').disabled=false; toast(r.mensagem||'Não consegui gerar.',true); return; }
@@ -204,9 +210,9 @@
         if(x.estado==='gerando'||x.estado==='cancelando') gerando++;
         var tag={pronto:'<span class="tag t-ok">pronto</span>',gerando:'<span class="tag t-w">gerando…</span>',falhou:'<span class="tag t-r">falhou</span>',cancelando:'<span class="tag t-w">cancelando…</span>',cancelado:'<span class="tag t-g">cancelado</span>'}[x.estado]||'';
         var acoes='';
-        if(x.estado==='pronto') acoes='<div class="acoes"><button class="btn btn-navy btn-sm" data-a="ver" data-i="'+i+'">👁 Ver ingresso</button><button class="btn btn-outline btn-sm" data-a="comp" data-i="'+i+'">📲 Compartilhar</button><button class="btn btn-outline btn-sm" data-a="baixa" data-i="'+i+'">⬇ PDF</button><button class="btn btn-red btn-sm" data-a="corrige" data-i="'+i+'">✏ Corrigir nome</button><button class="btn btn-red btn-sm" data-a="cancela" data-i="'+i+'">🗑 Cancelar</button></div>';
+        if(x.estado==='pronto') acoes='<div class="acoes"><button class="btn btn-navy btn-sm" data-a="ver" data-i="'+i+'">👁 Ver ingresso</button>'+(x.zap?'<a class="btn btn-green btn-sm" style="text-decoration:none" target="_blank" rel="noopener" href="'+esc(x.zap)+'">💬 WhatsApp</a>':'')+'<button class="btn btn-outline btn-sm" data-a="comp" data-i="'+i+'">📲 Compartilhar</button><button class="btn btn-outline btn-sm" data-a="baixa" data-i="'+i+'">⬇ PDF</button><button class="btn btn-red btn-sm" data-a="corrige" data-i="'+i+'">✏ Corrigir nome</button><button class="btn btn-red btn-sm" data-a="cancela" data-i="'+i+'">🗑 Cancelar</button></div>';
         else if(x.estado==='falhou') acoes='<div class="aviso">'+esc(x.detalhe||'O ingresso não foi gerado. Tente de novo.')+'</div>';
-        return '<div style="padding:10px 0;border-bottom:1px solid var(--g100)"><div class="linha" style="border:none;padding:0"><div><b>'+esc(x.nome)+'</b><small>'+esc(x.rotulo)+(x.codigo?' · '+esc(x.codigo):'')+'</small></div>'+tag+'</div>'+acoes+'</div>';
+        return '<div style="padding:10px 0;border-bottom:1px solid var(--g100)"><div class="linha" style="border:none;padding:0"><div><b>'+esc(x.nome)+'</b><small>'+esc(x.rotulo)+(x.telefone?' · '+esc(x.telefone):'')+(x.codigo?' · '+esc(x.codigo):'')+'</small></div>'+tag+'</div>'+acoes+'</div>';
       }).join(''):'<div class="vazio">Nenhum ingresso ainda.</div>';
       clearTimeout(TIMER); if(gerando && $('tMeus').classList.contains('on')) TIMER=setTimeout(meus,20000);
     });
