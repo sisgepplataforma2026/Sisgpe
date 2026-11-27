@@ -95,3 +95,18 @@ function oficiosReparoColaboradoresJunhoAplicarSISGEP() {
   if (!ofrReparoDonoNoEditor_()) return ofrReparoRecusa_();
   return ofrReparoJunho_(true);
 }
+
+/**
+ * REPARO NA HORA DO REENVIO (27/11/2026, o usuário: "pode alterar ... corrige os 16 que não aparece funcionário nenhum. Não é para reenviar
+ * automático não ... eu só preciso enxergar as pessoas que estão dentro do ofício").
+ * Chamada por preverReenvioOficio (OficiosDestinatarios.gs) ANTES de listar as pessoas. Só age se `numero` for um dos 16 da lista; então
+ * preenche os `Colaborador(es)` VAZIOS dos 16 (idempotente, nunca sobrescreve) e limpa o cache do Registro. NÃO envia nada, NÃO reenvia nada:
+ * só faz as pessoas aparecerem. Qualquer erro sobe para o chamador, que o engole e segue o reenvio como sempre.
+ */
+function ofrReparoDoOficio_(numero) {
+  var num = String(numero || "").trim();
+  var existe = OFR_REPARO_JUNHO_.some(function (it) { return it[0] === num; });
+  if (!existe) return false;
+  ofrReparoJunho_(true);
+  return true;
+}

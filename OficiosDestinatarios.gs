@@ -365,6 +365,9 @@ function preverReenvioOficio(dados, tokenSessao) {
      derruba a prévia: sem isto, o reenvio continua o de sempre. */
   if (r && r.ok && typeof ofrPreviaMotivo_ === "function") {
     try {
+      /* 27/11/2026 (pedido do usuário): os 16 ofícios de junho estavam sem `Colaborador(es)` no Registro. Antes de listar as pessoas, preenche
+         as células vazias deles. Só PREENCHE; não envia nem reenvia nada. Falha aqui não derruba a prévia. */
+      try { if (typeof ofrReparoDoOficio_ === "function") ofrReparoDoOficio_(r.numero); } catch (eRep) { Logger.log("Reenvio — reparo das pessoas: " + (eRep && eRep.message || eRep)); }
       r.motivo = ofrPreviaMotivo_(r.numero, r.tipo, ofDest_lerRegistroOficio_(r.numero), (r.anexos && r.anexos.itens) || [], tokenSessao);
     } catch (eMot) { Logger.log("Reenvio — motivo: " + (eMot && eMot.message || eMot)); }
   }
