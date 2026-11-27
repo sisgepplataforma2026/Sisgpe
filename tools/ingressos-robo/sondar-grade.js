@@ -68,6 +68,8 @@ const p = (...a) => console.log(...a);
       return { botao: b ? b.outerHTML.replace(/\s+/g, " ").slice(0, 260) : null, arquivos, vizinhanca: raiz ? raiz.outerHTML.replace(/\s+/g, " ").slice(0, 500) : null };
     }).catch(() => ({}));
     p("TRECHO importar:", JSON.stringify(imp).slice(0, 1400));
+    const modelo = await pg.evaluate(() => { const t = [...document.querySelectorAll("script")].map(x => x.textContent || "").find(x => /function baixarModeloImportacao/.test(x)); if (!t) return ""; const i = t.indexOf("function baixarModeloImportacao"); return t.slice(i, i + 900).replace(/\s+/g, " "); }).catch(() => "");
+    p("TRECHO modelo CSV:", modelo.slice(0, 900));
     await pg.evaluate(() => { if (typeof fecharPopUpAssentoAdmin === "function") fecharPopUpAssentoAdmin(); });
   } catch (e) { p("ERRO:", String(e.message).slice(0, 160)); process.exitCode = 1; }
   finally { await br.close(); }
