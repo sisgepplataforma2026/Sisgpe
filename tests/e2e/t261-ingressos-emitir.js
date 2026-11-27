@@ -101,8 +101,8 @@ b.ok(g.compassoIngressos_cancelarPedidoEmissao(ped, TOKEN).ok === false, "depois
     if (req.method === "POST" && u.searchParams.get("action") === "emitir") {
       let d = ""; req.on("data", c => d += c); req.on("end", () => {
         const j = JSON.parse(d); emissoes.push(j);
-        if (/FALHA-SERVIDOR/.test(j.nome) || !j.nome || !j.cpf) { res.statusCode = 400; res.end("erro"); return; }
-        ocupados.add(Number(j.seat)); seq++; linhas.push({ nome: j.nome, cpf: j.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"), cod: "TST-000" + seq }); res.end("ok");
+        if (/FALHA-SERVIDOR/.test(j.nome) || !j.nome || (!j.cpf && !/^(convite|acompanhante)$/.test(j.tipo))) {   /* o TickOne FALSO aceita convite/acompanhante sem CPF — HIPÓTESE a confirmar no TickOne de verdade */ res.statusCode = 400; res.end("erro"); return; }
+        ocupados.add(Number(j.seat)); seq++; linhas.push({ nome: j.nome, cpf: String(j.cpf || "").replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4"), cod: "TST-000" + seq }); res.end("ok");
       }); return;
     }
     if (u.searchParams.get("action")) { outras.push(u.searchParams.get("action")); res.end("ok"); return; }
