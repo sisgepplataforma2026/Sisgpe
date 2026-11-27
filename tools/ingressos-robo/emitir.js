@@ -52,6 +52,31 @@ const p = (...a) => console.log(...a);
       const mesma = l => usaNome ? norm(l.nome) === chaveNome : l.cpf === cpf;
       const ja = antes.linhas.find(mesma);
       if (ja) { await registrar(it.pedido, "FALHOU", (usaNome ? "já existe ingresso com este nome (código " : "este CPF já tem ingresso (código ") + ja.codigo + "): NÃO emiti de novo"); continue; }
+      /* SEM CPF (convite e acompanhante): o formulário "Emitir ingresso" do TickOne EXIGE CPF para qualquer tipo ("Na emissão pelo painel só nome e CPF são obrigatórios",
+         lido no script da página em 27/11/2026). A IMPORTAÇÃO por planilha aceita pessoa sem CPF — o modelo oficial do TickOne traz "Convidado Exemplo;;;;Serra - ES;;Convidado".
+         Então estes vão por uma planilha CSV de UMA linha pelo formulário de importação (admin_import_tickets), aceitando só a confirmação "emitir um ingresso para cada linha". */
+      if (usaNome && (await pg.$("form[action*='admin_import_tickets'] input[type=file]"))) {
+        const tipoTxt = cat === "acompanhante" ? "Acompanhante do Associado" : "Convidado";
+        const f = String(fone || ""), fmt = f.length === 11 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 7) + "-" + f.slice(7) : f.length === 10 ? "(" + f.slice(0, 2) + ") " + f.slice(2, 6) + "-" + f.slice(6) : "";
+        const limpo = x => String(x || "").replace(/[;\r\n"]/g, " ").replace(/\s+/g, " ").trim();
+        const csv = "\uFEFFNome;Email;CPF;Telefone;Cidade;Escola;Tipo\n" + [limpo(nome), "", "", fmt, limpo(it.cidade), limpo(it.escola), tipoTxt].join(";") + "\n";
+        const form = await pg.$("form[action*='admin_import_tickets']"), arq = await form.$("input[type=file]"), btn = await form.$("button[type=submit]");
+        if (!btn) { await registrar(it.pedido, "FALHOU", "não achei o botão Importar: NÃO emiti"); process.exitCode = 1; break; }
+        await arq.setInputFiles({ name: "importacao.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf8") });
+        let confirmou = false; const aoConfirmar = d => { if (/emitir um ingresso para cada linha/i.test(d.message())) { confirmou = true; d.accept().catch(() => {}); } else d.dismiss().catch(() => {}); };
+        pg.on("dialog", aoConfirmar);
+        jaNaRodada[chaveRodada] = true;
+        await Promise.all([pg.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => null), btn.click()]);
+        pg.off("dialog", aoConfirmar);
+        await pg.goto(BASE, { waitUntil: "domcontentloaded" }); await pg.waitForSelector("table tbody tr", { timeout: 8000 }).catch(() => {});
+        const depoisI = await ler(pg), novasI = depoisI ? depoisI.linhas.filter(mesma) : [];
+        if (!confirmou || !depoisI || novasI.length !== 1 || depoisI.linhas.length !== antes.linhas.length + 1) {
+          await registrar(it.pedido, "FALHOU", "importei a planilha, mas não apareceu exatamente uma linha nova com este nome (" + novasI.length + " linha(s); confirmação " + (confirmou ? "aceita" : "NÃO apareceu") + "): a execução parou e NÃO tentei de novo");
+          process.exitCode = 1; break;
+        }
+        await registrar(it.pedido, "EMITIDO", "conferido: apareceu 1 linha nova na lista do TickOne (importação de 1 linha)", novasI[0].codigo);
+        continue;
+      }
       /* ABRE O FORMULÁRIO. 27/11/2026: o TickOne tirou a grade de lugares (a de 16/11 tinha 2.994; hoje só há os botões de editar dos já emitidos)
          e ganhou o botão "Emitir ingresso" (emitirNovoIngressoAdmin), que abre o MESMO formulário, vazio, sem escolher lugar. Sonda de 27/11 provou.
          Usa o botão novo; só se ele não existir cai no jeito antigo (um lugar LIVRE da grade). */
