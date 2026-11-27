@@ -1,9 +1,8 @@
 /**
- * DECLARAÇÃO · "PREPARAR WHATSAPP" ABRE O WHATSAPP (27/11/2026). Relato do usuário: "quando clico no zap para enviar não acontece nada".
- * Hipótese: o window.open era chamado DEPOIS da resposta do servidor; o navegador só deixa abrir janela no próprio toque (gesto do usuário) e
- * bloqueia a aberta depois de uma resposta assíncrona — o servidor responde certo e nada aparece, sem erro. O teste simula esse bloqueio:
- * window.open só devolve janela se for chamado DENTRO do clique. Prova: a aba abre no clique e vai para o wa.me; erro do servidor fecha a aba;
- * sem declaração entregue não faz nada; se o navegador bloquear mesmo assim, aparece o link para clicar. NÃO PROVA: o WhatsApp de verdade.
+ * DECLARAÇÃO · "PREPARAR WHATSAPP" (27/11/2026). Relato: "quando clico no zap para enviar não acontece nada". Duas tentativas falharam no navegador
+ * real: window.open depois da resposta (bloqueado) e aba em branco redirecionada depois (ficava em about:blank, quadro isolado do Apps Script).
+ * Agora a tela não abre janela por código: mostra um link 'Abrir WhatsApp' (clique do usuário). NÃO PROVA: o WhatsApp de verdade nem o quadro
+ * isolado do Apps Script — por isso vale tocar no botão em produção e confirmar.
  */
 const b = require("./base");
 const dom = require("./dom");
@@ -118,30 +117,27 @@ win.toast = (t, tipo) => aviso.push(String(t));
   const zap = Array.from($("declModalEntrega").querySelectorAll("button")).filter(x => /Preparar WhatsApp/.test(x.textContent))[0];
   b.ok(!!zap, "o botão 'Preparar WhatsApp' existe no modal de entrega");
 
-  b.passo("1. O toque abre o WhatsApp");
+  b.passo("1. Preparar mostra o botão 'Abrir WhatsApp' — sem abrir janela por código");
   aberturas.length = 0; janelas.length = 0;
   tocar(zap, "zap"); await tela.assentar(80);
-  const foiWa = janelas.some(w => /^https:\/\/wa\.me\/55279999\d{5}\?text=/.test(w.location.href));
-  b.ok(foiWa, "uma janela aberta no toque terminou no wa.me do diretor (o celular vem do cadastro)", JSON.stringify(aberturas.map(a => ({ gesto: a.gesto, url: String(a.url).slice(0, 30) }))));
-  b.ok(janelas.length === 1, "abriu UMA janela só (sem aba sobrando)");
+  b.igual(aberturas.length, 0, "a tela NÃO chama window.open (a aba em branco ficava em about:blank no navegador real)");
+  const link = $("declWhatsLink");
+  b.ok(!!link && /^https:\/\/wa\.me\/55279999\d{5}\?text=/.test(link.getAttribute("href") || ""), "aparece o botão com o wa.me do diretor (o celular vem do cadastro)", link ? link.getAttribute("href").slice(0, 40) : "sem botão");
+  b.ok(link && link.getAttribute("target") === "_blank" && /Abrir WhatsApp/.test(link.textContent), "é um link de verdade (clique do usuário), em nova aba, com o texto 'Abrir WhatsApp'");
+  b.ok(/%0A/.test(link.getAttribute("href")) && /SindEduca%C3%A7%C3%A3o-ES/.test(link.getAttribute("href")), "a mensagem pronta vai dentro do link");
   b.ok(/Marcar WhatsApp como enviado/.test(Array.from($("declModalEntrega").querySelectorAll("button")).filter(x => x.style.display !== "none").map(x => x.textContent).join("|")), "aparece o botão 'Marcar WhatsApp como enviado'");
+  b.ok(aviso.some(t => /Mensagem pronta/.test(t)), "e um aviso diz o que fazer", aviso.join(" | "));
 
-  b.passo("2. Erro do servidor: a aba em branco é fechada e a pessoa é avisada");
-  const orig = win.google.script.run;
-  janelas.length = 0; aviso.length = 0;
-  const preparar = g.declPrepararWhatsapp;
+  b.passo("2. Tocar de novo reaproveita o mesmo botão (sem duplicar)");
+  tocar(zap, "zap"); await tela.assentar(80);
+  b.igual(doc.querySelectorAll("#declWhatsLink").length, 1, "continua um botão só");
+
+  b.passo("3. Erro do servidor: mostra o motivo e nenhuma janela abre");
+  aviso.length = 0; const preparar = g.declPrepararWhatsapp;
   g.declPrepararWhatsapp = () => ({ ok: false, mensagem: "O diretor não possui celular válido em Associados." });
   tocar(zap, "zap"); await tela.assentar(80);
-  b.ok(janelas.every(w => w.closed), "nenhuma aba em branco fica aberta");
-  b.ok(aviso.some(t => /celular válido/.test(t)), "aparece o motivo", aviso.join(" | "));
+  b.ok(aviso.some(t => /celular válido/.test(t)) && aberturas.length === 0, "aparece o motivo, sem janela", aviso.join(" | "));
   g.declPrepararWhatsapp = preparar;
-
-  b.passo("3. Se o navegador bloquear mesmo assim: link para clicar");
-  janelas.length = 0; aviso.length = 0;
-  const abrirOriginal = win.open; win.open = () => null;
-  tocar(zap, "zap"); await tela.assentar(80);
-  b.ok(!!$("declWhatsLink") && /wa\.me/.test($("declWhatsLink").getAttribute("href") || ""), "aparece um link 'Abrir WhatsApp' para clicar", $("declWhatsLink") ? $("declWhatsLink").outerHTML.slice(0, 90) : "sem link");
-  win.open = abrirOriginal;
 
   b.resumo(); process.exit(process.exitCode || 0);
 })();

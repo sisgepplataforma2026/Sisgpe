@@ -1260,35 +1260,28 @@ function declEnviarEmail(escopo) {
 
 function declPrepararWhatsapp(escopo) {
   if (!DECL_ESTADO.entrega) return;
-  /* 27/11/2026 — "quando clico no zap para enviar não acontece nada". O window.open ficava DENTRO da resposta do servidor, e o
-     navegador só deixa abrir janela no próprio toque: a aberta depois de uma resposta assíncrona é bloqueada, sem nenhum aviso.
-     Agora a aba é aberta em branco NO TOQUE e, quando o servidor responde, aponta para o WhatsApp (mesmo padrão de Ingressos e
-     Certificado). Se ainda assim o navegador bloquear, aparece um link para clicar. */
-  var aba = null;
-  try { aba = window.open("about:blank", "_blank"); } catch (eAb) {}
-  function fecharAba() { try { if (aba) aba.close(); } catch (eFe) {} }
+  /* 27/11/2026 — "quando clico no zap para enviar não acontece nada". Duas tentativas:
+     (1) window.open DEPOIS da resposta do servidor: o navegador bloqueia (sem gesto);
+     (2) abrir uma aba em branco no toque e redirecioná-la depois: a aba abria e FICAVA em about:blank — a página roda num quadro isolado do
+         Apps Script e a aba aberta dali não aceita ser redirecionada.
+     Agora NÃO se abre janela por código: o servidor monta a mensagem e aparece um botão "Abrir WhatsApp" (link de verdade). O clique NELE é um
+     toque do usuário, que o navegador sempre deixa abrir. */
   google.script.run.withSuccessHandler(function (r) {
-    if (!r || !r.ok) { fecharAba(); return declMsg((r && r.mensagem) || "Não foi possível preparar.", "erro"); }
-    var abriu = false;
-    try {
-      if (aba && !aba.closed) { aba.location.href = r.url; abriu = true; }
-      else abriu = !!window.open(r.url, "_blank");
-    } catch (eNav) {}
-    if (!abriu) {
-      var link = document.getElementById("declWhatsLink");
-      if (!link) {
-        link = document.createElement("a");
-        link.id = "declWhatsLink"; link.className = "btn-outline"; link.target = "_blank"; link.rel = "noopener";
-        link.style.cssText = "display:inline-flex;margin:8px 20px;text-decoration:none;";
-        var rodape = document.querySelector("#declModalEntrega .declModalRodape");
-        if (rodape && rodape.parentNode) rodape.parentNode.insertBefore(link, rodape);
-      }
-      link.href = r.url;
-      link.textContent = "📱 Abrir WhatsApp (o navegador bloqueou a janela)";
+    if (!r || !r.ok) return declMsg((r && r.mensagem) || "Não foi possível preparar.", "erro");
+    var link = document.getElementById("declWhatsLink");
+    if (!link) {
+      link = document.createElement("a");
+      link.id = "declWhatsLink"; link.className = "btn-navy"; link.target = "_blank"; link.rel = "noopener";
+      link.style.cssText = "display:flex;align-items:center;justify-content:center;margin:10px 20px 0;padding:12px 16px;text-decoration:none;font-weight:800;border-radius:10px;";
+      var rodape = document.querySelector("#declModalEntrega .declModalRodape");
+      if (rodape && rodape.parentNode) rodape.parentNode.insertBefore(link, rodape);
     }
+    link.href = r.url;
+    link.textContent = "📱 Abrir WhatsApp";
+    declMsg("Mensagem pronta. Toque em \"Abrir WhatsApp\".", "sucesso");
     var zap = document.getElementById(DECL_ESCOPOS[escopo].btnZap);
     if (zap) zap.style.display = "inline-flex";
-  }).withFailureHandler(function (e) { fecharAba(); declMsg("Erro: " + e, "erro"); })
+  }).withFailureHandler(function (e) { declMsg("Erro: " + e, "erro"); })
     .declPrepararWhatsapp(DECL_ESTADO.entrega.numero, declToken());
 }
 
