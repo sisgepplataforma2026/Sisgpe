@@ -37,7 +37,7 @@ const espera = (ms) => new Promise(r => setTimeout(r, ms));
   const d = w.document, $ = (id) => d.getElementById(id);
   const clicar = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
   await espera(40);
-  b.ok(/presidente/.test($("oi").textContent), "mostra 'Olá, presidente!'", $("oi").textContent);
+  b.ok(/^Olá, equipe!$/.test($("oi").textContent), "mostra 'Olá, equipe!' (um nome que vale para os três)", $("oi").textContent);
 b.ok(!$("kEmit") && !$("kHoje") && !$("kLim") && !/Ingressos emitidos|limite/i.test($("tInicio").textContent), "NÃO mostra totais nem limite (decisão do usuário: ele não vê a quantidade)");
   b.ok(!/CPF/i.test(d.body.textContent) && !!$("aTel"), "a tela não pede CPF e pede o telefone (obrigatório para o TickOne)");
   clicar($("bAdd")); b.ok($("tAdd").classList.contains("on"), "Adicionar convidados abre a tela de cadastro");

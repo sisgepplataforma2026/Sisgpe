@@ -148,7 +148,7 @@
     if(!r.ok){ if(r.escolher){ escolher(); return; } toast(r.mensagem||'Não consegui carregar.',true); return; }
     document.querySelector('.nav').style.display='';
     if($('tQuem').classList.contains('on')) ir('tInicio');
-    $('oi').textContent='Olá, '+(r.nome==='Leonil'||r.nome==='Presidente'?'presidente':r.nome)+'!'; }); }
+    $('oi').textContent='Olá, equipe!';  /* um nome que vale para os três (Leonil, Wanderson e Marcelha) — pedido do usuário, 27/11/2026 */ }); }
   $('tQuem').addEventListener('click',function(ev){ var b=ev.target.closest('[data-quem]'); if(!b) return; QUEM=b.getAttribute('data-quem'); try{ window.localStorage.setItem('pres_quem',QUEM); }catch(e){} estado(); });
   $('bTrocar').addEventListener('click',function(ev){ ev.preventDefault(); QUEM=''; try{ window.localStorage.removeItem('pres_quem'); }catch(e){} escolher(); });
 
