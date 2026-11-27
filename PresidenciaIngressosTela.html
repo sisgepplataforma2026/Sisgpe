@@ -64,7 +64,6 @@
 <div class="wrap">
 
   <div class="tela on" id="tInicio">
-    <div class="kpis"><div class="kpi"><b id="kEmit">—</b><span>Ingressos emitidos</span></div><div class="kpi"><b id="kHoje">—</b><span>Hoje (limite <span id="kLim">100</span>)</span></div></div>
     <button class="btn btn-green" id="bAdd">＋ Adicionar convidados</button>
     <button class="btn btn-navy" id="bMeus">🎟 Meus ingressos</button>
   </div>
@@ -123,7 +122,7 @@
 
   function estado(){ api('presidencia_estado',[],function(r){
     if(!r.ok){ toast(r.mensagem||'Não consegui carregar.',true); return; }
-    $('oi').textContent='Olá, '+(r.nome==='Presidente'?'presidente':r.nome)+'!'; $('kEmit').textContent=r.emitidos; $('kHoje').textContent=r.hoje; $('kLim').textContent=r.limite; }); }
+    $('oi').textContent='Olá, '+(r.nome==='Presidente'?'presidente':r.nome)+'!'; }); }
 
   function pintaLista(){
     $('aQtd').textContent=LISTA.length; $('aConf').disabled=!LISTA.length;
@@ -174,7 +173,7 @@
     api('presidencia_meus',[],function(r){
       if(!r.ok){ $('mLista').innerHTML='<div class="vazio">'+esc(r.mensagem||'Não consegui carregar.')+'</div>'; return; }
       MEUS=r.ingressos; var gerando=0;
-      $('mTit').textContent='Meus ingressos ('+MEUS.length+')';
+      $('mTit').textContent='Meus ingressos';
       $('mLista').innerHTML=MEUS.length?MEUS.map(function(x,i){
         if(x.estado==='gerando'||x.estado==='cancelando') gerando++;
         var tag={pronto:'<span class="tag t-ok">pronto</span>',gerando:'<span class="tag t-w">gerando…</span>',falhou:'<span class="tag t-r">falhou</span>',cancelando:'<span class="tag t-w">cancelando…</span>',cancelado:'<span class="tag t-g">cancelado</span>'}[x.estado]||'';
