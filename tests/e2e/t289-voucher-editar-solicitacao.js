@@ -17,7 +17,7 @@ shE.getRange(1, 1, 1, 6).setValues([["Escola (Razão Social)", "CNPJ", "Cidade",
 shE.getRange(2, 1, 2, 6).setValues([["COLEGIO ALFA LTDA", "11222333000144", "VITORIA", "ES", "ESC-001", "rh@alfa.com"], ["COLEGIO BETA LTDA", "99888777000166", "SERRA", "ES", "ESC-002", "rh@beta.com"]]);
 
 function criar(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({ cpf: "11144477735", nome: "TITULAR EXEMPLO", email: "t@x.com", modalidade: "ENSINO_FUNDAMENTAL",
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO", cpf: "11144477735", nome: "TITULAR EXEMPLO", email: "t@x.com", modalidade: "ENSINO_FUNDAMENTAL",
     curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA UM",
     escola: "COLEGIO ALFA LTDA", instituicao: "COLEGIO ALFA LTDA", aprovar: true }, extra || {}), TOKEN);
 }

@@ -144,6 +144,10 @@
 #certNovaBox .cert-nv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
 #certNovaBox .cert-nv-campo { display: flex; flex-direction: column; gap: 4px; }
 #certNovaBox .cert-nv-lbl { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; }
+#certNovaBox .cert-nv-sind{display:flex;gap:8px}
+#certNovaBox .cert-nv-sind-b{flex:1;border:1.5px solid #cbd5e1;background:#fff;border-radius:10px;padding:9px 11px;font:600 13px 'Plus Jakarta Sans',sans-serif;color:#475569;cursor:pointer}
+#certNovaBox .cert-nv-sind-b.on{background:var(--navy,#001f4d);border-color:var(--navy,#001f4d);color:#fff}
+#certNovaBox .cert-nv-sind.falta .cert-nv-sind-b{border-color:#dc2626}
 #certNovaBox .cert-nv-in { width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; padding: 9px 11px; outline: none; color: #1e293b; }
 #certNovaBox .cert-nv-in:focus { border-color: #1565C0; box-shadow: 0 0 0 4px rgba(21,101,192,.09); }
 /* A ORIGEM DE CADA CAMPO PREENCHIDO. Campo que aparece cheio sem dizer de
@@ -1287,10 +1291,15 @@
              mostra o motivo, antes de digitar curso e instituição. -->
         <div class="cert-nv-campo">
           <label class="cert-nv-lbl">Situação sindical</label>
-          <select class="cert-nv-in" id="certNvSituacao">
+          <!-- Escolha explícita, sem pré-seleção (27/11/2026). O select fica por trás e guarda o valor. -->
+          <div class="cert-nv-sind" id="certNvSindBtns">
+            <button type="button" class="cert-nv-sind-b" data-v="ASSOCIADO">Associado</button>
+            <button type="button" class="cert-nv-sind-b" data-v="NAO_ASSOCIADO">Não associado</button>
+          </div>
+          <select class="cert-nv-in" id="certNvSituacao" style="display:none">
+            <option value="" selected></option>
             <option value="ASSOCIADO">Associado</option>
             <option value="NAO_ASSOCIADO">Não associado</option>
-            <option value="">— não informado —</option>
           </select>
         </div>
       </div>
@@ -4039,7 +4048,8 @@ function nvLimpar(){
   if(g('certNvEscolaDifNome')){ g('certNvEscolaDifNome').removeAttribute('data-escola-id'); g('certNvEscolaDifNome').removeAttribute('data-fantasia'); g('certNvEscolaDifNome').removeAttribute('data-cidade'); }
   nvSincronizarBeneficiario();
   nvEscolaDifSincronizar();
-  if(g('certNvSituacao')) g('certNvSituacao').value='ASSOCIADO';
+  if(g('certNvSituacao')) g('certNvSituacao').value='';
+  nvSindPintar();
   /* A faixa some junto com o resto. Sem isto, o próximo atendimento abriria
      com "atendimento presencial" no topo por causa da pessoa anterior. */
   nvPresencialSincronizar();
@@ -4318,7 +4328,8 @@ function nvSalvarHabilitar(){
      passava, o segundo não chamava o servidor, e o motivo não era o `return`
      que eu já tinha corrigido — era o botão desabilitado, que faz o clique
      não acontecer. Um teste que só olhasse a função de salvar não veria. */
-  var travado = !!_nvBloqueio && !_nvExcecao && !nvBenefCards().length;
+  var _sitOk = !!g('certNvSituacao') && (g('certNvSituacao').value==='ASSOCIADO' || g('certNvSituacao').value==='NAO_ASSOCIADO');
+  var travado = (!!_nvBloqueio && !_nvExcecao && !nvBenefCards().length) || !_sitOk;
   ['certNvSalvarAnalise','certNvSalvarAprovar'].forEach(function(id){
     var b = g(id);
     if(!b) return;
@@ -4730,10 +4741,34 @@ function nvExigir(id, condicao, aviso){
   return false;
 }
 
+/* Situação sindical: dois botões, nenhum marcado ao abrir. O que a pessoa escolher é o que se grava; sem escolha, não salva. */
+function nvSindPintar(){
+  var s = g('certNvSituacao'), v = s ? s.value : '';
+  var box = g('certNvSindBtns');
+  if(!box) return;
+  Array.prototype.forEach.call(box.querySelectorAll('.cert-nv-sind-b'), function(b){
+    b.classList.toggle('on', b.getAttribute('data-v') === v);
+  });
+  if(v) box.classList.remove('falta');
+  nvSalvarHabilitar();
+}
+function nvSindEscolher(v){
+  var s = g('certNvSituacao');
+  if(!s) return;
+  s.value = v;
+  s.dispatchEvent(new Event('change'));
+  nvSindPintar();
+}
+
 function nvSalvar(aprovar){
   var btn = g(aprovar?'certNvSalvarAprovar':'certNvSalvarAnalise');
   var dados = nvCampos();
   dados.aprovar = !!aprovar;
+  if(dados.situacaoSindical !== 'ASSOCIADO' && dados.situacaoSindical !== 'NAO_ASSOCIADO'){
+    var _bx = g('certNvSindBtns'); if(_bx) _bx.classList.add('falta');
+    cert_msg('Escolha: associado ou não associado.','erro');
+    return;
+  }
 
   /* Barrado ANTES de sair: o backend também recusa, mas deixar a ida ao
      servidor acontecer para voltar com "falta o CPF" é meio segundo de
@@ -4929,7 +4964,9 @@ var _docEmitido = null;  // resposta da emissão, quando já houve
 function certDocEstado(emitido){
   var g_ = g;
   if(g_('certDocBaixar')) g_('certDocBaixar').style.display = emitido ? '' : 'none';
-  if(g_('certDocEnviar')) g_('certDocEnviar').style.display = emitido ? '' : 'none';
+  /* Não associado sem envio prévio: só impresso, retirada presencial — o e-mail fica ESCONDIDO (usuário, 27/11/2026). */
+  var _soImpresso = !!(_docSol && !_docSol.envio && certSindical(_docSol)==='NAO');
+  if(g_('certDocEnviar')) g_('certDocEnviar').style.display = (emitido && !_soImpresso) ? '' : 'none';
   if(g_('certDocZap')) g_('certDocZap').style.display = emitido ? '' : 'none';
   /* O Gerar some depois de emitido: deixá-lo aceso convidaria ao segundo
      clique que não gera nada e parece que o sistema ignorou. */
@@ -5457,6 +5494,11 @@ function initInterno(){
      Este é o mesmo erro que a faixa de renovação teve em 13/08, quando foi
      amarrada ao nvSugerir e só disparava ao escolher da lista de busca. */
   if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvPresencialSincronizar);
+  if(g('certNvSituacao')) g('certNvSituacao').addEventListener('change', nvSindPintar);
+  Array.prototype.forEach.call(document.querySelectorAll('#certNvSindBtns .cert-nv-sind-b'), function(b){
+    b.addEventListener('click', function(){ nvSindEscolher(b.getAttribute('data-v')); });
+  });
+  nvSindPintar();
   /* A checagem de período depende de OUTROS campos que a sugestão: quem é o
      beneficiário, qual o curso, qual o período e qual o regime. Escutar os
      mesmos eventos da sugestão faria a trava ignorar justamente a troca do

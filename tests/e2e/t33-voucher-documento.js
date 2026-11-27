@@ -233,7 +233,7 @@ b.passo("14. O RG digitado na emissão fica guardado na linha");
 b.seedUsuarios(g);
 const TK = b.logar(g, "wanderson");
 g.setupVoucherModuleFase1();
-const criada = g.voucherCriarSolicitacao({
+const criada = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "11144477735", nome: "Fulano de Tal", modalidade: "GRADUACAO",
   area: "HUMANAS", curso: "Pedagogia", regime: "SEMESTRAL",
   periodo: "2026/1", percentual: 70, aprovar: true

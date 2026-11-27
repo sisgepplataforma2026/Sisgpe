@@ -30,7 +30,7 @@ function novaSolicitacao(extra) {
     tipoBeneficiario: "TITULAR", nomeBeneficiario: NOME
   };
   Object.keys(extra || {}).forEach(k => { dados[k] = extra[k]; });
-  return g.voucherCriarSolicitacao(dados, token);
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO" }, dados), token);
 }
 
 /* ══════════════════════════════════════════════════════════════════════ */
@@ -314,7 +314,7 @@ b.ok(/período de referência/i.test(semPeriodo.mensagem || ""),
   "e diz qual campo falta, com o nome que está na tela", semPeriodo.mensagem);
 
 b.passo("2. E a recusa não é genérica — CPF e nome continuam sendo cobrados");
-const semNada = g.voucherCriarSolicitacao({ modalidade: "GRADUACAO" }, token);
+const semNada = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", modalidade: "GRADUACAO" }, token);
 b.ok(/CPF válido/.test(semNada.mensagem || "") &&
      /nome do associado/.test(semNada.mensagem || "") &&
      /período de referência/.test(semNada.mensagem || ""),
@@ -377,7 +377,7 @@ b.ok(/2027\/1/.test(p2.mensagem || ""),
 b.fluxo("VOUCHER · 7c. Até três dependentes, fora o ensino superior");
 
 function filho(ordem, nome, mod) {
-  return g.voucherCriarSolicitacao({
+  return g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: "52998224725", nome: "PAI DE FAMILIA",
     modalidade: mod || "ENSINO_FUNDAMENTAL", curso: "Ensino Fundamental",
     regime: "ANUAL", periodo: "2030", tipoBeneficiario: "FILHO",
@@ -422,7 +422,7 @@ b.passo("4. A vaga é POR JANELA — o semestre seguinte começa do zero");
  * primeira bateria — ignorar a janela na contagem não quebrava nada. */
 const outraJanela = filho(1, "DANIEL", "ENSINO_FUNDAMENTAL");
 b.ok(false === outraJanela.ok, "em 2030 o quarto continua barrado");
-const proxJanela = g.voucherCriarSolicitacao({
+const proxJanela = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "ENSINO_FUNDAMENTAL",
   curso: "Ensino Fundamental", regime: "ANUAL", periodo: "2031",
   tipoBeneficiario: "FILHO", beneficiario: "DANIEL", ordemFilho: "1"
@@ -436,7 +436,7 @@ b.passo("5. O TITULAR não ocupa vaga de dependente");
  * três é dos dependentes, e o titular é barrado por outro caminho (uma por
  * período, qualquer curso). Outra mutação que sobreviveu: fazer o titular
  * contar não quebrava teste nenhum. */
-const paiTambem = g.voucherCriarSolicitacao({
+const paiTambem = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "GRADUACAO",
   curso: "Administracao", regime: "ANUAL", periodo: "2030",
   tipoBeneficiario: "TITULAR", beneficiario: "PAI DE FAMILIA"
@@ -445,7 +445,7 @@ b.igual(paiTambem.ok, true,
   "o pai entra mesmo com as três vagas de dependente ocupadas",
   paiTambem.mensagem || "");
 /* E a dele, sim, é uma só. */
-const paiDeNovo = g.voucherCriarSolicitacao({
+const paiDeNovo = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "52998224725", nome: "PAI DE FAMILIA", modalidade: "POS_GRADUACAO",
   curso: "MBA", regime: "ANUAL", periodo: "2030",
   tipoBeneficiario: "TITULAR", beneficiario: "PAI DE FAMILIA"
@@ -463,7 +463,7 @@ b.passo("6. O titular PRIMEIRO, e os três filhos depois — todos entram");
  * CPF próprio, para não depender do que os passos anteriores deixaram. */
 const CPF_FAM = "40157625080";
 function daFamilia(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_FAM, nome: "MAE DE FAMILIA", modalidade: "ENSINO_FUNDAMENTAL",
     curso: "Ensino Fundamental", regime: "ANUAL", periodo: "2033"
   }, extra), token);

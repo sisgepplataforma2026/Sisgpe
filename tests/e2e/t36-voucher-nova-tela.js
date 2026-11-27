@@ -31,7 +31,7 @@ g.setupVoucherModuleFase1();
 const CPF_M = "11144477735";
 
 /* Marcelo já pediu uma vez: Multivix, Administração, Humanas, 70%. */
-g.voucherCriarSolicitacao({
+g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: CPF_M, nome: "Marcelo Alves de Oliveira", email: "marcelo@exemplo.com",
   telefone: "(27) 99111-2233", escola: "COLEGIO SAO JOSE",
   instituicao: "MULTIVIX", cnpjInstituicao: "31344800000100",
@@ -229,6 +229,7 @@ function el(id) { return doc.getElementById(id); }
 
   b.passo("11. Salvar em análise grava ANALISE");
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
   /* JANELA LIVRE, e não a do seed. Período obrigatório desde 13/08/2026; e
@@ -250,6 +251,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -292,6 +294,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -331,6 +334,7 @@ function el(id) { return doc.getElementById(id); }
   b.igual(el("certNvBoxIR").style.display, "none", "IR continua escondida (é filho, não enteado)");
 
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   el("certNvBeneficiario").value = "Pedro";
   el("certNvIdade").value = "8";
@@ -387,6 +391,7 @@ function el(id) { return doc.getElementById(id); }
   t.clicar("#certBtnNova");
   await t.assentar(40);
   el("certNvCpf").value = CPF_M;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   el("certNvNome").value = "Marcelo Alves de Oliveira";
   t.escolher("#certNvModalidade", "GRADUACAO");
   t.escolher("#certNvArea", "HUMANAS");
@@ -437,7 +442,7 @@ function el(id) { return doc.getElementById(id); }
    * porque sem período a trava de "um por pessoa, por curso, por janela" não
    * tem janela para comparar e deixa a mesma pessoa passar duas vezes. O
    * teste é que estava desatualizado, não a regra nova. */
-  const nova = g.voucherCriarSolicitacao({
+  const nova = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
     periodo: "2029/1", aprovar: false
@@ -473,7 +478,7 @@ function el(id) { return doc.getElementById(id); }
    *
    * A asserção do protocolo criado fica de pé pelo motivo de sempre: sem
    * ela, um "aprovou" sobre protocolo inexistente passaria despercebido. */
-  const naoAss = g.voucherCriarSolicitacao({
+  const naoAss = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: "52998224725", nome: "Nao Associado", modalidade: "GRADUACAO",
     area: "HUMANAS", situacaoSindical: "NAO_ASSOCIADO",
     periodo: "2026/2", aprovar: false
@@ -499,7 +504,8 @@ function el(id) { return doc.getElementById(id); }
 
   b.passo("26. Com modal aberto, o aviso sai por toast — visível");
   t.clicar("#certBtnNova");
-  await t.assentar(40);
+  const antesToast = t.avisos.length;
+  t.escolher("#certNvSituacao", "ASSOCIADO");
   const antesToast = t.avisos.length;
   el("certNvCpf").value = "123";                 // inválido de propósito
   t.clicar("#certNvSalvarAprovar");
@@ -517,7 +523,7 @@ function el(id) { return doc.getElementById(id); }
   await t.assentar(60);
   /* Período obrigatório desde 13/08/2026 — e num período ainda livre, senão
      a trava de duplicidade recusa a criação e o resto do passo não acontece. */
-  const emAnalise = g.voucherCriarSolicitacao({
+  const emAnalise = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
     cpf: CPF_M, nome: "Marcelo Alves de Oliveira",
     modalidade: "GRADUACAO", area: "HUMANAS", percentual: 70,
     periodo: "2031/1", aprovar: false

@@ -20,13 +20,15 @@ const lerSituacao = (protocolo) => {
 const base = { email: "x@teste.com", escola: "ESCOLA X", modalidade: "ENSINO_FUNDAMENTAL", instituicao: "INST Y", curso: "6 ANO", tipoBeneficiario: "FILHO", ordemFilho: "1", idade: 12, periodo: "2026/2", regime: "SEMESTRAL" };
 
 b.fluxo("NOVA SOLICITAÇÃO · situação sindical");
-b.passo("1. em branco continua em branco");
+b.passo("1. em branco é RECUSADO (decisão do usuário, 27/11/2026: escolha explícita)");
 const vazio = g.voucherCriarSolicitacao({ ...base, cpf: "11144477735", nome: "TITULAR EM BRANCO", nomeBeneficiario: "FILHO A", situacaoSindical: "" }, TOKEN);
-b.ok(vazio.ok, "a solicitação em branco é criada", vazio.mensagem || vazio.protocolo);
-const lv = lerSituacao(vazio.protocolo);
-b.ok(lv && lv.situacao === "", "SITUACAO_SINDICAL fica EM BRANCO (antes virava ASSOCIADO)", JSON.stringify(lv));
+b.ok(!vazio.ok && /situação sindical/.test(vazio.mensagem || ""), "em branco é recusado e a mensagem diz o que falta", vazio.mensagem);
 const semCampo = g.voucherCriarSolicitacao({ ...base, cpf: "52998224725", nome: "TITULAR SEM CAMPO", nomeBeneficiario: "FILHO B" }, TOKEN);
-b.ok(semCampo.ok && lerSituacao(semCampo.protocolo).situacao === "", "campo ausente também fica em branco", JSON.stringify(lerSituacao(semCampo.protocolo)));
+b.ok(!semCampo.ok, "campo ausente também é recusado", semCampo.mensagem);
+const invalido = g.voucherCriarSolicitacao({ ...base, cpf: "52998224725", nome: "TITULAR X", nomeBeneficiario: "FILHO B", situacaoSindical: "TALVEZ" }, TOKEN);
+b.ok(!invalido.ok, "valor fora de ASSOCIADO/NAO_ASSOCIADO é recusado", invalido.mensagem);
+const linhas = ss.getSheetByName("Voucher_Solicitacoes").getLastRow();
+b.ok(linhas <= 1, "nada foi gravado pelas recusas", String(linhas));
 b.passo("2. o que a pessoa escolhe é gravado");
 const assoc = g.voucherCriarSolicitacao({ ...base, cpf: "39053344705", nome: "TITULAR ASSOCIADO", nomeBeneficiario: "FILHO C", situacaoSindical: "ASSOCIADO" }, TOKEN);
 b.ok(assoc.ok && lerSituacao(assoc.protocolo).situacao === "ASSOCIADO", "ASSOCIADO escolhido → ASSOCIADO");
@@ -34,5 +36,5 @@ b.ok(lerSituacao(assoc.protocolo).canal !== "PRESENCIAL", "canal remoto, como se
 const nao = g.voucherCriarSolicitacao({ ...base, cpf: "11122233396", nome: "TITULAR NAO ASSOCIADO", nomeBeneficiario: "FILHO D", situacaoSindical: "NAO_ASSOCIADO" }, TOKEN);
 b.ok(nao.ok && lerSituacao(nao.protocolo).situacao === "NAO_ASSOCIADO", "NAO_ASSOCIADO escolhido → NAO_ASSOCIADO");
 b.ok(lerSituacao(nao.protocolo).canal === "PAPEL" && lerSituacao(assoc.protocolo).canal === "EMAIL", "e o canal continua certo: não associado = PAPEL, associado = EMAIL");
-b.naoTestavel("o formulário pré-selecionando 'Associado' ao abrir", "decisão do usuário pendente (Scripts_Certificado.html, abrir a Nova solicitação)");
+
 b.resumo();

@@ -15,10 +15,10 @@ b.seedUsuarios(g);
 const TOKEN = b.logar(g, "wanderson");
 g.setupVoucherModuleFase1();
 const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
-const r = g.voucherCriarSolicitacao({ cpf: "11144477735", nome: "TITULAR EXEMPLO", email: "t@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO",
+const r = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", cpf: "11144477735", nome: "TITULAR EXEMPLO", email: "t@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO",
   periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA UM", escola: "COLEGIO ALFA", aprovar: true }, TOKEN);
 const P = r.protocolo;
-const r2 = g.voucherCriarSolicitacao({ cpf: "52998224725", nome: "OUTRO TITULAR", email: "o@x.com", modalidade: "ENSINO_MEDIO", curso: "1 ANO",
+const r2 = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", cpf: "52998224725", nome: "OUTRO TITULAR", email: "o@x.com", modalidade: "ENSINO_MEDIO", curso: "1 ANO",
   periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "DEP EMITIDO", escola: "COLEGIO ALFA", aprovar: true }, TOKEN);
 (function () {   // emissão de verdade na aba, para a linha ser EMITIDO com data de emissão
   const sh = ss.getSheetByName("Voucher_Emitidos");

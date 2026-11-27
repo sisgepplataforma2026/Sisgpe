@@ -77,6 +77,10 @@ function voucherCriarSolicitacao(dados, tokenSessao) {
      * referência"); a administrativa não. Mesma divergência de portas que o
      * STATUS_SOLICITACAO teve, e mesma correção: alinhar pela mais estrita. */
     if (!String(dados.periodo || "").trim()) faltando.push("período de referência");
+    /* SITUAÇÃO SINDICAL É ESCOLHA, NÃO PADRÃO (usuário, 26/11/2026): associado → certificado por e-mail; não associado → só impresso, retirada
+     * na sede. Sem escolha explícita a solicitação não nasce (antes, em branco virava "associado" em silêncio). */
+    var _sit = String(dados.situacaoSindical || "").trim().toUpperCase();
+    if (_sit !== "ASSOCIADO" && _sit !== "NAO_ASSOCIADO") faltando.push("situação sindical (associado ou não associado)");
     if (faltando.length) {
       return { ok: false, mensagem: "Falta preencher: " + faltando.join(", ") + "." };
     }

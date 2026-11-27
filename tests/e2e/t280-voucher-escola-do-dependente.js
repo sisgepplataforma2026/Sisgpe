@@ -37,7 +37,7 @@ shA.getRange(2, 1, 3, 4).setValues([
 ]);
 
 function criar(extra) {
-  return g.voucherCriarSolicitacao(Object.assign({
+  return g.voucherCriarSolicitacao(Object.assign({ situacaoSindical: "ASSOCIADO",
     cpf: "11144477735", nome: "TITULAR FACULDADE", email: "t1@x.com", modalidade: "ENSINO_FUNDAMENTAL",
     curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1",
     beneficiario: "FILHA UM", aprovar: true
@@ -103,15 +103,15 @@ b.igual(linha(porId.protocolo).ESCOLA_SELECIONADA, "COLEGIO REDE ALFA LTDA", "gr
 b.igual(String(linha(porId.protocolo).CNPJ_ESCOLA), "11222333000225", "e o CNPJ do cadastro");
 
 b.passo("5. Titular SEM escola achada: deixa digitar, com aviso; sem escola nenhuma, CRIA e avisa (como sempre foi)");
-const sem = g.voucherCriarSolicitacao({ cpf: "52998224725", nome: "TITULAR SEM ESCOLA", email: "t2@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA X", aprovar: true }, TOKEN);
+const sem = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", cpf: "52998224725", nome: "TITULAR SEM ESCOLA", email: "t2@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA X", aprovar: true }, TOKEN);
 b.ok(sem.ok && sem.escolaAplicada.origem === "SEM_ESCOLA" && /Preencha a escola/.test(sem.escolaAplicada.aviso), "sem escola nenhuma: cria, e avisa que falta preencher antes de emitir", JSON.stringify(sem.escolaAplicada));
 b.ok(historico(sem.protocolo).some(t => /ESCOLA_DEPENDENTE/.test(t) && /em branco/.test(t)), "e o histórico registra");
-const digitada = g.voucherCriarSolicitacao({ cpf: "52998224725", nome: "TITULAR SEM ESCOLA", email: "t2@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA Y", escola: "COLEGIO REDE ALFA LTDA", cnpjEscola: "11222333000225", aprovar: true }, TOKEN);
+const digitada = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", cpf: "52998224725", nome: "TITULAR SEM ESCOLA", email: "t2@x.com", modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL", tipoBeneficiario: "FILHO", ordemFilho: "1", beneficiario: "FILHA Y", escola: "COLEGIO REDE ALFA LTDA", cnpjEscola: "11222333000225", aprovar: true }, TOKEN);
 b.ok(digitada.ok && digitada.escolaAplicada.origem === "DIGITADA_SEM_CADASTRO" && /não foi encontrada/.test(digitada.escolaAplicada.aviso), "com escola digitada: cria e avisa", JSON.stringify(digitada.escolaAplicada));
 
 b.passo("6. Pelo PEDIDO EM LOTE a regra vale igual, por beneficiário");
 const lote = g.voucherCriarSolicitacoesEmLote({
-  comuns: { cpf: "11144477735", nome: "TITULAR FACULDADE", email: "t1@x.com", periodo: "2028", escola: "ESCOLA COMUM DIGITADA", regime: "ANUAL", modalidade: "ENSINO_MEDIO", curso: "1 ANO" },
+  comuns: { situacaoSindical: "ASSOCIADO", cpf: "11144477735", nome: "TITULAR FACULDADE", email: "t1@x.com", periodo: "2028", escola: "ESCOLA COMUM DIGITADA", regime: "ANUAL", modalidade: "ENSINO_MEDIO", curso: "1 ANO" },
   beneficiarios: [{ tipoBeneficiario: "FILHO", beneficiario: "LOTE A", ordemFilho: "1" }, { tipoBeneficiario: "FILHO", beneficiario: "LOTE B", ordemFilho: "2", escolaDiferenteDoTitular: true, motivoEscolaDiferente: "MESMA_REDE", escola: "COLEGIO REDE ALFA LTDA", cnpjEscola: "11222333000225" }]
 }, TOKEN);
 b.ok(lote.criados === 2, "criou os 2", lote.mensagem);

@@ -97,7 +97,7 @@ const cards = () => Array.from(doc.querySelectorAll("#certNvBenefLista .cert-nv-
   b.passo("6. SERVIDOR: cartão com instituição DIFERENTE não herda CNPJ/e-mail do cabeçalho");
   const ss = g.SpreadsheetApp.openById(g.PLANILHA_ID);
   const r = g.voucherCriarSolicitacoesEmLote({
-    comuns: { cpf: "11144477735", nome: "TITULAR", email: "t@x.com", periodo: "2028", regime: "ANUAL", modalidade: "ENSINO_MEDIO", curso: "1",
+    comuns: { situacaoSindical: "ASSOCIADO", cpf: "11144477735", nome: "TITULAR", email: "t@x.com", periodo: "2028", regime: "ANUAL", modalidade: "ENSINO_MEDIO", curso: "1",
               instituicao: "ESCOLA DO CABECALHO", cnpjInstituicao: "11222333000144", emailInstituicao: "cab@escola.com" },
     beneficiarios: [
       { tipoBeneficiario: "FILHO", beneficiario: "A", ordemFilho: "1", instituicao: "ESCOLA DO CABECALHO" },

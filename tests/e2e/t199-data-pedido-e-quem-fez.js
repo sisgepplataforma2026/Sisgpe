@@ -100,7 +100,7 @@ const ontemIso = ONTEM.getFullYear() + "-" +
   String(ONTEM.getMonth() + 1).padStart(2, "0") + "-" +
   String(ONTEM.getDate()).padStart(2, "0");
 
-const salvo = g.voucherCriarSolicitacao({
+const salvo = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "11144477735", nome: "MARCELHA ALINE PINTO GOMES",
   email: "marcelha@escola.com.br",
   dataPedido: ontemIso,
@@ -155,7 +155,7 @@ if (linha) {
 }
 
 /* Observação vazia não pode deixar um separador solto pendurado. */
-const semObs = g.voucherCriarSolicitacao({
+const semObs = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO",
   cpf: "52998224725", nome: "ATILA DE SOUZA", email: "atila@escola.com.br",
   escola: "COLEGIO EXEMPLO", quem: "PROPRIO", modalidade: "GRADUACAO",
   curso: "Biomedicina", areaCurso: "SAUDE", periodo: "2027", percentual: "50",

@@ -14,7 +14,7 @@ g.setupVoucherModuleFase1();
 g.__cotaEmailRestante = 1500;
 
 function pedir(cpf, nome, email, benef, ordem) {
-  const r = g.voucherCriarSolicitacao({ cpf, nome, email, modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL",
+  const r = g.voucherCriarSolicitacao({ situacaoSindical: "ASSOCIADO", cpf, nome, email, modalidade: "ENSINO_FUNDAMENTAL", curso: "6 ANO", periodo: "2027", regime: "ANUAL",
     tipoBeneficiario: "FILHO", ordemFilho: String(ordem), beneficiario: benef, escola: "COLEGIO ALFA", aprovar: false }, ADM);
   if (!r.ok) throw new Error("não criou " + benef + ": " + r.mensagem);
   return r.protocolo;
